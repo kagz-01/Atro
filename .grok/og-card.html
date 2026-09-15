@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ATRO</title>
+  <style>
+    @font-face {
+      font-family: "Playfair Display";
+      src: url("fonts/PlayfairDisplay.ttf") format("truetype");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "Cinzel";
+      src: url("fonts/Cinzel.ttf") format("truetype");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: block;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 1200px;
+      height: 630px;
+      overflow: hidden;
+      background: #3C0508;
+    }
+    .field {
+      width: 1200px;
+      height: 630px;
+      position: relative;
+      background:
+        radial-gradient(ellipse 78% 68% at 50% 46%, #5C1018 0%, #3C0508 58%, #240306 100%);
+    }
+    .grain {
+      position: absolute;
+      inset: 0;
+      opacity: 0.07;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+    }
+    .elevation {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 720px;
+      height: 360px;
+      transform: translate(-50%, -48%);
+      opacity: 0.09;
+      pointer-events: none;
+    }
+    .frame {
+      position: absolute;
+      inset: 26px;
+      border: 1px solid rgba(201, 146, 79, 0.42);
+      pointer-events: none;
+    }
+    .frame-inner {
+      position: absolute;
+      inset: 32px;
+      border: 1px solid rgba(228, 184, 122, 0.16);
+      pointer-events: none;
+    }
+    .lockup {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+    .gable {
+      width: 56px;
+      height: 40px;
+      margin-bottom: 22px;
+      color: #C9924F;
+    }
+    .wordmark {
+      font-family: "Playfair Display", "Liberation Serif", serif;
+      font-weight: 500;
+      font-size: 108px;
+      letter-spacing: 0.22em;
+      line-height: 1;
+      padding-left: 0.22em;
+      background: linear-gradient(180deg, #E4B87A 0%, #C9924F 52%, #B07A3E 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-kerning: normal;
+    }
+    .rule {
+      width: 64px;
+      height: 1px;
+      background: #C9924F;
+      opacity: 0.65;
+      margin: 22px 0 18px;
+    }
+    .sub {
+      font-family: "Cinzel", "Liberation Serif", serif;
+      font-weight: 500;
+      font-size: 14px;
+      letter-spacing: 0.46em;
+      padding-left: 0.46em;
+      color: #E4B87A;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="field">
+    <svg class="elevation" viewBox="0 0 720 360" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- faint architectural elevation of a gabled house -->
+      <path d="M80 210 L360 48 L640 210" stroke="#C9924F" stroke-width="1.2"/>
+      <path d="M120 210 L360 72 L600 210" stroke="#C9924F" stroke-width="0.8"/>
+      <rect x="150" y="210" width="420" height="110" stroke="#C9924F" stroke-width="1.2"/>
+      <rect x="322" y="248" width="76" height="72" stroke="#C9924F" stroke-width="0.9"/>
+      <rect x="198" y="236" width="52" height="40" stroke="#C9924F" stroke-width="0.8"/>
+      <rect x="470" y="236" width="52" height="40" stroke="#C9924F" stroke-width="0.8"/>
+      <line x1="80" y1="320" x2="640" y2="320" stroke="#C9924F" stroke-width="0.6"/>
+      <line x1="360" y1="48" x2="360" y2="48" stroke="#C9924F"/>
+    </svg>
+    <div class="grain"></div>
+    <div class="frame"></div>
+    <div class="frame-inner"></div>
+    <div class="lockup">
+      <svg class="gable" viewBox="0 0 56 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M4 28 L28 6 L52 28" stroke="currentColor" stroke-width="1.8" stroke-linejoin="miter"/>
+        <path d="M16 28 L28 16 L40 28" stroke="currentColor" stroke-width="1.4"/>
+        <line x1="12" y1="34" x2="44" y2="34" stroke="#E4B87A" stroke-width="1.8"/>
+      </svg>
+      <div class="wordmark">ATRO</div>
+      <div class="rule"></div>
+      <div class="sub">DESIGN & CONSTRUCTION</div>
+    </div>
+  </div>
+</body>
+</html>
