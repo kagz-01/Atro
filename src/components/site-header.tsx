@@ -55,7 +55,7 @@ export function SiteHeader() {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "px-3.5 h-11 inline-flex items-center text-[12px] uppercase tracking-[0.16em] transition-colors rounded-sm",
+                  "px-3.5 h-11 inline-flex items-center gap-1.5 text-[12px] uppercase tracking-[0.16em] transition-colors rounded-sm",
                   onDarkHero
                     ? active
                       ? "text-gold"
@@ -66,6 +66,11 @@ export function SiteHeader() {
                 )}
               >
                 {item.label}
+                {"badge" in item && item.badge && (
+                  <span className="px-1.5 py-0.5 text-[8px] font-medium bg-gold text-maroon rounded-sm leading-none">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -117,9 +122,14 @@ export function SiteHeader() {
               <Link
                 key={item.to}
                 to={item.to}
-                className="font-display text-4xl py-3 border-b border-paper/10 tracking-tight"
+                className="font-display text-4xl py-3 border-b border-paper/10 tracking-tight flex items-center gap-3"
               >
                 {item.label}
+                {"badge" in item && item.badge && (
+                  <span className="px-2 py-1 text-[10px] font-medium bg-gold text-maroon rounded-sm">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             ))}
             <Link to="/start" className="font-display text-4xl py-3 text-gold">

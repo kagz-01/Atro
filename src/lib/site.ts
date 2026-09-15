@@ -809,9 +809,9 @@ export const VALUES = [
 export const NAV = [
   { to: "/projects" as const, label: "Work" },
   { to: "/services" as const, label: "Services" },
+  { to: "/tools" as const, label: "Tools", badge: "New" as const },
   { to: "/zones" as const, label: "Zones" },
   { to: "/process" as const, label: "Process" },
-  { to: "/insights" as const, label: "Insights" },
   { to: "/about" as const, label: "About" },
 ];
 

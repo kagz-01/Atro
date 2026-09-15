@@ -1,33 +1,35 @@
 import { ZONES } from "@/lib/site";
-import { formatKesRange } from "@/lib/utils";
+import { formatKes, formatKesRange } from "@/lib/utils";
 
 export const PROJECT_TYPES = [
-  "Residential",
-  "Commercial",
-  "Institutional",
-  "Church",
-  "School",
-  "Renovation",
+  { id: "Residential", label: "Residential", icon: "🏠", desc: "Family homes, apartments, villas" },
+  { id: "Commercial", label: "Commercial", icon: "🏢", desc: "Offices, retail, mixed-use" },
+  { id: "Institutional", label: "Institutional", icon: "🏛️", desc: "Schools, hospitals, community" },
+  { id: "Church", label: "Church", icon: "⛪", desc: "Worship spaces, parish halls" },
+  { id: "School", label: "School", icon: "🎓", desc: "Classrooms, labs, libraries" },
+  { id: "Renovation", label: "Renovation", icon: "🔧", desc: "Extensions, remodels, upgrades" },
 ] as const;
 
-export type CostProjectType = (typeof PROJECT_TYPES)[number];
+export type CostProjectType = (typeof PROJECT_TYPES)[number]["id"];
 
 export const FINISHES = [
-  { id: "essential", label: "Essential", hint: "Sound, simple, no waste" },
-  { id: "standard", label: "Standard", hint: "The honest mid-range house" },
-  { id: "premium", label: "Premium", hint: "Specified materials, quieter detailing" },
-  { id: "signature", label: "Signature", hint: "High-touch finishes, tight tolerances" },
+  { id: "essential", label: "Essential", hint: "Sound, simple, no waste", icon: "basic", color: "stone" },
+  { id: "standard", label: "Standard", hint: "The honest mid-range house", icon: "standard", color: "gold" },
+  { id: "premium", label: "Premium", hint: "Specified materials, quieter detailing", icon: "premium", color: "burgundy" },
+  { id: "signature", label: "Signature", hint: "High-touch finishes, tight tolerances", icon: "signature", color: "maroon" },
 ] as const;
 
 export type FinishId = (typeof FINISHES)[number]["id"];
 
 export const STAGES = [
-  "Just exploring",
-  "Have a plot",
-  "Have drawings",
-  "Ready to build",
-  "Already on site",
+  { id: "exploring", label: "Just exploring", icon: "🔍" },
+  { id: "plot", label: "Have a plot", icon: "📐" },
+  { id: "drawings", label: "Have drawings", icon: "📝" },
+  { id: "ready", label: "Ready to build", icon: "🔨" },
+  { id: "onsite", label: "Already on site", icon: "🏗️" },
 ] as const;
+
+export type StageId = (typeof STAGES)[number]["id"];
 
 const BASE: Record<CostProjectType, Record<FinishId, number>> = {
   Residential: { essential: 42000, standard: 62000, premium: 95000, signature: 140000 },
@@ -56,6 +58,15 @@ export type CostInput = {
   finish: FinishId;
 };
 
+export type CostBreakdown = {
+  structure: number;
+  finishes: number;
+  services: number;
+  external: number;
+  professional: number;
+  contingency: number;
+};
+
 export type CostResult = {
   min: number;
   max: number;
@@ -63,10 +74,38 @@ export type CostResult = {
   label: string;
   zoneName: string;
   caveat: string;
+  breakdown: CostBreakdown;
+  timeline: string;
 };
 
 export const COST_CAVEAT =
   "Indicative construction range only — not a quotation. Excludes land, statutory fees, professional sign-off where separately appointed, furniture and extraordinary ground conditions. A site visit and a BOQ come before any figure you should trust.";
+
+function getTimeline(type: CostProjectType, sqm: number): string {
+  if (type === "Renovation") {
+    if (sqm < 100) return "3–5 months";
+    if (sqm < 200) return "5–8 months";
+    return "8–12 months";
+  }
+  if (sqm < 150) return "6–9 months";
+  if (sqm < 300) return "9–14 months";
+  if (sqm < 500) return "12–18 months";
+  return "16–24 months";
+}
+
+function getBreakdown(type: CostProjectType, finish: FinishId, sqm: number): CostBreakdown {
+  const total = BASE[type][finish] * sqm;
+  const isHighEnd = finish === "premium" || finish === "signature";
+
+  return {
+    structure: Math.round(total * 0.35),
+    finishes: Math.round(total * (isHighEnd ? 0.32 : 0.28)),
+    services: Math.round(total * 0.18),
+    external: Math.round(total * 0.10),
+    professional: Math.round(total * 0.08),
+    contingency: Math.round(total * 0.07),
+  };
+}
 
 export function estimateCost(input: CostInput): CostResult {
   const per = BASE[input.type][input.finish];
@@ -75,6 +114,7 @@ export function estimateCost(input: CostInput): CostResult {
   const min = mid * 0.82;
   const max = mid * 1.22;
   const zoneName = ZONES.find((z) => z.slug === input.zone)?.name ?? input.zone;
+
   return {
     min,
     max,
@@ -82,5 +122,7 @@ export function estimateCost(input: CostInput): CostResult {
     label: formatKesRange(min, max),
     zoneName,
     caveat: COST_CAVEAT,
+    breakdown: getBreakdown(input.type, input.finish, input.sqm),
+    timeline: getTimeline(input.type, input.sqm),
   };
 }

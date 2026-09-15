@@ -21,6 +21,9 @@ import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsSlugRouteImport } from './routes/projects/$slug'
 import { Route as ServicesIndexRouteImport } from './routes/services/index'
 import { Route as ServicesSlugRouteImport } from './routes/services/$slug'
+import { Route as ToolsIndexRouteImport } from './routes/tools/index'
+import { Route as ToolsCostCalculatorRouteImport } from './routes/tools/cost-calculator'
+import { Route as ToolsZoneMapRouteImport } from './routes/tools/zone-map'
 import { Route as ZonesIndexRouteImport } from './routes/zones/index'
 import { Route as ZonesSlugRouteImport } from './routes/zones/$slug'
 
@@ -84,6 +87,21 @@ const ServicesSlugRoute = ServicesSlugRouteImport.update({
   path: '/services/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsIndexRoute = ToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsCostCalculatorRoute = ToolsCostCalculatorRouteImport.update({
+  id: '/tools/cost-calculator',
+  path: '/tools/cost-calculator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsZoneMapRoute = ToolsZoneMapRouteImport.update({
+  id: '/tools/zone-map',
+  path: '/tools/zone-map',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ZonesIndexRoute = ZonesIndexRouteImport.update({
   id: '/zones/',
   path: '/zones/',
@@ -105,10 +123,13 @@ export interface FileRoutesByFullPath {
   '/insights/$slug': typeof InsightsSlugRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
+  '/tools/cost-calculator': typeof ToolsCostCalculatorRoute
+  '/tools/zone-map': typeof ToolsZoneMapRoute
   '/zones/$slug': typeof ZonesSlugRoute
   '/insights/': typeof InsightsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/services/': typeof ServicesIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -121,10 +142,13 @@ export interface FileRoutesByTo {
   '/insights/$slug': typeof InsightsSlugRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
+  '/tools/cost-calculator': typeof ToolsCostCalculatorRoute
+  '/tools/zone-map': typeof ToolsZoneMapRoute
   '/zones/$slug': typeof ZonesSlugRoute
   '/insights': typeof InsightsIndexRoute
   '/projects': typeof ProjectsIndexRoute
   '/services': typeof ServicesIndexRoute
+  '/tools': typeof ToolsIndexRoute
   '/zones': typeof ZonesIndexRoute
 }
 export interface FileRoutesById {
@@ -138,10 +162,13 @@ export interface FileRoutesById {
   '/insights/$slug': typeof InsightsSlugRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
+  '/tools/cost-calculator': typeof ToolsCostCalculatorRoute
+  '/tools/zone-map': typeof ToolsZoneMapRoute
   '/zones/$slug': typeof ZonesSlugRoute
   '/insights/': typeof InsightsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/services/': typeof ServicesIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
 }
 export interface FileRouteTypes {
@@ -156,10 +183,13 @@ export interface FileRouteTypes {
     | '/insights/$slug'
     | '/projects/$slug'
     | '/services/$slug'
+    | '/tools/cost-calculator'
+    | '/tools/zone-map'
     | '/zones/$slug'
     | '/insights/'
     | '/projects/'
     | '/services/'
+    | '/tools/'
     | '/zones/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -172,10 +202,13 @@ export interface FileRouteTypes {
     | '/insights/$slug'
     | '/projects/$slug'
     | '/services/$slug'
+    | '/tools/cost-calculator'
+    | '/tools/zone-map'
     | '/zones/$slug'
     | '/insights'
     | '/projects'
     | '/services'
+    | '/tools'
     | '/zones'
   id:
     | '__root__'
@@ -188,10 +221,13 @@ export interface FileRouteTypes {
     | '/insights/$slug'
     | '/projects/$slug'
     | '/services/$slug'
+    | '/tools/cost-calculator'
+    | '/tools/zone-map'
     | '/zones/$slug'
     | '/insights/'
     | '/projects/'
     | '/services/'
+    | '/tools/'
     | '/zones/'
   fileRoutesById: FileRoutesById
 }
@@ -205,10 +241,13 @@ export interface RootRouteChildren {
   InsightsSlugRoute: typeof InsightsSlugRoute
   ProjectsSlugRoute: typeof ProjectsSlugRoute
   ServicesSlugRoute: typeof ServicesSlugRoute
+  ToolsCostCalculatorRoute: typeof ToolsCostCalculatorRoute
+  ToolsZoneMapRoute: typeof ToolsZoneMapRoute
   ZonesSlugRoute: typeof ZonesSlugRoute
   InsightsIndexRoute: typeof InsightsIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
   ServicesIndexRoute: typeof ServicesIndexRoute
+  ToolsIndexRoute: typeof ToolsIndexRoute
   ZonesIndexRoute: typeof ZonesIndexRoute
 }
 
@@ -298,6 +337,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServicesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/': {
+      id: '/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof ToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/cost-calculator': {
+      id: '/tools/cost-calculator'
+      path: '/tools/cost-calculator'
+      fullPath: '/tools/cost-calculator'
+      preLoaderRoute: typeof ToolsCostCalculatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/zone-map': {
+      id: '/tools/zone-map'
+      path: '/tools/zone-map'
+      fullPath: '/tools/zone-map'
+      preLoaderRoute: typeof ToolsZoneMapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/zones/': {
       id: '/zones/'
       path: '/zones'
@@ -325,10 +385,13 @@ const rootRouteChildren: RootRouteChildren = {
   InsightsSlugRoute: InsightsSlugRoute,
   ProjectsSlugRoute: ProjectsSlugRoute,
   ServicesSlugRoute: ServicesSlugRoute,
+  ToolsCostCalculatorRoute: ToolsCostCalculatorRoute,
+  ToolsZoneMapRoute: ToolsZoneMapRoute,
   ZonesSlugRoute: ZonesSlugRoute,
   InsightsIndexRoute: InsightsIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
   ServicesIndexRoute: ServicesIndexRoute,
+  ToolsIndexRoute: ToolsIndexRoute,
   ZonesIndexRoute: ZonesIndexRoute,
 }
 export const routeTree = rootRouteImport

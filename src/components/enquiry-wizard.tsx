@@ -30,7 +30,7 @@ export function EnquiryWizard() {
   const [zone, setLocalZone] = useState(storedZone ?? "nairobi");
   const [sqm, setSqm] = useState(220);
   const [finish, setFinish] = useState<FinishId>("standard");
-  const [stage, setStage] = useState<(typeof STAGES)[number]>("Have a plot");
+  const [stage, setStage] = useState<string>("Have a plot");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -124,14 +124,14 @@ export function EnquiryWizard() {
             <div className="grid sm:grid-cols-2 gap-3">
               {PROJECT_TYPES.map((t) => (
                 <button
-                  key={t}
+                  key={t.id}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => setType(t.id)}
                   className={`text-left px-4 py-4 border rounded-sm ${
-                    type === t ? "border-burgundy bg-burgundy text-paper" : "border-line bg-paper hover:border-burgundy"
+                    type === t.id ? "border-burgundy bg-burgundy text-paper" : "border-line bg-paper hover:border-burgundy"
                   }`}
                 >
-                  <span className="font-display text-2xl">{t}</span>
+                  <span className="font-display text-2xl">{t.label}</span>
                 </button>
               ))}
             </div>
@@ -230,9 +230,9 @@ export function EnquiryWizard() {
             </div>
             <div>
               <Label htmlFor="stage">Stage</Label>
-              <Select id="stage" value={stage} onChange={(e) => setStage(e.target.value as (typeof STAGES)[number])}>
+              <Select id="stage" value={stage} onChange={(e) => setStage(e.target.value)}>
                 {STAGES.map((s) => (
-                  <option key={s}>{s}</option>
+                  <option key={s.id} value={s.label}>{s.label}</option>
                 ))}
               </Select>
             </div>
