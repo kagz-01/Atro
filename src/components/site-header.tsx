@@ -1,11 +1,20 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Home, Briefcase, Wrench, Map, Route, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { COMPANY, NAV } from "@/lib/site";
 import { useSiteStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+
+const NAV_ICONS: Record<string, typeof Home> = {
+  "/projects": Briefcase,
+  "/services": Briefcase,
+  "/tools": Wrench,
+  "/zones": Map,
+  "/process": Route,
+  "/about": Info,
+};
 
 export function SiteHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -35,117 +44,169 @@ export function SiteHeader() {
   const onDarkHero = pathname === "/" && !scrolled && !open;
 
   return (
-    <header
-      className={cn(
-        "fixed top-0 inset-x-0 z-40 transition-[background-color,border-color,box-shadow] duration-300",
-        onDarkHero
-          ? "bg-maroon/35 border-b border-transparent backdrop-blur-[2px]"
-          : "bg-paper/95 border-b border-line shadow-soft backdrop-blur-md",
-      )}
-    >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-[4.25rem] md:h-[4.75rem] flex items-center gap-6 lg:gap-10">
-        <Logo className="shrink-0" />
+    <>
+      {/* Desktop header */}
+      <header
+        className={cn(
+          "hidden md:block fixed top-0 inset-x-0 z-40 transition-all duration-500",
+          onDarkHero
+            ? "bg-transparent"
+            : "glass border-b border-line/50",
+        )}
+      >
+        <div className="mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 h-[4.5rem] flex items-center gap-8">
+          <Logo className="shrink-0" />
 
-        <nav className="hidden lg:flex items-center gap-1 flex-1" aria-label="Primary">
-          {NAV.map((item) => {
-            const active =
-              pathname === item.to || pathname.startsWith(`${item.to}/`);
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "px-3.5 h-11 inline-flex items-center gap-1.5 text-[12px] uppercase tracking-[0.16em] transition-colors rounded-sm",
-                  onDarkHero
-                    ? active
-                      ? "text-gold"
-                      : "text-paper/80 hover:text-paper"
-                    : active
-                      ? "text-burgundy bg-burgundy/5"
-                      : "text-ink/70 hover:text-maroon hover:bg-maroon/5",
-                )}
-              >
-                {item.label}
-                {"badge" in item && item.badge && (
-                  <span className="px-1.5 py-0.5 text-[8px] font-medium bg-gold text-maroon rounded-sm leading-none">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+          <nav className="flex items-center gap-1 flex-1" aria-label="Primary">
+            {NAV.map((item) => {
+              const active =
+                pathname === item.to || pathname.startsWith(`${item.to}/`);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={cn(
+                    "px-4 h-10 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.16em] transition-all duration-300 rounded-full",
+                    onDarkHero
+                      ? active
+                        ? "text-gold bg-white/10"
+                        : "text-white/70 hover:text-white hover:bg-white/5"
+                      : active
+                        ? "text-burgundy bg-burgundy/10 shadow-sm"
+                        : "text-ink/60 hover:text-maroon hover:bg-maroon/5",
+                  )}
+                >
+                  {item.label}
+                  {"badge" in item && item.badge && (
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold bg-gradient-to-r from-gold to-gold-light text-maroon rounded-full leading-none">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
 
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setDiaspora(!diaspora)}
+              className={cn(
+                "h-10 px-4 items-center text-[10px] uppercase tracking-[0.16em] border rounded-full transition-all duration-300",
+                diaspora
+                  ? "bg-gradient-to-r from-gold to-gold-light text-maroon border-gold shadow-glow-gold"
+                  : onDarkHero
+                    ? "text-white/70 border-white/20 hover:border-gold hover:text-gold"
+                    : "text-muted border-line hover:border-burgundy hover:text-burgundy",
+              )}
+              aria-pressed={diaspora}
+            >
+              {diaspora ? "Diaspora on" : "Building from abroad?"}
+            </button>
+            <Link
+              to="/start"
+              className="inline-flex h-10 px-6 items-center bg-gradient-to-r from-maroon to-burgundy text-white text-[11px] uppercase tracking-[0.14em] font-semibold rounded-full shadow-soft btn-lift hover:shadow-card-hover transition-all duration-300"
+            >
+              Start a project
+            </Link>
+          </div>
+        </div>
+        {/* Gradient line */}
+        {scrolled && (
+          <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+        )}
+      </header>
+
+      {/* Mobile header */}
+      <header className="md:hidden fixed top-0 inset-x-0 z-40 glass border-b border-line/50">
+        <div className="px-5 h-14 flex items-center justify-between">
+          <Logo className="shrink-0" />
           <button
             type="button"
-            onClick={() => setDiaspora(!diaspora)}
-            className={cn(
-              "hidden md:inline-flex h-10 px-3.5 items-center text-[10px] uppercase tracking-[0.16em] border rounded-sm transition-colors",
-              diaspora
-                ? "bg-gold text-maroon border-gold"
-                : onDarkHero
-                  ? "text-paper/80 border-paper/30 hover:border-gold hover:text-gold"
-                  : "text-muted border-line hover:border-burgundy hover:text-burgundy",
-            )}
-            aria-pressed={diaspora}
-          >
-            {diaspora ? "Diaspora on" : "Building from abroad?"}
-          </button>
-          <Button
-            asChild
-            size="sm"
-            variant={onDarkHero ? "gold" : "primary"}
-            className="hidden sm:inline-flex h-10 px-5 text-[11px] uppercase tracking-[0.14em]"
-          >
-            <Link to="/start">Start a project</Link>
-          </Button>
-          <button
-            type="button"
-            className={cn(
-              "lg:hidden size-10 inline-flex items-center justify-center rounded-sm",
-              onDarkHero ? "text-paper" : "text-maroon",
-            )}
+            className="size-10 inline-flex items-center justify-center rounded-full hover:bg-maroon/5 transition-colors"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
-            {open ? <X className="size-6" /> : <Menu className="size-6" />}
+            {open ? <X className="size-5 text-maroon" /> : <Menu className="size-5 text-maroon" />}
           </button>
         </div>
-      </div>
+      </header>
 
+      {/* Mobile slide-down menu */}
       {open ? (
-        <div className="lg:hidden fixed inset-0 top-[4.25rem] bg-maroon text-paper overflow-y-auto">
-          <nav className="px-6 py-8 flex flex-col" aria-label="Mobile">
-            {NAV.map((item) => (
+        <div className="md:hidden fixed inset-0 top-14 z-30 bg-paper/98 backdrop-blur-xl overflow-y-auto animate-[slide-up_300ms_var(--ease-out)]">
+          <nav className="px-6 py-8 flex flex-col gap-2" aria-label="Mobile">
+            {NAV.map((item) => {
+              const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+              const Icon = NAV_ICONS[item.to] || Home;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={cn(
+                    "flex items-center gap-4 p-4 rounded-2xl transition-all duration-300",
+                    active
+                      ? "bg-maroon text-paper shadow-soft"
+                      : "text-ink hover:bg-maroon/5",
+                  )}
+                >
+                  <Icon className="size-5" />
+                  <span className="font-display text-lg">{item.label}</span>
+                  {"badge" in item && item.badge && (
+                    <span className="ml-auto px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-gold to-gold-light text-maroon rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+            <div className="mt-4 pt-4 border-t border-line">
               <Link
-                key={item.to}
-                to={item.to}
-                className="font-display text-4xl py-3 border-b border-paper/10 tracking-tight flex items-center gap-3"
+                to="/start"
+                className="flex items-center justify-center gap-2 w-full h-12 bg-gradient-to-r from-maroon to-burgundy text-white text-[12px] uppercase tracking-[0.14em] font-semibold rounded-2xl"
               >
-                {item.label}
-                {"badge" in item && item.badge && (
-                  <span className="px-2 py-1 text-[10px] font-medium bg-gold text-maroon rounded-sm">
-                    {item.badge}
-                  </span>
-                )}
+                Start a project
               </Link>
-            ))}
-            <Link to="/start" className="font-display text-4xl py-3 text-gold">
-              Start a project
-            </Link>
+            </div>
             <button
               type="button"
               onClick={() => setDiaspora(!diaspora)}
-              className="mt-8 self-start text-[11px] uppercase tracking-[0.16em] border border-paper/30 px-4 h-11"
+              className={cn(
+                "mt-4 h-12 flex items-center justify-center text-[11px] uppercase tracking-[0.16em] border rounded-2xl transition-all duration-300",
+                diaspora
+                  ? "bg-gold text-maroon border-gold"
+                  : "text-muted border-line hover:border-burgundy hover:text-burgundy",
+              )}
             >
               {diaspora ? "Diaspora mode on" : "Building from abroad?"}
             </button>
-            <p className="mt-10 text-sm text-paper/60">{COMPANY.phoneDisplay}</p>
           </nav>
         </div>
       ) : null}
-    </header>
+
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 flex items-center justify-around px-2 py-2 glass rounded-full border border-line/50 shadow-card">
+        {NAV.slice(0, 5).map((item) => {
+          const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+          const Icon = NAV_ICONS[item.to] || Home;
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={cn(
+                "flex flex-col items-center gap-1 px-3 py-2 rounded-full transition-all duration-300 min-w-[56px]",
+                active
+                  ? "bg-maroon text-white shadow-ribbon scale-105"
+                  : "text-muted hover:text-maroon",
+              )}
+            >
+              <Icon className="size-4" />
+              <span className="text-[9px] uppercase tracking-wider font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

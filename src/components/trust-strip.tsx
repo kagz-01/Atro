@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useRevealOnScroll } from "@/hooks/use-reveal";
 
 type CounterProps = {
   end: number;
@@ -52,21 +53,42 @@ const STATS = [
 ];
 
 export function TrustStrip() {
+  const { ref, revealed } = useRevealOnScroll();
+
   return (
-    <section className="bg-maroon text-paper border-t border-gold/20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 md:py-16">
+    <section className="relative overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-maroon" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-burgundy/50 via-maroon to-maroon" />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gold/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-burgundy/30 rounded-full blur-[100px]" />
+      </div>
+
+      <div ref={ref} className={cn("relative mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20 reveal-on-scroll", revealed && "revealed")}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-          {STATS.map((stat) => (
-            <div key={stat.label} className="text-center md:text-left">
-              <AnimatedCounter
-                end={stat.value}
-                suffix={stat.suffix}
-                className="font-display text-4xl md:text-5xl text-gold"
-              />
-              <p className="mt-2 text-sm font-medium text-paper">{stat.label}</p>
-              <p className="mt-1 text-xs text-paper/60">{stat.description}</p>
-            </div>
-          ))}
+          {STATS.map((stat, i) => {
+            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
+            return (
+              <div
+                key={stat.label}
+                ref={cardRef}
+                className={cn(
+                  "reveal-on-scroll text-center md:text-left p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300",
+                  cardRevealed && "revealed",
+                )}
+                style={{ transitionDelay: `${i * 100}ms` }}
+              >
+                <AnimatedCounter
+                  end={stat.value}
+                  suffix={stat.suffix}
+                  className="font-display text-4xl md:text-5xl text-gradient-gold"
+                />
+                <p className="mt-3 text-sm font-medium text-paper">{stat.label}</p>
+                <p className="mt-1 text-xs text-paper/60">{stat.description}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

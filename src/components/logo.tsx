@@ -18,7 +18,7 @@ export function Logo({ className }: { className?: string }) {
       className={cn("group shrink-0", className)}
       aria-label="ATRO home"
     >
-      <LogoMark className="h-14 md:h-16 w-auto" />
+      <LogoMark className="h-10 md:h-12 w-auto transition-transform duration-300 group-hover:scale-105" />
     </Link>
   );
 }
