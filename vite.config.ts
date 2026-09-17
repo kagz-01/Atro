@@ -149,12 +149,12 @@ export default defineConfig(({ command, isPreview }) => ({
   server: {
     host: "0.0.0.0",
     port: 8080,
-    strictPort: true,
+    strictPort: false,
   },
   preview: {
     host: "127.0.0.1",
     port: 8081,
-    strictPort: true,
+    strictPort: false,
   },
   resolve: { tsconfigPaths: true },
   plugins: [
