@@ -3,6 +3,7 @@ import { Phone, MessageCircle, Mail, MapPin, Clock, ArrowRight, ExternalLink } f
 import { COMPANY } from "@/lib/site";
 import { useRevealOnScroll } from "@/hooks/use-reveal";
 import { ScrollRevealText } from "@/components/scroll-effects";
+import { LeafletMap } from "@/components/leaflet-map";
 import { cn } from "@/lib/utils";
 import { defaultWhatsappText, whatsappHref } from "@/lib/whatsapp";
 
@@ -198,15 +199,11 @@ function ContactPage() {
 
             {/* Right: map */}
             <div className="bg-stone/60 border border-line rounded-2xl overflow-hidden h-[400px] lg:h-[500px]">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15955.245869646!2d36.78!3d-1.29!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x182f17322b4e302d%3A0x3e85c21c0e5e3b0!2sNairobi%2C%20Kenya!5e0!3m2!1sen!2s!4v1234567890"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="ATRO Office Location"
+              <LeafletMap
+                center={[-1.2921, 36.8219]}
+                zoom={14}
+                className="w-full h-full"
+                markerTitle="ATRO Design & Construction"
               />
             </div>
           </div>
