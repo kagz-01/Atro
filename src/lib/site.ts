@@ -1067,6 +1067,7 @@ export const VALUES = [
 ] as const;
 
 export const NAV = [
+  { to: "/" as const, label: "Home" },
   { to: "/projects" as const, label: "Work" },
   { to: "/services" as const, label: "Services" },
   { to: "/tools" as const, label: "Tools", badge: "New" as const },
