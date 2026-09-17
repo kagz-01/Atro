@@ -65,7 +65,7 @@ export function TrustStrip() {
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-burgundy/30 rounded-full blur-[100px]" />
       </div>
 
-      <div ref={ref} className={cn("relative mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20 reveal-on-scroll", revealed && "revealed")}>
+      <div ref={ref} className={cn("relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20 reveal-on-scroll", revealed && "revealed")}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
           {STATS.map((stat, i) => {
             const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();

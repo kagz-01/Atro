@@ -33,7 +33,7 @@ export function PageHero({
           <div className="absolute bottom-0 left-1/4 w-[500px] h-[300px] bg-gold/10 rounded-full blur-[150px] pointer-events-none" />
         </>
       ) : null}
-      <div className="relative mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16">
+      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         {kicker ? (
           <div className="reveal inline-flex items-center gap-2 px-4 py-2 rounded-full bg-maroon/10 mb-6">
             <div className="size-1.5 rounded-full bg-gold" />
@@ -81,7 +81,7 @@ export function CtaBand({
         <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] bg-burgundy/30 rounded-full blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20 flex flex-col md:flex-row md:items-end gap-8 justify-between">
+      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20 flex flex-col md:flex-row md:items-end gap-8 justify-between">
         <div className="max-w-2xl">
           <h2 className="font-display text-4xl md:text-5xl text-paper">{title}</h2>
           <p className="mt-4 text-paper/75">{body}</p>

@@ -54,7 +54,7 @@ export function SiteHeader() {
             : "glass border-b border-line/50",
         )}
       >
-        <div className="mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 h-[4.5rem] flex items-center gap-8">
+        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 h-[4.5rem] flex items-center gap-8">
           <Logo className="shrink-0" />
 
           <nav className="flex items-center gap-1 flex-1" aria-label="Primary">

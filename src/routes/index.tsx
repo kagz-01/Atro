@@ -109,7 +109,7 @@ function Hero() {
       />
 
       {/* Content */}
-      <div className="relative mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 py-20 md:py-28 w-full">
+      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-20 md:py-28 w-full">
         <div className="max-w-3xl">
           {/* Badge */}
           <div className="reveal inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 mb-8">
@@ -203,7 +203,7 @@ function Problem() {
 
   return (
     <section className="py-24 md:py-32">
-      <div className="mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div ref={ref} className={cn("reveal-on-scroll", revealed && "revealed")}>
           <Badge tone="maroon" className="mb-4">The problem</Badge>
           <SplitText
@@ -284,7 +284,7 @@ function Solution() {
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gold/5 rounded-full blur-[200px] pointer-events-none" />
       </FloatingElement>
 
-      <div className="relative mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16">
+      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div ref={ref} className={cn("reveal-on-scroll", revealed && "revealed")}>
           <Badge tone="gold" className="mb-4">How we work</Badge>
           <SplitText
@@ -339,7 +339,7 @@ function Proof({ projects }: { projects: ReturnType<typeof featuredProjects> }) 
 
   return (
     <section className="py-24 md:py-32">
-      <div className="mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div ref={ref} className={cn("reveal-on-scroll flex items-end justify-between gap-6 mb-12", revealed && "revealed")}>
           <div>
             <Badge tone="maroon" className="mb-4">Our work</Badge>
@@ -393,7 +393,7 @@ function Process() {
 
   return (
     <section className="py-24 md:py-32 bg-gradient-to-b from-stone/60 to-paper">
-      <div className="mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div className="grid lg:grid-cols-12 gap-12 items-start">
           <div ref={ref} className={cn("lg:col-span-4 reveal-on-scroll", revealed && "revealed")}>
             <Badge tone="maroon" className="mb-4">Process</Badge>
@@ -446,8 +446,8 @@ function Social() {
 
   return (
     <section className="py-24 md:py-32">
-      <div className="mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16">
-        <div ref={ref} className={cn("reveal-on-scroll text-center max-w-3xl mx-auto", revealed && "revealed")}>
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+        <div ref={ref} className={cn("reveal-on-scroll text-center max-w-4xl mx-auto", revealed && "revealed")}>
           <Badge tone="maroon" className="mb-4">Why ATRO</Badge>
           <SplitText
             text="Integrated thinking. Then the unglamorous work of making it stand up."
@@ -483,7 +483,7 @@ function Social() {
 function Testimonials() {
   return (
     <section className="py-16 overflow-hidden">
-      <div className="mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 mb-8">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 mb-8">
         <Badge tone="gold" className="mb-4">What clients say</Badge>
         <h2 className="font-display text-3xl md:text-4xl text-maroon">
           Trusted by homeowners across Kenya

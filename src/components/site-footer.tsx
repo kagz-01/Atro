@@ -12,7 +12,7 @@ export function SiteFooter() {
         <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] bg-gold/5 rounded-full blur-[150px]" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20">
+      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
             <Logo className="[&_img]:brightness-200" />

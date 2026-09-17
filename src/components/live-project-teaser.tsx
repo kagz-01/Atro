@@ -47,7 +47,7 @@ export function LiveProjectTeaser() {
         <div className="absolute top-20 right-0 w-[400px] h-[400px] bg-gold/5 rounded-full blur-[120px]" />
       </div>
 
-      <div ref={ref} className={cn("relative mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 py-20 md:py-28 reveal-on-scroll", revealed && "revealed")}>
+      <div ref={ref} className={cn("relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-20 md:py-28 reveal-on-scroll", revealed && "revealed")}>
         <div className="flex items-end justify-between gap-6 mb-12">
           <div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20 mb-4">

@@ -23,7 +23,7 @@ export const Route = createFileRoute("/start")({
 function StartPage() {
   return (
     <main className="pt-32 pb-24">
-      <div className="mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         {/* Breadcrumb */}
         <Link
           to="/"
