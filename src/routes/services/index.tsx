@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { CtaBand, PageHero } from "@/components/page-hero";
-import { SERVICES } from "@/lib/site";
+import { SERVICES, SERVICE_CATEGORIES, type ServiceCategory } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/services/")({
   component: ServicesPage,
@@ -17,6 +20,12 @@ export const Route = createFileRoute("/services/")({
 });
 
 function ServicesPage() {
+  const [expandedCategory, setExpandedCategory] = useState<ServiceCategory | null>("design");
+
+  function toggleCategory(id: ServiceCategory) {
+    setExpandedCategory(expandedCategory === id ? null : id);
+  }
+
   return (
     <>
       <PageHero
@@ -25,28 +34,112 @@ function ServicesPage() {
         lede="Not a list of virtues. Each service is a scope: drawings, quantities, a site, a conversation."
         image="/images/detail.webp"
       />
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 space-y-10">
-        {SERVICES.map((s, i) => (
-          <Link
-            key={s.slug}
-            to="/services/$slug"
-            params={{ slug: s.slug }}
-            className="grid md:grid-cols-12 gap-6 md:gap-10 items-center group"
-          >
-            <div className={`md:col-span-5 ${i % 2 === 1 ? "md:order-2" : ""}`}>
-              <div className="aspect-[4/3] overflow-hidden bg-stone">
-                <img src={s.image} alt="" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
+
+      <section className="mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-24">
+        {/* Summary stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+          {SERVICE_CATEGORIES.map((cat) => {
+            const count = SERVICES.filter((s) => s.category === cat.id).length;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => toggleCategory(cat.id)}
+                className={cn(
+                  "p-5 rounded-2xl border text-left transition-all duration-300",
+                  expandedCategory === cat.id
+                    ? "bg-maroon text-paper border-maroon shadow-soft"
+                    : "bg-cream border-line/50 hover:border-burgundy/30 hover:shadow-card card-lift",
+                )}
+              >
+                <span className={cn(
+                  "text-3xl font-display font-bold",
+                  expandedCategory === cat.id ? "text-gradient-gold" : "text-maroon",
+                )}>
+                  {count}
+                </span>
+                <p className={cn(
+                  "mt-2 text-sm font-medium",
+                  expandedCategory === cat.id ? "text-paper" : "text-maroon",
+                )}>
+                  {cat.title}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Categories */}
+        <div className="space-y-4">
+          {SERVICE_CATEGORIES.map((cat) => {
+            const services = SERVICES.filter((s) => s.category === cat.id);
+            const isExpanded = expandedCategory === cat.id;
+
+            return (
+              <div
+                key={cat.id}
+                className={cn(
+                  "border rounded-2xl overflow-hidden transition-all duration-300",
+                  isExpanded ? "border-maroon/20 shadow-card" : "border-line/50",
+                )}
+              >
+                {/* Category header */}
+                <button
+                  type="button"
+                  onClick={() => toggleCategory(cat.id)}
+                  className="w-full flex items-center justify-between p-6 md:p-8 bg-paper hover:bg-stone/30 transition-colors duration-300"
+                >
+                  <div className="text-left">
+                    <h2 className="font-display text-2xl md:text-3xl text-maroon">
+                      {cat.title}
+                    </h2>
+                    <p className="mt-1 text-sm text-ink/60">{cat.description}</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-muted hidden sm:inline">
+                      {services.length} service{services.length !== 1 ? "s" : ""}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "size-5 text-muted transition-transform duration-300",
+                        isExpanded && "rotate-180",
+                      )}
+                    />
+                  </div>
+                </button>
+
+                {/* Services grid */}
+                {isExpanded && (
+                  <div className="p-6 md:p-8 pt-0 md:pt-0 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                    {services.map((service) => (
+                      <Link
+                        key={service.slug}
+                        to="/services/$slug"
+                        params={{ slug: service.slug }}
+                        className="group p-5 bg-cream border border-line/50 rounded-xl hover:border-burgundy/30 hover:shadow-card card-lift transition-all duration-300"
+                      >
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-gold">
+                          {service.kicker}
+                        </p>
+                        <h3 className="mt-2 font-display text-lg text-maroon group-hover:text-burgundy transition-colors duration-300">
+                          {service.title}
+                        </h3>
+                        <p className="mt-2 text-sm text-ink/70 line-clamp-2">
+                          {service.lede}
+                        </p>
+                        <span className="mt-4 inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] text-burgundy group-hover:text-maroon">
+                          View scope <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="md:col-span-7">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-gold">{s.kicker}</p>
-              <h2 className="mt-2 font-display text-4xl text-maroon group-hover:text-burgundy">{s.title}</h2>
-              <p className="mt-4 text-ink/75 max-w-xl">{s.lede}</p>
-              <p className="mt-4 text-[12px] uppercase tracking-[0.16em] text-burgundy">Read the scope →</p>
-            </div>
-          </Link>
-        ))}
+            );
+          })}
+        </div>
       </section>
+
       <CtaBand title="Request a consultation" />
     </>
   );

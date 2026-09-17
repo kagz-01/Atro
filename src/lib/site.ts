@@ -488,6 +488,13 @@ export const PROJECTS: Project[] = [
   },
 ];
 
+export type ServiceCategory =
+  | "design"
+  | "construction"
+  | "advisory"
+  | "specialist"
+  | "post-construction";
+
 export type Service = {
   slug: string;
   title: string;
@@ -497,16 +504,47 @@ export type Service = {
   included: string[];
   types: string[];
   inputs: string[];
+  category: ServiceCategory;
   note?: string;
 };
 
+export const SERVICE_CATEGORIES: { id: ServiceCategory; title: string; description: string }[] = [
+  {
+    id: "design",
+    title: "Design & Architecture",
+    description: "From concept to construction-ready drawings.",
+  },
+  {
+    id: "construction",
+    title: "Construction & Delivery",
+    description: "Building it, on time, on budget, on paper.",
+  },
+  {
+    id: "advisory",
+    title: "Advisory & Planning",
+    description: "Numbers, strategy and decisions before the first brick.",
+  },
+  {
+    id: "specialist",
+    title: "Specialist Services",
+    description: "Sustainability, technology and expert consultations.",
+  },
+  {
+    id: "post-construction",
+    title: "After Handover",
+    description: "Maintenance, support and ongoing relationships.",
+  },
+];
+
 export const SERVICES: Service[] = [
+  // ─── Design & Architecture ───
   {
     slug: "architectural-design",
     title: "Architectural Design",
     kicker: "From brief to a building that can actually be built",
     lede: "Plans, sections, elevations and a material direction that survive contact with a site, a BOQ and a contractor — because in our case the contractor is us.",
     image: "/images/hero.webp",
+    category: "design",
     included: [
       "Briefing and site reading",
       "Concept options with a cost-aware filter",
@@ -528,6 +566,7 @@ export const SERVICES: Service[] = [
     kicker: "The frame that makes the drawing stand up",
     lede: "We coordinate structural design as part of an integrated project — so the architecture, the quantities and the frame are one conversation, not three files that disagree.",
     image: "/images/site.webp",
+    category: "design",
     included: [
       "Structural concept with the architectural plan",
       "Coordination of calculations and drawings with licensed structural professionals",
@@ -539,11 +578,62 @@ export const SERVICES: Service[] = [
     note: "Statutory structural sign-off is carried by the licensed professional appointed on the project. ATRO coordinates; we do not imply a registration we have not stated.",
   },
   {
+    slug: "interior-spatial",
+    title: "Interior / Spatial Design",
+    kicker: "The rooms, not only the envelope",
+    lede: "Joinery, light, floors and the way a house is actually used — designed with the structure, not stuck on at the end as a moodboard.",
+    image: "/images/interior.webp",
+    category: "design",
+    included: [
+      "Furniture and joinery intent",
+      "Finish palettes tied to the BOQ",
+      "Lighting and opening studies",
+      "Site review of sample boards",
+    ],
+    types: ["Houses", "Workplaces", "Hospitality rooms"],
+    inputs: ["How you live or work", "Pieces you already own", "A finish budget"],
+  },
+  {
+    slug: "landscape-architecture",
+    title: "Landscape Architecture",
+    kicker: "The grounds that complete the building",
+    lede: "Outdoor spaces designed with the same rigour as the building — hardscape, planting, drainage and lighting as part of the project, not an afterthought.",
+    image: "/images/hero.webp",
+    category: "design",
+    included: [
+      "Site grading and drainage strategy",
+      "Hardscape and planting design",
+      "Outdoor lighting and irrigation intent",
+      "Material selection tied to the building palette",
+    ],
+    types: ["Residential gardens", "Commercial grounds", "Institutional campuses"],
+    inputs: ["Site survey", "How you want to use the outdoor space", "Maintenance commitment"],
+  },
+  {
+    slug: "master-planning",
+    title: "Master Planning",
+    kicker: "The big picture before the first drawing",
+    lede: "For estates, campuses and multi-building developments: land use, phasing, infrastructure and financial viability — so the individual buildings make sense together.",
+    image: "/images/site.webp",
+    category: "design",
+    included: [
+      "Site analysis and opportunities mapping",
+      "Land use and density studies",
+      "Infrastructure and access planning",
+      "Phasing strategy aligned to cash flow",
+    ],
+    types: ["Residential estates", "Institutional campuses", "Mixed-use developments"],
+    inputs: ["Land title and survey", "Development objectives", "Budget and timeline"],
+  },
+
+  // ─── Construction & Delivery ───
+  {
     slug: "construction",
     title: "Construction & Project Execution",
     kicker: "The building, on the ground, against a locked scope",
     lede: "Site set-up, structure, envelope and finishes — run from a programme, a BOQ and a weekly communication rhythm. Not from a WhatsApp argument.",
     image: "/images/site.webp",
+    category: "construction",
     included: [
       "Site establishment and safety set-up",
       "Structure, masonry, roof and envelope",
@@ -555,11 +645,46 @@ export const SERVICES: Service[] = [
     inputs: ["Approved drawings", "A priced BOQ or equivalent scope", "Access to the plot", "Decision-maker on call"],
   },
   {
+    slug: "renovation-restoration",
+    title: "Renovation & Adaptive Reuse",
+    kicker: "What exists, reworked with intent",
+    lede: "Structural restoration, space reconfiguration and interior upgrades — sequenced to minimise disruption and maximise the value of what is already standing.",
+    image: "/images/detail.webp",
+    category: "construction",
+    included: [
+      "Condition assessment and structural review",
+      "Renovation drawings and scope definition",
+      "Phased works to minimise displacement",
+      "Heritage-sensitive restoration where required",
+    ],
+    types: ["Houses", "Commercial fit-out", "Institutional upgrades"],
+    inputs: ["Existing drawings or survey", "What must stay, what can change", "Occupancy constraints"],
+  },
+  {
+    slug: "precast",
+    title: "Precast & Modern Methods",
+    kicker: "Where a faster, cleaner method actually helps",
+    lede: "Precast, modular and other modern methods — used when they save time or waste, not as a slogan. If in-situ is the honest answer, we say so.",
+    image: "/images/detail.webp",
+    category: "construction",
+    included: [
+      "Method review at concept",
+      "Where precast earns its transport cost",
+      "Coordination with structure and finishes",
+      "On-site sequencing",
+    ],
+    types: ["Repeat units", "Schools", "Boundary and drainage elements"],
+    inputs: ["Programme pressure", "Access for lifting", "Repeatability of the design"],
+  },
+
+  // ─── Advisory & Planning ───
+  {
     slug: "boq-cost-planning",
     title: "Bill of Quantities / Cost Planning",
     kicker: "A number you can make a decision with",
     lede: "Quantities, rates and options — so you choose a roof, a floor and a window because you understand what they cost, not because a contractor smiled.",
     image: "/images/detail.webp",
+    category: "advisory",
     included: [
       "Measured quantities from drawings",
       "Cost ranges and option studies",
@@ -575,6 +700,7 @@ export const SERVICES: Service[] = [
     kicker: "Someone on the site who can read a drawing",
     lede: "For clients who already have a contractor, or who are building from abroad: a site-based eye, a written log, and decisions that do not evaporate.",
     image: "/images/site.webp",
+    category: "advisory",
     included: [
       "Site inspections against drawings",
       "Progress photography and a decision log",
@@ -585,34 +711,168 @@ export const SERVICES: Service[] = [
     inputs: ["Drawings", "Contract or contractor details", "What you want us to hold you to"],
   },
   {
-    slug: "interior-spatial",
-    title: "Interior / Spatial Design",
-    kicker: "The rooms, not only the envelope",
-    lede: "Joinery, light, floors and the way a house is actually used — designed with the structure, not stuck on at the end as a moodboard.",
-    image: "/images/interior.webp",
+    slug: "feasibility-due-diligence",
+    title: "Feasibility Studies & Due Diligence",
+    kicker: "Know before you commit",
+    lede: "Site analysis, financial viability and risk assessment — so you invest with clarity, not hope. Essential for diaspora clients and institutional investors.",
+    image: "/images/detail.webp",
+    category: "advisory",
     included: [
-      "Furniture and joinery intent",
-      "Finish palettes tied to the BOQ",
-      "Lighting and opening studies",
-      "Site review of sample boards",
+      "Site physical and legal assessment",
+      "Financial viability and cash flow modelling",
+      "Risk register and mitigation strategy",
+      "Go / no-go recommendation with reasoning",
     ],
-    types: ["Houses", "Workplaces", "Hospitality rooms"],
-    inputs: ["How you live or work", "Pieces you already own", "A finish budget"],
+    types: ["Real estate investment", "Diaspora projects", "Institutional acquisitions"],
+    inputs: ["Site location and title", "Investment budget", "Expected returns or use case"],
   },
   {
-    slug: "precast",
-    title: "Precast & Construction Solutions",
-    kicker: "Where a faster, cleaner method actually helps",
-    lede: "Precast, modular and other modern methods — used when they save time or waste, not as a slogan. If in-situ is the honest answer, we say so.",
-    image: "/images/detail.webp",
+    slug: "real-estate-advisory",
+    title: "Real Estate Advisory",
+    kicker: "Investment guidance rooted in construction reality",
+    lede: "Market analysis, development strategy and procurement advice — for clients who need a builder's perspective on an investment decision.",
+    image: "/images/hero.webp",
+    category: "advisory",
     included: [
-      "Method review at concept",
-      "Where precast earns its transport cost",
-      "Coordination with structure and finishes",
-      "On-site sequencing",
+      "Market and location analysis",
+      "Development programme and budget framing",
+      "Procurement strategy and contractor selection",
+      "Ongoing investment review and reporting",
     ],
-    types: ["Repeat units", "Schools", "Boundary and drainage elements"],
-    inputs: ["Programme pressure", "Access for lifting", "Repeatability of the design"],
+    types: ["Property developers", "Institutional investors", "Diaspora investors"],
+    inputs: ["Investment parameters", "Target returns", "Risk appetite"],
+  },
+  {
+    slug: "project-financing",
+    title: "Project Financing Support",
+    kicker: "Structure the money before you structure the building",
+    lede: "Budget structuring, cash flow planning and lender documentation — so your project is fundable, not just drawable.",
+    image: "/images/detail.webp",
+    category: "advisory",
+    included: [
+      "Project budget development",
+      "Cash flow projection and phasing",
+      "Lender-ready documentation packages",
+      "Value engineering to meet financing targets",
+    ],
+    types: ["Residential developments", "Commercial projects", "Institutional builds"],
+    inputs: ["Project scope and drawings", "Target budget", "Financing timeline"],
+  },
+
+  // ─── Specialist Services ───
+  {
+    slug: "sustainability-green-building",
+    title: "Sustainability & Green Building",
+    kicker: "Buildings that cost less to run and leave less behind",
+    lede: "Energy modeling, material selection and certification guidance — making sustainability practical, not performative. EDGE, LEED and Kenya Green Star aligned.",
+    image: "/images/hero.webp",
+    category: "specialist",
+    included: [
+      "Energy and water efficiency analysis",
+      "Sustainable material selection and specification",
+      "Green building certification guidance (EDGE, LEED)",
+      "Solar feasibility and renewable energy integration",
+    ],
+    types: ["Residential", "Commercial", "Institutional"],
+    inputs: ["Project drawings", "Sustainability goals", "Certification target if any"],
+  },
+  {
+    slug: "smart-home-integration",
+    title: "Smart Home & Building Technology",
+    kicker: "Intelligence in the walls, not just on the walls",
+    lede: "Automation, security, energy management and connectivity — designed into the building from concept, not cable-tied on after handover.",
+    image: "/images/interior.webp",
+    category: "specialist",
+    included: [
+      "Smart home system design and specification",
+      "Security and access control integration",
+      "Energy management and monitoring",
+      "Network and infrastructure planning",
+    ],
+    types: ["Luxury residences", "Commercial offices", "Mixed-use developments"],
+    inputs: ["Technology preferences", "Security requirements", "Budget for automation"],
+  },
+  {
+    slug: "construction-technology-bim",
+    title: "Construction Technology / BIM",
+    kicker: "Digital precision before physical execution",
+    lede: "Building Information Modeling, clash detection and digital twins — reducing errors, saving time and giving you visibility before a single brick is laid.",
+    image: "/images/site.webp",
+    category: "specialist",
+    included: [
+      "3D BIM modeling and coordination",
+      "Clash detection and resolution",
+      "4D scheduling and sequencing",
+      "Digital twin and as-built documentation",
+    ],
+    types: ["Complex projects", "Multi-discipline coordination", "Institutional"],
+    inputs: ["Design drawings", "Project complexity assessment", "Coordination requirements"],
+  },
+  {
+    slug: "environmental-impact-assessment",
+    title: "Environmental Impact Assessment",
+    kicker: "NEMA compliance from day one",
+    lede: "EIA reports, environmental audits and compliance management — ensuring your project meets regulatory requirements and community expectations.",
+    image: "/images/detail.webp",
+    category: "specialist",
+    included: [
+      "Scoping and baseline studies",
+      "Impact assessment and mitigation planning",
+      "EIA report preparation and NEMA submission",
+      "Environmental audit during construction",
+    ],
+    types: ["Commercial developments", "Industrial projects", "Institutional builds"],
+    inputs: ["Project description and drawings", "Site location", "Known environmental sensitivities"],
+  },
+
+  // ─── Post-Construction ───
+  {
+    slug: "maintenance-inspections",
+    title: "Post-Construction Maintenance",
+    kicker: "The building after you move in",
+    lede: "Annual inspections, warranty management and planned maintenance — because a building is a long-term asset, not a handover moment.",
+    image: "/images/hero.webp",
+    category: "post-construction",
+    included: [
+      "Annual structural and envelope inspections",
+      "Maintenance scheduling and reminders",
+      "Warranty tracking and claims support",
+      "Emergency response coordination",
+    ],
+    types: ["Residential", "Commercial", "Institutional"],
+    inputs: ["Building as-built documentation", "Warranty information", "Maintenance history"],
+  },
+  {
+    slug: "ffep-procurement",
+    title: "FF&E Procurement & Styling",
+    kicker: "Furniture, fixtures and the finishing touch",
+    lede: "Sourcing, procurement and styling of furniture, fixtures and equipment — so the building is ready to use, not just ready to show.",
+    image: "/images/interior.webp",
+    category: "post-construction",
+    included: [
+      "FF&E specification and sourcing",
+      "Budget management and procurement",
+      "Delivery coordination and installation",
+      "Styling and final presentation",
+    ],
+    types: ["Residential", "Hospitality", "Commercial offices"],
+    inputs: ["Interior design drawings", "FF&E budget", "Delivery timeline"],
+  },
+  {
+    slug: "construction-training",
+    title: "Construction Training & Workshops",
+    kicker: "Knowledge transfer for owner-builders",
+    lede: "Practical workshops for clients who want to understand what they are building — BOQ reading, site supervision basics and decision-making frameworks.",
+    image: "/images/site.webp",
+    category: "post-construction",
+    included: [
+      "BOQ and cost planning basics",
+      "Site supervision fundamentals",
+      "Material selection and quality assessment",
+      "Decision-making frameworks for owners",
+    ],
+    types: ["Owner-builders", "Diaspora clients", "Property managers"],
+    inputs: ["Project stage", "Knowledge gaps", "Team size"],
   },
 ];
 

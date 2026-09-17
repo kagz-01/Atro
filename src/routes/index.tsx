@@ -136,42 +136,38 @@ function Hero() {
           </ScrollRevealText>
 
           {/* CTAs */}
-          <ScrollRevealText delay={1000}>
-            <div className="mt-10 flex flex-wrap gap-4">
-              <Link
-                to="/start"
-                className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-gold to-gold-light text-maroon font-bold text-lg rounded-2xl shadow-glow-gold btn-lift overflow-hidden"
-              >
-                <span className="relative z-10">Start a project</span>
-                <ArrowRight className="size-5 relative z-10 group-hover:translate-x-1 transition-transform" />
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-              </Link>
-              <Link
-                to="/projects"
-                className="inline-flex items-center gap-3 px-8 py-4 bg-white/10 backdrop-blur-sm text-white border border-white/20 rounded-2xl text-lg hover:bg-white/15 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] btn-lift transition-all duration-300"
-              >
-                View our work
-              </Link>
-            </div>
-          </ScrollRevealText>
+          <div className="mt-10 flex flex-wrap gap-4 reveal reveal-delay-3">
+            <Link
+              to="/start"
+              className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-gold to-gold-light text-maroon font-bold text-lg rounded-2xl shadow-glow-gold btn-lift overflow-hidden"
+            >
+              <span className="relative z-10">Start a project</span>
+              <ArrowRight className="size-5 relative z-10 group-hover:translate-x-1 transition-transform" />
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+            </Link>
+            <Link
+              to="/projects"
+              className="inline-flex items-center gap-3 px-8 py-4 bg-white/10 backdrop-blur-sm text-white border border-white/20 rounded-2xl text-lg hover:bg-white/15 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] btn-lift transition-all duration-300"
+            >
+              View our work
+            </Link>
+          </div>
 
           {/* Trust row */}
-          <ScrollRevealText delay={1200}>
-            <div className="mt-12 flex flex-wrap items-center gap-6 text-sm text-white/50">
-              <div className="flex items-center gap-2">
-                <div className="size-1.5 rounded-full bg-gold" />
-                <span>85+ projects</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="size-1.5 rounded-full bg-gold" />
-                <span>7 zones</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="size-1.5 rounded-full bg-gold" />
-                <span>Since 2018</span>
-              </div>
+          <div className="mt-12 flex flex-wrap items-center gap-6 text-sm text-white/50 reveal reveal-delay-4">
+            <div className="flex items-center gap-2">
+              <div className="size-1.5 rounded-full bg-gold" />
+              <span>85+ projects</span>
             </div>
-          </ScrollRevealText>
+            <div className="flex items-center gap-2">
+              <div className="size-1.5 rounded-full bg-gold" />
+              <span>7 zones</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="size-1.5 rounded-full bg-gold" />
+              <span>Since 2018</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
