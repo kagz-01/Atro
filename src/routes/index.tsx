@@ -215,7 +215,6 @@ function Problem() {
     <section className="py-24 md:py-32">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div ref={ref} className={cn("reveal-on-scroll", revealed && "revealed")}>
-          <Badge tone="maroon" className="mb-4">The problem</Badge>
           <SplitText
             text="Kenyan construction is built on trust that never gets tested."
             tag="h2"
@@ -300,7 +299,6 @@ function Solution() {
 
       <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div ref={ref} className={cn("reveal-on-scroll", revealed && "revealed")}>
-          <Badge tone="gold" className="mb-4">How we work</Badge>
           <SplitText
             text="Three principles. No slogans."
             tag="h2"
@@ -356,7 +354,6 @@ function Proof({ projects }: { projects: ReturnType<typeof featuredProjects> }) 
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div ref={ref} className={cn("reveal-on-scroll flex items-end justify-between gap-6 mb-12", revealed && "revealed")}>
           <div>
-            <Badge tone="maroon" className="mb-4">Our work</Badge>
             <SplitText
               text="Evidence, not slogans."
               tag="h2"
@@ -412,7 +409,6 @@ function Services() {
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div ref={ref} className={cn("reveal-on-scroll flex items-end justify-between gap-6 mb-12", revealed && "revealed")}>
           <div>
-            <Badge tone="maroon" className="mb-4">Services</Badge>
             <SplitText
               text="What we do, and how we do it."
               tag="h2"
@@ -494,7 +490,6 @@ function Tools() {
     <section className="py-24 md:py-32">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div ref={ref} className={cn("reveal-on-scroll text-center max-w-3xl mx-auto mb-12", revealed && "revealed")}>
-          <Badge tone="gold" className="mb-4">Tools</Badge>
           <h2 className="font-display text-4xl md:text-5xl text-maroon">
             Decide with data, not guesses.
           </h2>
@@ -545,7 +540,6 @@ function Social() {
     <section className="py-24 md:py-32 bg-gradient-to-b from-stone/60 to-paper">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div ref={ref} className={cn("reveal-on-scroll text-center max-w-4xl mx-auto", revealed && "revealed")}>
-          <Badge tone="maroon" className="mb-4">Why ATRO</Badge>
           <SplitText
             text="Integrated thinking. Then the unglamorous work of making it stand up."
             tag="h2"
@@ -581,7 +575,6 @@ function Testimonials() {
   return (
     <section className="py-16 overflow-hidden">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 mb-8">
-        <Badge tone="gold" className="mb-4">What clients say</Badge>
         <h2 className="font-display text-3xl md:text-4xl text-maroon">
           Trusted by homeowners across Kenya
         </h2>
