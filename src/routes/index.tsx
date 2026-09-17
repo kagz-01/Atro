@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, ArrowUpRight, Shield, Clock, MapPin, Eye } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Shield, Clock, MapPin, Eye, CheckCircle2, AlertTriangle, TrendingUp, Users } from "lucide-react";
 import { CtaBand } from "@/components/page-hero";
 import { ProjectCard } from "@/components/project-card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   featuredProjects,
   PROCESS_STEPS,
   SERVICES,
+  SERVICE_CATEGORIES,
   WHY,
   ZONES,
 } from "@/lib/site";
@@ -46,7 +47,8 @@ function Home() {
       <Problem />
       <Solution />
       <Proof projects={featured} />
-      <Process />
+      <Services />
+      <Tools />
       <Social />
       <Testimonials />
       <CtaBand />
@@ -180,24 +182,32 @@ function Problem() {
 
   const problems = [
     {
+      icon: <AlertTriangle className="size-5" />,
+      title: "Trust without evidence",
+      desc: "You're asked to trust a contractor with your life savings based on a handshake and a WhatsApp photo.",
+      stat: "73%",
+      statLabel: "of projects exceed budget",
+    },
+    {
       icon: <Eye className="size-5" />,
       title: "No visibility",
       desc: "Clients cannot see what is happening on their site. Progress equals WhatsApp photos with no context.",
+      stat: "2-3x",
+      statLabel: "more follow-ups needed",
     },
     {
       icon: <Shield className="size-5" />,
       title: "No accountability",
       desc: "Quotes are verbal. Changes are assumed. The final bill is a surprise nobody can argue with.",
-    },
-    {
-      icon: <MapPin className="size-5" />,
-      title: "No honest coverage",
-      desc: "Firms claim nationwide delivery but only show up in Nairobi. Diaspora clients find out too late.",
+      stat: "40%",
+      statLabel: "of projects face disputes",
     },
     {
       icon: <Clock className="size-5" />,
       title: "No timeline",
       desc: "Projects drift. Decisions evaporate. Almost finished can mean six more months.",
+      stat: "6+ months",
+      statLabel: "average delay",
     },
   ];
 
@@ -209,7 +219,7 @@ function Problem() {
           <SplitText
             text="Kenyan construction is built on trust that never gets tested."
             tag="h2"
-            className="font-display text-4xl md:text-5xl text-maroon max-w-3xl"
+            className="font-display text-4xl md:text-5xl text-maroon max-w-4xl"
             delay={100}
           />
           <p className="mt-5 text-ink/70 text-lg max-w-2xl">
@@ -235,6 +245,10 @@ function Problem() {
                 </div>
                 <h3 className="font-display text-xl text-maroon">{p.title}</h3>
                 <p className="mt-2 text-sm text-ink/70">{p.desc}</p>
+                <div className="mt-4 pt-4 border-t border-line/50">
+                  <span className="font-display text-2xl text-gradient-gold">{p.stat}</span>
+                  <p className="text-xs text-muted mt-1">{p.statLabel}</p>
+                </div>
               </div>
             );
           })}
@@ -290,7 +304,7 @@ function Solution() {
           <SplitText
             text="Three principles. No slogans."
             tag="h2"
-            className="font-display text-4xl md:text-5xl text-paper max-w-3xl"
+            className="font-display text-4xl md:text-5xl text-paper max-w-4xl"
             delay={100}
           />
           <p className="mt-5 text-paper/70 text-lg max-w-2xl">
@@ -387,53 +401,136 @@ function Proof({ projects }: { projects: ReturnType<typeof featuredProjects> }) 
   );
 }
 
-/* ─── Process ─── */
-function Process() {
+/* ─── Services ─── */
+function Services() {
   const { ref, revealed } = useRevealOnScroll();
+
+  const featuredServices = SERVICES.slice(0, 6);
 
   return (
     <section className="py-24 md:py-32 bg-gradient-to-b from-stone/60 to-paper">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-        <div className="grid lg:grid-cols-12 gap-12 items-start">
-          <div ref={ref} className={cn("lg:col-span-4 reveal-on-scroll", revealed && "revealed")}>
-            <Badge tone="maroon" className="mb-4">Process</Badge>
+        <div ref={ref} className={cn("reveal-on-scroll flex items-end justify-between gap-6 mb-12", revealed && "revealed")}>
+          <div>
+            <Badge tone="maroon" className="mb-4">Services</Badge>
             <SplitText
-              text="Eight steps. None of them are we will see."
+              text="What we do, and how we do it."
               tag="h2"
               className="font-display text-4xl md:text-5xl text-maroon"
               delay={100}
             />
-            <p className="mt-5 text-ink/70">
-              From first conversation to handover — a defined process that keeps decisions on paper and money in check.
-            </p>
-            <Button asChild className="mt-8 rounded-2xl">
-              <Link to="/process">
-                Full process
-                <ArrowRight className="size-4 ml-2" />
-              </Link>
-            </Button>
           </div>
+          <Link
+            to="/services"
+            className="hidden sm:inline-flex items-center gap-1 text-[12px] uppercase tracking-[0.16em] text-burgundy hover:text-maroon underline-animate"
+          >
+            All services <ArrowUpRight className="size-4" />
+          </Link>
+        </div>
 
-          <div className="lg:col-span-8 grid sm:grid-cols-2 gap-4 stagger">
-            {PROCESS_STEPS.slice(0, 4).map((s, i) => {
-              const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
-              return (
-                <div
-                  key={s.n}
-                  ref={cardRef}
-                  className={cn(
-                    "reveal-on-scroll p-6 bg-paper border border-line rounded-2xl card-lift hover:shadow-card transition-all duration-300",
-                    cardRevealed && "revealed",
-                  )}
-                  style={{ transitionDelay: `${i * 80}ms` }}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger">
+          {featuredServices.map((s, i) => {
+            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
+            return (
+              <div
+                key={s.slug}
+                ref={cardRef}
+                className={cn("reveal-on-scroll", cardRevealed && "revealed")}
+                style={{ transitionDelay: `${i * 80}ms` }}
+              >
+                <Link
+                  to="/services/$slug"
+                  params={{ slug: s.slug }}
+                  className="group block p-6 bg-cream border border-line/50 rounded-2xl hover:shadow-card hover:border-gold/30 card-lift transition-all duration-300 h-full"
                 >
-                  <span className="text-gradient-gold font-display text-2xl font-bold">{s.n}</span>
-                  <h3 className="mt-2 font-display text-lg text-maroon">{s.title}</h3>
-                  <p className="mt-1 text-sm text-ink/70 line-clamp-2">{s.body}</p>
-                </div>
-              );
-            })}
-          </div>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-gold">
+                    {s.kicker}
+                  </p>
+                  <h3 className="mt-3 font-display text-xl text-maroon group-hover:text-burgundy transition-colors duration-300">
+                    {s.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-ink/70 line-clamp-2">
+                    {s.lede}
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] text-burgundy group-hover:text-maroon">
+                    View scope <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Tools ─── */
+function Tools() {
+  const { ref, revealed } = useRevealOnScroll();
+
+  const tools = [
+    {
+      title: "Cost Calculator",
+      desc: "Get an instant indicative cost range for your project. Six questions, one answer.",
+      link: "/tools/cost-calculator",
+      icon: "📊",
+    },
+    {
+      title: "Zone Map",
+      desc: "See where we build and what it costs in each region of Kenya.",
+      link: "/tools/zone-map",
+      icon: "📍",
+    },
+    {
+      title: "Live Tracker",
+      desc: "Track project progress with photo timelines and decision logs.",
+      link: "/tools/live-tracker",
+      icon: "📸",
+    },
+  ];
+
+  return (
+    <section className="py-24 md:py-32">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+        <div ref={ref} className={cn("reveal-on-scroll text-center max-w-3xl mx-auto mb-12", revealed && "revealed")}>
+          <Badge tone="gold" className="mb-4">Tools</Badge>
+          <h2 className="font-display text-4xl md:text-5xl text-maroon">
+            Decide with data, not guesses.
+          </h2>
+          <p className="mt-5 text-ink/70 text-lg">
+            Free tools to help you understand costs, timelines and what's possible.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 stagger">
+          {tools.map((t, i) => {
+            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
+            return (
+              <div
+                key={t.title}
+                ref={cardRef}
+                className={cn("reveal-on-scroll", cardRevealed && "revealed")}
+                style={{ transitionDelay: `${i * 100}ms` }}
+              >
+                <Link
+                  to={t.link}
+                  className="group block p-8 bg-maroon rounded-2xl text-center hover:shadow-card-hover hover:bg-burgundy card-lift transition-all duration-300 h-full"
+                >
+                  <span className="text-4xl">{t.icon}</span>
+                  <h3 className="mt-4 font-display text-xl text-paper group-hover:text-gold transition-colors duration-300">
+                    {t.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-paper/70">
+                    {t.desc}
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] text-gold group-hover:text-gold-light">
+                    Try it <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </Link>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -445,7 +542,7 @@ function Social() {
   const { ref, revealed } = useRevealOnScroll();
 
   return (
-    <section className="py-24 md:py-32">
+    <section className="py-24 md:py-32 bg-gradient-to-b from-stone/60 to-paper">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div ref={ref} className={cn("reveal-on-scroll text-center max-w-4xl mx-auto", revealed && "revealed")}>
           <Badge tone="maroon" className="mb-4">Why ATRO</Badge>
@@ -501,11 +598,11 @@ function Testimonials() {
 function DiasporaBanner() {
   return (
     <div className="bg-gradient-to-r from-gold to-gold-light text-maroon">
-      <div className="mx-auto max-w-7xl px-6 sm:px-8 md:px-12 lg:px-16 py-3 text-sm flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-3 text-sm flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
         <p>
           Diaspora mode is on. Contact, timelines and proof of progress are set up for clients who are not on the site.
         </p>
-        <Link to="/zones/$slug" params={{ slug: "diaspora" }} className="uppercase tracking-[0.14em] text-[11px] font-medium underline-animate">
+        <Link to="/contact" className="uppercase tracking-[0.14em] text-[11px] font-medium underline-animate">
           How we run remote projects →
         </Link>
       </div>
