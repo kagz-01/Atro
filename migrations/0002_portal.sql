@@ -104,6 +104,7 @@ create table if not exists portal_decisions (
   chosen text,
   cost_impact bigint not null default 0,
   state text not null default 'open' check (state in ('open', 'awaiting-client', 'decided')),
+  created_at timestamptz not null default now(),
   decided_at timestamptz,
   unique (project_id, ord)
 );

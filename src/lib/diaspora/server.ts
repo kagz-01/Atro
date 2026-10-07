@@ -50,6 +50,8 @@ export type ProjectSummary = {
   stage: string;
   progress: number;
   source: string;
+  track: string;
+  zone: string;
   isSample: boolean;
 };
 
@@ -67,6 +69,8 @@ export type ProjectRecord = {
   targetLabel: string;
   stage: string;
   isSample: boolean;
+  track: string;
+  zone: string;
   contractValue: number;
   boqValue: number;
   budget: {
@@ -222,6 +226,8 @@ type ProjectRow = {
   target_label: string;
   stage: string;
   source: string;
+  track: string;
+  zone: string;
   contract_value: number;
   boq_value: number;
   certified_to_date: number;
@@ -252,6 +258,8 @@ function toSummary(row: ProjectRow): ProjectSummary {
     stage: row.stage,
     progress: num(row.progress),
     source: row.source,
+    track: row.track,
+    zone: row.zone,
     isSample: row.source === "sample",
   };
 }
@@ -271,6 +279,8 @@ function toRecord(row: ProjectRow): ProjectRecord {
     targetLabel: row.target_label,
     stage: row.stage,
     isSample: row.source === "sample",
+    track: row.track,
+    zone: row.zone,
     contractValue: num(row.contract_value),
     boqValue: num(row.boq_value),
     budget: {
@@ -346,7 +356,8 @@ async function seedSampleProject(sql: Sql, userId: string): Promise<string> {
     insert into portal_projects (
       user_id, reference, title, client_label, client_initials, plot, area,
       contract_type, started_label, target_label, stage, source, track,
-      service_slug, contract_value, boq_value, certified_to_date, paid_to_date,
+      service_slug, zone, contract_value, boq_value, certified_to_date,
+      paid_to_date,
       currently_certified,
       retention_held, retention_pct, projected_at_completion, days_elapsed,
       days_total, days_remaining, on_track, variance_days, programme_note,
@@ -354,7 +365,7 @@ async function seedSampleProject(sql: Sql, userId: string): Promise<string> {
     ) values (
       ${userId}, ${p.reference}, ${p.title}, ${p.client}, ${p.clientInitials},
       ${p.plot}, ${p.area}, ${p.contractType}, ${p.started}, ${p.targetHandover},
-      ${p.stage}, 'sample', 'construction', '', ${p.contractValue}, ${p.boqValue},
+      ${p.stage}, 'sample', 'construction', '', '', ${p.contractValue}, ${p.boqValue},
       ${p.budget.certifiedToDate}, ${p.budget.paidToDate},
       ${p.budget.currentlyCertified}, ${p.budget.retentionHeld},
       ${p.budget.retentionPct}, ${p.budget.projectedAtCompletion},
@@ -490,8 +501,8 @@ async function generateProject(
     insert into portal_projects (
       user_id, reference, title, client_label, client_initials, plot, area,
       contract_type, started_label, target_label, stage, source, track,
-      service_slug, contract_value, days_elapsed, days_total, days_remaining,
-      programme_note,
+      service_slug, zone, contract_value, days_elapsed, days_total,
+      days_remaining, programme_note,
       next_call_when, next_call_local, next_call_agenda, progress, last_viewed_at
     ) values (
       ${userId}, ${reference}, ${input.title}, ${clientLabel}, ${"YO"},
@@ -499,7 +510,7 @@ async function generateProject(
       ${track.id === "construction" ? "Design and build" : track.label},
       ${shortDate(start)}, ${shortDate(target)},
       ${track.stages[0]?.name ?? "Mobilisation"}, 'created', ${track.id},
-      ${input.serviceSlug}, ${input.contractValue},
+      ${input.serviceSlug}, ${input.zone}, ${input.contractValue},
       ${daysElapsed}, ${totalDays},
       ${Math.max(0, totalDays - daysElapsed)},
       'Programme issued at contract signing. Milestone dates are planned, not promised — each one moves only when you approve it.',
@@ -589,7 +600,8 @@ async function generateProject(
 
 const PROJECT_SELECT = `
   id, reference, title, client_label, client_initials, client_city, plot, area,
-  contract_type, started_label, target_label, stage, source, contract_value,
+  contract_type, started_label, target_label, stage, source, track, zone,
+  contract_value,
   boq_value, certified_to_date, paid_to_date, currently_certified,
   retention_held, retention_pct, projected_at_completion, days_elapsed,
   days_total, days_remaining, on_track, variance_days, programme_note,

@@ -18,6 +18,7 @@ export const ProjectInput = z.object({
   clientTz: z.string().trim().max(60).default(""),
   track: z.enum(TRACK_IDS as [string, ...string[]]).default("construction"),
   serviceSlug: z.string().trim().max(80).default(""),
+  zone: z.string().trim().max(60).default(""),
 });
 
 export type ProjectInput = z.infer<typeof ProjectInput>;

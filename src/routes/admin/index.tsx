@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/field";
+import { EnquiriesInbox } from "@/components/admin/enquiries-inbox";
+import { getOpsOverview, type OpsOverview } from "@/lib/ops";
 import {
   addDocument,
   addMilestoneEvidence,
@@ -645,6 +647,176 @@ function ProjectDetail({
   );
 }
 
+/* ── overview: the numbers a studio runs on ── */
+
+function Money({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="rounded-2xl border border-ink/10 bg-cream p-5">
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">{label}</p>
+      <p className={cn("mt-2 font-display text-2xl text-maroon", tone)}>{value}</p>
+    </div>
+  );
+}
+
+function GroupBars({ rows, empty }: { rows: OpsOverview["byTrack"]; empty: string }) {
+  if (rows.length === 0) {
+    return <p className="text-[13px] text-ink/55">{empty}</p>;
+  }
+  const max = Math.max(...rows.map((r) => r.count));
+  return (
+    <ul className="space-y-2.5">
+      {rows.map((row) => (
+        <li key={row.key} className="text-[13px]">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-ink/70">{row.label}</span>
+            <span className="text-ink/50">
+              {row.count} · {kes(row.value)}
+            </span>
+          </div>
+          <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-ink/10">
+            <span
+              className="block h-full rounded-full bg-gradient-to-r from-gold to-gold-light"
+              style={{ width: `${max > 0 ? (row.count / max) * 100 : 0}%` }}
+            />
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const ATTENTION_COPY: Record<string, { label: string; cls: string }> = {
+  blocked: { label: "Blocked", cls: "bg-red-50 text-red-800 border-red-200" },
+  decision: { label: "Awaiting client", cls: "bg-amber-50 text-amber-900 border-amber-300" },
+  stalled: { label: "Gone quiet", cls: "bg-stone-100 text-stone-700 border-stone-300" },
+  unviewed: { label: "Client not looking", cls: "bg-sky-50 text-sky-900 border-sky-300" },
+};
+
+function Overview({ onOpen }: { onOpen: (id: string) => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["ops-overview"],
+    queryFn: () => getOpsOverview({ data: undefined }),
+  });
+
+  if (isLoading || !data) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="size-6 animate-spin text-gold" />
+      </div>
+    );
+  }
+
+  const { funnel, money } = data;
+  const exposure = money.certifiedUnreleased + money.retentionHeld;
+
+  return (
+    <div className="space-y-8">
+      {/* Funnel */}
+      <section>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+          The funnel
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            ["Enquiries received", String(funnel.enquiriesTotal), `${funnel.enquiriesLast7Days} in the last 7 days`],
+            ["Of those, diaspora", String(funnel.enquiriesDiaspora), `${funnel.enquiriesTotal ? Math.round((funnel.enquiriesDiaspora / funnel.enquiriesTotal) * 100) : 0}% of enquiries`],
+            ["Projects opened", String(funnel.projectsLive), `${funnel.clients} client account${funnel.clients === 1 ? "" : "s"}`],
+            ["Sample projects", String(funnel.projectsSample), "not real work"],
+          ].map(([label, value, sub]) => (
+            <div key={label} className="rounded-2xl border border-ink/10 bg-cream p-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">{label}</p>
+              <p className="mt-2 font-display text-2xl text-maroon">{value}</p>
+              <p className="mt-1 text-[12px] text-ink/50">{sub}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Money */}
+      <section>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+          Money
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Money label="Contracted" value={kes(money.contractValue)} />
+          <Money label="Paid to date" value={kes(money.paid)} tone="text-emerald-700" />
+          <Money
+            label="Certified, unreleased"
+            value={kes(money.certifiedUnreleased)}
+            tone="text-amber-700"
+          />
+          <Money label="Retention held" value={kes(money.retentionHeld)} tone="text-burgundy" />
+        </div>
+        <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
+          {kes(exposure)} of the studio&apos;s money is committed but not yet received —
+          {money.contractValue > 0
+            ? ` that is ${((exposure / money.contractValue) * 100).toFixed(1)}% of contracted value.`
+            : " nothing contracted yet."}
+        </p>
+      </section>
+
+      {/* Workload */}
+      <section className="grid gap-8 lg:grid-cols-2">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+            Workload by kind of work
+          </p>
+          <div className="mt-4">
+            <GroupBars rows={data.byTrack} empty="No projects opened yet." />
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+            Workload by county
+          </p>
+          <div className="mt-4">
+            <GroupBars rows={data.byZone} empty="No zones recorded yet." />
+          </div>
+        </div>
+      </section>
+
+      {/* The queue that needs a human */}
+      <section>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+          Needs a human
+        </p>
+        {data.attention.length === 0 ? (
+          <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-[13px] text-emerald-900">
+            Nothing is stuck, nothing is waiting on a client, and everyone has looked
+            at their project recently.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {data.attention.map((item, i) => (
+              <li key={`${item.projectId}-${item.kind}-${i}`}>
+                <button
+                  type="button"
+                  onClick={() => onOpen(item.projectId)}
+                  className="flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-4 text-left transition-colors hover:border-burgundy"
+                >
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-[14px] text-maroon">{item.title}</span>
+                      <span className="font-mono text-[11px] text-muted">{item.reference}</span>
+                      <Badge tone="gold" className="h-5 text-[9px]">
+                        {ATTENTION_COPY[item.kind]?.label ?? item.kind}
+                      </Badge>
+                    </span>
+                    <span className="mt-1 block text-[12px] text-ink/60">{item.detail}</span>
+                  </span>
+                  <span className="shrink-0 text-[12px] text-muted">
+                    {item.ageDays === 0 ? "today" : `${item.ageDays}d`}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
 /* ── console ── */
 
 function AdminConsole() {
@@ -654,6 +826,7 @@ function AdminConsole() {
   );
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "attention" | "sample">("all");
+  const [tab, setTab] = useState<"overview" | "projects" | "enquiries">("overview");
 
   useEffect(() => {
     let live = true;
@@ -689,18 +862,6 @@ function AdminConsole() {
     return true;
   });
 
-  const totals = (projects ?? []).reduce(
-    (acc, p) => {
-      acc.contract += p.contractValue;
-      acc.paid += p.paidToDate;
-      acc.certified += p.currentlyCertified;
-      acc.decisions += p.openDecisions;
-      acc.blocked += p.blockedStages;
-      return acc;
-    },
-    { contract: 0, paid: 0, certified: 0, decisions: 0, blocked: 0 },
-  );
-
   return (
     <>
       <section className="relative overflow-hidden bg-maroon pt-28 pb-12 md:pt-36">
@@ -718,7 +879,7 @@ function AdminConsole() {
               </p>
             </div>
             <Link
-              to="/admin/enquiries"
+              to="/admin"
               className="shrink-0 rounded-full border border-paper/25 px-5 py-3 text-[11px] uppercase tracking-[0.16em] text-paper transition-colors hover:border-gold hover:text-gold"
             >
               Enquiries inbox
@@ -729,40 +890,19 @@ function AdminConsole() {
 
       <section className="bg-paper py-10 md:py-14">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            {[
-              ["Projects", String(projects?.length ?? 0), ""],
-              ["Contract value", kes(totals.contract), ""],
-              ["Paid to date", kes(totals.paid), "text-emerald-700"],
-              ["Certified, unreleased", kes(totals.certified), "text-amber-700"],
-              [
-                "Needs a human",
-                String(totals.decisions + totals.blocked),
-                totals.decisions + totals.blocked > 0 ? "text-burgundy" : "",
-              ],
-            ].map(([label, value, tone]) => (
-              <div key={label} className="rounded-2xl border border-ink/10 bg-cream p-5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-                  {label}
-                </p>
-                <p className={cn("mt-2 font-display text-2xl text-maroon", tone)}>{value}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8 flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {([
-              ["all", "All"],
-              ["attention", "Needs attention"],
-              ["sample", "Sample projects"],
+              ["overview", "Overview"],
+              ["projects", "Projects"],
+              ["enquiries", "Enquiries"],
             ] as const).map(([id, label]) => (
               <button
                 key={id}
                 type="button"
-                onClick={() => setFilter(id)}
+                onClick={() => setTab(id)}
                 className={cn(
-                  "cursor-pointer rounded-full border px-4 py-2 text-[11px] uppercase tracking-[0.14em] transition-colors",
-                  filter === id
+                  "cursor-pointer rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-[0.14em] transition-colors",
+                  tab === id
                     ? "border-maroon bg-maroon text-paper"
                     : "border-ink/12 text-ink/60 hover:border-burgundy hover:text-burgundy",
                 )}
@@ -781,7 +921,15 @@ function AdminConsole() {
             </Button>
           </div>
 
-          {selected ? (
+          {tab === "overview" ? <Overview onOpen={setSelected} /> : null}
+          {tab === "enquiries" ? (
+            <div className="mt-8">
+              <EnquiriesInbox />
+            </div>
+          ) : null}
+          {tab === "projects" ? null : null}
+
+          {tab === "projects" && selected ? (
             <div className="mt-6">
               <ProjectDetail
               projectId={selected}
@@ -789,11 +937,11 @@ function AdminConsole() {
               onChanged={() => void refetch()}
             />
             </div>
-          ) : isLoading ? (
+          ) : tab === "projects" && isLoading ? (
             <div className="mt-6 flex justify-center py-16">
               <Loader2 className="size-6 animate-spin text-gold" />
             </div>
-          ) : rows.length === 0 ? (
+          ) : tab === "projects" && rows.length === 0 ? (
             <div className="mt-6 flex flex-col items-center rounded-3xl border border-dashed border-ink/15 py-16 text-center">
               <Inbox className="size-7 text-ink/30" />
               <p className="mt-4 font-display text-xl text-maroon">Nothing here yet</p>
@@ -802,13 +950,36 @@ function AdminConsole() {
                 create one for them.
               </p>
             </div>
-          ) : (
-            <ul className="mt-6 space-y-3">
-              {rows.map((p) => (
-                <ProjectRow key={p.id} project={p} onOpen={setSelected} />
-              ))}
-            </ul>
-          )}
+          ) : tab === "projects" ? (
+            <>
+              <div className="mt-6 flex flex-wrap items-center gap-2">
+                {([
+                  ["all", "All"],
+                  ["attention", "Needs attention"],
+                  ["sample", "Sample projects"],
+                ] as const).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setFilter(id)}
+                    className={cn(
+                      "cursor-pointer rounded-full border px-4 py-2 text-[11px] uppercase tracking-[0.14em] transition-colors",
+                      filter === id
+                        ? "border-burgundy bg-burgundy/10 text-burgundy"
+                        : "border-ink/12 text-ink/60 hover:border-burgundy hover:text-burgundy",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <ul className="mt-4 space-y-3">
+                {rows.map((p) => (
+                  <ProjectRow key={p.id} project={p} onOpen={setSelected} />
+                ))}
+              </ul>
+            </>
+          ) : null}
         </div>
       </section>
     </>
