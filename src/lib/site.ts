@@ -34,6 +34,8 @@ export type Zone = {
   status: ZoneStatus;
   cx: number;
   cy: number;
+  lat: number;
+  lng: number;
   summary: string;
   coverage: string;
   typical: string;
@@ -51,6 +53,8 @@ export const ZONES: Zone[] = [
     status: "active",
     cx: 51,
     cy: 61,
+    lat: -1.2921,
+    lng: 36.8219,
     summary:
       "Full design-and-build coverage across Nairobi — from Karen and Lavington compounds to compact infill in the inner suburbs.",
     coverage: "Active delivery",
@@ -77,6 +81,8 @@ export const ZONES: Zone[] = [
     status: "active",
     cx: 50,
     cy: 55,
+    lat: -1.1700,
+    lng: 36.8300,
     summary:
       "One of our densest delivery areas — ridge houses, family homes and institutional work across Kiambu, Ruiru, Kikuyu and Thika Road.",
     coverage: "Active delivery",
@@ -103,6 +109,8 @@ export const ZONES: Zone[] = [
     status: "active",
     cx: 57,
     cy: 66,
+    lat: -1.5177,
+    lng: 37.2634,
     summary:
       "Athiriver, Mavoko, Machakos town and surrounding plots — residential and light commercial, with a clear view of quarry, transport and water realities.",
     coverage: "Active delivery",
@@ -125,6 +133,8 @@ export const ZONES: Zone[] = [
     status: "active",
     cx: 48,
     cy: 72,
+    lat: -1.8500,
+    lng: 36.7833,
     summary:
       "Kitengela, Ongata Rongai, Ngong and Isinya. Climate, wind and long services runs matter more here than a Nairobi template.",
     coverage: "Active delivery",
@@ -147,6 +157,8 @@ export const ZONES: Zone[] = [
     status: "limited",
     cx: 68,
     cy: 84,
+    lat: -4.0435,
+    lng: 39.6682,
     summary:
       "Coral stone, humidity, salt air and a different labour market. We take coastal work with a dedicated logistics plan — not a Nairobi drawing reprinted.",
     coverage: "Limited · planned delivery",
@@ -169,6 +181,8 @@ export const ZONES: Zone[] = [
     status: "limited",
     cx: 40,
     cy: 56,
+    lat: -0.3031,
+    lng: 36.0800,
     summary:
       "Nakuru town, Naivasha and surrounding farmland. We take defined scopes with a site presence plan rather than a fly-in promise.",
     coverage: "Limited · by programme",
@@ -191,6 +205,8 @@ export const ZONES: Zone[] = [
     status: "request",
     cx: 27,
     cy: 62,
+    lat: -0.1022,
+    lng: 34.7617,
     summary:
       "We review Kisumu and wider Nyanza work case by case. If the scope, access and programme fit, we say so early.",
     coverage: "By request",
@@ -213,6 +229,8 @@ export const ZONES: Zone[] = [
     status: "diaspora",
     cx: 78,
     cy: 28,
+    lat: 51.5074,
+    lng: -0.1278,
     summary:
       "For Kenyans building at home from the UK, Gulf, US and the region. The product is the same — the communication is built for time zones, video and WhatsApp.",
     coverage: "Active · remote-first clients",
@@ -1074,6 +1092,8 @@ export const NAV = [
   { to: "/about" as const, label: "About" },
   { to: "/contact" as const, label: "Contact" },
 ];
+
+export const DIASPORA_LINK = { to: "/diaspora" as const, label: "Abroad", badge: "New" as const };
 
 export function zoneBySlug(slug: string) {
   return ZONES.find((z) => z.slug === slug);

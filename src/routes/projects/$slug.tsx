@@ -33,7 +33,7 @@ function ProjectDetail() {
       <section className="relative min-h-[70vh] flex items-end text-paper">
         <img src={project.image} alt={project.name} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-maroon via-maroon/50 to-maroon/20" />
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 w-full pb-12 pt-32">
+        <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 w-full pb-12 pt-32">
           <p className="text-[11px] uppercase tracking-[0.18em] text-gold">
             <Link to="/projects" className="hover:text-paper">Work</Link>
             {" / "}
@@ -48,7 +48,7 @@ function ProjectDetail() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 grid lg:grid-cols-12 gap-12">
+      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 grid lg:grid-cols-12 gap-12">
         <div className="lg:col-span-7">
           <dl className="grid grid-cols-2 gap-6 text-sm">
             <Item label="Location" value={project.location} />
@@ -99,7 +99,7 @@ function ProjectDetail() {
       </section>
 
       {related.length ? (
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-20">
+        <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-20">
           <h2 className="font-display text-3xl text-maroon mb-8">Related work</h2>
           <div className="grid sm:grid-cols-3 gap-6">
             {related.map((p) => (

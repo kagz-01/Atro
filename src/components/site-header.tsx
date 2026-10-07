@@ -1,27 +1,23 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, X, Home, Briefcase, Wrench, Map, Route, Info } from "lucide-react";
+import { Menu, X, Home, Briefcase, Wrench, Info, Phone, Globe, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
-import { Button } from "@/components/ui/button";
-import { COMPANY, NAV } from "@/lib/site";
-import { useSiteStore } from "@/lib/store";
+import { NAV, DIASPORA_LINK } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const NAV_ICONS: Record<string, typeof Home> = {
+  "/": Home,
   "/projects": Briefcase,
   "/services": Briefcase,
   "/tools": Wrench,
-  "/zones": Map,
-  "/process": Route,
   "/about": Info,
+  "/contact": Phone,
 };
 
 export function SiteHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const diaspora = useSiteStore((s) => s.diasporaMode);
-  const setDiaspora = useSiteStore((s) => s.setDiasporaMode);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -45,7 +41,7 @@ export function SiteHeader() {
 
   return (
     <>
-      {/* Desktop header */}
+      {/* ── Desktop header ── */}
       <header
         className={cn(
           "hidden md:block fixed top-0 inset-x-0 z-40 transition-all duration-500",
@@ -54,9 +50,10 @@ export function SiteHeader() {
             : "glass border-b border-line/50",
         )}
       >
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 h-[4.5rem] flex items-center gap-8">
+        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 h-[4.5rem] flex items-center gap-6">
           <Logo className="shrink-0" />
 
+          {/* Primary nav */}
           <nav className="flex items-center gap-1 flex-1" aria-label="Primary">
             {NAV.map((item) => {
               const active =
@@ -66,7 +63,7 @@ export function SiteHeader() {
                   key={item.to}
                   to={item.to}
                   className={cn(
-                    "px-4 h-10 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.16em] transition-all duration-300 rounded-full",
+                    "px-3.5 h-9 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.16em] transition-all duration-300 rounded-full whitespace-nowrap",
                     onDarkHero
                       ? active
                         ? "text-gold bg-white/10"
@@ -87,25 +84,28 @@ export function SiteHeader() {
             })}
           </nav>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setDiaspora(!diaspora)}
+          {/* Right side CTAs */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Link
+              to={DIASPORA_LINK.to}
               className={cn(
-                "h-10 px-4 items-center text-[10px] uppercase tracking-[0.16em] border rounded-full transition-all duration-300",
-                diaspora
+                "h-9 px-3.5 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] border rounded-full transition-all duration-300 whitespace-nowrap",
+                pathname === "/diaspora"
                   ? "bg-gradient-to-r from-gold to-gold-light text-maroon border-gold shadow-glow-gold"
                   : onDarkHero
                     ? "text-white/70 border-white/20 hover:border-gold hover:text-gold"
                     : "text-muted border-line hover:border-burgundy hover:text-burgundy",
               )}
-              aria-pressed={diaspora}
             >
-              {diaspora ? "Diaspora on" : "Building from abroad?"}
-            </button>
+              <Globe className="size-3" />
+              Abroad
+              <span className="px-1.5 py-0.5 text-[7px] font-bold bg-gradient-to-r from-gold to-gold-light text-maroon rounded-full leading-none">
+                New
+              </span>
+            </Link>
             <Link
               to="/start"
-              className="inline-flex h-10 px-6 items-center bg-gradient-to-r from-maroon to-burgundy text-white text-[11px] uppercase tracking-[0.14em] font-semibold rounded-full shadow-soft btn-lift hover:shadow-card-hover transition-all duration-300"
+              className="inline-flex h-9 px-5 items-center gap-2 bg-gradient-to-r from-maroon to-burgundy text-white text-[11px] uppercase tracking-[0.14em] font-semibold rounded-full shadow-soft btn-lift hover:shadow-card-hover transition-all duration-300"
             >
               Start a project
             </Link>
@@ -117,7 +117,7 @@ export function SiteHeader() {
         )}
       </header>
 
-      {/* Mobile header */}
+      {/* ── Mobile header ── */}
       <header className="md:hidden fixed top-0 inset-x-0 z-40 glass border-b border-line/50">
         <div className="px-5 h-14 flex items-center justify-between">
           <Logo className="shrink-0" />
@@ -133,10 +133,11 @@ export function SiteHeader() {
         </div>
       </header>
 
-      {/* Mobile slide-down menu */}
+      {/* ── Mobile slide-down menu ── */}
       {open ? (
         <div className="md:hidden fixed inset-0 top-14 z-30 bg-paper/98 backdrop-blur-xl overflow-y-auto animate-[slide-up_300ms_var(--ease-out)]">
-          <nav className="px-6 py-8 flex flex-col gap-2" aria-label="Mobile">
+          <nav className="px-6 py-6 flex flex-col gap-1" aria-label="Mobile">
+            {/* Main pages */}
             {NAV.map((item) => {
               const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
               const Icon = NAV_ICONS[item.to] || Home;
@@ -161,47 +162,65 @@ export function SiteHeader() {
                 </Link>
               );
             })}
+
+            {/* Diaspora card */}
+            <Link
+              to={DIASPORA_LINK.to}
+              className={cn(
+                "mt-3 flex items-center gap-4 p-4 border rounded-2xl transition-all duration-300",
+                pathname === "/diaspora"
+                  ? "bg-gold/10 border-gold/30 text-maroon"
+                  : "border-gold/20 text-ink hover:bg-gold/5",
+              )}
+            >
+              <div className="size-10 rounded-xl bg-gold/10 flex items-center justify-center text-gold">
+                <Globe className="size-5" />
+              </div>
+              <div className="flex-1">
+                <span className="font-display text-lg block">Building from abroad?</span>
+                <span className="text-sm text-muted">How ATRO manages projects for Kenyans overseas</span>
+              </div>
+              <ArrowRight className="size-5 text-gold shrink-0" />
+            </Link>
+
+            {/* Start CTA */}
             <div className="mt-4 pt-4 border-t border-line">
               <Link
                 to="/start"
                 className="flex items-center justify-center gap-2 w-full h-12 bg-gradient-to-r from-maroon to-burgundy text-white text-[12px] uppercase tracking-[0.14em] font-semibold rounded-2xl"
               >
                 Start a project
+                <ArrowRight className="size-4" />
               </Link>
             </div>
-            <button
-              type="button"
-              onClick={() => setDiaspora(!diaspora)}
-              className={cn(
-                "mt-4 h-12 flex items-center justify-center text-[11px] uppercase tracking-[0.16em] border rounded-2xl transition-all duration-300",
-                diaspora
-                  ? "bg-gold text-maroon border-gold"
-                  : "text-muted border-line hover:border-burgundy hover:text-burgundy",
-              )}
-            >
-              {diaspora ? "Diaspora mode on" : "Building from abroad?"}
-            </button>
           </nav>
         </div>
       ) : null}
 
-      {/* Mobile bottom nav */}
+      {/* ── Mobile bottom nav ── */}
       <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 flex items-center justify-around px-2 py-2 glass rounded-full border border-line/50 shadow-card">
-        {NAV.slice(0, 5).map((item) => {
+        {[
+          { to: "/", icon: Home, label: "Home" },
+          { to: "/projects", icon: Briefcase, label: "Work" },
+          { to: "/services", icon: Briefcase, label: "Services" },
+          { to: "/tools", icon: Wrench, label: "Tools" },
+          { to: "/start", icon: ArrowRight, label: "Start", accent: true },
+        ].map((item) => {
           const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
-          const Icon = NAV_ICONS[item.to] || Home;
           return (
             <Link
               key={item.to}
               to={item.to}
               className={cn(
                 "flex flex-col items-center gap-1 px-3 py-2 rounded-full transition-all duration-300 min-w-[56px]",
-                active
-                  ? "bg-maroon text-white shadow-ribbon scale-105"
-                  : "text-muted hover:text-maroon",
+                item.accent
+                  ? "bg-gradient-to-br from-maroon to-burgundy text-white shadow-soft scale-105"
+                  : active
+                    ? "bg-maroon text-white shadow-ribbon scale-105"
+                    : "text-muted hover:text-maroon",
               )}
             >
-              <Icon className="size-4" />
+              <item.icon className="size-4" />
               <span className="text-[9px] uppercase tracking-wider font-medium">{item.label}</span>
             </Link>
           );

@@ -24,7 +24,7 @@ function InsightsPage() {
         title="Useful pages. Not a newsroom."
         lede="How costing, geography and remote clients actually behave on Kenyan sites."
       />
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-20 grid md:grid-cols-3 gap-8">
+      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-20 grid md:grid-cols-3 gap-8">
         {ARTICLES.map((a) => (
           <Link key={a.slug} to="/insights/$slug" params={{ slug: a.slug }} className="group border border-line bg-cream rounded-sm overflow-hidden hover:border-burgundy">
             <div className="aspect-[16/10] overflow-hidden">

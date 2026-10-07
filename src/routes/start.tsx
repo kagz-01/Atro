@@ -1,6 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, MessageCircle, Mail, MapPin, Clock, Shield, FileText, CheckCircle2 } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft, MessageCircle, Mail, MapPin, CheckCircle2 } from "lucide-react";
 import { EnquiryWizard } from "@/components/enquiry-wizard";
 import { Badge } from "@/components/ui/badge";
 import { COMPANY } from "@/lib/site";
@@ -21,6 +20,9 @@ export const Route = createFileRoute("/start")({
 });
 
 function StartPage() {
+  const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const isDiaspora = params.get("from") === "diaspora";
+
   return (
     <main className="pt-32 pb-24">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
@@ -36,52 +38,37 @@ function StartPage() {
         <div className="grid lg:grid-cols-12 gap-12 items-start">
           {/* Left: info sidebar */}
           <div className="lg:col-span-4 lg:sticky lg:top-24">
-            <Badge tone="gold" className="mb-4">Start a project</Badge>
+            <Badge tone={isDiaspora ? "gold" : "maroon"} className="mb-4">
+              {isDiaspora ? "Diaspora enquiry" : "Start a project"}
+            </Badge>
             <h1 className="font-display text-4xl md:text-5xl text-maroon">
-              Four steps. Then a person.
+              {isDiaspora ? "Five steps. Then a person." : "Four steps. Then a person."}
             </h1>
             <p className="mt-5 text-ink/70 text-lg">
-              Type, place, scale, and how to reach you. You will see an indicative range before you send anything. It is not a quotation.
+              {isDiaspora
+                ? "Type, place, scale, contact details, and your situation abroad. We will schedule around your time zone."
+                : "Type, place, scale, and how to reach you. You will see an indicative range before you send anything. It is not a quotation."}
             </p>
 
             {/* Steps preview */}
             <div className="mt-10 space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="size-10 rounded-full bg-gradient-to-br from-maroon to-burgundy flex items-center justify-center text-white text-sm font-bold shrink-0">
-                  1
+              {[
+                { num: "1", title: "Project type", desc: "Residential, commercial, or institutional." },
+                { num: "2", title: "Location", desc: "Zone-aware pricing for all 7 regions." },
+                { num: "3", title: "Scale & finish", desc: "Area in m² and finish level." },
+                { num: "4", title: "Contact details", desc: "Name, phone, email." },
+                ...(isDiaspora ? [{ num: "5", title: "Building from abroad", desc: "Country, time zone, Kenya contact, visit plans." }] : []),
+              ].map((s) => (
+                <div key={s.num} className="flex items-start gap-4">
+                  <div className="size-10 rounded-full bg-gradient-to-br from-maroon to-burgundy flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    {s.num}
+                  </div>
+                  <div>
+                    <p className="font-medium text-maroon">{s.title}</p>
+                    <p className="text-sm text-ink/70">{s.desc}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-maroon">Project type</p>
-                  <p className="text-sm text-ink/70">Residential, commercial, or institutional.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="size-10 rounded-full bg-gradient-to-br from-maroon to-burgundy flex items-center justify-center text-white text-sm font-bold shrink-0">
-                  2
-                </div>
-                <div>
-                  <p className="font-medium text-maroon">Location</p>
-                  <p className="text-sm text-ink/70">Zone-aware pricing for all 7 regions.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="size-10 rounded-full bg-gradient-to-br from-maroon to-burgundy flex items-center justify-center text-white text-sm font-bold shrink-0">
-                  3
-                </div>
-                <div>
-                  <p className="font-medium text-maroon">Scale & finish</p>
-                  <p className="text-sm text-ink/70">Area in m² and finish level.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="size-10 rounded-full bg-gradient-to-br from-maroon to-burgundy flex items-center justify-center text-white text-sm font-bold shrink-0">
-                  4
-                </div>
-                <div>
-                  <p className="font-medium text-maroon">Contact details</p>
-                  <p className="text-sm text-ink/70">Name, phone, email.</p>
-                </div>
-              </div>
+              ))}
             </div>
 
             {/* What happens next */}
@@ -98,7 +85,7 @@ function StartPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="size-4 text-gold mt-0.5 shrink-0" />
-                  <span>We schedule a site visit or video call</span>
+                  <span>{isDiaspora ? "We schedule a video call at a time that works for you" : "We schedule a site visit or video call"}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="size-4 text-gold mt-0.5 shrink-0" />
@@ -148,7 +135,7 @@ function StartPage() {
 
           {/* Right: enquiry wizard */}
           <div className="lg:col-span-8">
-            <EnquiryWizard />
+            <EnquiryWizard forcedDiaspora={isDiaspora} />
           </div>
         </div>
       </div>

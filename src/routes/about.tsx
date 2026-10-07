@@ -26,7 +26,7 @@ function AboutPage() {
         lede="ATRO is a modern design-and-construction company focused on creating well-designed, technically sound and efficiently delivered structures."
         image="/images/interior.webp"
       />
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 grid lg:grid-cols-12 gap-12">
+      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 grid lg:grid-cols-12 gap-12">
         <div className="lg:col-span-7 space-y-6 text-lg text-ink/80">
           <p>
             We started from a simple frustration: too many Kenyan projects split design, cost and construction into three conversations that do not speak. The drawing is beautiful. The number is fiction. The site invents a third building.
@@ -44,7 +44,7 @@ function AboutPage() {
         </aside>
       </section>
       <section className="bg-stone/60 py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
           <h2 className="font-display text-3xl text-maroon">Values</h2>
           <div className="mt-8 grid sm:grid-cols-2 gap-6">
             {VALUES.map((v) => (
@@ -56,7 +56,7 @@ function AboutPage() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 grid md:grid-cols-2 gap-10 items-center">
+      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 grid md:grid-cols-2 gap-10 items-center">
         <img src="/images/detail.webp" alt="Concrete and stone junction" className="w-full aspect-[4/3] object-cover" />
         <div>
           <h2 className="font-display text-3xl text-maroon">Philosophy</h2>

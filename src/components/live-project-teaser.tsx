@@ -2,8 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { Camera, Clock, MapPin, ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Reveal } from "@/components/reveal";
 import { useRevealOnScroll } from "@/hooks/use-reveal";
+import { cn } from "@/lib/utils";
 
 type LiveProject = {
   name: string;
@@ -59,18 +60,12 @@ export function LiveProjectTeaser() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 stagger">
-          {LIVE_PROJECTS.map((project, i) => {
-            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
-            return (
-              <div
-                key={project.name}
-                ref={cardRef}
-                className={cn(
-                  "reveal-on-scroll group bg-paper border border-line/50 rounded-2xl overflow-hidden card-lift hover:border-gold/30",
-                  cardRevealed && "revealed",
-                )}
-                style={{ transitionDelay: `${i * 100}ms` }}
-              >
+          {LIVE_PROJECTS.map((project, i) => (
+            <Reveal
+              key={project.name}
+              className="group bg-paper border border-line/50 rounded-2xl overflow-hidden card-lift hover:border-gold/30"
+              style={{ transitionDelay: `${i * 100}ms` }}
+            >
                 {/* Image with progress overlay */}
                 <div className="relative aspect-[16/10] overflow-hidden">
                   <img
@@ -129,9 +124,8 @@ export function LiveProjectTeaser() {
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+            </Reveal>
+          ))}
         </div>
 
         <div className="mt-10 text-center">

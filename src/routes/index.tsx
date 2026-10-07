@@ -1,23 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, ArrowUpRight, Shield, Clock, MapPin, Eye, CheckCircle2, AlertTriangle, TrendingUp, Users } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Shield, Clock, Eye, AlertTriangle } from "lucide-react";
 import { CtaBand } from "@/components/page-hero";
 import { ProjectCard } from "@/components/project-card";
+import { Reveal } from "@/components/reveal";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useRevealOnScroll } from "@/hooks/use-reveal";
-import { useParallax, useScrollProgress } from "@/hooks/use-effects";
+import { useParallax } from "@/hooks/use-effects";
 import { TestimonialMarquee, LogoMarquee } from "@/components/marquee";
 import { ScrollRevealText, SplitText, FloatingElement } from "@/components/scroll-effects";
-import {
-  ARTICLES,
-  COMPANY,
-  featuredProjects,
-  PROCESS_STEPS,
-  SERVICES,
-  SERVICE_CATEGORIES,
-  WHY,
-  ZONES,
-} from "@/lib/site";
+import { COMPANY, featuredProjects, SERVICES, WHY, ZONES } from "@/lib/site";
 import { useSiteStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -81,7 +72,7 @@ function Hero() {
   const { ref: parallaxRef, offset } = useParallax(0.3);
 
   return (
-    <section ref={parallaxRef} className="relative min-h-[85svh] md:min-h-[90svh] flex items-center overflow-hidden bg-maroon">
+    <section ref={parallaxRef} className="relative min-h-[80svh] md:min-h-[85svh] flex items-center overflow-hidden bg-maroon">
       {/* Parallax background layers */}
       <div
         className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-burgundy via-maroon to-[#1a0204]"
@@ -105,13 +96,15 @@ function Hero() {
       <img
         src="/images/hero.webp"
         alt=""
-        className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-overlay"
+        className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-luminosity"
         style={{ transform: `translateY(${offset * 0.8}px) scale(1.1)` }}
         fetchPriority="high"
       />
+      {/* Bottom vignette to eliminate any image bleed at trust row */}
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#1a0204] via-[#1a0204]/60 to-transparent pointer-events-none" />
 
       {/* Content */}
-      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-20 md:py-28 w-full">
+      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20 w-full">
         <div className="max-w-3xl">
           {/* Badge */}
           <div className="reveal inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 mb-8">
@@ -156,7 +149,7 @@ function Hero() {
           </div>
 
           {/* Trust row */}
-          <div className="mt-12 flex flex-wrap items-center gap-6 text-sm text-white/50 reveal reveal-delay-4">
+          <div className="mt-10 flex flex-wrap items-center gap-6 text-sm text-white/60 reveal reveal-delay-4">
             <div className="flex items-center gap-2">
               <div className="size-1.5 rounded-full bg-gold" />
               <span>85+ projects</span>
@@ -227,30 +220,23 @@ function Problem() {
         </div>
 
         <div className="mt-16 grid sm:grid-cols-2 lg:grid-cols-4 gap-6 stagger">
-          {problems.map((p, i) => {
-            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
-            return (
-              <div
-                key={p.title}
-                ref={cardRef}
-                className={cn(
-                  "reveal-on-scroll p-6 bg-cream border border-line rounded-2xl card-lift hover:shadow-card-hover transition-all duration-300",
-                  cardRevealed && "revealed",
-                )}
-                style={{ transitionDelay: `${i * 80}ms` }}
-              >
-                <div className="size-12 rounded-xl bg-maroon/10 flex items-center justify-center text-burgundy mb-4">
-                  {p.icon}
-                </div>
-                <h3 className="font-display text-xl text-maroon">{p.title}</h3>
-                <p className="mt-2 text-sm text-ink/70">{p.desc}</p>
-                <div className="mt-4 pt-4 border-t border-line/50">
-                  <span className="font-display text-2xl text-gradient-gold">{p.stat}</span>
-                  <p className="text-xs text-muted mt-1">{p.statLabel}</p>
-                </div>
+          {problems.map((p, i) => (
+            <Reveal
+              key={p.title}
+              className="p-6 bg-cream border border-line rounded-2xl card-lift hover:shadow-card-hover transition-all duration-300"
+              style={{ transitionDelay: `${i * 80}ms` }}
+            >
+              <div className="size-12 rounded-xl bg-maroon/10 flex items-center justify-center text-burgundy mb-4">
+                {p.icon}
               </div>
-            );
-          })}
+              <h3 className="font-display text-xl text-maroon">{p.title}</h3>
+              <p className="mt-2 text-sm text-ink/70">{p.desc}</p>
+              <div className="mt-4 pt-4 border-t border-line/50">
+                <span className="font-display text-2xl text-gradient-gold">{p.stat}</span>
+                <p className="text-xs text-muted mt-1">{p.statLabel}</p>
+              </div>
+            </Reveal>
+          ))}
         </div>
       </div>
     </section>
@@ -279,7 +265,7 @@ function Solution() {
       number: "03",
       title: "Visible project management",
       desc: "Photo timelines, written decisions, weekly updates. You know the status without chasing a voice note.",
-      link: "/tools/live-tracker",
+      link: "/portal",
     },
   ];
 
@@ -311,34 +297,23 @@ function Solution() {
         </div>
 
         <div className="mt-16 grid lg:grid-cols-3 gap-6">
-          {pillars.map((p, i) => {
-            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
-            return (
-              <div
-                key={p.number}
-                ref={cardRef}
-                className={cn(
-                  "reveal-on-scroll",
-                  cardRevealed && "revealed",
-                )}
-                style={{ transitionDelay: `${i * 100}ms` }}
+          {pillars.map((p, i) => (
+            <Reveal key={p.number} style={{ transitionDelay: `${i * 100}ms` }}>
+              <Link
+                to={p.link}
+                className="group block p-8 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl hover:border-gold/30 hover:bg-white/10 hover:shadow-[0_20px_60px_rgba(201,146,79,0.12)] card-lift transition-all duration-300 h-full"
               >
-                <Link
-                  to={p.link}
-                  className="group block p-8 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl hover:border-gold/30 hover:bg-white/10 hover:shadow-[0_20px_60px_rgba(201,146,79,0.12)] card-lift transition-all duration-300 h-full"
-                >
-                  <span className="text-gradient-gold font-display text-3xl font-bold">{p.number}</span>
-                  <h3 className="mt-4 font-display text-2xl text-paper group-hover:text-gold transition-colors duration-300">
-                    {p.title}
-                  </h3>
-                  <p className="mt-3 text-sm text-paper/70 leading-relaxed">{p.desc}</p>
-                  <span className="mt-6 inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] text-gold">
-                    Learn more <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
-                  </span>
-                </Link>
-              </div>
-            );
-          })}
+                <span className="text-gradient-gold font-display text-3xl font-bold">{p.number}</span>
+                <h3 className="mt-4 font-display text-2xl text-paper group-hover:text-gold transition-colors duration-300">
+                  {p.title}
+                </h3>
+                <p className="mt-3 text-sm text-paper/70 leading-relaxed">{p.desc}</p>
+                <span className="mt-6 inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] text-gold">
+                  Learn more <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </Link>
+            </Reveal>
+          ))}
         </div>
       </div>
     </section>
@@ -370,19 +345,11 @@ function Proof({ projects }: { projects: ReturnType<typeof featuredProjects> }) 
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger">
-          {projects.slice(0, 3).map((p, i) => {
-            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
-            return (
-              <div
-                key={p.slug}
-                ref={cardRef}
-                className={cn("reveal-on-scroll", cardRevealed && "revealed")}
-                style={{ transitionDelay: `${i * 100}ms` }}
-              >
-                <ProjectCard project={p} />
-              </div>
-            );
-          })}
+          {projects.slice(0, 3).map((p, i) => (
+            <Reveal key={p.slug} style={{ transitionDelay: `${i * 100}ms` }}>
+              <ProjectCard project={p} />
+            </Reveal>
+          ))}
         </div>
 
         <div className="mt-10 text-center sm:text-left">
@@ -425,36 +392,28 @@ function Services() {
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger">
-          {featuredServices.map((s, i) => {
-            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
-            return (
-              <div
-                key={s.slug}
-                ref={cardRef}
-                className={cn("reveal-on-scroll", cardRevealed && "revealed")}
-                style={{ transitionDelay: `${i * 80}ms` }}
+          {featuredServices.map((s, i) => (
+            <Reveal key={s.slug} style={{ transitionDelay: `${i * 80}ms` }}>
+              <Link
+                to="/services/$slug"
+                params={{ slug: s.slug }}
+                className="group block p-6 bg-cream border border-line/50 rounded-2xl hover:shadow-card hover:border-gold/30 card-lift transition-all duration-300 h-full"
               >
-                <Link
-                  to="/services/$slug"
-                  params={{ slug: s.slug }}
-                  className="group block p-6 bg-cream border border-line/50 rounded-2xl hover:shadow-card hover:border-gold/30 card-lift transition-all duration-300 h-full"
-                >
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-gold">
-                    {s.kicker}
-                  </p>
-                  <h3 className="mt-3 font-display text-xl text-maroon group-hover:text-burgundy transition-colors duration-300">
-                    {s.title}
-                  </h3>
-                  <p className="mt-2 text-sm text-ink/70 line-clamp-2">
-                    {s.lede}
-                  </p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] text-burgundy group-hover:text-maroon">
-                    View scope <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
-                  </span>
-                </Link>
-              </div>
-            );
-          })}
+                <p className="text-[11px] uppercase tracking-[0.14em] text-gold">
+                  {s.kicker}
+                </p>
+                <h3 className="mt-3 font-display text-xl text-maroon group-hover:text-burgundy transition-colors duration-300">
+                  {s.title}
+                </h3>
+                <p className="mt-2 text-sm text-ink/70 line-clamp-2">
+                  {s.lede}
+                </p>
+                <span className="mt-4 inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] text-burgundy group-hover:text-maroon">
+                  View scope <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </Link>
+            </Reveal>
+          ))}
         </div>
       </div>
     </section>
@@ -479,10 +438,10 @@ function Tools() {
       icon: "📍",
     },
     {
-      title: "Live Tracker",
-      desc: "Track project progress with photo timelines and decision logs.",
-      link: "/tools/live-tracker",
-      icon: "📸",
+      title: "BOQ Generator",
+      desc: "Build a SMM2 bill of quantities line by line, then export it.",
+      link: "/tools/boq-generator",
+      icon: "🧾",
     },
   ];
 
@@ -499,33 +458,25 @@ function Tools() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 stagger">
-          {tools.map((t, i) => {
-            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
-            return (
-              <div
-                key={t.title}
-                ref={cardRef}
-                className={cn("reveal-on-scroll", cardRevealed && "revealed")}
-                style={{ transitionDelay: `${i * 100}ms` }}
+          {tools.map((t, i) => (
+            <Reveal key={t.title} style={{ transitionDelay: `${i * 100}ms` }}>
+              <Link
+                to={t.link}
+                className="group block p-8 bg-maroon rounded-2xl text-center hover:shadow-card-hover hover:bg-burgundy card-lift transition-all duration-300 h-full"
               >
-                <Link
-                  to={t.link}
-                  className="group block p-8 bg-maroon rounded-2xl text-center hover:shadow-card-hover hover:bg-burgundy card-lift transition-all duration-300 h-full"
-                >
-                  <span className="text-4xl">{t.icon}</span>
-                  <h3 className="mt-4 font-display text-xl text-paper group-hover:text-gold transition-colors duration-300">
-                    {t.title}
-                  </h3>
-                  <p className="mt-2 text-sm text-paper/70">
-                    {t.desc}
-                  </p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] text-gold group-hover:text-gold-light">
-                    Try it <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
-                  </span>
-                </Link>
-              </div>
-            );
-          })}
+                <span className="text-4xl">{t.icon}</span>
+                <h3 className="mt-4 font-display text-xl text-paper group-hover:text-gold transition-colors duration-300">
+                  {t.title}
+                </h3>
+                <p className="mt-2 text-sm text-paper/70">
+                  {t.desc}
+                </p>
+                <span className="mt-4 inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] text-gold group-hover:text-gold-light">
+                  Try it <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </Link>
+            </Reveal>
+          ))}
         </div>
       </div>
     </section>
@@ -549,21 +500,14 @@ function Social() {
         </div>
 
         <div className="mt-16 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
-          {WHY.map((w, i) => {
-            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
-            return (
-              <ScrollRevealText key={w.title} delay={i * 100}>
-                <article
-                  className={cn(
-                    "p-8 bg-cream border border-line rounded-2xl card-lift hover:shadow-card transition-all duration-300 h-full",
-                  )}
-                >
-                  <h3 className="font-display text-xl text-maroon">{w.title}</h3>
-                  <p className="mt-3 text-sm text-ink/70">{w.body}</p>
-                </article>
-              </ScrollRevealText>
-            );
-          })}
+          {WHY.map((w, i) => (
+            <ScrollRevealText key={w.title} delay={i * 100}>
+              <article className="p-8 bg-cream border border-line rounded-2xl card-lift hover:shadow-card transition-all duration-300 h-full">
+                <h3 className="font-display text-xl text-maroon">{w.title}</h3>
+                <p className="mt-3 text-sm text-ink/70">{w.body}</p>
+              </article>
+            </ScrollRevealText>
+          ))}
         </div>
       </div>
     </section>

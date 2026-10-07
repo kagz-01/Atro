@@ -11,11 +11,23 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AccessibilityRouteImport } from './routes/accessibility'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as DiasporaRouteImport } from './routes/diaspora'
+import { Route as FeesRouteImport } from './routes/fees'
+import { Route as PortalRouteImport } from './routes/portal'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProcessRouteImport } from './routes/process'
+import { Route as ScamCheckRouteImport } from './routes/scam-check'
+import { Route as ScamWarningRouteImport } from './routes/scam-warning'
 import { Route as StartRouteImport } from './routes/start'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as AdminEnquiriesRouteImport } from './routes/admin/enquiries'
+import { Route as GuidesIndexRouteImport } from './routes/guides/index'
+import { Route as GuidesSlugRouteImport } from './routes/guides/$slug'
+import { Route as GuidesJourneyRouteImport } from './routes/guides/journey'
 import { Route as InsightsIndexRouteImport } from './routes/insights/index'
 import { Route as InsightsSlugRouteImport } from './routes/insights/$slug'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
@@ -23,7 +35,9 @@ import { Route as ProjectsSlugRouteImport } from './routes/projects/$slug'
 import { Route as ServicesIndexRouteImport } from './routes/services/index'
 import { Route as ServicesSlugRouteImport } from './routes/services/$slug'
 import { Route as ToolsIndexRouteImport } from './routes/tools/index'
+import { Route as ToolsBoqGeneratorRouteImport } from './routes/tools/boq-generator'
 import { Route as ToolsCostCalculatorRouteImport } from './routes/tools/cost-calculator'
+import { Route as ToolsMaterialPricesRouteImport } from './routes/tools/material-prices'
 import { Route as ToolsZoneMapRouteImport } from './routes/tools/zone-map'
 import { Route as ZonesIndexRouteImport } from './routes/zones/index'
 import { Route as ZonesSlugRouteImport } from './routes/zones/$slug'
@@ -38,9 +52,34 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccessibilityRoute = AccessibilityRouteImport.update({
+  id: '/accessibility',
+  path: '/accessibility',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiasporaRoute = DiasporaRouteImport.update({
+  id: '/diaspora',
+  path: '/diaspora',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeesRoute = FeesRouteImport.update({
+  id: '/fees',
+  path: '/fees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalRoute = PortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -53,6 +92,16 @@ const ProcessRoute = ProcessRouteImport.update({
   path: '/process',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScamCheckRoute = ScamCheckRouteImport.update({
+  id: '/scam-check',
+  path: '/scam-check',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScamWarningRoute = ScamWarningRouteImport.update({
+  id: '/scam-warning',
+  path: '/scam-warning',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StartRoute = StartRouteImport.update({
   id: '/start',
   path: '/start',
@@ -61,6 +110,31 @@ const StartRoute = StartRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminEnquiriesRoute = AdminEnquiriesRouteImport.update({
+  id: '/admin/enquiries',
+  path: '/admin/enquiries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuidesIndexRoute = GuidesIndexRouteImport.update({
+  id: '/guides/',
+  path: '/guides/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuidesSlugRoute = GuidesSlugRouteImport.update({
+  id: '/guides/$slug',
+  path: '/guides/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuidesJourneyRoute = GuidesJourneyRouteImport.update({
+  id: '/guides/journey',
+  path: '/guides/journey',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InsightsIndexRoute = InsightsIndexRouteImport.update({
@@ -98,9 +172,19 @@ const ToolsIndexRoute = ToolsIndexRouteImport.update({
   path: '/tools/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsBoqGeneratorRoute = ToolsBoqGeneratorRouteImport.update({
+  id: '/tools/boq-generator',
+  path: '/tools/boq-generator',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolsCostCalculatorRoute = ToolsCostCalculatorRouteImport.update({
   id: '/tools/cost-calculator',
   path: '/tools/cost-calculator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsMaterialPricesRoute = ToolsMaterialPricesRouteImport.update({
+  id: '/tools/material-prices',
+  path: '/tools/material-prices',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ToolsZoneMapRoute = ToolsZoneMapRouteImport.update({
@@ -122,17 +206,31 @@ const ZonesSlugRoute = ZonesSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accessibility': typeof AccessibilityRoute
   '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
+  '/diaspora': typeof DiasporaRoute
+  '/fees': typeof FeesRoute
+  '/portal': typeof PortalRoute
   '/privacy': typeof PrivacyRoute
   '/process': typeof ProcessRoute
+  '/scam-check': typeof ScamCheckRoute
+  '/scam-warning': typeof ScamWarningRoute
   '/start': typeof StartRoute
   '/terms': typeof TermsRoute
+  '/verify': typeof VerifyRoute
+  '/admin/enquiries': typeof AdminEnquiriesRoute
+  '/guides/$slug': typeof GuidesSlugRoute
+  '/guides/journey': typeof GuidesJourneyRoute
   '/insights/$slug': typeof InsightsSlugRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
+  '/tools/boq-generator': typeof ToolsBoqGeneratorRoute
   '/tools/cost-calculator': typeof ToolsCostCalculatorRoute
+  '/tools/material-prices': typeof ToolsMaterialPricesRoute
   '/tools/zone-map': typeof ToolsZoneMapRoute
   '/zones/$slug': typeof ZonesSlugRoute
+  '/guides/': typeof GuidesIndexRoute
   '/insights/': typeof InsightsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/services/': typeof ServicesIndexRoute
@@ -142,17 +240,31 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accessibility': typeof AccessibilityRoute
   '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
+  '/diaspora': typeof DiasporaRoute
+  '/fees': typeof FeesRoute
+  '/portal': typeof PortalRoute
   '/privacy': typeof PrivacyRoute
   '/process': typeof ProcessRoute
+  '/scam-check': typeof ScamCheckRoute
+  '/scam-warning': typeof ScamWarningRoute
   '/start': typeof StartRoute
   '/terms': typeof TermsRoute
+  '/verify': typeof VerifyRoute
+  '/admin/enquiries': typeof AdminEnquiriesRoute
+  '/guides/$slug': typeof GuidesSlugRoute
+  '/guides/journey': typeof GuidesJourneyRoute
   '/insights/$slug': typeof InsightsSlugRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
+  '/tools/boq-generator': typeof ToolsBoqGeneratorRoute
   '/tools/cost-calculator': typeof ToolsCostCalculatorRoute
+  '/tools/material-prices': typeof ToolsMaterialPricesRoute
   '/tools/zone-map': typeof ToolsZoneMapRoute
   '/zones/$slug': typeof ZonesSlugRoute
+  '/guides': typeof GuidesIndexRoute
   '/insights': typeof InsightsIndexRoute
   '/projects': typeof ProjectsIndexRoute
   '/services': typeof ServicesIndexRoute
@@ -163,17 +275,31 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accessibility': typeof AccessibilityRoute
   '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
+  '/diaspora': typeof DiasporaRoute
+  '/fees': typeof FeesRoute
+  '/portal': typeof PortalRoute
   '/privacy': typeof PrivacyRoute
   '/process': typeof ProcessRoute
+  '/scam-check': typeof ScamCheckRoute
+  '/scam-warning': typeof ScamWarningRoute
   '/start': typeof StartRoute
   '/terms': typeof TermsRoute
+  '/verify': typeof VerifyRoute
+  '/admin/enquiries': typeof AdminEnquiriesRoute
+  '/guides/$slug': typeof GuidesSlugRoute
+  '/guides/journey': typeof GuidesJourneyRoute
   '/insights/$slug': typeof InsightsSlugRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
+  '/tools/boq-generator': typeof ToolsBoqGeneratorRoute
   '/tools/cost-calculator': typeof ToolsCostCalculatorRoute
+  '/tools/material-prices': typeof ToolsMaterialPricesRoute
   '/tools/zone-map': typeof ToolsZoneMapRoute
   '/zones/$slug': typeof ZonesSlugRoute
+  '/guides/': typeof GuidesIndexRoute
   '/insights/': typeof InsightsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/services/': typeof ServicesIndexRoute
@@ -185,17 +311,31 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/accessibility'
     | '/contact'
+    | '/cookies'
+    | '/diaspora'
+    | '/fees'
+    | '/portal'
     | '/privacy'
     | '/process'
+    | '/scam-check'
+    | '/scam-warning'
     | '/start'
     | '/terms'
+    | '/verify'
+    | '/admin/enquiries'
+    | '/guides/$slug'
+    | '/guides/journey'
     | '/insights/$slug'
     | '/projects/$slug'
     | '/services/$slug'
+    | '/tools/boq-generator'
     | '/tools/cost-calculator'
+    | '/tools/material-prices'
     | '/tools/zone-map'
     | '/zones/$slug'
+    | '/guides/'
     | '/insights/'
     | '/projects/'
     | '/services/'
@@ -205,17 +345,31 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/accessibility'
     | '/contact'
+    | '/cookies'
+    | '/diaspora'
+    | '/fees'
+    | '/portal'
     | '/privacy'
     | '/process'
+    | '/scam-check'
+    | '/scam-warning'
     | '/start'
     | '/terms'
+    | '/verify'
+    | '/admin/enquiries'
+    | '/guides/$slug'
+    | '/guides/journey'
     | '/insights/$slug'
     | '/projects/$slug'
     | '/services/$slug'
+    | '/tools/boq-generator'
     | '/tools/cost-calculator'
+    | '/tools/material-prices'
     | '/tools/zone-map'
     | '/zones/$slug'
+    | '/guides'
     | '/insights'
     | '/projects'
     | '/services'
@@ -225,17 +379,31 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/accessibility'
     | '/contact'
+    | '/cookies'
+    | '/diaspora'
+    | '/fees'
+    | '/portal'
     | '/privacy'
     | '/process'
+    | '/scam-check'
+    | '/scam-warning'
     | '/start'
     | '/terms'
+    | '/verify'
+    | '/admin/enquiries'
+    | '/guides/$slug'
+    | '/guides/journey'
     | '/insights/$slug'
     | '/projects/$slug'
     | '/services/$slug'
+    | '/tools/boq-generator'
     | '/tools/cost-calculator'
+    | '/tools/material-prices'
     | '/tools/zone-map'
     | '/zones/$slug'
+    | '/guides/'
     | '/insights/'
     | '/projects/'
     | '/services/'
@@ -246,17 +414,31 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AccessibilityRoute: typeof AccessibilityRoute
   ContactRoute: typeof ContactRoute
+  CookiesRoute: typeof CookiesRoute
+  DiasporaRoute: typeof DiasporaRoute
+  FeesRoute: typeof FeesRoute
+  PortalRoute: typeof PortalRoute
   PrivacyRoute: typeof PrivacyRoute
   ProcessRoute: typeof ProcessRoute
+  ScamCheckRoute: typeof ScamCheckRoute
+  ScamWarningRoute: typeof ScamWarningRoute
   StartRoute: typeof StartRoute
   TermsRoute: typeof TermsRoute
+  VerifyRoute: typeof VerifyRoute
+  AdminEnquiriesRoute: typeof AdminEnquiriesRoute
+  GuidesSlugRoute: typeof GuidesSlugRoute
+  GuidesJourneyRoute: typeof GuidesJourneyRoute
   InsightsSlugRoute: typeof InsightsSlugRoute
   ProjectsSlugRoute: typeof ProjectsSlugRoute
   ServicesSlugRoute: typeof ServicesSlugRoute
+  ToolsBoqGeneratorRoute: typeof ToolsBoqGeneratorRoute
   ToolsCostCalculatorRoute: typeof ToolsCostCalculatorRoute
+  ToolsMaterialPricesRoute: typeof ToolsMaterialPricesRoute
   ToolsZoneMapRoute: typeof ToolsZoneMapRoute
   ZonesSlugRoute: typeof ZonesSlugRoute
+  GuidesIndexRoute: typeof GuidesIndexRoute
   InsightsIndexRoute: typeof InsightsIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
   ServicesIndexRoute: typeof ServicesIndexRoute
@@ -280,11 +462,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accessibility': {
+      id: '/accessibility'
+      path: '/accessibility'
+      fullPath: '/accessibility'
+      preLoaderRoute: typeof AccessibilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact': {
       id: '/contact'
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diaspora': {
+      id: '/diaspora'
+      path: '/diaspora'
+      fullPath: '/diaspora'
+      preLoaderRoute: typeof DiasporaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fees': {
+      id: '/fees'
+      path: '/fees'
+      fullPath: '/fees'
+      preLoaderRoute: typeof FeesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -301,6 +518,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scam-check': {
+      id: '/scam-check'
+      path: '/scam-check'
+      fullPath: '/scam-check'
+      preLoaderRoute: typeof ScamCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scam-warning': {
+      id: '/scam-warning'
+      path: '/scam-warning'
+      fullPath: '/scam-warning'
+      preLoaderRoute: typeof ScamWarningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/start': {
       id: '/start'
       path: '/start'
@@ -313,6 +544,41 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/enquiries': {
+      id: '/admin/enquiries'
+      path: '/admin/enquiries'
+      fullPath: '/admin/enquiries'
+      preLoaderRoute: typeof AdminEnquiriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guides/': {
+      id: '/guides/'
+      path: '/guides'
+      fullPath: '/guides/'
+      preLoaderRoute: typeof GuidesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guides/$slug': {
+      id: '/guides/$slug'
+      path: '/guides/$slug'
+      fullPath: '/guides/$slug'
+      preLoaderRoute: typeof GuidesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guides/journey': {
+      id: '/guides/journey'
+      path: '/guides/journey'
+      fullPath: '/guides/journey'
+      preLoaderRoute: typeof GuidesJourneyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/insights/': {
@@ -364,11 +630,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/boq-generator': {
+      id: '/tools/boq-generator'
+      path: '/tools/boq-generator'
+      fullPath: '/tools/boq-generator'
+      preLoaderRoute: typeof ToolsBoqGeneratorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tools/cost-calculator': {
       id: '/tools/cost-calculator'
       path: '/tools/cost-calculator'
       fullPath: '/tools/cost-calculator'
       preLoaderRoute: typeof ToolsCostCalculatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/material-prices': {
+      id: '/tools/material-prices'
+      path: '/tools/material-prices'
+      fullPath: '/tools/material-prices'
+      preLoaderRoute: typeof ToolsMaterialPricesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tools/zone-map': {
@@ -398,17 +678,31 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AccessibilityRoute: AccessibilityRoute,
   ContactRoute: ContactRoute,
+  CookiesRoute: CookiesRoute,
+  DiasporaRoute: DiasporaRoute,
+  FeesRoute: FeesRoute,
+  PortalRoute: PortalRoute,
   PrivacyRoute: PrivacyRoute,
   ProcessRoute: ProcessRoute,
+  ScamCheckRoute: ScamCheckRoute,
+  ScamWarningRoute: ScamWarningRoute,
   StartRoute: StartRoute,
   TermsRoute: TermsRoute,
+  VerifyRoute: VerifyRoute,
+  AdminEnquiriesRoute: AdminEnquiriesRoute,
+  GuidesSlugRoute: GuidesSlugRoute,
+  GuidesJourneyRoute: GuidesJourneyRoute,
   InsightsSlugRoute: InsightsSlugRoute,
   ProjectsSlugRoute: ProjectsSlugRoute,
   ServicesSlugRoute: ServicesSlugRoute,
+  ToolsBoqGeneratorRoute: ToolsBoqGeneratorRoute,
   ToolsCostCalculatorRoute: ToolsCostCalculatorRoute,
+  ToolsMaterialPricesRoute: ToolsMaterialPricesRoute,
   ToolsZoneMapRoute: ToolsZoneMapRoute,
   ZonesSlugRoute: ZonesSlugRoute,
+  GuidesIndexRoute: GuidesIndexRoute,
   InsightsIndexRoute: InsightsIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
   ServicesIndexRoute: ServicesIndexRoute,

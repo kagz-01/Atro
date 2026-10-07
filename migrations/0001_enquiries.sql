@@ -1,0 +1,21 @@
+create table if not exists enquiries (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  phone text not null,
+  email text not null,
+  project_type text not null,
+  zone text not null,
+  stage text not null default '',
+  start_date text not null default '',
+  description text not null default '',
+  sqm integer,
+  finish text,
+  indicative_min integer,
+  indicative_max integer,
+  diaspora boolean not null default false,
+  diaspora_country text default '',
+  diaspora_timezone text default '',
+  diaspora_kenya_contact text default '',
+  diaspora_visit_plans text default '',
+  created_at timestamptz not null default now()
+);

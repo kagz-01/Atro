@@ -67,9 +67,13 @@ export function PageHero({
 export function CtaBand({
   title = "Have a project in mind?",
   body = "Tell us the plot, the building, and the budget band. We will tell you whether we are the right studio — and where we actually build.",
+  ctaTo = "/start" as string | { to: string; search: Record<string, string> },
+  ctaLabel = "Start a project",
 }: {
   title?: string;
   body?: string;
+  ctaTo?: string | { to: string; search: Record<string, string> };
+  ctaLabel?: string;
 }) {
   return (
     <section className="relative overflow-hidden">
@@ -87,10 +91,11 @@ export function CtaBand({
           <p className="mt-4 text-paper/75">{body}</p>
         </div>
         <Link
-          to="/start"
+          to={typeof ctaTo === "string" ? ctaTo : ctaTo.to}
+          search={typeof ctaTo === "object" ? ctaTo.search : undefined}
           className="group inline-flex h-14 px-8 items-center gap-3 bg-gradient-to-r from-gold to-gold-light text-maroon text-[12px] uppercase tracking-[0.16em] font-bold rounded-2xl shadow-glow-gold btn-lift overflow-hidden"
         >
-          <span className="relative z-10">Start a project</span>
+          <span className="relative z-10">{ctaLabel}</span>
           <ArrowRight className="size-5 relative z-10 group-hover:translate-x-1 transition-transform" />
           <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
         </Link>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
+import { Reveal } from "@/components/reveal";
 import { useRevealOnScroll } from "@/hooks/use-reveal";
+import { cn } from "@/lib/utils";
 
 type CounterProps = {
   end: number;
@@ -67,28 +68,21 @@ export function TrustStrip() {
 
       <div ref={ref} className={cn("relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20 reveal-on-scroll", revealed && "revealed")}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-          {STATS.map((stat, i) => {
-            const { ref: cardRef, revealed: cardRevealed } = useRevealOnScroll();
-            return (
-              <div
-                key={stat.label}
-                ref={cardRef}
-                className={cn(
-                  "reveal-on-scroll text-center md:text-left p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300",
-                  cardRevealed && "revealed",
-                )}
-                style={{ transitionDelay: `${i * 100}ms` }}
-              >
-                <AnimatedCounter
-                  end={stat.value}
-                  suffix={stat.suffix}
-                  className="font-display text-4xl md:text-5xl text-gradient-gold"
-                />
-                <p className="mt-3 text-sm font-medium text-paper">{stat.label}</p>
-                <p className="mt-1 text-xs text-paper/60">{stat.description}</p>
-              </div>
-            );
-          })}
+          {STATS.map((stat, i) => (
+            <Reveal
+              key={stat.label}
+              className="text-center md:text-left p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
+              style={{ transitionDelay: `${i * 100}ms` }}
+            >
+              <AnimatedCounter
+                end={stat.value}
+                suffix={stat.suffix}
+                className="font-display text-4xl md:text-5xl text-gradient-gold"
+              />
+              <p className="mt-3 text-sm font-medium text-paper">{stat.label}</p>
+              <p className="mt-1 text-xs text-paper/60">{stat.description}</p>
+            </Reveal>
+          ))}
         </div>
       </div>
     </section>

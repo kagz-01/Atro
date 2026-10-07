@@ -51,7 +51,7 @@ function ProjectsPage() {
         lede="Filter by type, status and zone. Ongoing work is labelled ongoing — never dressed as finished."
         image="/images/karen.webp"
       />
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12">
+      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-12">
         <div className="flex flex-col gap-4">
           <FilterRow label="Type" value={type} onChange={setType} options={TYPES} />
           <FilterRow label="Status" value={status} onChange={setStatus} options={STATUSES} />

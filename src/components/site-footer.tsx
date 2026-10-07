@@ -1,96 +1,151 @@
 import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/logo";
-import { COMPANY, NAV, SERVICES, ZONES } from "@/lib/site";
+import { LEGAL_PAGES } from "@/components/legal-page";
+import { Mail, Phone, MapPin, Instagram, Linkedin } from "lucide-react";
+import { COMPANY } from "@/lib/site";
+
+const FOOTER_COLUMNS = [
+  {
+    label: "Studio",
+    links: [
+      { to: "/about", label: "About us" },
+      { to: "/process", label: "How we work" },
+      { to: "/zones", label: "Where we build" },
+      { to: "/insights", label: "Insights" },
+      { to: "/contact", label: "Contact" },
+    ],
+  },
+  {
+    label: "Work",
+    links: [
+      { to: "/projects", label: "Projects" },
+      { to: "/services", label: "Services" },
+      { to: "/start", label: "Start a project" },
+    ],
+  },
+  {
+    label: "Tools",
+    links: [
+      { to: "/tools", label: "All tools" },
+      { to: "/tools/cost-calculator", label: "Cost calculator" },
+      { to: "/tools/boq-generator", label: "BOQ generator" },
+      { to: "/tools/material-prices", label: "Material prices" },
+      { to: "/tools/zone-map", label: "Zone map" },
+    ],
+  },
+  {
+    label: "Build from abroad",
+    links: [
+      { to: "/diaspora", label: "Diaspora hub" },
+      { to: "/guides", label: "Guides" },
+      { to: "/portal", label: "Client portal" },
+      { to: "/verify", label: "Verify anyone" },
+      { to: "/scam-check", label: "Scam check" },
+    ],
+  },
+] as const;
 
 export function SiteFooter() {
   return (
     <footer className="relative overflow-hidden">
-      {/* Background */}
       <div className="absolute inset-0 bg-maroon" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-burgundy/50 via-maroon to-maroon" />
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] bg-gold/5 rounded-full blur-[150px]" />
-      </div>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-burgundy/40 via-maroon to-maroon" />
 
-      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20">
-        <div className="grid gap-12 md:grid-cols-12">
-          <div className="md:col-span-4">
+      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-14 md:py-16">
+        {/* Top row: Logo + tagline + contact */}
+        <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
+          <div className="space-y-3">
             <Logo className="[&_img]:brightness-200" />
-            <p className="mt-6 text-sm text-paper/70 max-w-sm">
-              {COMPANY.support}
-            </p>
-            <p className="mt-6 text-[11px] uppercase tracking-[0.18em] text-gold">
-              {COMPANY.address} · {COMPANY.hours}
+            <p className="text-[12px] uppercase tracking-[0.16em] text-paper/50">
+              {COMPANY.tagline}
             </p>
           </div>
-          <div className="md:col-span-2">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-gold mb-4">
-              Studio
-            </p>
-            <ul className="space-y-3 text-sm text-paper/80">
-              {NAV.map((n) => (
-                <li key={n.to}>
-                  <Link to={n.to} className="hover:text-gold transition-colors duration-300">
-                    {n.label}
-                  </Link>
-                </li>
-              ))}
-              <li>
-                <Link to="/start" className="hover:text-gold transition-colors duration-300">
-                  Start a project
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div className="md:col-span-3">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-gold mb-4">
-              Services
-            </p>
-            <ul className="space-y-3 text-sm text-paper/80">
-              {SERVICES.map((s) => (
-                <li key={s.slug}>
-                  <Link
-                    to="/services/$slug"
-                    params={{ slug: s.slug }}
-                    className="hover:text-gold transition-colors duration-300"
-                  >
-                    {s.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="md:col-span-3">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-gold mb-4">
-              Where we build
-            </p>
-            <ul className="space-y-3 text-sm text-paper/80">
-              {ZONES.map((z) => (
-                <li key={z.slug}>
-                  <Link
-                    to="/zones/$slug"
-                    params={{ slug: z.slug }}
-                    className="hover:text-gold transition-colors duration-300"
-                  >
-                    {z.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <a
+              href={`mailto:${COMPANY.email}`}
+              className="flex items-center gap-1.5 text-[13px] text-paper/60 transition-colors hover:text-gold"
+            >
+              <Mail size={13} className="opacity-60" />
+              {COMPANY.email}
+            </a>
+            <a
+              href={`tel:${COMPANY.phoneTel}`}
+              className="flex items-center gap-1.5 text-[13px] text-paper/60 transition-colors hover:text-gold"
+            >
+              <Phone size={13} className="opacity-60" />
+              {COMPANY.phoneDisplay}
+            </a>
+            <span className="flex items-center gap-1.5 text-[13px] text-paper/40">
+              <MapPin size={13} className="opacity-60" />
+              {COMPANY.address}
+            </span>
           </div>
         </div>
 
-        <div className="mt-16 pt-6 border-t border-paper/10 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between text-[12px] text-paper/50">
-          <p>© {new Date().getFullYear()} {COMPANY.name}</p>
-          <div className="flex gap-5">
-            <Link to="/privacy" className="hover:text-gold transition-colors duration-300">
-              Privacy
+        {/* Sitemap */}
+        <div className="mt-8 grid gap-8 border-t border-paper/10 pt-6 sm:grid-cols-2 lg:grid-cols-4">
+          {FOOTER_COLUMNS.map((col) => (
+            <div key={col.label}>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-paper/30">
+                {col.label}
+              </p>
+              <ul className="mt-3 space-y-2">
+                {col.links.map((link) => (
+                  <li key={link.to}>
+                    <Link
+                      to={link.to}
+                      className="text-[13px] text-paper/55 transition-colors hover:text-gold"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* Policies */}
+        <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-paper/10 pt-6 text-[12px]">
+          <span className="text-[11px] uppercase tracking-[0.18em] text-paper/30">
+            Policies
+          </span>
+          {LEGAL_PAGES.map((p) => (
+            <Link
+              key={p.to}
+              to={p.to}
+              className="text-paper/55 transition-colors hover:text-gold"
+            >
+              {p.label}
             </Link>
-            <Link to="/terms" className="hover:text-gold transition-colors duration-300">
-              Terms
-            </Link>
-            <a href={`mailto:${COMPANY.email}`} className="hover:text-gold transition-colors duration-300">
-              {COMPANY.email}
+          ))}
+        </div>
+
+        {/* Bottom: Copyright + socials */}
+        <div className="mt-8 flex flex-col items-center gap-4 border-t border-paper/10 pt-6 md:flex-row md:justify-between">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-paper/40">
+            © {new Date().getFullYear()} {COMPANY.name}. All rights reserved.
+          </p>
+
+          <div className="flex items-center gap-4">
+            <a
+              href={COMPANY.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              className="text-paper/40 transition-colors hover:text-gold"
+            >
+              <Instagram size={16} />
+            </a>
+            <a
+              href={COMPANY.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="LinkedIn"
+              className="text-paper/40 transition-colors hover:text-gold"
+            >
+              <Linkedin size={16} />
             </a>
           </div>
         </div>

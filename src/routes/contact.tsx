@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Phone, MessageCircle, Mail, MapPin, Clock, ArrowRight, ExternalLink } from "lucide-react";
+import { Phone, MessageCircle, Mail, MapPin, Clock, ArrowRight } from "lucide-react";
 import { COMPANY } from "@/lib/site";
 import { useRevealOnScroll } from "@/hooks/use-reveal";
 import { ScrollRevealText } from "@/components/scroll-effects";

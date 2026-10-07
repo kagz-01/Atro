@@ -46,7 +46,11 @@ export function Marquee({
         ref={contentRef}
         className="flex w-max"
         style={{
-          animation: `${duration}s linear infinite ${dir} marquee`,
+          animationName: "marquee",
+          animationDuration: `${duration}s`,
+          animationTimingFunction: "linear",
+          animationIterationCount: "infinite",
+          animationDirection: dir,
           animationPlayState: isPaused ? "paused" : "running",
         }}
       >

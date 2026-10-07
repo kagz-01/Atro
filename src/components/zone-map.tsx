@@ -1,94 +1,147 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MapPin, CheckCircle, Clock, AlertCircle, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ZONES, type Zone, type ZoneStatus } from "@/lib/site";
 
-const STATUS_CONFIG: Record<ZoneStatus, { icon: typeof MapPin; color: string; label: string }> = {
-  active: { icon: CheckCircle, color: "text-green-600", label: "Active delivery" },
-  limited: { icon: Clock, color: "text-amber-600", label: "Limited availability" },
-  request: { icon: AlertCircle, color: "text-orange-600", label: "By request" },
-  diaspora: { icon: Users, color: "text-burgundy", label: "Remote-first" },
+const STATUS_CONFIG: Record<ZoneStatus, { icon: typeof MapPin; color: string; bg: string; hex: string; label: string }> = {
+  active: { icon: CheckCircle, color: "text-green-600", bg: "bg-green-500", hex: "#22c55e", label: "Active delivery" },
+  limited: { icon: Clock, color: "text-amber-600", bg: "bg-amber-500", hex: "#f59e0b", label: "Limited availability" },
+  request: { icon: AlertCircle, color: "text-orange-600", bg: "bg-orange-500", hex: "#f97316", label: "By request" },
+  diaspora: { icon: Users, color: "text-burgundy", bg: "bg-burgundy", hex: "#5C1018", label: "Remote-first" },
 };
+
+// Kenya center for initial view
+const KENYA_CENTER: [number, number] = [-1.0, 38.0];
+const KENYA_ZOOM = 6;
 
 export function ZoneMap({ compact = false }: { compact?: boolean }) {
   const [selected, setSelected] = useState<Zone | null>(null);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<unknown>(null);
+  const markersRef = useRef<unknown[]>([]);
+
+  // Initialize Leaflet map
+  useEffect(() => {
+    if (!mapRef.current || mapInstance.current) return;
+
+    let cancelled = false;
+
+    async function initMap() {
+      const L = await import("leaflet");
+      if (cancelled || !mapRef.current) return;
+
+      // Fix default marker icon paths for bundled builds
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      });
+
+      const map = L.map(mapRef.current, {
+        center: KENYA_CENTER,
+        zoom: KENYA_ZOOM,
+        scrollWheelZoom: false,
+        zoomControl: false,
+        attributionControl: false,
+      });
+
+      // OpenStreetMap tiles
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>',
+        maxZoom: 18,
+      }).addTo(map);
+
+      // Zoom control top-right
+      L.control.zoom({ position: "topright" }).addTo(map);
+
+      // Add zone markers
+      const kenyaZones = ZONES.filter((z) => z.slug !== "diaspora");
+      const markers: unknown[] = [];
+
+      kenyaZones.forEach((zone) => {
+        const status = STATUS_CONFIG[zone.status];
+
+        // Create custom icon
+        const icon = L.divIcon({
+          className: "zone-marker",
+          html: `<div class="relative">
+            <div class="absolute -inset-2 ${status.bg}/20 rounded-full animate-pulse"></div>
+            <div class="relative size-3 ${status.bg} rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-150 transition-transform"></div>
+          </div>`,
+          iconSize: [12, 12],
+          iconAnchor: [6, 6],
+        });
+
+        const marker = L.marker([zone.lat, zone.lng], { icon })
+          .addTo(map)
+          .bindTooltip(zone.name, {
+            permanent: false,
+            direction: "top",
+            offset: [0, -8],
+            className: "bg-paper text-maroon text-xs font-medium px-2 py-1 rounded-lg shadow-sm border border-line",
+          })
+          .on("click", () => setSelected(zone));
+
+        markers.push(marker);
+      });
+
+      // Draw coverage circles
+      kenyaZones.forEach((zone) => {
+        const status = STATUS_CONFIG[zone.status];
+        const radius = zone.status === "active" ? 60000 : zone.status === "limited" ? 40000 : 25000;
+        L.circle([zone.lat, zone.lng], {
+          radius,
+          color: status.hex,
+          fillColor: status.hex,
+          fillOpacity: 0.08,
+          weight: 1,
+          opacity: 0.25,
+        }).addTo(map);
+      });
+
+      mapInstance.current = map;
+      markersRef.current = markers;
+    }
+
+    initMap();
+
+    return () => {
+      cancelled = true;
+      if (mapInstance.current) {
+        (mapInstance.current as { remove: () => void }).remove();
+        mapInstance.current = null;
+      }
+    };
+  }, []);
+
+  // Fly to selected zone
+  useEffect(() => {
+    if (!selected || !mapInstance.current) return;
+    const map = mapInstance.current as { flyTo: (latlng: [number, number], zoom: number, options?: object) => void };
+    map.flyTo([selected.lat, selected.lng], 9, { duration: 1.2 });
+  }, [selected]);
 
   return (
     <div className={cn("grid gap-8", compact ? "lg:grid-cols-2" : "lg:grid-cols-12")}>
       {/* Map */}
       <div className={cn(compact ? "order-2" : "lg:col-span-7")}>
-        <div className="relative bg-cream border border-line rounded-md p-6 overflow-hidden">
-          <svg
-            viewBox="0 0 100 100"
-            className="w-full h-auto max-h-[500px]"
-            aria-label="Interactive map of Kenya showing ATRO coverage zones"
-          >
-            {/* Kenya outline (simplified) */}
-            <path
-              d="M30,15 L50,10 L70,15 L85,25 L90,40 L85,55 L80,65 L75,80 L65,90 L50,95 L35,90 L25,80 L20,65 L15,50 L20,35 L25,25 Z"
-              className="fill-stone/30 stroke-line stroke-1"
-            />
+        <div className="relative bg-cream border border-line rounded-xl overflow-hidden">
+          {/* Leaflet map container */}
+          <div
+            ref={mapRef}
+            className="w-full h-[400px] lg:h-[500px]"
+            style={{ background: "#e8e0d4" }}
+          />
 
-            {/* Zone markers */}
-            {ZONES.map((zone) => {
-              const status = STATUS_CONFIG[zone.status];
-              const isActive = selected?.slug === zone.slug || hovered === zone.slug;
-              return (
-                <g
-                  key={zone.slug}
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHovered(zone.slug)}
-                  onMouseLeave={() => setHovered(null)}
-                  onClick={() => setSelected(zone)}
-                >
-                  {/* Pulse ring for active zones */}
-                  {zone.status === "active" && (
-                    <circle
-                      cx={zone.cx}
-                      cy={zone.cy}
-                      r={isActive ? 6 : 4}
-                      className="fill-green-500/20 animate-pulse"
-                    />
-                  )}
-                  {/* Main dot */}
-                  <circle
-                    cx={zone.cx}
-                    cy={zone.cy}
-                    r={isActive ? 4 : 3}
-                    className={cn(
-                      "transition-all duration-200",
-                      zone.status === "active" && "fill-green-500",
-                      zone.status === "limited" && "fill-amber-500",
-                      zone.status === "request" && "fill-orange-500",
-                      zone.status === "diaspora" && "fill-burgundy",
-                    )}
-                  />
-                  {/* Label */}
-                  <text
-                    x={zone.cx}
-                    y={zone.cy - 6}
-                    textAnchor="middle"
-                    className={cn(
-                      "text-[4px] font-medium fill-ink transition-opacity",
-                      isActive ? "opacity-100" : "opacity-70",
-                    )}
-                  >
-                    {zone.name}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-
-          {/* Legend */}
-          <div className="mt-4 flex flex-wrap gap-4 text-[10px] uppercase tracking-[0.12em]">
-            {Object.entries(STATUS_CONFIG).map(([status, config]) => (
+          {/* Legend overlay */}
+          <div className="absolute bottom-4 left-4 bg-paper/90 backdrop-blur-sm border border-line rounded-xl px-4 py-3 flex flex-wrap gap-4 text-[10px] uppercase tracking-[0.12em]">
+            {Object.entries(STATUS_CONFIG).filter(([k]) => k !== "diaspora").map(([status, config]) => (
               <div key={status} className="flex items-center gap-1.5">
-                <div className={cn("size-2 rounded-full", config.color.replace("text-", "bg-"))} />
+                <div className={cn("size-2 rounded-full", config.bg)} />
                 <span className="text-muted">{config.label}</span>
               </div>
             ))}
@@ -122,7 +175,7 @@ function ZoneList({ zones, onSelect }: { zones: Zone[]; onSelect: (z: Zone) => v
             key={zone.slug}
             type="button"
             onClick={() => onSelect(zone)}
-            className="w-full text-left p-4 border border-line rounded-sm hover:border-burgundy bg-paper transition-colors"
+            className="w-full text-left p-4 border border-line rounded-xl hover:border-burgundy bg-paper transition-colors"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -147,7 +200,7 @@ function ZoneDetail({ zone, onBack }: { zone: Zone; onBack: () => void }) {
   const config = STATUS_CONFIG[zone.status];
 
   return (
-    <div className="bg-paper border border-line rounded-md p-6">
+    <div className="bg-paper border border-line rounded-xl p-6">
       <button
         type="button"
         onClick={onBack}

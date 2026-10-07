@@ -25,7 +25,7 @@ function ServiceDetail() {
       <section className="relative min-h-[52vh] flex items-end text-paper">
         <img src={service.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-maroon via-maroon/60 to-maroon/30" />
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 w-full pb-12 pt-32">
+        <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 w-full pb-12 pt-32">
           <p className="text-[11px] uppercase tracking-[0.18em] text-gold">
             <Link to="/services" className="hover:text-paper">Services</Link>
             {" / "}
@@ -34,7 +34,7 @@ function ServiceDetail() {
           <h1 className="mt-4 font-display text-5xl md:text-7xl text-paper max-w-4xl">{service.title}</h1>
         </div>
       </section>
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 grid lg:grid-cols-12 gap-12">
+      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 grid lg:grid-cols-12 gap-12">
         <div className="lg:col-span-7">
           <p className="text-lg text-ink/80">{service.lede}</p>
           {service.note ? (

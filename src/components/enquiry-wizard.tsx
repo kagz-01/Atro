@@ -13,23 +13,111 @@ import {
   type FinishId,
 } from "@/lib/cost";
 import { saveEnquiry } from "@/lib/enquiry";
+import { saveEnquiryToDb } from "@/lib/enquiry-server";
 import { ZONES } from "@/lib/site";
 import { useSiteStore } from "@/lib/store";
 import { formatKes, cn } from "@/lib/utils";
-import { defaultWhatsappText, whatsappHref } from "@/lib/whatsapp";
-import { ArrowRight, ArrowLeft, CheckCircle2, Home, Building2, Landmark, MapPin, Ruler, Paintbrush, User, Phone, Mail, Calendar, FileText } from "lucide-react";
+import { whatsappHref } from "@/lib/whatsapp";
+import {
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  Home,
+  Building2,
+  Landmark,
+  MapPin,
+  Ruler,
+  Paintbrush,
+  User,
+  Phone,
+  Mail,
+  Calendar,
+  FileText,
+  Globe,
+  Clock,
+  Users,
+  Plane,
+} from "lucide-react";
 
-const STEPS = [
+const STEPS_BASE = [
   { id: "type", label: "Type", icon: Building2 },
   { id: "place", label: "Place", icon: MapPin },
   { id: "scale", label: "Scale", icon: Ruler },
   { id: "you", label: "You", icon: User },
 ] as const;
 
-export function EnquiryWizard() {
+const DIASPORA_STEPS = [
+  { id: "type", label: "Type", icon: Building2 },
+  { id: "place", label: "Place", icon: MapPin },
+  { id: "scale", label: "Scale", icon: Ruler },
+  { id: "you", label: "You", icon: User },
+  { id: "abroad", label: "Abroad", icon: Globe },
+] as const;
+
+const DIASPORA_COUNTRIES = [
+  "United Kingdom",
+  "United States",
+  "United Arab Emirates",
+  "Saudi Arabia",
+  "Qatar",
+  "Canada",
+  "Australia",
+  "Germany",
+  "South Africa",
+  "Other",
+];
+
+const TIMEZONES = [
+  { label: "GMT (UK, Ireland)", value: "Europe/London" },
+  { label: "EST (US East Coast)", value: "America/New_York" },
+  { label: "CST (US Central)", value: "America/Chicago" },
+  { label: "PST (US West Coast)", value: "America/Los_Angeles" },
+  { label: "GST (Dubai, Abu Dhabi)", value: "Asia/Dubai" },
+  { label: "AST (Riyadh, Doha)", value: "Asia/Riyadh" },
+  { label: "AEST (Sydney, Melbourne)", value: "Australia/Sydney" },
+  { label: "CET (Germany, France)", value: "Europe/Berlin" },
+  { label: "SAST (Johannesburg)", value: "Africa/Johannesburg" },
+  { label: "Other", value: "other" },
+];
+
+function buildWhatsAppMessage(data: {
+  name: string;
+  type: string;
+  zone: string;
+  sqm: number;
+  finish: string;
+  estimate: { min: number; max: number; label: string };
+  diaspora: boolean;
+  diasporaCountry?: string;
+  description?: string;
+}) {
+  const lines = [
+    `Hello ATRO — I would like to start a project.`,
+    ``,
+    `Name: ${data.name}`,
+    `Type: ${data.type}`,
+    `Location: ${data.zone}`,
+    `Size: ~${data.sqm} m²`,
+    `Finish: ${data.finish}`,
+    `Estimated range: ${data.estimate.label}`,
+  ];
+  if (data.diaspora) {
+    lines.push(`I am based in ${data.diasporaCountry || "abroad"}.`);
+  }
+  if (data.description) {
+    lines.push(``, `Notes: ${data.description}`);
+  }
+  return lines.join("\n");
+}
+
+export function EnquiryWizard({ forcedDiaspora = false }: { forcedDiaspora?: boolean }) {
   const storedZone = useSiteStore((s) => s.selectedZone);
-  const diaspora = useSiteStore((s) => s.diasporaMode);
+  const storeDiaspora = useSiteStore((s) => s.diasporaMode);
   const setZone = useSiteStore((s) => s.setSelectedZone);
+
+  const diaspora = forcedDiaspora || storeDiaspora;
+  const steps = diaspora ? DIASPORA_STEPS : STEPS_BASE;
+  const totalSteps = steps.length;
 
   const [step, setStep] = useState(0);
   const [type, setType] = useState<CostProjectType>("Residential");
@@ -42,8 +130,13 @@ export function EnquiryWizard() {
   const [email, setEmail] = useState("");
   const [startDate, setStartDate] = useState("");
   const [description, setDescription] = useState("");
+  const [diasporaCountry, setDiasporaCountry] = useState("");
+  const [diasporaTimezone, setDiasporaTimezone] = useState("");
+  const [diasporaKenyaContact, setDiasporaKenyaContact] = useState("");
+  const [diasporaVisitPlans, setDiasporaVisitPlans] = useState("");
   const [hp, setHp] = useState("");
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const estimate = useMemo(
     () => estimateCost({ type, zone, sqm, finish }),
@@ -55,13 +148,15 @@ export function EnquiryWizard() {
     setZone(slug);
   }
 
-  function submit() {
+  async function submit() {
     if (hp) return;
     if (!name.trim() || !phone.trim() || !email.trim()) {
       toast.error("Name, phone and email are required.");
       return;
     }
-    saveEnquiry({
+    setSubmitting(true);
+
+    const payload = {
       name: name.trim(),
       phone: phone.trim(),
       email: email.trim(),
@@ -75,12 +170,40 @@ export function EnquiryWizard() {
       indicativeMin: Math.round(estimate.min),
       indicativeMax: Math.round(estimate.max),
       diaspora,
-    });
+      diasporaCountry: diaspora ? diasporaCountry : "",
+      diasporaTimezone: diaspora ? diasporaTimezone : "",
+      diasporaKenyaContact: diaspora ? diasporaKenyaContact : "",
+      diasporaVisitPlans: diaspora ? diasporaVisitPlans : "",
+    };
+
+    // Save to localStorage (backup)
+    saveEnquiry(payload);
+
+    // Save to database
+    try {
+      await saveEnquiryToDb({ data: payload });
+    } catch {
+      // DB save failed — localStorage backup is still there
+    }
+
     setDone(true);
-    toast.success("Enquiry received. The studio has a copy on this device.");
+    setSubmitting(false);
+    toast.success("Enquiry received.");
   }
 
   if (done) {
+    const whatsAppMsg = buildWhatsAppMessage({
+      name,
+      type,
+      zone,
+      sqm,
+      finish,
+      estimate: { min: estimate.min, max: estimate.max, label: estimate.label },
+      diaspora,
+      diasporaCountry,
+      description,
+    });
+
     return (
       <div className="border border-line/50 bg-cream p-8 md:p-12 rounded-2xl">
         <div className="size-16 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center mb-6">
@@ -88,13 +211,39 @@ export function EnquiryWizard() {
         </div>
         <h2 className="font-display text-3xl md:text-4xl text-maroon">We have the brief.</h2>
         <p className="mt-4 text-ink/80 max-w-lg text-lg">
-          Thank you, {name.split(" ")[0]}. A person at ATRO will follow up within 24 hours. If you
-          want to talk now, WhatsApp is the fastest path in Kenya.
+          Thank you, {name.split(" ")[0]}. Here is what happens next:
         </p>
+
+        {/* Expectation setting */}
+        <div className="mt-6 space-y-3 max-w-lg">
+          {[
+            { icon: CheckCircle2, text: "A named project manager will contact you within 24 hours (EAT)." },
+            { icon: Phone, text: `Via ${phone} or ${email} — your choice.` },
+            { icon: Clock, text: diaspora ? "We will schedule the first call at a time that works for your time zone." : "We will call during EAT working hours (8am-5pm)." },
+            { icon: FileText, text: "You will receive an indicative cost range and a realistic programme before any commitment." },
+            { icon: MapPin, text: "If you have a plot, we will arrange a site visit (or verify remotely if you are abroad)." },
+          ].map((item, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <item.icon className="size-5 shrink-0 text-maroon mt-0.5" />
+              <span className="text-sm text-ink/80">{item.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {diaspora && (
+          <div className="mt-6 p-4 bg-gold/10 border border-gold/20 rounded-xl max-w-lg">
+            <p className="text-sm text-burgundy font-medium">Diaspora enquiry</p>
+            <p className="text-sm text-ink/70 mt-1">
+              We will contact you via email to schedule a video call. Your time zone ({diasporaTimezone || "not specified"}) and location ({diasporaCountry || "abroad"}) are on file.
+            </p>
+          </div>
+        )}
+
         <p className="mt-4 text-sm text-muted">{COST_CAVEAT}</p>
+
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild variant="primary" className="rounded-2xl h-12 px-6">
-            <a href={whatsappHref(defaultWhatsappText({ zone, type }))}>
+            <a href={whatsappHref(whatsAppMsg)}>
               Continue on WhatsApp
               <ArrowRight className="size-4 ml-2" />
             </a>
@@ -113,14 +262,14 @@ export function EnquiryWizard() {
       <div className="h-1 bg-stone/50">
         <div
           className="h-full bg-gradient-to-r from-gold to-gold-light transition-all duration-500 ease-out"
-          style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+          style={{ width: `${((step + 1) / totalSteps) * 100}%` }}
         />
       </div>
 
       {/* Step indicator */}
       <div className="px-6 py-4 border-b border-line/50 bg-paper/50">
         <div className="flex items-center justify-between">
-          {STEPS.map((s, i) => {
+          {steps.map((s, i) => {
             const Icon = s.icon;
             const isActive = i === step;
             const isComplete = i < step;
@@ -143,7 +292,7 @@ export function EnquiryWizard() {
                     {s.label}
                   </span>
                 </button>
-                {i < STEPS.length - 1 && (
+                {i < steps.length - 1 && (
                   <div className={cn(
                     "w-8 h-0.5 mx-2 transition-colors duration-300",
                     isComplete ? "bg-gold" : "bg-stone",
@@ -156,6 +305,7 @@ export function EnquiryWizard() {
       </div>
 
       <div className="p-6 md:p-10">
+        {/* Step 0: Type */}
         {step === 0 ? (
           <fieldset>
             <legend className="font-display text-2xl md:text-3xl text-maroon mb-2">
@@ -190,6 +340,7 @@ export function EnquiryWizard() {
           </fieldset>
         ) : null}
 
+        {/* Step 1: Place */}
         {step === 1 ? (
           <fieldset>
             <legend className="font-display text-2xl md:text-3xl text-maroon mb-2">
@@ -228,6 +379,7 @@ export function EnquiryWizard() {
           </fieldset>
         ) : null}
 
+        {/* Step 2: Scale */}
         {step === 2 ? (
           <div>
             <h2 className="font-display text-2xl md:text-3xl text-maroon mb-2">Scale and finish</h2>
@@ -300,6 +452,7 @@ export function EnquiryWizard() {
           </div>
         ) : null}
 
+        {/* Step 3: You (contact info) */}
         {step === 3 ? (
           <div className="grid gap-6 max-w-xl">
             <div>
@@ -327,7 +480,7 @@ export function EnquiryWizard() {
               <div>
                 <Label htmlFor="phone" className="flex items-center gap-2 mb-2">
                   <Phone className="size-4 text-muted" />
-                  Phone
+                  Phone {diaspora && <span className="text-xs text-muted">(with country code)</span>}
                 </Label>
                 <Input
                   id="phone"
@@ -335,6 +488,7 @@ export function EnquiryWizard() {
                   onChange={(e) => setPhone(e.target.value)}
                   autoComplete="tel"
                   required
+                  placeholder={diaspora ? "+44 7XXX XXX XXX" : "+254 7XX XXX XXX"}
                   className="rounded-xl"
                 />
               </div>
@@ -389,14 +543,83 @@ export function EnquiryWizard() {
             <div className="absolute -left-[9999px]" aria-hidden>
               <input tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)} />
             </div>
+          </div>
+        ) : null}
 
-            {diaspora ? (
-              <div className="p-4 bg-gold/10 border border-gold/20 rounded-xl">
-                <p className="text-sm text-burgundy">
-                  Diaspora mode is on — we will schedule around EAT and lead with WhatsApp / video.
-                </p>
+        {/* Step 4: Abroad (diaspora only) */}
+        {step === 4 && diaspora ? (
+          <div className="grid gap-6 max-w-xl">
+            <div>
+              <h2 className="font-display text-2xl md:text-3xl text-maroon mb-2">Building from abroad</h2>
+              <p className="text-sm text-muted">
+                These details help us schedule calls at the right time and plan site visits.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="country" className="flex items-center gap-2 mb-2">
+                  <Globe className="size-4 text-muted" />
+                  Where are you based?
+                </Label>
+                <Select id="country" value={diasporaCountry} onChange={(e) => setDiasporaCountry(e.target.value)} className="rounded-xl">
+                  <option value="">Select country</option>
+                  {DIASPORA_COUNTRIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </Select>
               </div>
-            ) : null}
+              <div>
+                <Label htmlFor="tz" className="flex items-center gap-2 mb-2">
+                  <Clock className="size-4 text-muted" />
+                  Your time zone
+                </Label>
+                <Select id="tz" value={diasporaTimezone} onChange={(e) => setDiasporaTimezone(e.target.value)} className="rounded-xl">
+                  <option value="">Select time zone</option>
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz.value} value={tz.value}>{tz.label}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="kenya-contact" className="flex items-center gap-2 mb-2">
+                  <Users className="size-4 text-muted" />
+                  Contact person in Kenya (optional)
+                </Label>
+                <Input
+                  id="kenya-contact"
+                  value={diasporaKenyaContact}
+                  onChange={(e) => setDiasporaKenyaContact(e.target.value)}
+                  placeholder="Name and phone of someone in Kenya who can visit the site"
+                  className="rounded-xl"
+                />
+                <p className="text-xs text-muted mt-1">A family member or friend who can receive us on site if you are not in the country.</p>
+              </div>
+              <div>
+                <Label htmlFor="visit" className="flex items-center gap-2 mb-2">
+                  <Plane className="size-4 text-muted" />
+                  Visit plans (optional)
+                </Label>
+                <Input
+                  id="visit"
+                  value={diasporaVisitPlans}
+                  onChange={(e) => setDiasporaVisitPlans(e.target.value)}
+                  placeholder="e.g. Visiting in December, or Not sure yet"
+                  className="rounded-xl"
+                />
+                <p className="text-xs text-muted mt-1">We recommend at least one site visit at structural stage. It helps to plan around that.</p>
+              </div>
+            </div>
+
+            <div className="absolute -left-[9999px]" aria-hidden>
+              <input tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)} />
+            </div>
+
+            <div className="p-4 bg-gold/10 border border-gold/20 rounded-xl">
+              <p className="text-sm text-burgundy">
+                We will schedule the first call at a time that works for your time zone. EAT is UTC+3.
+              </p>
+            </div>
           </div>
         ) : null}
 
@@ -417,9 +640,9 @@ export function EnquiryWizard() {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted">
-              Step {step + 1} of {STEPS.length}
+              Step {step + 1} of {totalSteps}
             </span>
-            {step < 3 ? (
+            {step < totalSteps - 1 ? (
               <Button
                 type="button"
                 onClick={() => setStep((s) => s + 1)}
@@ -432,9 +655,10 @@ export function EnquiryWizard() {
               <Button
                 type="button"
                 onClick={submit}
+                disabled={submitting}
                 className="rounded-xl px-6 bg-gradient-to-r from-gold to-gold-light text-maroon hover:from-gold-light hover:to-gold"
               >
-                Send enquiry
+                {submitting ? "Sending..." : "Send enquiry"}
                 <ArrowRight className="size-4 ml-2" />
               </Button>
             )}

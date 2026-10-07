@@ -32,7 +32,7 @@ function ZoneDetail() {
   return (
     <>
       <section className="pt-28 md:pt-36 pb-12 bg-maroon text-paper">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
           <p className="text-[11px] uppercase tracking-[0.18em] text-gold">
             <Link to="/zones" className="hover:text-paper">Zones</Link>
             {" / "}
@@ -56,14 +56,14 @@ function ZoneDetail() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 grid md:grid-cols-3 gap-8">
+      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 grid md:grid-cols-3 gap-8">
         <Fact label="Coverage" value={zone.coverage} />
         <Fact label="Typical work" value={zone.typical} />
         <Fact label="Logistics" value={zone.logistics} />
       </section>
 
       {projects.length ? (
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-12">
+        <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-12">
           <h2 className="font-display text-3xl text-maroon mb-8">Work in {zone.name}</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((p) => (
@@ -72,12 +72,12 @@ function ZoneDetail() {
           </div>
         </section>
       ) : (
-        <p className="mx-auto max-w-7xl px-4 sm:px-6 pb-12 text-ink/70">
+        <p className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-12 text-ink/70">
           No published projects in this zone yet. The enquiry form still works — we will tell you if the site is outside current coverage.
         </p>
       )}
 
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-20">
+      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-20">
         <h2 className="font-display text-3xl text-maroon mb-6">Questions we hear here</h2>
         <div className="space-y-3">
           {zone.faqs.map((f) => (

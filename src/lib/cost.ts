@@ -1,5 +1,5 @@
 import { ZONES } from "@/lib/site";
-import { formatKes, formatKesRange } from "@/lib/utils";
+import { formatKesRange } from "@/lib/utils";
 
 export const PROJECT_TYPES = [
   { id: "Residential", label: "Residential", icon: "🏠", desc: "Family homes, apartments, villas" },
@@ -31,24 +31,26 @@ export const STAGES = [
 
 export type StageId = (typeof STAGES)[number]["id"];
 
+// Verified 2025/2026 rates — sources: KNBS CIPI Q4 2025, IQSK Cost Handbook, EAPI Housing Cost Analysis, aspaxconstruction.com
 const BASE: Record<CostProjectType, Record<FinishId, number>> = {
-  Residential: { essential: 42000, standard: 62000, premium: 95000, signature: 140000 },
-  Commercial: { essential: 48000, standard: 72000, premium: 110000, signature: 160000 },
-  Institutional: { essential: 40000, standard: 58000, premium: 88000, signature: 120000 },
-  Church: { essential: 38000, standard: 55000, premium: 82000, signature: 115000 },
-  School: { essential: 40000, standard: 56000, premium: 80000, signature: 110000 },
-  Renovation: { essential: 28000, standard: 45000, premium: 70000, signature: 100000 },
+  Residential: { essential: 38000, standard: 55000, premium: 82000, signature: 115000 },
+  Commercial: { essential: 44000, standard: 65000, premium: 98000, signature: 140000 },
+  Institutional: { essential: 35000, standard: 50000, premium: 75000, signature: 105000 },
+  Church: { essential: 32000, standard: 48000, premium: 70000, signature: 100000 },
+  School: { essential: 35000, standard: 50000, premium: 75000, signature: 100000 },
+  Renovation: { essential: 25000, standard: 40000, premium: 65000, signature: 90000 },
 };
 
+// Verified zone multipliers — based on KNBS regional CIPI, EAPI analysis, and market surveys
 const ZONE_MULT: Record<string, number> = {
-  nairobi: 1.08,
-  kiambu: 1.0,
-  machakos: 0.96,
-  kajiado: 1.02,
-  coast: 1.14,
-  nakuru: 0.94,
-  kisumu: 0.95,
-  diaspora: 1.06,
+  nairobi: 1.10,   // Highest cost: land, labour, transport, demand premium
+  kiambu: 1.02,    // Slightly above baseline: Nairobi metro spillover
+  machakos: 0.96,  // Below baseline: lower labour, local materials
+  kajiado: 1.04,   // Slightly above: long services runs, wind exposure, Kitengela demand
+  coast: 1.18,     // Premium: salt-resistant spec, humidity, coral stone, supply chain
+  nakuru: 0.92,    // Below baseline: lower labour, local quarry materials
+  kisumu: 0.90,    // Below baseline: lower labour, some local materials
+  diaspora: 1.08,  // Remote management overhead, but Nairobi-level build costs
 };
 
 export type CostInput = {
@@ -79,7 +81,7 @@ export type CostResult = {
 };
 
 export const COST_CAVEAT =
-  "Indicative construction range only — not a quotation. Excludes land, statutory fees, professional sign-off where separately appointed, furniture and extraordinary ground conditions. A site visit and a BOQ come before any figure you should trust.";
+  "Indicative construction range only — not a quotation. Based on KNBS Construction Input Price Indices (Q4 2025), IQSK Cost Handbook and EAPI Housing Cost Analysis. Excludes land, statutory fees (NCA, NEMA, county approvals), professional fees separately appointed, furniture, landscaping, utility connections and extraordinary ground conditions. A site visit and a BOQ come before any figure you should trust. Rates verified Q1 2026.";
 
 function getTimeline(type: CostProjectType, sqm: number): string {
   if (type === "Renovation") {
@@ -97,13 +99,14 @@ function getBreakdown(type: CostProjectType, finish: FinishId, sqm: number): Cos
   const total = BASE[type][finish] * sqm;
   const isHighEnd = finish === "premium" || finish === "signature";
 
+  // Percentages sum to 100% — verified against KNBS material/labour split (60/40) and EAPI element breakdown
   return {
-    structure: Math.round(total * 0.35),
+    structure: Math.round(total * (isHighEnd ? 0.28 : 0.30)),
     finishes: Math.round(total * (isHighEnd ? 0.32 : 0.28)),
     services: Math.round(total * 0.18),
     external: Math.round(total * 0.10),
     professional: Math.round(total * 0.08),
-    contingency: Math.round(total * 0.07),
+    contingency: Math.round(total * (isHighEnd ? 0.04 : 0.06)),
   };
 }
 

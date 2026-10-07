@@ -57,8 +57,14 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
 });
 
 test("the auth schema ships outside the globbed directory", () => {
+  // App migrations are expected in migrations/ (AGENTS.md §0.5); the Better
+  // Auth schema is the one that must stay in migrations/auth/ until sign-in
+  // is turned on and it is copied up.
   const migrationsDir = join(projectRoot(), "migrations");
-  assert.deepEqual(pendingMigrations(readdirSync(migrationsDir), []), []);
+  const authPending = pendingMigrations(readdirSync(migrationsDir), []).filter(
+    (m) => m.name === AUTH_MIGRATION,
+  );
+  assert.deepEqual(authPending, []);
   assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
 });
 
