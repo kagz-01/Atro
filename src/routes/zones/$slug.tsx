@@ -4,6 +4,7 @@ import { ProjectCard } from "@/components/project-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { projectsInZone, zoneBySlug } from "@/lib/site";
+import { zoneFunnel, formatBand } from "@/lib/zones";
 import { useSiteStore } from "@/lib/store";
 import { useEffect } from "react";
 
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/zones/$slug")({
 
 function ZoneDetail() {
   const { zone, projects } = Route.useLoaderData();
+  const funnel = zoneFunnel(zone.slug);
   const setZone = useSiteStore((s) => s.setSelectedZone);
   useEffect(() => {
     setZone(zone.slug);
@@ -40,18 +42,31 @@ function ZoneDetail() {
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Badge tone="gold">{zone.coverage}</Badge>
+            {funnel ? <Badge tone="paper">{funnel.availability.label}</Badge> : null}
           </div>
           <h1 className="mt-4 font-display text-5xl md:text-7xl text-paper max-w-4xl">
             {zone.name}
           </h1>
           <p className="mt-6 max-w-2xl text-paper/75 text-lg">{zone.summary}</p>
+          {funnel ? (
+            <p className="mt-6 max-w-2xl rounded-2xl border border-paper/15 bg-paper/5 p-5 text-[14px] leading-relaxed text-paper/75">
+              {funnel.availability.promise}
+            </p>
+          ) : null}
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild variant="gold">
-              <Link to="/start">Start a project in {zone.name}</Link>
+              <Link to="/start" search={{ zone: zone.slug }}>
+                {funnel?.availability.cta ?? `Start a project in ${zone.name}`}
+              </Link>
             </Button>
             <Button asChild variant="line">
               <Link to="/projects">Work in this zone</Link>
             </Button>
+            {zone.status !== "diaspora" ? (
+              <Button asChild variant="line">
+                <Link to="/login">Open a client account</Link>
+              </Button>
+            ) : null}
           </div>
         </div>
       </section>
@@ -60,7 +75,22 @@ function ZoneDetail() {
         <Fact label="Coverage" value={zone.coverage} />
         <Fact label="Typical work" value={zone.typical} />
         <Fact label="Logistics" value={zone.logistics} />
+        {funnel ? (
+          <Fact
+            label="Indicative, 220 m² house"
+            value={formatBand(funnel.indicativeMin, funnel.indicativeMax)}
+          />
+        ) : null}
       </section>
+
+      {funnel ? (
+        <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-12">
+          <h2 className="font-display text-3xl text-maroon">What building here involves</h2>
+          <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-ink/65">
+            {funnel.localNote}
+          </p>
+        </section>
+      ) : null}
 
       {projects.length ? (
         <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-12">

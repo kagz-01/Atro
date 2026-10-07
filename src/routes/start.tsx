@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, MessageCircle, Mail, MapPin, CheckCircle2 } from "lucide-react";
 import { EnquiryWizard } from "@/components/enquiry-wizard";
 import { Badge } from "@/components/ui/badge";
-import { COMPANY } from "@/lib/site";
+import { useSiteStore } from "@/lib/store";
+import { COMPANY, ZONES } from "@/lib/site";
 import { defaultWhatsappText, whatsappHref } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/start")({
@@ -22,6 +24,14 @@ export const Route = createFileRoute("/start")({
 function StartPage() {
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const isDiaspora = params.get("from") === "diaspora";
+  const zoneParam = params.get("zone");
+  const setSelectedZone = useSiteStore((s) => s.setSelectedZone);
+
+  // A link from a county page carries the county, so the enquiry opens with the
+  // right place already chosen rather than making them pick it again.
+  useEffect(() => {
+    if (zoneParam && ZONES.some((z) => z.slug === zoneParam)) setSelectedZone(zoneParam);
+  }, [zoneParam, setSelectedZone]);
 
   return (
     <main className="pt-32 pb-24">

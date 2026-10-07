@@ -21,6 +21,7 @@ import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user";
 import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
 import { TRACK_LIST, type TrackId } from "@/lib/diaspora/tracks";
+import { ZONES } from "@/lib/site";
 import {
   createPortalProject,
   deletePortalProject,
@@ -279,6 +280,7 @@ function NewProjectForm({
   const [tz, setTz] = useState("");
   const [months, setMonths] = useState("12");
   const [track, setTrack] = useState<TrackId>("construction");
+  const [zone, setZone] = useState("nairobi");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -302,6 +304,7 @@ function NewProjectForm({
           clientCity: city.trim(),
           clientTz: tz,
           track,
+          zone,
         },
       });
       toast.success("Project opened in your portal.");
@@ -405,6 +408,16 @@ function NewProjectForm({
             inputMode="numeric"
             required
           />
+        </div>
+        <div>
+          <Label htmlFor="np-zone">County</Label>
+          <Select id="np-zone" value={zone} onChange={(e) => setZone(e.target.value)}>
+            {ZONES.filter((z) => z.status !== "diaspora").map((z) => (
+              <option key={z.slug} value={z.slug}>
+                {z.name} — {z.status === "active" ? "building here now" : z.coverage.toLowerCase()}
+              </option>
+            ))}
+          </Select>
         </div>
         <div>
           <Label htmlFor="np-city">Your city</Label>
