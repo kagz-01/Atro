@@ -14,9 +14,10 @@ import {
   PaymentActionInput,
   ProjectInput,
   ProjectRefInput,
-  daysBetween,
-  planPayments,
-  planStages,
+  paymentSchedule,
+  programmeDays,
+  stageWindows,
+  trackById,
   type ProjectInput as ProjectBrief,
 } from "@/lib/diaspora/portal-schema";
 import {
@@ -344,15 +345,16 @@ async function seedSampleProject(sql: Sql, userId: string): Promise<string> {
   const projectRows = await sql<{ id: string }>`
     insert into portal_projects (
       user_id, reference, title, client_label, client_initials, plot, area,
-      contract_type, started_label, target_label, stage, source, contract_value,
-      boq_value, certified_to_date, paid_to_date, currently_certified,
+      contract_type, started_label, target_label, stage, source, track,
+      service_slug, contract_value, boq_value, certified_to_date, paid_to_date,
+      currently_certified,
       retention_held, retention_pct, projected_at_completion, days_elapsed,
       days_total, days_remaining, on_track, variance_days, programme_note,
       next_call_when, next_call_local, next_call_agenda, progress, last_viewed_at
     ) values (
       ${userId}, ${p.reference}, ${p.title}, ${p.client}, ${p.clientInitials},
       ${p.plot}, ${p.area}, ${p.contractType}, ${p.started}, ${p.targetHandover},
-      ${p.stage}, 'sample', ${p.contractValue}, ${p.boqValue},
+      ${p.stage}, 'sample', 'construction', '', ${p.contractValue}, ${p.boqValue},
       ${p.budget.certifiedToDate}, ${p.budget.paidToDate},
       ${p.budget.currentlyCertified}, ${p.budget.retentionHeld},
       ${p.budget.retentionPct}, ${p.budget.projectedAtCompletion},
@@ -470,7 +472,8 @@ async function generateProject(
 ): Promise<string> {
   const start = new Date(`${input.startDate}T00:00:00Z`);
   const target = new Date(`${input.targetDate}T00:00:00Z`);
-  const totalDays = daysBetween(start, target);
+  const track = trackById(input.track);
+  const totalDays = programmeDays(start, target);
   const today = new Date();
   const daysElapsed = Math.min(
     totalDays,
@@ -486,15 +489,18 @@ async function generateProject(
   const projectRows = await sql<{ id: string }>`
     insert into portal_projects (
       user_id, reference, title, client_label, client_initials, plot, area,
-      contract_type, started_label, target_label, stage, source, contract_value,
-      boq_value, days_elapsed, days_total, days_remaining, programme_note,
+      contract_type, started_label, target_label, stage, source, track,
+      service_slug, contract_value, days_elapsed, days_total, days_remaining,
+      programme_note,
       next_call_when, next_call_local, next_call_agenda, progress, last_viewed_at
     ) values (
       ${userId}, ${reference}, ${input.title}, ${clientLabel}, ${"YO"},
-      ${input.plot || "Plot reference pending"}, ${input.area || "—"},
-      'Design and build', ${shortDate(start)}, ${shortDate(target)},
-      'Land and due diligence', 'created', ${input.contractValue},
-      ${input.contractValue}, ${daysElapsed}, ${totalDays},
+      ${input.plot || "Site reference pending"}, ${input.area || "—"},
+      ${track.id === "construction" ? "Design and build" : track.label},
+      ${shortDate(start)}, ${shortDate(target)},
+      ${track.stages[0]?.name ?? "Mobilisation"}, 'created', ${track.id},
+      ${input.serviceSlug}, ${input.contractValue},
+      ${daysElapsed}, ${totalDays},
       ${Math.max(0, totalDays - daysElapsed)},
       'Programme issued at contract signing. Milestone dates are planned, not promised — each one moves only when you approve it.',
       'To be scheduled', 'To be scheduled', ${"[]"}, 0, now()
@@ -504,23 +510,24 @@ async function generateProject(
   const projectId = projectRows[0]?.id;
   if (!projectId) throw new Error("Could not create the project");
 
-  const windows = planStages(start, totalDays, MILESTONES.length, shortDate);
+  const windows = stageWindows(track, start, totalDays, shortDate);
 
-  for (let i = 0; i < MILESTONES.length; i += 1) {
+  for (let i = 0; i < track.stages.length; i += 1) {
+    const stage = track.stages[i];
     const window = windows[i];
-    if (!window) break;
+    if (!stage || !window) break;
     await sql`
       insert into portal_milestones (
         project_id, ord, stage, name, status, progress, planned_start, planned_end, summary
       ) values (
-        ${projectId}, ${i + 1}, ${MILESTONES[i].stage}, ${MILESTONES[i].name},
+        ${projectId}, ${i + 1}, ${track.label}, ${stage.name},
         ${i === 0 ? "active" : "pending"}, 0, ${window.start}, ${window.end},
-        ${MILESTONES[i].summary}
+        ${stage.summary}
       )
     `;
   }
 
-  const tranches = planPayments(input.contractValue);
+  const tranches = paymentSchedule(track, input.contractValue);
   for (let i = 0; i < tranches.length; i += 1) {
     const tranche = tranches[i];
     if (!tranche) break;
@@ -529,16 +536,18 @@ async function generateProject(
       insert into portal_payments (
         project_id, ord, label, stage, amount, status, due_date, note
       ) values (
-        ${projectId}, ${i + 1}, ${tranche.label}, ${MILESTONES[i]?.stage ?? "Construction"},
+        ${projectId}, ${i + 1}, ${tranche.label}, ${track.stages[i]?.name ?? track.label},
         ${tranche.amount}, 'scheduled', ${shortDate(due)},
-        ${`${tranche.pct}% of contract value — released against a certificate from the quantity surveyor.`}
+        ${`${tranche.pct}% of contract value — released against a certificate.`}
       )
     `;
   }
 
-  const openingDocs = [
-    { name: "Client agreement — draft", category: "Contract", state: "awaiting", reference: reference },
-    { name: "Measured BOQ — priced", category: "Payment", state: "awaiting", reference: `${reference}-BOQ` },
+  const openingDocs: { name: string; category: string; state: string; reference: string }[] = [
+    { name: "Client agreement — draft", category: "Contract", state: "awaiting", reference },
+    track.id === "construction" || track.id === "design"
+      ? { name: "Measured BOQ — priced", category: "Payment", state: "awaiting", reference: `${reference}-BOQ` }
+      : { name: "Scope of works — draft", category: "Contract", state: "awaiting", reference: `${reference}-SOW` },
   ];
   for (let i = 0; i < openingDocs.length; i += 1) {
     const doc = openingDocs[i];

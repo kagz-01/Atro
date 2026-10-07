@@ -20,6 +20,7 @@ import { CtaBand } from "@/components/page-hero";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user";
 import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
+import { TRACK_LIST, type TrackId } from "@/lib/diaspora/tracks";
 import {
   createPortalProject,
   deletePortalProject,
@@ -277,6 +278,7 @@ function NewProjectForm({
   const [city, setCity] = useState("");
   const [tz, setTz] = useState("");
   const [months, setMonths] = useState("12");
+  const [track, setTrack] = useState<TrackId>("construction");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -299,6 +301,7 @@ function NewProjectForm({
           targetDate: targetDate.toISOString().slice(0, 10),
           clientCity: city.trim(),
           clientTz: tz,
+          track,
         },
       });
       toast.success("Project opened in your portal.");
@@ -341,7 +344,29 @@ function NewProjectForm({
         </button>
       </div>
 
-      <div className="mt-6 grid gap-5 sm:grid-cols-2">
+      <div className="mt-6">
+        <Label htmlFor="np-track">What are we doing?</Label>
+        <Select
+          id="np-track"
+          value={track}
+          onChange={(e) => setTrack(e.target.value as TrackId)}
+        >
+          {TRACK_LIST.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </Select>
+        <p className="mt-2 text-[12px] leading-relaxed text-ink/55">
+          {TRACK_LIST.find((t) => t.id === track)?.summary}
+        </p>
+        <p className="mt-1 text-[12px] text-muted">
+          {TRACK_LIST.find((t) => t.id === track)?.stages.length} stages ·{" "}
+          {TRACK_LIST.find((t) => t.id === track)?.payments.length} payments
+        </p>
+      </div>
+
+      <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Label htmlFor="np-title">Project</Label>
           <Input
@@ -592,6 +617,7 @@ function PortalPage() {
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3 lg:grid-cols-6">
             {[
               ["Client", p.clientLabel],
+              ["Engagement", p.contractType],
               ["Plot", p.plot],
               ["Area", p.area],
               ["Started", p.startedLabel],
