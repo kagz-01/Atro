@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/logo";
 import { LEGAL_PAGES } from "@/components/legal-page";
-import { Mail, Phone, MapPin, Instagram, Linkedin } from "lucide-react";
+import { Mail, Phone, MapPin, Instagram, Linkedin, ClipboardCheck } from "lucide-react";
 import { COMPANY } from "@/lib/site";
 
 const FOOTER_COLUMNS = [
@@ -36,11 +36,14 @@ const FOOTER_COLUMNS = [
   {
     label: "Build from abroad",
     links: [
-      { to: "/diaspora", label: "Diaspora hub" },
-      { to: "/guides", label: "Guides" },
+      { to: "/diaspora", label: "The Abroad service" },
       { to: "/portal", label: "Client portal" },
+      { to: "/guides/journey", label: "Build journey" },
+      { to: "/guides", label: "Guides" },
       { to: "/verify", label: "Verify anyone" },
-      { to: "/scam-check", label: "Scam check" },
+      { to: "/scam-check", label: "Red flag checker" },
+      { to: "/fees", label: "Fees & payment" },
+      { to: "/login", label: "Sign in" },
     ],
   },
 ] as const;
@@ -129,6 +132,13 @@ export function SiteFooter() {
           </p>
 
           <div className="flex items-center gap-4">
+            <Link
+              to="/portal"
+              className="inline-flex items-center gap-2 rounded-full border border-gold/40 px-4 py-2 text-[11px] uppercase tracking-[0.16em] text-gold transition-colors hover:bg-gold hover:text-maroon"
+            >
+              <ClipboardCheck className="size-3.5" />
+              Client portal
+            </Link>
             <a
               href={COMPANY.instagram}
               target="_blank"

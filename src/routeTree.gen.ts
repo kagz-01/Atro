@@ -16,6 +16,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as DiasporaRouteImport } from './routes/diaspora'
 import { Route as FeesRouteImport } from './routes/fees'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProcessRouteImport } from './routes/process'
@@ -24,6 +25,7 @@ import { Route as ScamWarningRouteImport } from './routes/scam-warning'
 import { Route as StartRouteImport } from './routes/start'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminEnquiriesRouteImport } from './routes/admin/enquiries'
 import { Route as GuidesIndexRouteImport } from './routes/guides/index'
 import { Route as GuidesSlugRouteImport } from './routes/guides/$slug'
@@ -41,6 +43,7 @@ import { Route as ToolsMaterialPricesRouteImport } from './routes/tools/material
 import { Route as ToolsZoneMapRouteImport } from './routes/tools/zone-map'
 import { Route as ZonesIndexRouteImport } from './routes/zones/index'
 import { Route as ZonesSlugRouteImport } from './routes/zones/$slug'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -75,6 +78,11 @@ const DiasporaRoute = DiasporaRouteImport.update({
 const FeesRoute = FeesRouteImport.update({
   id: '/fees',
   path: '/fees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalRoute = PortalRouteImport.update({
@@ -115,6 +123,11 @@ const TermsRoute = TermsRouteImport.update({
 const VerifyRoute = VerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminEnquiriesRoute = AdminEnquiriesRouteImport.update({
@@ -202,6 +215,11 @@ const ZonesSlugRoute = ZonesSlugRouteImport.update({
   path: '/zones/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -211,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/cookies': typeof CookiesRoute
   '/diaspora': typeof DiasporaRoute
   '/fees': typeof FeesRoute
+  '/login': typeof LoginRoute
   '/portal': typeof PortalRoute
   '/privacy': typeof PrivacyRoute
   '/process': typeof ProcessRoute
@@ -230,12 +249,14 @@ export interface FileRoutesByFullPath {
   '/tools/material-prices': typeof ToolsMaterialPricesRoute
   '/tools/zone-map': typeof ToolsZoneMapRoute
   '/zones/$slug': typeof ZonesSlugRoute
+  '/admin/': typeof AdminIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/insights/': typeof InsightsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/services/': typeof ServicesIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -245,6 +266,7 @@ export interface FileRoutesByTo {
   '/cookies': typeof CookiesRoute
   '/diaspora': typeof DiasporaRoute
   '/fees': typeof FeesRoute
+  '/login': typeof LoginRoute
   '/portal': typeof PortalRoute
   '/privacy': typeof PrivacyRoute
   '/process': typeof ProcessRoute
@@ -264,12 +286,14 @@ export interface FileRoutesByTo {
   '/tools/material-prices': typeof ToolsMaterialPricesRoute
   '/tools/zone-map': typeof ToolsZoneMapRoute
   '/zones/$slug': typeof ZonesSlugRoute
+  '/admin': typeof AdminIndexRoute
   '/guides': typeof GuidesIndexRoute
   '/insights': typeof InsightsIndexRoute
   '/projects': typeof ProjectsIndexRoute
   '/services': typeof ServicesIndexRoute
   '/tools': typeof ToolsIndexRoute
   '/zones': typeof ZonesIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -280,6 +304,7 @@ export interface FileRoutesById {
   '/cookies': typeof CookiesRoute
   '/diaspora': typeof DiasporaRoute
   '/fees': typeof FeesRoute
+  '/login': typeof LoginRoute
   '/portal': typeof PortalRoute
   '/privacy': typeof PrivacyRoute
   '/process': typeof ProcessRoute
@@ -299,12 +324,14 @@ export interface FileRoutesById {
   '/tools/material-prices': typeof ToolsMaterialPricesRoute
   '/tools/zone-map': typeof ToolsZoneMapRoute
   '/zones/$slug': typeof ZonesSlugRoute
+  '/admin/': typeof AdminIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/insights/': typeof InsightsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/services/': typeof ServicesIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -316,6 +343,7 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/diaspora'
     | '/fees'
+    | '/login'
     | '/portal'
     | '/privacy'
     | '/process'
@@ -335,12 +363,14 @@ export interface FileRouteTypes {
     | '/tools/material-prices'
     | '/tools/zone-map'
     | '/zones/$slug'
+    | '/admin/'
     | '/guides/'
     | '/insights/'
     | '/projects/'
     | '/services/'
     | '/tools/'
     | '/zones/'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -350,6 +380,7 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/diaspora'
     | '/fees'
+    | '/login'
     | '/portal'
     | '/privacy'
     | '/process'
@@ -369,12 +400,14 @@ export interface FileRouteTypes {
     | '/tools/material-prices'
     | '/tools/zone-map'
     | '/zones/$slug'
+    | '/admin'
     | '/guides'
     | '/insights'
     | '/projects'
     | '/services'
     | '/tools'
     | '/zones'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
@@ -384,6 +417,7 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/diaspora'
     | '/fees'
+    | '/login'
     | '/portal'
     | '/privacy'
     | '/process'
@@ -403,12 +437,14 @@ export interface FileRouteTypes {
     | '/tools/material-prices'
     | '/tools/zone-map'
     | '/zones/$slug'
+    | '/admin/'
     | '/guides/'
     | '/insights/'
     | '/projects/'
     | '/services/'
     | '/tools/'
     | '/zones/'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -419,6 +455,7 @@ export interface RootRouteChildren {
   CookiesRoute: typeof CookiesRoute
   DiasporaRoute: typeof DiasporaRoute
   FeesRoute: typeof FeesRoute
+  LoginRoute: typeof LoginRoute
   PortalRoute: typeof PortalRoute
   PrivacyRoute: typeof PrivacyRoute
   ProcessRoute: typeof ProcessRoute
@@ -438,12 +475,14 @@ export interface RootRouteChildren {
   ToolsMaterialPricesRoute: typeof ToolsMaterialPricesRoute
   ToolsZoneMapRoute: typeof ToolsZoneMapRoute
   ZonesSlugRoute: typeof ZonesSlugRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   GuidesIndexRoute: typeof GuidesIndexRoute
   InsightsIndexRoute: typeof InsightsIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
   ServicesIndexRoute: typeof ServicesIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
   ZonesIndexRoute: typeof ZonesIndexRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -495,6 +534,13 @@ declare module '@tanstack/react-router' {
       path: '/fees'
       fullPath: '/fees'
       preLoaderRoute: typeof FeesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal': {
@@ -551,6 +597,13 @@ declare module '@tanstack/react-router' {
       path: '/verify'
       fullPath: '/verify'
       preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/enquiries': {
@@ -672,6 +725,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ZonesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -683,6 +743,7 @@ const rootRouteChildren: RootRouteChildren = {
   CookiesRoute: CookiesRoute,
   DiasporaRoute: DiasporaRoute,
   FeesRoute: FeesRoute,
+  LoginRoute: LoginRoute,
   PortalRoute: PortalRoute,
   PrivacyRoute: PrivacyRoute,
   ProcessRoute: ProcessRoute,
@@ -702,12 +763,14 @@ const rootRouteChildren: RootRouteChildren = {
   ToolsMaterialPricesRoute: ToolsMaterialPricesRoute,
   ToolsZoneMapRoute: ToolsZoneMapRoute,
   ZonesSlugRoute: ZonesSlugRoute,
+  AdminIndexRoute: AdminIndexRoute,
   GuidesIndexRoute: GuidesIndexRoute,
   InsightsIndexRoute: InsightsIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
   ServicesIndexRoute: ServicesIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,
   ZonesIndexRoute: ZonesIndexRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

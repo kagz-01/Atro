@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 
 const EnquiryInput = z.object({
@@ -67,7 +68,13 @@ type EnquiryRow = {
   created_at: string;
 };
 
+/**
+ * Every enquiry is a named person's phone number and email, so this is
+ * account-gated: signed out it throws 401 rather than returning the list. The
+ * admin page is the only caller.
+ */
 export const listEnquiriesFromDb = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
   .handler(async () => {
     const sql = await getSql();
     return sql<EnquiryRow>`select * from enquiries order by created_at desc limit 50`;

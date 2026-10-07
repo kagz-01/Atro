@@ -1,8 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, X, Home, Briefcase, Wrench, Info, Phone, Globe, ArrowRight } from "lucide-react";
+import { Menu, X, Home, Briefcase, Wrench, Info, Phone, Globe, ArrowRight, LogIn } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
+import { UserButton } from "@/lib/auth/gates";
+import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user";
 import { NAV, DIASPORA_LINK } from "@/lib/site";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { cn } from "@/lib/utils";
 
 const NAV_ICONS: Record<string, typeof Home> = {
@@ -13,6 +16,76 @@ const NAV_ICONS: Record<string, typeof Home> = {
   "/about": Info,
   "/contact": Phone,
 };
+
+/**
+ * Desktop account slot. While the session resolves it holds a same-sized
+ * placeholder, so a hard reload on /portal never flashes a signed-out button.
+ */
+function AuthSlot({ className }: { className?: string }) {
+  const { user, isPending } = useCurrentUserState();
+  const hydrated = useIsHydrated();
+  if (isPending || !hydrated) {
+    return (
+      <span
+        aria-hidden
+        className={cn("size-9 shrink-0 animate-pulse rounded-full", className === "on-dark" ? "bg-white/15" : "bg-ink/10")}
+      />
+    );
+  }
+  if (user) return <UserButton />;
+  return (
+    <Link
+      to="/login"
+      aria-label="Sign in to the client portal"
+      className={cn(
+        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors",
+        className === "on-dark"
+          ? "border-white/20 text-white/70 hover:border-gold hover:text-gold"
+          : "border-line text-muted hover:border-burgundy hover:text-burgundy",
+      )}
+    >
+      <LogIn className="size-3.5" />
+    </Link>
+  );
+}
+
+/** Mobile menu account row — the same states, laid out for the sheet. */
+function MobileAccountRow() {
+  const user = useCurrentUser();
+  const { isPending } = useCurrentUserState();
+  const hydrated = useIsHydrated();
+  if (isPending || !hydrated) {
+    return <div className="mt-3 h-12 animate-pulse rounded-2xl bg-ink/6" aria-hidden />;
+  }
+  if (user) {
+    return (
+      <div className="mt-3 flex items-center justify-between gap-4 rounded-2xl border border-line p-4">
+        <span className="min-w-0">
+          <span className="block font-display text-base text-ink truncate">
+            {user.displayName ?? user.primaryEmail ?? "Your account"}
+          </span>
+          <span className="text-sm text-muted">Signed in to the client portal</span>
+        </span>
+        <UserButton />
+      </div>
+    );
+  }
+  return (
+    <Link
+      to="/login"
+      className="mt-3 flex items-center gap-4 rounded-2xl border border-line p-4 text-ink transition-colors hover:border-burgundy"
+    >
+      <span className="size-10 rounded-xl bg-maroon/10 flex items-center justify-center text-maroon">
+        <LogIn className="size-5" />
+      </span>
+      <span className="flex-1">
+        <span className="block font-display text-lg">Sign in</span>
+        <span className="text-sm text-muted">Track your project, payments and approvals</span>
+      </span>
+      <ArrowRight className="size-5 text-gold shrink-0" />
+    </Link>
+  );
+}
 
 export function SiteHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -86,6 +159,7 @@ export function SiteHeader() {
 
           {/* Right side CTAs */}
           <div className="flex items-center gap-2.5 shrink-0">
+            <AuthSlot className={onDarkHero ? "on-dark" : undefined} />
             <Link
               to={DIASPORA_LINK.to}
               className={cn(
@@ -182,6 +256,9 @@ export function SiteHeader() {
               </div>
               <ArrowRight className="size-5 text-gold shrink-0" />
             </Link>
+
+            {/* Account */}
+            <MobileAccountRow />
 
             {/* Start CTA */}
             <div className="mt-4 pt-4 border-t border-line">

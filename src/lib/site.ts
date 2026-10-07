@@ -876,6 +876,26 @@ export const SERVICES: Service[] = [
     types: ["Residential", "Hospitality", "Commercial offices"],
     inputs: ["Interior design drawings", "FF&E budget", "Delivery timeline"],
   },
+  // ─── Abroad (diaspora) — the full product, entry point for /diaspora ───
+  {
+    slug: "building-from-abroad",
+    title: "Building from Abroad",
+    kicker: "Your project in Kenya, run from wherever you are",
+    lede: "Design, due diligence, construction and handover for clients overseas — with milestone payments, a private project portal, weekly written reports and a named project manager, so you are never guessing from photographs.",
+    image: "/images/site.webp",
+    category: "construction",
+    included: [
+      "Land due diligence and surveyor verification",
+      "Design and structural engineering",
+      "Measured Bill of Quantities before you commit",
+      "Private client portal with milestone approvals and payment ledger",
+      "Weekly written reports with photographic evidence",
+      "Decision log, document vault and handover pack",
+    ],
+    types: ["Diaspora clients", "New build", "Renovation", "Phased work"],
+    inputs: ["Plot reference or address", "Programme and handover date", "Budget band"],
+    note: "Start at /diaspora for the full suite — portal, verification registers, red flag checker, guides and payment terms.",
+  },
   {
     slug: "construction-training",
     title: "Construction Training & Workshops",

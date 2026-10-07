@@ -19,6 +19,8 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { listEnquiriesFromDb } from "@/lib/enquiry-server";
 import { cn } from "@/lib/utils";
 import { whatsappHref } from "@/lib/whatsapp";
@@ -89,65 +91,41 @@ function timeAgo(dateStr: string) {
 }
 
 function AdminEnquiries() {
-  const [password, setPassword] = useState("");
-  const [authenticated, setAuthenticated] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return sessionStorage.getItem("atro_admin") === "true";
-  });
-  const [error, setError] = useState("");
+  const { user, isPending } = useCurrentUserState();
+  const hydrated = useIsHydrated();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterDiaspora, setFilterDiaspora] = useState<"all" | "diaspora" | "local">("all");
   const [selected, setSelected] = useState<Enquiry | null>(null);
 
+  // Enquiries carry real names, emails and phone numbers, so the read is
+  // account-gated server-side. No client-side password stands in for that.
   const { data: enquiries, isLoading } = useQuery({
     queryKey: ["admin-enquiries"],
     queryFn: async () => {
       const result = await listEnquiriesFromDb({ data: undefined });
       return (result ?? []) as Enquiry[];
     },
-    enabled: authenticated,
+    enabled: Boolean(user),
   });
 
-  function handleLogin() {
-    if (password === "atro2024") {
-      setAuthenticated(true);
-      sessionStorage.setItem("atro_admin", "true");
-      setError("");
-    } else {
-      setError("Wrong password.");
-    }
-  }
+  // The server always renders "pending", so the first client paint must match it.
+  if (isPending || !hydrated) return null;
 
-  if (!authenticated) {
+  if (!user) {
     return (
       <main className="min-h-dvh bg-stone/30 flex items-center justify-center px-4">
         <div className="w-full max-w-sm p-8 bg-paper border border-line/50 rounded-2xl shadow-card">
           <h1 className="font-display text-2xl text-maroon mb-2">Admin</h1>
-          <p className="text-sm text-muted mb-6">Enter the admin password to view enquiries.</p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleLogin();
-            }}
-            className="space-y-4"
+          <p className="text-sm text-muted mb-6">
+            Sign in with a studio account to view enquiries.
+          </p>
+          <Link
+            to="/login"
+            className="flex h-12 w-full items-center justify-center bg-gradient-to-r from-maroon to-burgundy text-white text-[12px] uppercase tracking-[0.14em] font-semibold rounded-xl"
           >
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className="w-full h-12 border border-line bg-cream px-4 rounded-xl outline-none focus:border-burgundy"
-              autoFocus
-            />
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="submit"
-              className="w-full h-12 bg-gradient-to-r from-maroon to-burgundy text-white text-[12px] uppercase tracking-[0.14em] font-semibold rounded-xl"
-            >
-              Enter
-            </button>
-          </form>
+            Sign in
+          </Link>
         </div>
       </main>
     );
