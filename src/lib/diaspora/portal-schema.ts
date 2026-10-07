@@ -19,6 +19,13 @@ export const ProjectInput = z.object({
   track: z.enum(TRACK_IDS as [string, ...string[]]).default("construction"),
   serviceSlug: z.string().trim().max(80).default(""),
   zone: z.string().trim().max(60).default(""),
+  clientPhone: z
+    .string()
+    .trim()
+    .regex(/^\+[\d\s-]{7,20}$/, "Include the country code, e.g. +254 700 123 456")
+    .max(24)
+    .or(z.literal(""))
+    .default(""),
 });
 
 export type ProjectInput = z.infer<typeof ProjectInput>;

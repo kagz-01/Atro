@@ -501,8 +501,8 @@ async function generateProject(
     insert into portal_projects (
       user_id, reference, title, client_label, client_initials, plot, area,
       contract_type, started_label, target_label, stage, source, track,
-      service_slug, zone, contract_value, days_elapsed, days_total,
-      days_remaining, programme_note,
+      service_slug, zone, client_phone, contract_value, days_elapsed,
+      days_total, days_remaining, programme_note,
       next_call_when, next_call_local, next_call_agenda, progress, last_viewed_at
     ) values (
       ${userId}, ${reference}, ${input.title}, ${clientLabel}, ${"YO"},
@@ -510,7 +510,8 @@ async function generateProject(
       ${track.id === "construction" ? "Design and build" : track.label},
       ${shortDate(start)}, ${shortDate(target)},
       ${track.stages[0]?.name ?? "Mobilisation"}, 'created', ${track.id},
-      ${input.serviceSlug}, ${input.zone}, ${input.contractValue},
+      ${input.serviceSlug}, ${input.zone}, ${input.clientPhone},
+      ${input.contractValue},
       ${daysElapsed}, ${totalDays},
       ${Math.max(0, totalDays - daysElapsed)},
       'Programme issued at contract signing. Milestone dates are planned, not promised — each one moves only when you approve it.',

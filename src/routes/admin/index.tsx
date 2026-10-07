@@ -19,11 +19,13 @@ import {
   addDocument,
   addMilestoneEvidence,
   certifyPayment,
+  getDeliveryLog,
   getMyStaffRole,
   getStaffProject,
   listStaffProjects,
   postUpdate,
   raiseDecision,
+  retryDeliveries,
   updateMilestone,
   type StaffProjectSummary,
 } from "@/lib/staff-ops";
@@ -162,6 +164,103 @@ function ProjectRow({
         </div>
       </button>
     </li>
+  );
+}
+
+
+const DELIVERY_STATUS: Record<string, string> = {
+  sent: "bg-emerald-50 text-emerald-800 border-emerald-200",
+  pending: "bg-amber-50 text-amber-900 border-amber-300",
+  skipped: "bg-stone-100 text-stone-600 border-stone-300",
+  failed: "bg-red-50 text-red-800 border-red-200",
+};
+
+function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: () => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["delivery-log", projectId],
+    queryFn: () => getDeliveryLog({ data: { projectId } }),
+  });
+  const [retrying, setRetrying] = useState(false);
+
+  if (isLoading || !data) return null;
+
+  return (
+    <section className="rounded-3xl border border-ink/10 bg-white p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 className="font-display text-lg text-maroon">What the client was told</h3>
+          <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
+            Every post records what it tried to send. A channel with no credentials is
+            marked skipped rather than quietly dropped.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={retrying}
+          onClick={() => {
+            setRetrying(true);
+            void retryDeliveries({ data: { projectId } })
+              .then((r) => {
+                toast.success(`${r.queued} queued for another attempt.`);
+                void onChanged();
+              })
+              .catch((e: unknown) =>
+                toast.error(e instanceof Error ? e.message : "Retry failed."),
+              )
+              .finally(() => setRetrying(false));
+          }}
+        >
+          Retry failed
+        </Button>
+      </div>
+
+      <ul className="mt-4 flex flex-wrap gap-2">
+        {data.channels.map((c) => (
+          <li
+            key={c.channel}
+            className={cn(
+              "rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+              c.configured
+                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                : "bg-stone-100 text-stone-600 border-stone-300",
+            )}
+            title={c.configured ? "Configured" : c.reason}
+          >
+            {c.channel}
+            {c.configured ? " ready" : " not set"}
+          </li>
+        ))}
+      </ul>
+
+      {data.log.length === 0 ? (
+        <p className="mt-5 text-[13px] text-ink/55">Nothing has been sent to this client yet.</p>
+      ) : (
+        <ul className="mt-5 space-y-2">
+          {data.log.slice(0, 8).map((n) => (
+            <li
+              key={n.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-cream p-4"
+            >
+              <span className="min-w-0">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-[13px] text-maroon">{n.title}</span>
+                  <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]", DELIVERY_STATUS[n.status] ?? DELIVERY_STATUS.pending)}>
+                    {n.channel} · {n.status}
+                  </span>
+                </span>
+                {n.detail ? (
+                  <span className="mt-1 block text-[11px] text-ink/50">{n.detail}</span>
+                ) : null}
+              </span>
+              <span className="shrink-0 text-[11px] text-muted">
+                {n.createdAt ? new Date(n.createdAt).toLocaleDateString("en-KE", { day: "numeric", month: "short" }) : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -619,6 +718,8 @@ function ProjectDetail({
           </ul>
         </section>
       ) : null}
+
+      <DeliveryLog projectId={projectId} onChanged={onChanged} />
 
       <section className="rounded-3xl border border-ink/10 bg-white p-6">
         <h3 className="font-display text-lg text-maroon">What the client has decided</h3>

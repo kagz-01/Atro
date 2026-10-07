@@ -11,6 +11,7 @@ import { z } from "zod";
 import { getSql, type Sql } from "@/lib/db";
 import type { StaffIdentity } from "@/lib/staff";
 import { loadProjectById, logActivity, type PortalPayload } from "@/lib/diaspora/server";
+import { channelStatus, notificationLog, notify, retryPending } from "@/lib/notify";
 
 /* ── input ── */
 
@@ -92,6 +93,27 @@ export type StaffProjectSummary = {
 };
 
 /* ── reads ── */
+
+/** What was sent, what was skipped and why — so a missing message is explainable. */
+export const getDeliveryLog = createServerFn({ method: "GET" })
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    await requireStaff();
+    const sql = await getSql();
+    return {
+      channels: channelStatus(),
+      log: await notificationLog(sql, data.projectId),
+    };
+  });
+
+export const retryDeliveries = createServerFn({ method: "POST" })
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    await requireStaff();
+    const sql = await getSql();
+    const queued = await retryPending(sql, data.projectId);
+    return { ok: true as const, queued };
+  });
 
 /** Read-only role lookup for the UI: a session exists, and is it staff? */
 export const getMyStaffRole = createServerFn({ method: "GET" }).handler(async () => {
@@ -220,13 +242,15 @@ export async function updateMilestoneFor(
   }
 
   const result = await recomputeProgress(sql, data.projectId);
-  await logActivity(
-    sql,
-    data.projectId,
-    "milestone",
-    `${milestone.name} — ${statusLabel(status)}`,
-    data.note?.trim() || `Updated by ${staff.email}.`,
-  );
+  const title = `${milestone.name} — ${statusLabel(status)}`;
+  const body = data.note?.trim() || `Updated by ${staff.email}.`;
+  await logActivity(sql, data.projectId, "milestone", title, body);
+  await notify({
+    projectId: data.projectId,
+    kind: "milestone",
+    title,
+    body: `${body} Your project is now ${result.progress}% complete.`,
+  });
 
   return { ok: true as const, ...result };
 }
@@ -273,13 +297,13 @@ export async function addMilestoneEvidenceFor(
       where id = ${data.milestoneId} and project_id = ${data.projectId}
     `;
 
-  await logActivity(
-    sql,
-    data.projectId,
-    "milestone",
-    `Evidence added to ${milestone.name}`,
-    data.caption,
-  );
+  await logActivity(sql, data.projectId, "milestone", `Evidence added to ${milestone.name}`, data.caption);
+  await notify({
+    projectId: data.projectId,
+    kind: "milestone",
+    title: `New site record: ${milestone.name}`,
+    body: data.detail || data.caption,
+  });
 
   return { ok: true as const, count: next.length };
 }
@@ -300,13 +324,14 @@ export async function raiseDecisionFor(
               ${JSON.stringify(data.options)}, ${data.costImpact}, 'awaiting-client')
     `;
 
-  await logActivity(
-    sql,
-    data.projectId,
-    "decision",
-    `Your decision needed: ${data.title}`,
-    data.options.map((o) => `• ${o}`).join(" "),
-  );
+  const choices = data.options.map((o) => `• ${o}`).join(" ");
+  await logActivity(sql, data.projectId, "decision", `Your decision needed: ${data.title}`, choices);
+  await notify({
+    projectId: data.projectId,
+    kind: "decision",
+    title: `Your decision needed: ${data.title}`,
+    body: data.detail ? `${data.detail}\n\nOptions:\n${choices}` : `Options:\n${choices}`,
+  });
 
   return { ok: true as const, raisedBy: staff.email };
 }
@@ -353,6 +378,12 @@ export async function certifyPaymentFor(
     `Certificate issued: ${payment.label}`,
     `${data.certificate} — KES ${amount.toLocaleString("en-KE")} certified and awaiting the client's release.`,
   );
+  await notify({
+    projectId: data.projectId,
+    kind: "payment",
+    title: `Certified for release: ${payment.label}`,
+    body: `KES ${amount.toLocaleString("en-KE")} under certificate ${data.certificate}. Release it from your portal.`,
+  });
 
   return { ok: true as const, amount };
 }
@@ -389,6 +420,7 @@ export async function postUpdateFor(
     insert into staff_note (project_id, author_id, author_label, body)
     values (${data.projectId}, ${staff.userId}, ${staff.email}, ${data.body || data.title})
   `;
+  await notify({ projectId: data.projectId, kind: "update", title: data.title, body: data.body });
   return { ok: true as const };
 }
 

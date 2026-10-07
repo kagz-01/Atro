@@ -281,6 +281,7 @@ function NewProjectForm({
   const [months, setMonths] = useState("12");
   const [track, setTrack] = useState<TrackId>("construction");
   const [zone, setZone] = useState("nairobi");
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -305,6 +306,7 @@ function NewProjectForm({
           clientTz: tz,
           track,
           zone,
+          clientPhone: phone.trim(),
         },
       });
       toast.success("Project opened in your portal.");
@@ -408,6 +410,20 @@ function NewProjectForm({
             inputMode="numeric"
             required
           />
+        </div>
+        <div className="sm:col-span-2">
+          <Label htmlFor="np-phone">Mobile number (optional)</Label>
+          <Input
+            id="np-phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+254 700 123 456"
+            inputMode="tel"
+          />
+          <p className="mt-2 text-[12px] leading-relaxed text-ink/55">
+            Used only to tell you when ATRO posts an update, or when something needs
+            your decision. Add the country code.
+          </p>
         </div>
         <div>
           <Label htmlFor="np-zone">County</Label>
