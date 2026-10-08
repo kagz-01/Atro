@@ -1,9 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/logo";
 import { LEGAL_PAGES } from "@/components/legal-page";
-import { Mail, Phone, MapPin, Globe, ClipboardCheck } from "lucide-react";
+import { Mail, Phone, MapPin, Globe } from "lucide-react";
 import { COMPANY } from "@/lib/site";
 
+// Three short columns, not a sitemap. A footer that lists all 26 pages stops
+// being scannable, so each link here has to earn its place: who we are, how to
+// start work with us, and the two things a visitor most likely came back for.
 const FOOTER_COLUMNS = [
   {
     label: "Studio",
@@ -11,39 +14,24 @@ const FOOTER_COLUMNS = [
       { to: "/about", label: "About us" },
       { to: "/process", label: "How we work" },
       { to: "/zones", label: "Where we build" },
-      { to: "/insights", label: "Insights" },
       { to: "/contact", label: "Contact" },
     ],
   },
   {
-    label: "Work",
+    label: "Start a project",
     links: [
-      { to: "/projects", label: "Projects" },
+      { to: "/start", label: "Get a quote" },
       { to: "/services", label: "Services" },
-      { to: "/start", label: "Start a project" },
+      { to: "/projects", label: "Projects" },
+      { to: "/fees", label: "Fees & payment" },
     ],
   },
   {
-    label: "Tools",
+    label: "Tools & clients",
     links: [
-      { to: "/tools", label: "All tools" },
       { to: "/tools/cost-calculator", label: "Cost calculator" },
       { to: "/tools/boq-generator", label: "BOQ generator" },
-      { to: "/tools/material-prices", label: "Material prices" },
-      { to: "/tools/zone-map", label: "Zone map" },
-    ],
-  },
-  {
-    label: "Build from abroad",
-    links: [
-      { to: "/diaspora", label: "The Abroad service" },
       { to: "/portal", label: "Client portal" },
-      { to: "/guides/journey", label: "Build journey" },
-      { to: "/guides", label: "Guides" },
-      { to: "/verify", label: "Verify anyone" },
-      { to: "/scam-check", label: "Red flag checker" },
-      { to: "/fees", label: "Fees & payment" },
-      { to: "/login", label: "Sign in" },
     ],
   },
 ] as const;
@@ -54,7 +42,7 @@ export function SiteFooter() {
       <div className="absolute inset-0 bg-maroon" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-burgundy/40 via-maroon to-maroon" />
 
-      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-14 md:py-16">
+      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pt-14 md:pt-16 pb-36 md:pb-24">
         {/* Top row: Logo + tagline + contact */}
         <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
           <div className="space-y-3">
@@ -96,7 +84,7 @@ export function SiteFooter() {
         </div>
 
         {/* Sitemap */}
-        <div className="mt-8 grid gap-8 border-t border-paper/10 pt-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 border-t border-paper/10 pt-6 sm:grid-cols-3">
           {FOOTER_COLUMNS.map((col) => (
             <div key={col.label}>
               <p className="text-[11px] uppercase tracking-[0.18em] text-paper/30">
@@ -118,37 +106,21 @@ export function SiteFooter() {
           ))}
         </div>
 
-        {/* Policies */}
-        <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-paper/10 pt-6 text-[12px]">
-          <span className="text-[11px] uppercase tracking-[0.18em] text-paper/30">
-            Policies
-          </span>
-          {LEGAL_PAGES.map((p) => (
-            <Link
-              key={p.to}
-              to={p.to}
-              className="text-paper/55 transition-colors hover:text-gold"
-            >
-              {p.label}
-            </Link>
-          ))}
-        </div>
-
-        {/* Bottom: Copyright + socials */}
-        <div className="mt-8 flex flex-col items-center gap-4 border-t border-paper/10 pt-6 md:flex-row md:justify-between">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-paper/40">
+        {/* Copyright + legal, on one quiet line */}
+        <div className="mt-8 flex flex-col gap-3 border-t border-paper/10 pt-6 text-[11px] text-paper/40 md:flex-row md:items-center md:justify-between">
+          <p>
             © {new Date().getFullYear()} {COMPANY.name}. All rights reserved.
           </p>
-
-          <div className="flex items-center gap-4">
-            <Link
-              to="/portal"
-              className="inline-flex items-center gap-2 rounded-full border border-gold/40 px-4 py-2 text-[11px] uppercase tracking-[0.16em] text-gold transition-colors hover:bg-gold hover:text-maroon"
-            >
-              <ClipboardCheck className="size-3.5" />
-              Client portal
-            </Link>
-          </div>
+          <nav aria-label="Legal" className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {LEGAL_PAGES.filter((p) => p.to !== "/fees").map((p, i) => (
+              <span key={p.to} className="flex items-center gap-x-4">
+                {i > 0 && <span aria-hidden="true" className="text-paper/20">·</span>}
+                <Link to={p.to} className="transition-colors hover:text-gold">
+                  {p.label}
+                </Link>
+              </span>
+            ))}
+          </nav>
         </div>
       </div>
     </footer>
