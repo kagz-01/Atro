@@ -9,6 +9,7 @@ import type { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { issueReceiptFor } from "@/lib/invoice-server";
+import { notify } from "@/lib/notify";
 import {
   DecisionActionInput,
   MilestoneActionInput,
@@ -477,10 +478,13 @@ function addDays(date: Date, days: number): Date {
   return next;
 }
 
-async function generateProject(
+export async function generateProject(
   sql: Sql,
   userId: string,
   input: ProjectBrief,
+  referenceOverride?: string,
+  claimedEmail = "",
+  clientName = "",
 ): Promise<string> {
   const start = new Date(`${input.startDate}T00:00:00Z`);
   const target = new Date(`${input.targetDate}T00:00:00Z`);
@@ -491,28 +495,31 @@ async function generateProject(
     totalDays,
     Math.max(0, Math.round((today.getTime() - start.getTime()) / 86_400_000)),
   );
-  const reference = `ATR-${new Date().getFullYear()}-${String(
-    Math.floor(Math.random() * 9000) + 1000,
-  )}`;
-  const clientLabel = input.clientCity
-    ? `You — ${input.clientCity}`
-    : "You — your account";
+  const reference =
+    referenceOverride ??
+    `ATR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+  // An unowned project waits for its client: no "You" label, their name instead.
+  const clientLabel = claimedEmail
+    ? clientName || claimedEmail
+    : input.clientCity
+      ? `You — ${input.clientCity}`
+      : "You — your account";
 
   const projectRows = await sql<{ id: string }>`
     insert into portal_projects (
       user_id, reference, title, client_label, client_initials, plot, area,
       contract_type, started_label, target_label, stage, source, track,
-      service_slug, zone, client_phone, contract_value, days_elapsed,
-      days_total, days_remaining, programme_note,
+      service_slug, zone, client_phone, claimed_email, contract_value,
+      days_elapsed, days_total, days_remaining, programme_note,
       next_call_when, next_call_local, next_call_agenda, progress, last_viewed_at
     ) values (
-      ${userId}, ${reference}, ${input.title}, ${clientLabel}, ${"YO"},
+      ${userId}, ${reference}, ${input.title}, ${clientLabel}, ${clientLabel.slice(0, 2).toUpperCase()},
       ${input.plot || "Site reference pending"}, ${input.area || "—"},
       ${track.id === "construction" ? "Design and build" : track.label},
       ${shortDate(start)}, ${shortDate(target)},
       ${track.stages[0]?.name ?? "Mobilisation"}, 'created', ${track.id},
       ${input.serviceSlug}, ${input.zone}, ${input.clientPhone},
-      ${input.contractValue},
+      ${claimedEmail}, ${input.contractValue},
       ${daysElapsed}, ${totalDays},
       ${Math.max(0, totalDays - daysElapsed)},
       'Programme issued at contract signing. Milestone dates are planned, not promised — each one moves only when you approve it.',
@@ -839,8 +846,34 @@ async function buildProjectPayload(
 export { ProjectInput, MilestoneActionInput, PaymentActionInput, DecisionActionInput, ProjectRefInput };
 export type { ProjectBrief };
 
+/** Normalise an email for comparison; providers differ on case and nothing else. */
+function normalise(email: string | null | undefined): string {
+  return (email ?? "").trim().toLowerCase();
+}
+
+/**
+ * Take ownership of any project the studio opened for this email before the
+ * client had an account. This is what makes an enquiry convertible: the work is
+ * set up first, and the client finds it waiting the first time they sign in.
+ */
+export async function claimProvisionedProjects(sql: Sql, userId: string): Promise<number> {
+  const rows = await sql<{ email: string }>`
+    select email from "user" where id = ${userId} limit 1
+  `;
+  const email = normalise(rows[0]?.email);
+  if (!email) return 0;
+
+  const claimed = await sql<{ id: string }>`
+    update portal_projects set user_id = ${userId}
+    where user_id = '' and lower(claimed_email) = ${email}
+    returning id
+  `;
+  return claimed.length;
+}
+
 /** The signed-in owner's newest project; seeds the sample on first read. */
 export async function loadPortal(sql: Sql, userId: string): Promise<PortalPayload> {
+  await claimProvisionedProjects(sql, userId);
   let rows = await selectOwnedProjects(sql, userId);
   if (rows.length === 0) {
     await seedSampleProject(sql, userId);
@@ -991,6 +1024,14 @@ export async function releasePaymentFor(
     label: payment.label,
     certificate: payment.certificate ?? "certificate on file",
     amount,
+  });
+
+  await notify({
+    projectId,
+    kind: "payment",
+    title: `Payment received: ${payment.label}`,
+    body: `KES ${amount.toLocaleString("en-KE")} received. Your receipt is ready to keep or forward to your bank.`,
+    documentUrl: receipt ? `/portal/document/${receipt.id}` : undefined,
   });
 
   return { ok: true, paidToDate: amount, receiptNumber: receipt?.number ?? null };

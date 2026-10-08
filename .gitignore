@@ -3,3 +3,5 @@ node_modules/
 .tanstack/
 screenshots/
 *.log
+./agent
+./grok

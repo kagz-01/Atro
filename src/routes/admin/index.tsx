@@ -15,6 +15,16 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/field";
 import { EnquiriesInbox } from "@/components/admin/enquiries-inbox";
 import { getOpsOverview, type OpsOverview } from "@/lib/ops";
+import {
+  getMyAccess,
+  grantStaff,
+  listStaff,
+  requestStaffAccess,
+  revokeStaff,
+} from "@/lib/staff-access";
+import { issueStatementForProject, releaseRetention } from "@/lib/staff-ops";
+import { listProjectDocuments, voidDocument } from "@/lib/invoice-server";
+import { KIND_LABEL } from "@/lib/invoices";
 import { runAttentionSweepNow } from "@/lib/attention";
 import {
   addDocument,
@@ -352,7 +362,10 @@ function ProjectDetail({
   const [docRef, setDocRef] = useState("");
   const [docState, setDocState] = useState<(typeof DOC_STATES)[number]["value"]>("awaiting");
 
-  async function run(action: () => Promise<unknown>, done: string) {
+  const [pending, setPending] = useState("");
+
+  async function run(key: string, action: () => Promise<unknown>, done: string) {
+    setPending(key);
     try {
       await action();
       await refetch();
@@ -360,6 +373,8 @@ function ProjectDetail({
       toast.success(done);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "That did not save.");
+    } finally {
+      setPending("");
     }
   }
 
@@ -435,7 +450,7 @@ function ProjectDetail({
           title="Update a milestone"
           hint="Set the stage status the client sees. Completing one opens the next automatically."
           onRun={() =>
-            run(async () => {
+            run("write", async () => {
               if (!milestoneId) throw new Error("Pick a milestone first.");
               await updateMilestone({
                 data: {
@@ -486,7 +501,7 @@ function ProjectDetail({
           title="Add evidence"
           hint="A site photograph or inspection note against a stage. The client sees this in the milestone record."
           onRun={() =>
-            run(async () => {
+            run("write", async () => {
               if (!milestoneId) throw new Error("Pick a milestone first.");
               if (evidenceCaption.trim().length < 3) throw new Error("Give the evidence a caption.");
               await addMilestoneEvidence({
@@ -527,7 +542,7 @@ function ProjectDetail({
           title="Raise a decision"
           hint="Puts a choice to the client. One option per line. They record it in the decision log."
           onRun={() =>
-            run(async () => {
+            run("write", async () => {
               const options = decisionOptions
                 .split("\n")
                 .map((o) => o.trim())
@@ -573,7 +588,7 @@ function ProjectDetail({
           title="Post an update"
           hint="Appears in the client's activity feed and counts as new since their last visit."
           onRun={() =>
-            run(async () => {
+            run("write", async () => {
               if (updateTitle.trim().length < 3) throw new Error("Give the update a title.");
               await postUpdate({
                 data: { projectId, title: updateTitle.trim(), body: updateBody.trim(), kind: "note" },
@@ -609,7 +624,7 @@ function ProjectDetail({
         title="Add to the document vault"
         hint="Contracts, approvals, drawings and certificates the client can see. They keep the record."
         onRun={() =>
-          run(async () => {
+          run("vault", async () => {
             if (docName.trim().length < 3) throw new Error("Name the document.");
             await addDocument({
               data: {
@@ -700,6 +715,7 @@ function ProjectDetail({
                   variant="outline"
                   onClick={() =>
                     void run(
+                      "inline",
                       () =>
                         certifyPayment({
                           data: {
@@ -720,7 +736,51 @@ function ProjectDetail({
         </section>
       ) : null}
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <section className="rounded-2xl border border-ink/10 bg-cream p-5">
+          <h3 className="font-display text-lg text-maroon">Statement of account</h3>
+          <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
+            A record of where the money stands — not a demand. The client sees it in
+            their documents.
+          </p>
+          <Button
+            className="mt-4 w-full"
+            variant="outline"
+            onClick={() =>
+              void run(
+                "statement",
+                () => issueStatementForProject({ data: { projectId } }),
+                "Statement issued.",
+              )
+            }
+            disabled={pending === "statement"}
+          >
+            Issue a statement
+          </Button>
+        </section>
+
+        <section className="rounded-2xl border border-ink/10 bg-cream p-5">
+          <h3 className="font-display text-lg text-maroon">Retention</h3>
+          <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
+            Held against defects. Releasing it records that the defects liability
+            period has closed and pays the money out.
+          </p>
+          <Button
+            className="mt-4 w-full"
+            variant="outline"
+            onClick={() =>
+              void run("retention", () => releaseRetention({ data: { projectId } }),
+                "Retention released.")
+            }
+            disabled={pending === "retention"}
+          >
+            Release retention
+          </Button>
+        </section>
+      </div>
+
       <DeliveryLog projectId={projectId} onChanged={onChanged} />
+      <IssuedDocuments projectId={projectId} onChanged={onChanged} />
 
       <section className="rounded-3xl border border-ink/10 bg-white p-6">
         <h3 className="font-display text-lg text-maroon">What the client has decided</h3>
@@ -928,6 +988,273 @@ function Overview({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
+
+function IssuedDocuments({
+  projectId,
+  onChanged,
+}: {
+  projectId: string;
+  onChanged: () => void;
+}) {
+  const { data } = useQuery({
+    queryKey: ["project-documents", projectId],
+    queryFn: () => listProjectDocuments({ data: { projectId } }),
+  });
+  const [voiding, setVoiding] = useState<string | null>(null);
+
+  if (!data || data.length === 0) return null;
+
+  return (
+    <section className="rounded-3xl border border-ink/10 bg-white p-6">
+      <h3 className="font-display text-lg text-maroon">Documents issued</h3>
+      <ul className="mt-4 space-y-2">
+        {data.map((doc) => (
+          <li
+            key={doc.id}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-cream p-4"
+          >
+            <span className="min-w-0">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="text-[13px] text-maroon">{KIND_LABEL[doc.kind]}</span>
+                <span className="font-mono text-[11px] text-muted">{doc.number}</span>
+                {doc.status === "void" ? (
+                  <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-red-800">
+                    Void
+                  </span>
+                ) : null}
+              </span>
+              {doc.voidedReason ? (
+                <span className="mt-1 block text-[11px] text-ink/50">{doc.voidedReason}</span>
+              ) : null}
+            </span>
+            <span className="flex items-center gap-3">
+              <span className="text-[13px] text-maroon">{kes(doc.total)}</span>
+              {doc.status === "issued" ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={voiding === doc.id}
+                  onClick={() => {
+                    setVoiding(doc.id);
+                    void voidDocument({
+                      data: { id: doc.id, reason: "Voided from the studio console" },
+                    })
+                      .then(() => {
+                        toast.success(`${doc.number} voided. Issue a corrected one.`);
+                        onChanged();
+                      })
+                      .catch((e: unknown) =>
+                        toast.error(e instanceof Error ? e.message : "Could not void."),
+                      )
+                      .finally(() => setVoiding(null));
+                  }}
+                >
+                  Void
+                </Button>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/* ── access: how a real person becomes staff ── */
+
+function AccessPanel({ isStaff, isAdmin }: { isStaff: boolean; isAdmin: boolean }) {
+  const { data: me } = useQuery({
+    queryKey: ["my-access"],
+    queryFn: () => getMyAccess({ data: undefined }),
+  });
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"staff" | "admin">("staff");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [askNote, setAskNote] = useState("");
+
+  const { data, refetch } = useQuery({
+    queryKey: ["staff-list"],
+    queryFn: () => listStaff({ data: undefined }),
+    enabled: isStaff,
+  });
+
+  if (!isStaff) {
+    return (
+      <div className="rounded-3xl border border-ink/10 bg-white p-8">
+        <h2 className="font-display text-2xl text-maroon">Request studio access</h2>
+        <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-ink/65">
+          You are signed in as <strong>{me?.email ?? "an unknown account"}</strong>, which
+          is not on the studio access list. Ask below and an existing admin approves it
+          — usually the same day.
+        </p>
+        {me?.requested ? (
+          <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
+            Your request is with the studio. You will see the console once it is approved.
+          </p>
+        ) : null}
+        <textarea
+          value={askNote}
+          onChange={(e) => setAskNote(e.target.value)}
+          placeholder="Who you are and what you need"
+          className="mt-4 h-24 w-full rounded-xl border border-line bg-cream p-3 text-sm"
+        />
+        <Button
+          className="mt-4"
+          disabled={busy || me?.requested}
+          onClick={() => {
+            setBusy(true);
+            void requestStaffAccess({ data: { note: askNote } })
+              .then(() => toast.success("Request sent to the studio."))
+              .catch((e: unknown) =>
+                toast.error(e instanceof Error ? e.message : "Could not send."),
+              )
+              .finally(() => setBusy(false));
+          }}
+        >
+          Request access
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-3xl border border-ink/10 bg-white p-6">
+        <h2 className="font-display text-lg text-maroon">Who can open the console</h2>
+        <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
+          Access is an allowlist keyed on the address a person signs in with. You cannot
+          grant it to yourself.
+        </p>
+        <ul className="mt-4 space-y-2">
+          {(data?.members ?? []).map((m) => (
+            <li
+              key={m.email}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-cream p-4"
+            >
+              <span className="min-w-0">
+                <span className="block text-[13px] text-maroon">{m.email}</span>
+                <span className="text-[11px] text-ink/50">
+                  {m.role} · since {m.since}
+                  {m.note ? ` · ${m.note}` : ""}
+                </span>
+              </span>
+              {isAdmin ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    void revokeStaff({ data: { email: m.email } })
+                      .then(() => {
+                        toast.success(`${m.email} removed.`);
+                        void refetch();
+                      })
+                      .catch((e: unknown) =>
+                        toast.error(e instanceof Error ? e.message : "Could not remove."),
+                      )
+                  }
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+
+        {isAdmin ? (
+          <div className="mt-5 grid gap-3 border-t border-ink/10 pt-5 sm:grid-cols-3">
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="their address"
+              className="h-11 rounded-xl border border-line bg-cream px-3 text-sm sm:col-span-2"
+            />
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as "staff" | "admin")}
+              className="h-11 rounded-xl border border-line bg-cream px-3 text-sm"
+            >
+              <option value="staff">Staff</option>
+              <option value="admin">Admin</option>
+            </select>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="What they do"
+              className="h-11 rounded-xl border border-line bg-cream px-3 text-sm sm:col-span-2"
+            />
+            <Button
+              disabled={busy}
+              onClick={() => {
+                setBusy(true);
+                void grantStaff({ data: { email, role, note } })
+                  .then(() => {
+                    toast.success(`${email} can now open the console.`);
+                    setEmail("");
+                    setNote("");
+                    void refetch();
+                  })
+                  .catch((e: unknown) =>
+                    toast.error(e instanceof Error ? e.message : "Could not grant."),
+                  )
+                  .finally(() => setBusy(false));
+              }}
+            >
+              Grant access
+            </Button>
+          </div>
+        ) : null}
+      </section>
+
+      {data && data.requests.length > 0 ? (
+        <section className="rounded-3xl border border-gold/40 bg-gold/5 p-6">
+          <h2 className="font-display text-lg text-maroon">Waiting to be let in</h2>
+          <ul className="mt-4 space-y-2">
+            {data.requests.map((r) => (
+              <li
+                key={r.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[13px] text-maroon">
+                    {r.name || "—"} · {r.email}
+                  </span>
+                  {r.note ? (
+                    <span className="mt-1 block text-[12px] text-ink/60">{r.note}</span>
+                  ) : null}
+                  <span className="text-[11px] text-muted">
+                    asked {new Date(r.createdAt).toLocaleDateString("en-KE")}
+                  </span>
+                </span>
+                {isAdmin ? (
+                  <Button
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => {
+                      setBusy(true);
+                      void grantStaff({ data: { email: r.email, role: "staff", note: "Approved from request" } })
+                        .then(() => {
+                          toast.success(`${r.email} approved.`);
+                          void refetch();
+                        })
+                        .catch((e: unknown) =>
+                          toast.error(e instanceof Error ? e.message : "Could not approve."),
+                        )
+                        .finally(() => setBusy(false));
+                    }}
+                  >
+                    Approve
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
 /* ── console ── */
 
 function AdminConsole() {
@@ -937,7 +1264,7 @@ function AdminConsole() {
   );
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "attention" | "sample">("all");
-  const [tab, setTab] = useState<"overview" | "projects" | "enquiries">("overview");
+  const [tab, setTab] = useState<"overview" | "projects" | "enquiries" | "access">("overview");
 
   useEffect(() => {
     let live = true;
@@ -1006,6 +1333,7 @@ function AdminConsole() {
               ["overview", "Overview"],
               ["projects", "Projects"],
               ["enquiries", "Enquiries"],
+              ["access", "Access"],
             ] as const).map(([id, label]) => (
               <button
                 key={id}
@@ -1036,6 +1364,11 @@ function AdminConsole() {
           {tab === "enquiries" ? (
             <div className="mt-8">
               <EnquiriesInbox />
+            </div>
+          ) : null}
+          {tab === "access" ? (
+            <div className="mt-8">
+              <AccessPanel isStaff={isStaff} isAdmin={roleState?.role === "admin"} />
             </div>
           ) : null}
           {tab === "projects" ? null : null}

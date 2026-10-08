@@ -28,6 +28,8 @@ export type NotificationInput = {
   audience?: "client" | "studio";
   /** Channels to try. Defaults to inapp plus every configured transport. */
   channels?: Channel[];
+  /** Deep link, e.g. the certificate this message is about. */
+  documentUrl?: string;
   /**
    * When set, this notification is sent at most once for that key. The unique
    * index on `dedupe_key` is what enforces it, so a retry cannot double-send.
@@ -108,6 +110,18 @@ async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | n
 
 /* ── sending ── */
 
+/** The public origin, so links in an email actually resolve. */
+function baseUrl(): string {
+  const configured = process.env.ATRO_SITE_URL ?? process.env.VITE_PUBLIC_HOSTNAME;
+  if (configured) return configured.startsWith("http") ? configured : `https://${configured}`;
+  return "https://atro.ke";
+}
+
+/** Resolve a link that may already be absolute. */
+function absoluteUrl(target: string): string {
+  return target.startsWith("http") ? target : `${baseUrl()}${target}`;
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -116,7 +130,13 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-async function sendEmail(to: string, title: string, body: string, projectRef: string) {
+async function sendEmail(
+  to: string,
+  title: string,
+  body: string,
+  projectRef: string,
+  documentUrl?: string,
+) {
   const from = process.env.RESEND_FROM ?? "ATRO <portal@atro.ke>";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -128,12 +148,26 @@ async function sendEmail(to: string, title: string, body: string, projectRef: st
       from,
       to,
       subject: title,
-      text: `${title}\n\n${body}\n\nOpen your project: ${projectRef}`,
+      text: [
+        title,
+        "",
+        body,
+        "",
+        documentUrl
+          ? `Open it: ${absoluteUrl(documentUrl)}`
+          : `Open your project: ${baseUrl()}/portal`,
+      ].join("\n"),
       html: `<div style="font-family:Georgia,serif;color:#3C0508;max-width:560px">
   <p style="letter-spacing:.14em;text-transform:uppercase;font-size:11px;color:#8a6a3a">ATRO · ${escapeHtml(projectRef)}</p>
   <h1 style="font-size:24px;margin:16px 0">${escapeHtml(title)}</h1>
   <p style="font-size:15px;line-height:1.7;color:#4a4a4a">${escapeHtml(body).replace(/\n/g, "<br>")}</p>
-  <p style="font-size:13px;color:#777;margin-top:28px">
+  <p style="margin-top:28px">
+    <a href="${escapeHtml(documentUrl ? absoluteUrl(documentUrl) : `${baseUrl()}/portal`)}"
+       style="display:inline-block;background:#3C0508;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-family:system-ui,sans-serif;font-size:13px">
+      ${documentUrl ? "Open the document" : "Open your portal"}
+    </a>
+  </p>
+  <p style="font-size:13px;color:#777;margin-top:20px">
     Sign in to your portal to approve milestones, release certified payments or record a decision.
   </p>
 </div>`,
@@ -299,7 +333,7 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
 
     const result =
       channel === "email"
-        ? await sendEmail(target, input.title, body, projectRef)
+        ? await sendEmail(target, input.title, body, projectRef, input.documentUrl)
         : channel === "whatsapp"
           ? await sendWhatsApp(
               target,

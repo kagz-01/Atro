@@ -9,7 +9,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSql, type Sql } from "@/lib/db";
-import type { StaffIdentity } from "@/lib/staff";
+import { normaliseEmail, type StaffIdentity } from "@/lib/staff";
+import {
+  trackById,
+  TRACK_IDS,
+  type ProjectBrief,
+} from "@/lib/diaspora/portal-schema";
+import { generateProject } from "@/lib/diaspora/server";
 import { loadProjectById, logActivity, type PortalPayload } from "@/lib/diaspora/server";
 import { channelStatus, notificationLog, notify, retryPending } from "@/lib/notify";
 import { issueCertificateFor, issueStatementFor } from "@/lib/invoice-server";
@@ -388,20 +394,22 @@ export async function certifyPaymentFor(
     `Certificate issued: ${payment.label}`,
     `${data.certificate} — KES ${amount.toLocaleString("en-KE")} certified and awaiting the client's release.`,
   );
-  await notify({
-    projectId: data.projectId,
-    kind: "payment",
-    title: `Certified for release: ${payment.label}`,
-    body: `KES ${amount.toLocaleString("en-KE")} under certificate ${data.certificate}. Release it from your portal.`,
-  });
-
-  // The paperwork follows the money: the certificate is what authorises release.
+  // The paperwork follows the money: the certificate is what authorises release,
+  // so it is issued first and the message can link straight to it.
   const document = await issueCertificateFor(sql, staff.email, {
     projectId: data.projectId,
     paymentId: data.paymentId,
     label: payment.label,
     certificate: data.certificate,
     amount,
+  });
+
+  await notify({
+    projectId: data.projectId,
+    kind: "payment",
+    title: `Certified for release: ${payment.label}`,
+    body: `KES ${amount.toLocaleString("en-KE")} under certificate ${data.certificate}. Release it from your portal.`,
+    documentUrl: document ? `/portal/document/${document.id}` : undefined,
   });
 
   return { ok: true as const, amount, documentNumber: document?.number ?? null };
@@ -470,3 +478,177 @@ export const addDocument = createServerFn({ method: "POST" })
 export const postUpdate = createServerFn({ method: "POST" })
   .validator(PostUpdate)
   .handler(async ({ data }) => postUpdateFor(await getSql(), await requireStaff(), data));
+
+/* ── turning an enquiry into real work ── */
+
+const OpenFromEnquiry = z.object({
+  enquiryId: z.string().min(1),
+  title: z.string().trim().min(3).max(120),
+  track: z.enum(TRACK_IDS as [string, ...string[]]).default("construction"),
+  contractValue: z.number().int().min(500_000).max(50_000_000_000),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  zone: z.string().trim().max(60).default(""),
+  area: z.string().trim().max(60).default(""),
+  plot: z.string().trim().max(200).default(""),
+});
+
+/**
+ * Open a project for a client who may never have signed up.
+ *
+ * The row is written with no owner and a `claimed_email`, so it waits for them:
+ * the first time they sign in with that address the project becomes theirs. The
+ * alternative — asking a lead to create an account before we have decided to
+ * work with them — loses the enquiry at exactly the wrong moment.
+ */
+export async function openProjectFromEnquiryFor(
+  sql: Sql,
+  staff: { email: string; userId: string },
+  data: z.infer<typeof OpenFromEnquiry>,
+): Promise<{ projectId: string; clientEmail: string }> {
+  const rows = await sql<{
+    id: string;
+    email: string;
+    name: string;
+    zone: string;
+    description: string;
+    project_type: string;
+    already: string | null;
+  }>`
+    select e.id, e.email, e.name, e.zone, e.description, e.project_type,
+      (select p.id::text from portal_projects p where p.id = e.project_id) as already
+    from enquiries e where e.id = ${data.enquiryId} limit 1
+  `;
+  const enquiry = rows[0];
+  if (!enquiry) throw new Error("That enquiry no longer exists.");
+
+  const email = normaliseEmail(enquiry.email);
+  if (!email) throw new Error("That enquiry has no email address to open a project against.");
+
+  if (enquiry.already) return { projectId: enquiry.already, clientEmail: email };
+
+  const year = new Date().getFullYear();
+  const reference = `ATR-${year}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+  const track = trackById(data.track);
+  const brief: ProjectBrief = {
+    title: data.title.trim(),
+    plot: data.plot.trim() || enquiry.zone,
+    area: data.area.trim(),
+    contractValue: data.contractValue,
+    startDate: data.startDate,
+    targetDate: data.targetDate,
+    clientCity: "",
+    clientTz: "",
+    track: track.id,
+    serviceSlug: "",
+    zone: data.zone || enquiry.zone,
+    clientPhone: "",
+  };
+
+  // An unowned row: user_id '' and the address it is waiting for.
+  const projectId = await generateProject(sql, "", brief, reference, email, enquiry.name);
+
+  await sql`
+    update enquiries set status = 'converted', project_id = ${projectId}, updated_at = now()
+    where id = ${data.enquiryId}
+  `;
+  await logActivity(
+    sql,
+    projectId,
+    "note",
+    "Project opened from an enquiry",
+    `Prepared by ${staff.email} from enquiry ${enquiry.id}. It will appear for ${email} as soon as they sign in.`,
+  );
+
+  return { projectId, clientEmail: email };
+}
+
+export const openProjectFromEnquiry = createServerFn({ method: "POST" })
+  .validator(OpenFromEnquiry)
+  .handler(async ({ data }) => {
+    const staff = await requireStaff();
+    return openProjectFromEnquiryFor(await getSql(), staff, data);
+  });
+
+/** Move an enquiry along the funnel. */
+export const setEnquiryStatus = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      enquiryId: z.string().min(1),
+      status: z.enum(["new", "contacted", "quoted", "won", "lost", "converted"]),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await requireStaff();
+    const sql = await getSql();
+    const rows = await sql<{ id: string }>`
+      update enquiries set status = ${data.status}, updated_at = now()
+      where id = ${data.enquiryId} and status <> 'converted'
+      returning id
+    `;
+    if (!rows[0]) throw new Error("That enquiry has already been converted, or is gone.");
+    return { ok: true as const };
+  });
+
+/* ── retention ── */
+
+/**
+ * Release retention once the defects liability period has closed.
+ *
+ * Retention is tracked two ways — the balance the studio holds on the project,
+ * and any payment line still marked `retained`. Both are reconciled here so the
+ * ledger and the balance can never disagree about what was paid out.
+ */
+export async function releaseRetentionFor(
+  sql: Sql,
+  staff: { email: string; userId: string },
+  projectId: string,
+): Promise<{ ok: true; released: number; count: number }> {
+  const project = await sql<{ retention_held: number }>`
+    select retention_held from portal_projects where id = ${projectId} limit 1
+  `;
+  if (!project[0]) throw new Error("Project not found.");
+
+  const lines = await sql<{ id: string; amount: number }>`
+    select id, amount from portal_payments
+    where project_id = ${projectId} and status = 'retained'
+  `;
+
+  // The balance held is the authority; the lines are how it is shown.
+  const held = Number(project[0].retention_held ?? 0);
+  const fromLines = lines.reduce((sum, r) => sum + Number(r.amount ?? 0), 0);
+  const total = held > 0 ? held : fromLines;
+  if (total <= 0) {
+    throw new Error("No retention is held on this project, so there is nothing to release.");
+  }
+
+  if (lines.length > 0) {
+    await sql`
+      update portal_payments set status = 'paid', paid_date = ${todayLabel()},
+        method = 'Retention released — defects closed'
+      where project_id = ${projectId} and status = 'retained'
+    `;
+  }
+
+  await sql`
+    update portal_projects
+    set retention_held = 0, paid_to_date = paid_to_date + ${total}, updated_at = now()
+    where id = ${projectId}
+  `;
+
+  await logActivity(
+    sql,
+    projectId,
+    "payment",
+    "Retention released",
+    `${total.toLocaleString("en-KE")} KES released after the defects liability period closed. Recorded by ${staff.email}.`,
+  );
+
+  return { ok: true, released: total, count: lines.length };
+}
+
+export const releaseRetention = createServerFn({ method: "POST" })
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(async ({ data }) =>
+    releaseRetentionFor(await getSql(), await requireStaff(), data.projectId),
+  );

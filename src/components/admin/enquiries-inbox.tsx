@@ -5,7 +5,7 @@
 // client-side gate standing in for it.
 
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -28,6 +28,9 @@ import { Badge } from "@/components/ui/badge";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { listEnquiriesFromDb } from "@/lib/enquiry-server";
+import { openProjectFromEnquiry, setEnquiryStatus } from "@/lib/staff-ops";
+import { TRACK_LIST } from "@/lib/diaspora/tracks";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { whatsappHref } from "@/lib/whatsapp";
 
@@ -50,6 +53,8 @@ type Enquiry = {
   diaspora_timezone: string;
   diaspora_kenya_contact: string;
   diaspora_visit_plans: string;
+  status: string;
+  project_id: string | null;
   created_at: string;
 };
 
@@ -87,6 +92,171 @@ function timeAgo(dateStr: string) {
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d ago`;
   return new Date(dateStr).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/**
+ * The step that makes the funnel real: turn this enquiry into a project.
+ *
+ * The project is written with no owner and the client's email attached, so it
+ * waits for them — the first time they sign in it becomes theirs. Asking a lead
+ * to create an account before we have decided to work with them loses the
+ * enquiry at exactly the wrong moment.
+ */
+function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [track, setTrack] = useState<string>("construction");
+  const [title, setTitle] = useState(
+    `${enquiry.project_type || "New build"}, ${ZONE_LABELS[enquiry.zone] ?? enquiry.zone ?? "site"}`,
+  );
+  const [value, setValue] = useState("25000000");
+  const [months, setMonths] = useState("12");
+
+  const convert = useMutation({
+    mutationFn: () => {
+      const start = new Date();
+      const target = new Date(start);
+      target.setMonth(target.getMonth() + Number(months));
+      return openProjectFromEnquiry({
+        data: {
+          enquiryId: enquiry.id,
+          title: title.trim(),
+          track: track as (typeof TRACK_LIST)[number]["id"],
+          contractValue: Number(value),
+          startDate: start.toISOString().slice(0, 10),
+          targetDate: target.toISOString().slice(0, 10),
+          zone: enquiry.zone ?? "",
+          area: enquiry.sqm ? `${enquiry.sqm} m²` : "",
+          plot: "",
+        },
+      });
+    },
+    onSuccess: (result) => {
+      toast.success(`Project opened for ${result.clientEmail}.`);
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["admin-enquiries"] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "Could not open the project."),
+  });
+
+  const advance = useMutation({
+    mutationFn: (status: "contacted" | "quoted" | "won" | "lost") =>
+      setEnquiryStatus({ data: { enquiryId: enquiry.id, status } }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin-enquiries"] }),
+  });
+
+  if (enquiry.status === "converted") {
+    return (
+      <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        Project opened. It is waiting for {enquiry.email} — they will find it in their
+        portal the first time they sign in.
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-maroon px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white hover:bg-burgundy"
+        >
+          Open a project
+        </button>
+        {enquiry.status === "new" ? (
+          <button
+            type="button"
+            onClick={() => advance.mutate("contacted")}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-line px-5 text-[11px] uppercase tracking-[0.14em] hover:border-burgundy hover:text-burgundy"
+          >
+            Mark contacted
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  const field =
+    "h-11 w-full rounded-xl border border-line bg-paper px-3 text-sm";
+  const label = "mb-1 block text-[11px] uppercase tracking-[0.14em] text-muted";
+
+  return (
+    <div className="rounded-xl border border-ink/10 bg-cream p-5">
+      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gold">
+        Open a project for {enquiry.email}
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <label className={label} htmlFor={`cv-title-${enquiry.id}`}>Project</label>
+          <input
+            id={`cv-title-${enquiry.id}`}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className={field}
+          />
+        </div>
+        <div>
+          <label className={label} htmlFor={`cv-track-${enquiry.id}`}>Kind of work</label>
+          <select
+            id={`cv-track-${enquiry.id}`}
+            value={track}
+            onChange={(e) => setTrack(e.target.value)}
+            className={field}
+          >
+            {TRACK_LIST.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={label} htmlFor={`cv-value-${enquiry.id}`}>Contract value (KES)</label>
+          <input
+            id={`cv-value-${enquiry.id}`}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            inputMode="numeric"
+            className={field}
+          />
+        </div>
+        <div>
+          <label className={label} htmlFor={`cv-months-${enquiry.id}`}>Programme (months)</label>
+          <input
+            id={`cv-months-${enquiry.id}`}
+            value={months}
+            onChange={(e) => setMonths(e.target.value)}
+            inputMode="numeric"
+            className={field}
+          />
+        </div>
+      </div>
+      <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
+        Stages and the payment schedule are generated from this. The client does not
+        need an account yet — the project waits for {enquiry.email} and appears the
+        first time they sign in.
+      </p>
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={() => convert.mutate()}
+          disabled={convert.isPending}
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-maroon px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white disabled:opacity-50"
+        >
+          {convert.isPending ? "Opening…" : "Open project"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="h-10 rounded-xl border border-line px-5 text-[11px] uppercase tracking-[0.14em]"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function EnquiriesInbox() {
@@ -413,6 +583,11 @@ export function EnquiriesInbox() {
                   </div>
                 </div>
               )}
+
+              {/* Turn this enquiry into real work */}
+              <div className="pt-2">
+                <ConvertEnquiry enquiry={selected} />
+              </div>
 
               {/* Actions */}
               <div className="flex flex-wrap gap-3 pt-2">

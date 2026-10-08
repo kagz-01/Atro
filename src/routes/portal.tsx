@@ -24,7 +24,8 @@ import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
 import { KIND_LABEL } from "@/lib/invoices";
 import { listMyDocuments } from "@/lib/invoice-server";
 import { getMyNudges, type ClientNudge } from "@/lib/attention";
-import { TRACK_LIST, type TrackId } from "@/lib/diaspora/tracks";
+import { TRACK_LIST, trackById, type TrackId } from "@/lib/diaspora/tracks";
+import { SERVICES } from "@/lib/site";
 import { ZONES } from "@/lib/site";
 import {
   createPortalProject,
@@ -284,6 +285,7 @@ function NewProjectForm({
   const [tz, setTz] = useState("");
   const [months, setMonths] = useState("12");
   const [track, setTrack] = useState<TrackId>("construction");
+  const [serviceSlug, setServiceSlug] = useState("");
   const [zone, setZone] = useState("nairobi");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
@@ -309,6 +311,7 @@ function NewProjectForm({
           clientCity: city.trim(),
           clientTz: tz,
           track,
+          serviceSlug,
           zone,
           clientPhone: phone.trim(),
         },
@@ -414,6 +417,24 @@ function NewProjectForm({
             inputMode="numeric"
             required
           />
+        </div>
+        <div className="sm:col-span-2">
+          <Label htmlFor="np-service">Service</Label>
+          <Select
+            id="np-service"
+            value={serviceSlug}
+            onChange={(e) => setServiceSlug(e.target.value)}
+          >
+            <option value="">Not sure yet</option>
+            {trackById(track).services.map((slug) => {
+              const service = SERVICES.find((x) => x.slug === slug);
+              return (
+                <option key={slug} value={slug}>
+                  {service?.title ?? slug}
+                </option>
+              );
+            })}
+          </Select>
         </div>
         <div className="sm:col-span-2">
           <Label htmlFor="np-phone">Mobile number (optional)</Label>

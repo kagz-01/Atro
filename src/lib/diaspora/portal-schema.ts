@@ -56,6 +56,10 @@ export const ProjectRefInput = z.object({ projectId: z.string().min(1) });
  * existing callers keep working while the track becomes the source of truth.
  */
 
+export { TRACK_IDS } from "./tracks.ts";
+
+export type ProjectBrief = z.infer<typeof ProjectInput>;
+
 export {
   type StageWindow,
   type Track,
