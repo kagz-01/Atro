@@ -23,6 +23,7 @@ import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user
 import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
 import { KIND_LABEL } from "@/lib/invoices";
 import { listMyDocuments } from "@/lib/invoice-server";
+import { getMyNudges, type ClientNudge } from "@/lib/attention";
 import { TRACK_LIST, type TrackId } from "@/lib/diaspora/tracks";
 import { ZONES } from "@/lib/site";
 import {
@@ -498,6 +499,43 @@ function NewProjectForm({
   );
 }
 
+/* ── nudge: this is the client side of the attention sweep ── */
+
+function NudgeBanner({ nudges }: { nudges: ClientNudge[] }) {
+  if (nudges.length === 0) return null;
+  const oldest = Math.max(...nudges.map((n) => n.ageDays));
+
+  return (
+    <div className="border-b border-amber-300 bg-amber-50">
+      <div className="mx-auto max-w-[1400px] px-6 py-5 sm:px-8 md:px-12 lg:px-16">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="max-w-2xl text-[14px] leading-relaxed text-amber-900">
+            <strong className="font-semibold">
+              {nudges.length} decision{nudges.length === 1 ? "" : "s"} still open on your
+              project
+            </strong>
+            {oldest > 0 ? ` — the oldest has been waiting ${oldest} days.` : "."}{" "}
+            A stage cannot move until you answer, and the site keeps running either way.
+          </p>
+          <Button asChild size="sm" variant="outline">
+            <a href="#decisions">Answer now</a>
+          </Button>
+        </div>
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {nudges.map((n) => (
+            <li
+              key={n.decisionId}
+              className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[12px] text-amber-900"
+            >
+              {n.title} · {n.ageDays}d
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 /* ── invoices & receipts ── */
 
 const DOC_TONE: Record<string, string> = {
@@ -594,6 +632,11 @@ function DocumentsSection() {
 
 function PortalPage() {
   const user = useCurrentUser();
+  const { data: nudges } = useQuery({
+    queryKey: ["my-nudges"],
+    queryFn: () => getMyNudges({ data: undefined }),
+    enabled: Boolean(user),
+  });
   const [data, setData] = useState<PortalPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -690,6 +733,8 @@ function PortalPage() {
 
   return (
     <>
+      {nudges && nudges.length > 0 ? <NudgeBanner nudges={nudges} /> : null}
+
       {/* Hero */}
       <section className="relative overflow-hidden bg-maroon pt-28 pb-16 md:pt-36">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-burgundy/60 via-maroon to-maroon" />
@@ -1317,7 +1362,7 @@ function PortalPage() {
             </div>
 
             {/* Decision log */}
-            <div>
+            <div id="decisions">
               <p className="text-[11px] uppercase tracking-[0.2em] text-gold">
                 Decision log
               </p>

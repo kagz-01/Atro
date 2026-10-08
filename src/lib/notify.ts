@@ -28,6 +28,11 @@ export type NotificationInput = {
   audience?: "client" | "studio";
   /** Channels to try. Defaults to inapp plus every configured transport. */
   channels?: Channel[];
+  /**
+   * When set, this notification is sent at most once for that key. The unique
+   * index on `dedupe_key` is what enforces it, so a retry cannot double-send.
+   */
+  dedupeKey?: string;
 };
 
 /* ── configuration ── */
@@ -74,6 +79,15 @@ type Recipient = {
   phone: string | null;
   name: string;
 };
+
+async function resolveStudio(sql: Sql): Promise<Recipient | null> {
+  const rows = await sql<{ email: string; label: string }>`
+    select email, label from studio_contact where active order by created_at
+  `;
+  const row = rows[0];
+  if (!row) return null;
+  return { email: row.email, phone: null, name: row.label };
+}
 
 async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | null> {
   const rows = await sql<{ email: string | null; name: string | null; client_phone: string }>`
@@ -206,7 +220,13 @@ const TEMPLATE_FOR: Record<string, string> = {
  * Record the intent, then try each channel. Never throws for a delivery
  * problem: the row keeps the outcome so staff can see what went out.
  */
-export async function notify(input: NotificationInput): Promise<void> {
+export type NotifyResult = {
+  /** False when a dedupe key refused the message — it was already sent. */
+  created: boolean;
+  channels: Channel[];
+};
+
+export async function notify(input: NotificationInput): Promise<NotifyResult> {
   const sql = await getSql();
   const body = input.body ?? "";
   const audience = input.audience ?? "client";
@@ -215,7 +235,8 @@ export async function notify(input: NotificationInput): Promise<void> {
   // skipped, so the delivery log shows the studio is not reaching that person yet.
   const wanted =
     input.channels ?? (Object.keys(CONFIG) as Channel[]).filter((c) => CONFIG[c]().configured);
-  const recipient = audience === "client" ? await resolveClient(sql, input.projectId) : null;
+  const recipient =
+    audience === "studio" ? await resolveStudio(sql) : await resolveClient(sql, input.projectId);
 
   const projectRow = await sql<{ reference: string }>`
     select reference from portal_projects where id = ${input.projectId} limit 1
@@ -224,22 +245,50 @@ export async function notify(input: NotificationInput): Promise<void> {
 
   for (const channel of wanted) {
     const config = CONFIG[channel]();
-    const row = await sql<{ id: string }>`
-      insert into portal_notification (project_id, channel, audience, kind, title, body, status, detail)
-      values (${input.projectId}, ${channel}, ${audience}, ${input.kind}, ${input.title}, ${body},
-              ${config.configured ? "pending" : "skipped"}, ${config.configured ? "" : config.reason})
-      returning id
-    `;
-    const id = row[0]?.id;
-    if (!id || !config.configured) continue;
+    const dedupe = input.dedupeKey && channel === wanted[0] ? input.dedupeKey : null;
+
+    const rows = dedupe
+      ? await sql.query<{ id: string }>(
+          `insert into portal_notification
+             (project_id, channel, audience, kind, title, body, status, detail, dedupe_key)
+           values ($1, $2, $3, $4, $5, $6,
+                   case when $7 then 'pending' else 'skipped' end, $8, $9)
+           on conflict (dedupe_key) where dedupe_key is not null
+             and status in ('pending', 'sent') do nothing
+           returning id`,
+          [
+            input.projectId,
+            channel,
+            audience,
+            input.kind,
+            input.title,
+            body,
+            config.configured,
+            config.configured ? "" : config.reason,
+            dedupe,
+          ],
+        )
+      : await sql<{ id: string }>`
+          insert into portal_notification
+            (project_id, channel, audience, kind, title, body, status, detail)
+          values (${input.projectId}, ${channel}, ${audience}, ${input.kind},
+                  ${input.title}, ${body},
+                  ${config.configured ? "pending" : "skipped"},
+                  ${config.configured ? "" : config.reason})
+          returning id
+        `;
+
+    const id = rows[0]?.id;
+    // Already handled for this dedupe key — the unique index refused the row,
+    // so this message was sent before and must not be sent twice.
+    if (dedupe && !id) return { created: false, channels: [] };
+    if (!id) continue;
+    if (!config.configured) continue;
 
     // inapp needs no transport — the portal feed is the delivery.
-    if (channel === "inapp") {
-      continue;
-    }
+    if (channel === "inapp") continue;
 
-    const target =
-      channel === "email" ? recipient?.email : channel === "sms" ? recipient?.phone : recipient?.phone;
+    const target = channel === "email" ? recipient?.email : recipient?.phone;
     if (!target) {
       await sql`
         update portal_notification set status = 'skipped', detail = 'no contact on file'
@@ -252,7 +301,12 @@ export async function notify(input: NotificationInput): Promise<void> {
       channel === "email"
         ? await sendEmail(target, input.title, body, projectRef)
         : channel === "whatsapp"
-          ? await sendWhatsApp(target, input.title, body, TEMPLATE_FOR[input.kind] ?? TEMPLATE_FOR.update)
+          ? await sendWhatsApp(
+              target,
+              input.title,
+              body,
+              TEMPLATE_FOR[input.kind] ?? TEMPLATE_FOR.update,
+            )
           : await sendSms(target, input.title, body);
 
     await sql`
@@ -262,6 +316,8 @@ export async function notify(input: NotificationInput): Promise<void> {
       where id = ${id}
     `;
   }
+
+  return { created: true, channels: wanted };
 }
 
 export type NotificationLog = {

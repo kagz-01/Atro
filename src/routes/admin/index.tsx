@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/field";
 import { EnquiriesInbox } from "@/components/admin/enquiries-inbox";
 import { getOpsOverview, type OpsOverview } from "@/lib/ops";
+import { runAttentionSweepNow } from "@/lib/attention";
 import {
   addDocument,
   addMilestoneEvidence,
@@ -798,6 +799,15 @@ function Overview({ onOpen }: { onOpen: (id: string) => void }) {
     queryKey: ["ops-overview"],
     queryFn: () => getOpsOverview({ data: undefined }),
   });
+
+  // Opening the console is the trigger for the attention sweep. It is idempotent
+  // by dedupe key, so opening the console a hundred times sends nothing extra.
+  const swept = useRef(false);
+  useEffect(() => {
+    if (swept.current) return;
+    swept.current = true;
+    void runAttentionSweepNow({ data: undefined }).catch(() => undefined);
+  }, []);
 
   if (isLoading || !data) {
     return (
