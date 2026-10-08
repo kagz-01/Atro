@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/logo";
 import { LEGAL_PAGES } from "@/components/legal-page";
-import { Mail, Phone, MapPin, Instagram, Linkedin, ClipboardCheck } from "lucide-react";
+import { Mail, Phone, MapPin, Globe, ClipboardCheck } from "lucide-react";
 import { COMPANY } from "@/lib/site";
 
 const FOOTER_COLUMNS = [
@@ -79,6 +79,15 @@ export function SiteFooter() {
               <Phone size={13} className="opacity-60" />
               {COMPANY.phoneDisplay}
             </a>
+            <a
+              href={COMPANY.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-[13px] text-paper/60 transition-colors hover:text-gold"
+            >
+              <Globe size={13} className="opacity-60" />
+              atroconstruction.co.ke
+            </a>
             <span className="flex items-center gap-1.5 text-[13px] text-paper/40">
               <MapPin size={13} className="opacity-60" />
               {COMPANY.address}
@@ -139,24 +148,6 @@ export function SiteFooter() {
               <ClipboardCheck className="size-3.5" />
               Client portal
             </Link>
-            <a
-              href={COMPANY.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Instagram"
-              className="text-paper/40 transition-colors hover:text-gold"
-            >
-              <Instagram size={16} />
-            </a>
-            <a
-              href={COMPANY.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="LinkedIn"
-              className="text-paper/40 transition-colors hover:text-gold"
-            >
-              <Linkedin size={16} />
-            </a>
           </div>
         </div>
       </div>

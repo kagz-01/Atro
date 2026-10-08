@@ -5,3 +5,6 @@ screenshots/
 *.log
 ./agent
 ./grok
+# runtime artifacts
+.grok/preview.pid
+.agent/

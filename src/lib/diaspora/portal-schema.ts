@@ -22,7 +22,7 @@ export const ProjectInput = z.object({
   clientPhone: z
     .string()
     .trim()
-    .regex(/^\+[\d\s-]{7,20}$/, "Include the country code, e.g. +254 700 123 456")
+    .regex(/^\+[\d\s-]{7,20}$/, "Include the country code, e.g. +254 7XX XXX XXX")
     .max(24)
     .or(z.literal(""))
     .default(""),

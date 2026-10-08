@@ -57,12 +57,14 @@ export function Concierge() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed z-30 left-4 bottom-4 md:left-6 md:bottom-6 h-12 px-4 rounded-xs bg-maroon text-paper text-[11px] uppercase tracking-[0.16em] inline-flex items-center gap-2 shadow-soft hover:bg-burgundy"
+        className="fixed z-40 left-4 bottom-[5.5rem] md:left-6 md:bottom-6 size-12 md:w-auto md:px-4 rounded-full md:rounded-xs bg-maroon text-paper text-[11px] uppercase tracking-[0.16em] inline-flex items-center justify-center md:justify-start gap-2 shadow-soft hover:bg-burgundy"
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label="Ask ATRO"
       >
-        <MessageSquareText className="size-4" />
-        Ask ATRO
+        <MessageSquareText className="size-4 shrink-0" />
+        {/* Icon-only on mobile: the full-width label sat on top of the phone number. */}
+        <span className="hidden md:inline">Ask ATRO</span>
       </button>
 
       {open ? (

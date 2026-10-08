@@ -5,15 +5,42 @@ export const COMPANY = {
   lede: "Integrated design, construction and consultancy for residential, commercial and institutional projects.",
   support:
     "From concept to construction, ATRO brings design thinking, technical expertise and practical project delivery together.",
+  /** The studio's own words for what it does — used where a summary is needed. */
+  description:
+    "ATRO Construction & Design delivers innovative, high-quality and cost-effective building solutions for residential, commercial and institutional projects. From concept to completion we combine expert design, precision and quality craftsmanship — reliable service, transparent communication, timely delivery, and spaces built to last.",
   email: "hello@atro.ke",
-  phoneDisplay: "+254 700 123 456",
-  phoneTel: "+254700123456",
-  whatsapp: "254700123456",
-  hours: "Mon–Sat, 08:00–18:00 EAT",
+  phoneDisplay: "+254 799 034 712",
+  phoneTel: "+254799034712",
+  whatsapp: "254799034712",
+  hours: "Monday–Saturday, 08:30–17:30 EAT · Sunday closed",
+  /** Per-day hours, so the contact page can show a real week. */
+  hoursWeek: [
+    { day: "Monday", open: "08:30", close: "17:30" },
+    { day: "Tuesday", open: "08:30", close: "17:30" },
+    { day: "Wednesday", open: "08:30", close: "17:30" },
+    { day: "Thursday", open: "08:30", close: "17:30" },
+    { day: "Friday", open: "08:30", close: "17:30" },
+    { day: "Saturday", open: "08:30", close: "17:30" },
+    { day: "Sunday", open: null, close: null },
+  ] as const,
   address: "Nairobi, Kenya",
+  website: "http://atroconstruction.co.ke/",
   instagram: "https://instagram.com",
   linkedin: "https://www.linkedin.com",
 } as const;
+
+/** True while the studio is reachable, in East Africa Time. */
+export function isOpenNow(at: Date = new Date()): boolean {
+  // EAT is UTC+3 with no daylight saving, so this is exact.
+  const eatHour = (at.getUTCHours() + 3) % 24;
+  const eatMinute = at.getUTCMinutes();
+  const day = at.getUTCDay(); // 0 = Sunday
+  if (day === 0) return false;
+  const minutes = eatHour * 60 + eatMinute;
+  const open = 8 * 60 + 30;
+  const close = 17 * 60 + 30;
+  return minutes >= open && minutes < close;
+}
 
 export type ProjectType =
   | "Residential"

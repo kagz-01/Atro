@@ -15,7 +15,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "ATRO Design & Construction — integrated design, construction and consultancy in Kenya. Designing and building better structures.",
+          "ATRO Design & Construction — high-quality design and construction for residential, commercial and institutional projects in Kenya. Concept to completion, built to last.",
       },
       { name: "theme-color", content: "#3C0508" },
       { name: "keywords", content: "construction company in Kenya, design and construction company Kenya, building contractors Nairobi, building contractors Kiambu, architectural design Kenya" },

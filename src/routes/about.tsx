@@ -28,6 +28,7 @@ function AboutPage() {
       />
       <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 grid lg:grid-cols-12 gap-12">
         <div className="lg:col-span-7 space-y-6 text-lg text-ink/80">
+          <p className="text-xl text-maroon">{COMPANY.description}</p>
           <p>
             We started from a simple frustration: too many Kenyan projects split design, cost and construction into three conversations that do not speak. The drawing is beautiful. The number is fiction. The site invents a third building.
           </p>

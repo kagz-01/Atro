@@ -279,7 +279,7 @@ export const DIASPORA_KB = {
   communication: {
     scheduledCalls: {
       frequency: "Weekly or bi-weekly",
-      timing: "EAT 08:00-10:00 (UK 06:00-08:00, US 01:00-03:00 EST) or EAT 18:00-20:00 (UK 16:00-18:00, US 11:00-13:00 EST)",
+      timing: "EAT 13:00-14:00 (UK 11:00-12:00, US 06:00-07:00 EST) or EAT 15:00-16:00 (UK 13:00-14:00, US 08:00-09:00 EST)",
       format: "Video call (Zoom/Google Meet) with screen sharing",
       agenda: ["Progress review with photos", "Upcoming decisions", "Budget update", "Any concerns"],
     },

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Phone, MessageCircle, Mail, MapPin, Clock, ArrowRight } from "lucide-react";
-import { COMPANY } from "@/lib/site";
+import { Phone, MessageCircle, Mail, MapPin, Clock, Globe, ArrowRight } from "lucide-react";
+import { COMPANY, isOpenNow } from "@/lib/site";
+import { useState, useEffect } from "react";
 import { useRevealOnScroll } from "@/hooks/use-reveal";
 import { ScrollRevealText } from "@/components/scroll-effects";
 import { LeafletMap } from "@/components/leaflet-map";
@@ -19,6 +20,36 @@ export const Route = createFileRoute("/contact")({
     ],
   }),
 });
+
+/** Live "open now" state, in East Africa Time, so visitors know when to call. */
+function OpenNowBadge() {
+  // Resolved after mount: the server and the browser read different clocks, so
+  // rendering this during SSR would risk a hydration mismatch.
+  const [open, setOpen] = useState<boolean | null>(null);
+  useEffect(() => {
+    const tick = () => setOpen(isOpenNow());
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, []);
+  if (open === null) return <span className="mt-2 block h-6" aria-hidden="true" />;
+  return (
+    <span
+      className={cn(
+        "mt-2 inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em]",
+        open ? "bg-emerald-100 text-emerald-800" : "bg-ink/10 text-ink/60",
+      )}
+    >
+      <span
+        className={cn(
+          "size-1.5 rounded-full",
+          open ? "bg-emerald-600" : "bg-ink/40",
+        )}
+      />
+      {open ? "Open now · EAT" : "Closed now · leave a message"}
+    </span>
+  );
+}
 
 function ContactPage() {
   const { ref: heroRef, revealed: heroRevealed } = useRevealOnScroll();
@@ -163,6 +194,24 @@ function ContactPage() {
                   <div>
                     <p className="font-medium text-maroon">Working Hours</p>
                     <p className="text-ink/70">{COMPANY.hours}</p>
+                    <OpenNowBadge />
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="size-12 rounded-xl bg-maroon/10 flex items-center justify-center text-maroon shrink-0">
+                    <Globe className="size-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-maroon">Website</p>
+                    <a
+                      href={COMPANY.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-burgundy hover:text-maroon transition-colors"
+                    >
+                      atroconstruction.co.ke
+                    </a>
                   </div>
                 </div>
 
@@ -194,6 +243,32 @@ function ContactPage() {
                   <Mail className="size-5" />
                   Send email
                 </a>
+              </div>
+
+              <div className="mt-8 overflow-hidden rounded-2xl border border-ink/10">
+                <dl className="divide-y divide-ink/10">
+                  {COMPANY.hoursWeek.map((row) => (
+                    <div
+                      key={row.day}
+                      className="flex items-center justify-between px-5 py-2.5 text-[14px]"
+                    >
+                      <dt className="text-ink/70">{row.day}</dt>
+                      <dd
+                        className={cn(
+                          "tabular-nums",
+                          row.open
+                            ? "font-medium text-maroon"
+                            : "text-ink/40",
+                        )}
+                      >
+                        {row.open ? `${row.open} – ${row.close}` : "Closed"}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="border-t border-ink/10 bg-ink/[0.02] px-5 py-2.5 text-[12px] text-ink/50">
+                  All times East Africa Time (EAT, UTC+3).
+                </p>
               </div>
             </div>
 

@@ -442,7 +442,7 @@ function NewProjectForm({
             id="np-phone"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+254 700 123 456"
+            placeholder="+254 7XX XXX XXX"
             inputMode="tel"
           />
           <p className="mt-2 text-[12px] leading-relaxed text-ink/55">
