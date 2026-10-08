@@ -44,6 +44,7 @@ import { Route as ToolsZoneMapRouteImport } from './routes/tools/zone-map'
 import { Route as ZonesIndexRouteImport } from './routes/zones/index'
 import { Route as ZonesSlugRouteImport } from './routes/zones/$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as PortalDocumentIdRouteImport } from './routes/portal/document.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -220,6 +221,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalDocumentIdRoute = PortalDocumentIdRouteImport.update({
+  id: '/document/$id',
+  path: '/document/$id',
+  getParentRoute: () => PortalRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -230,7 +236,7 @@ export interface FileRoutesByFullPath {
   '/diaspora': typeof DiasporaRoute
   '/fees': typeof FeesRoute
   '/login': typeof LoginRoute
-  '/portal': typeof PortalRoute
+  '/portal': typeof PortalRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/process': typeof ProcessRoute
   '/scam-check': typeof ScamCheckRoute
@@ -257,6 +263,7 @@ export interface FileRoutesByFullPath {
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/portal/document/$id': typeof PortalDocumentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -267,7 +274,7 @@ export interface FileRoutesByTo {
   '/diaspora': typeof DiasporaRoute
   '/fees': typeof FeesRoute
   '/login': typeof LoginRoute
-  '/portal': typeof PortalRoute
+  '/portal': typeof PortalRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/process': typeof ProcessRoute
   '/scam-check': typeof ScamCheckRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/tools': typeof ToolsIndexRoute
   '/zones': typeof ZonesIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/portal/document/$id': typeof PortalDocumentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -305,7 +313,7 @@ export interface FileRoutesById {
   '/diaspora': typeof DiasporaRoute
   '/fees': typeof FeesRoute
   '/login': typeof LoginRoute
-  '/portal': typeof PortalRoute
+  '/portal': typeof PortalRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/process': typeof ProcessRoute
   '/scam-check': typeof ScamCheckRoute
@@ -332,6 +340,7 @@ export interface FileRoutesById {
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/portal/document/$id': typeof PortalDocumentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -371,6 +380,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/zones/'
     | '/api/auth/$'
+    | '/portal/document/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -408,6 +418,7 @@ export interface FileRouteTypes {
     | '/tools'
     | '/zones'
     | '/api/auth/$'
+    | '/portal/document/$id'
   id:
     | '__root__'
     | '/'
@@ -445,6 +456,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/zones/'
     | '/api/auth/$'
+    | '/portal/document/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -456,7 +468,7 @@ export interface RootRouteChildren {
   DiasporaRoute: typeof DiasporaRoute
   FeesRoute: typeof FeesRoute
   LoginRoute: typeof LoginRoute
-  PortalRoute: typeof PortalRoute
+  PortalRoute: typeof PortalRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
   ProcessRoute: typeof ProcessRoute
   ScamCheckRoute: typeof ScamCheckRoute
@@ -732,8 +744,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/document/$id': {
+      id: '/portal/document/$id'
+      path: '/document/$id'
+      fullPath: '/portal/document/$id'
+      preLoaderRoute: typeof PortalDocumentIdRouteImport
+      parentRoute: typeof PortalRoute
+    }
   }
 }
+
+interface PortalRouteChildren {
+  PortalDocumentIdRoute: typeof PortalDocumentIdRoute
+}
+
+const PortalRouteChildren: PortalRouteChildren = {
+  PortalDocumentIdRoute: PortalDocumentIdRoute,
+}
+
+const PortalRouteWithChildren =
+  PortalRoute._addFileChildren(PortalRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -744,7 +774,7 @@ const rootRouteChildren: RootRouteChildren = {
   DiasporaRoute: DiasporaRoute,
   FeesRoute: FeesRoute,
   LoginRoute: LoginRoute,
-  PortalRoute: PortalRoute,
+  PortalRoute: PortalRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
   ProcessRoute: ProcessRoute,
   ScamCheckRoute: ScamCheckRoute,

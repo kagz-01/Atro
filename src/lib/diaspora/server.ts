@@ -8,6 +8,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
+import { issueReceiptFor } from "@/lib/invoice-server";
 import {
   DecisionActionInput,
   MilestoneActionInput,
@@ -940,12 +941,17 @@ export async function releasePaymentFor(
   sql: Sql,
   userId: string,
   data: z.infer<typeof PaymentActionInput>,
-): Promise<{ ok: true; paidToDate: number }> {
+): Promise<{ ok: true; paidToDate: number; receiptNumber: string | null }> {
   const projectId = await ownedProject(sql, userId, data.projectId);
   if (!projectId) throw new Error("Project not found.");
 
-  const rows = await sql<{ label: string; amount: number; status: string }>`
-    select label, amount, status from portal_payments
+  const rows = await sql<{
+    label: string;
+    amount: number;
+    status: string;
+    certificate: string | null;
+  }>`
+    select label, amount, status, certificate from portal_payments
     where id = ${data.paymentId} and project_id = ${projectId} limit 1
   `;
   const payment = rows[0];
@@ -979,7 +985,15 @@ export async function releasePaymentFor(
     `KES ${amount.toLocaleString("en-KE")} released against the certificate.`,
   );
 
-  return { ok: true, paidToDate: amount };
+  const receipt = await issueReceiptFor(sql, {
+    projectId,
+    paymentId: data.paymentId,
+    label: payment.label,
+    certificate: payment.certificate ?? "certificate on file",
+    amount,
+  });
+
+  return { ok: true, paidToDate: amount, receiptNumber: receipt?.number ?? null };
 }
 
 export async function recordDecisionFor(

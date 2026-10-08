@@ -12,6 +12,7 @@ import { getSql, type Sql } from "@/lib/db";
 import type { StaffIdentity } from "@/lib/staff";
 import { loadProjectById, logActivity, type PortalPayload } from "@/lib/diaspora/server";
 import { channelStatus, notificationLog, notify, retryPending } from "@/lib/notify";
+import { issueCertificateFor, issueStatementFor } from "@/lib/invoice-server";
 
 /* ── input ── */
 
@@ -104,6 +105,16 @@ export const getDeliveryLog = createServerFn({ method: "GET" })
       channels: channelStatus(),
       log: await notificationLog(sql, data.projectId),
     };
+  });
+
+export const issueStatementForProject = createServerFn({ method: "POST" })
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    await requireStaff();
+    const sql = await getSql();
+    const issued = await issueStatementFor(sql, "ATRO", data.projectId);
+    if (!issued) throw new Error("Could not issue the statement.");
+    return issued;
   });
 
 export const retryDeliveries = createServerFn({ method: "POST" })
@@ -341,7 +352,6 @@ export async function certifyPaymentFor(
   staff: { email: string; userId: string },
   data: z.infer<typeof CertifyPayment>,
 ) {
-  void staff;
 
   const rows = await sql<{ label: string; amount: number; status: string }>`
       select label, amount, status from portal_payments
@@ -385,7 +395,16 @@ export async function certifyPaymentFor(
     body: `KES ${amount.toLocaleString("en-KE")} under certificate ${data.certificate}. Release it from your portal.`,
   });
 
-  return { ok: true as const, amount };
+  // The paperwork follows the money: the certificate is what authorises release.
+  const document = await issueCertificateFor(sql, staff.email, {
+    projectId: data.projectId,
+    paymentId: data.paymentId,
+    label: payment.label,
+    certificate: data.certificate,
+    amount,
+  });
+
+  return { ok: true as const, amount, documentNumber: document?.number ?? null };
 }
 
 export async function addDocumentFor(

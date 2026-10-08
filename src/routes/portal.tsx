@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowRight,
@@ -20,6 +21,8 @@ import { CtaBand } from "@/components/page-hero";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user";
 import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
+import { KIND_LABEL } from "@/lib/invoices";
+import { listMyDocuments } from "@/lib/invoice-server";
 import { TRACK_LIST, type TrackId } from "@/lib/diaspora/tracks";
 import { ZONES } from "@/lib/site";
 import {
@@ -492,6 +495,98 @@ function NewProjectForm({
         {busy ? "Opening…" : "Open project"}
       </Button>
     </form>
+  );
+}
+
+/* ── invoices & receipts ── */
+
+const DOC_TONE: Record<string, string> = {
+  certificate: "bg-sky-50 text-sky-900 border-sky-300",
+  invoice: "bg-amber-50 text-amber-900 border-amber-300",
+  receipt: "bg-emerald-50 text-emerald-800 border-emerald-200",
+  statement: "bg-stone-100 text-stone-700 border-stone-300",
+};
+
+function DocumentsSection() {
+  const { data: docs, isLoading } = useQuery({
+    queryKey: ["my-documents"],
+    queryFn: () => listMyDocuments({ data: undefined }),
+  });
+
+  return (
+    <section className="bg-cream py-14 md:py-16">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-gold">
+              Invoices & receipts
+            </p>
+            <h2 className="mt-3 font-display text-4xl text-maroon md:text-5xl">
+              Your paperwork, ready to print
+            </h2>
+          </div>
+          <p className="max-w-md text-[14px] leading-relaxed text-ink/60">
+            A certificate is issued when work is certified. A receipt is issued the
+            moment you release a payment. Each is frozen when it is issued — it cannot
+            change afterwards, which is what makes it worth keeping.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <p className="mt-8 text-[13px] text-muted">Loading your documents…</p>
+        ) : !docs || docs.length === 0 ? (
+          <div className="mt-8 rounded-2xl border border-dashed border-ink/15 bg-paper p-8 text-center">
+            <FileText className="mx-auto size-6 text-ink/30" />
+            <p className="mt-4 font-display text-lg text-maroon">No documents yet</p>
+            <p className="mx-auto mt-2 max-w-md text-[13px] text-ink/55">
+              Your first certificate appears here as soon as ATRO certifies work on
+              your project. You can print it or save it as a PDF from there.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-8 space-y-2.5">
+            {docs.map((doc) => (
+              <li key={doc.id}>
+                <Link
+                  to="/portal/document/$id"
+                  params={{ id: doc.id }}
+                  className="group flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-ink/10 bg-white p-5 transition-colors hover:border-burgundy"
+                >
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2.5">
+                      <span className="text-[15px] font-medium text-maroon">
+                        {KIND_LABEL[doc.kind]}
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]",
+                          DOC_TONE[doc.kind] ?? DOC_TONE.statement,
+                        )}
+                      >
+                        {doc.status === "void" ? "Void" : "Issued"}
+                      </span>
+                      <span className="font-mono text-[11px] text-muted">{doc.number}</span>
+                    </span>
+                    <span className="mt-1.5 block text-[12px] text-ink/50">
+                      {doc.projectReference} · {new Date(doc.issuedAt).toLocaleDateString("en-KE", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </span>
+
+                  <span className="flex shrink-0 items-center gap-4">
+                    <span className="text-[15px] text-maroon">{kes(doc.total)}</span>
+                    <ArrowRight className="size-4 text-gold transition-transform group-hover:translate-x-1" />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -1401,6 +1496,9 @@ function PortalPage() {
           </div>
         </div>
       </section>
+
+      {/* Invoices & receipts */}
+      <DocumentsSection />
 
       {/* Professionals */}
       <section className="bg-paper py-14 md:py-16">
