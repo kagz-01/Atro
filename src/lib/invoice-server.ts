@@ -61,6 +61,17 @@ type IssueInput = {
   amountPaid?: number;
   issuedBy: string;
   issuedTo: string;
+  /**
+   * `invoice` (default) totals the lines. `summary` reports a position, so the
+   * caller states the bottom line: summing report lines would produce a number
+   * that means nothing.
+   */
+  layout?: "invoice" | "summary";
+  /** Overrides the computed total. Required in practice for a summary. */
+  subtotal?: number;
+  total?: number;
+  totalLabel?: string;
+  paidLabel?: string;
 };
 
 export type IssuedDocument = { id: string; number: string };
@@ -73,10 +84,11 @@ export async function issueDocument(sql: Sql, input: IssueInput): Promise<Issued
   const proj = project[0];
   if (!proj) throw new Error("Project not found.");
 
-  const subtotal = sumLines(input.lines);
-  const vatRate = input.vatRate ?? 0;
+  const layout = input.layout ?? "invoice";
+  const vatRate = layout === "summary" ? 0 : (input.vatRate ?? 0);
+  const subtotal = input.subtotal ?? sumLines(input.lines);
   const vatAmount = vatFor(subtotal, vatRate);
-  const total = subtotal + vatAmount;
+  const total = input.total ?? subtotal + vatAmount;
   const number = await nextNumber(sql, input.kind);
 
   const data: DocumentData = {
@@ -94,6 +106,9 @@ export async function issueDocument(sql: Sql, input: IssueInput): Promise<Issued
     vatAmount,
     total,
     amountPaid: input.amountPaid ?? 0,
+    layout,
+    totalLabel: input.totalLabel,
+    paidLabel: input.paidLabel,
     currency: "KES",
   };
 
@@ -195,22 +210,38 @@ export async function issueStatementFor(
   const p = project[0];
   if (!p) throw new Error("Project not found.");
 
+  // These are positions, not charges. They are never added together: the
+  // contract value is not money owed, it is the ceiling.
+  const contractValue = Number(p.contract_value);
+  const paid = Number(p.paid_to_date);
+  const awaiting = Number(p.currently_certified);
+  const retention = Number(p.retention_held);
+  const spentCommitted = paid + awaiting + retention;
+  const remaining = Math.max(0, contractValue - spentCommitted);
+
   const lines: Line[] = [
-    { description: "Contract value (priced bill of quantities)", amount: Number(p.contract_value) },
-    { description: "Paid to date", amount: Number(p.paid_to_date) },
-    { description: "Certified and awaiting release", amount: Number(p.currently_certified) },
-    { description: `Retention held (${p.retention_pct}%)`, amount: Number(p.retention_held) },
+    { description: "Contract value (priced bill of quantities)", amount: contractValue },
+    { description: "Paid to date", amount: paid },
+    { description: "Certified and awaiting your release", amount: awaiting },
+    { description: "Retention held against defects", amount: retention },
+    { description: "Still to be spent against the contract", amount: remaining },
   ];
 
   return issueDocument(sql, {
     projectId,
     kind: "statement",
+    layout: "summary",
+    totalLabel: "Outstanding balance",
+    paidLabel: "Paid to date",
     issuedTo: p.client_label || "Client",
     issuedBy: staffEmail,
     narrative:
-      "This is the position on the project as at the date of this statement. It is a summary of the project record, not a demand for payment.",
+      "The position on your project as at the date of this statement. It is a record, not a demand for payment. The outstanding balance is the amount certified and waiting for your release.",
     lines,
-    amountPaid: Number(p.paid_to_date),
+    // The only figure a statement may call a balance is what is actually owed.
+    subtotal: awaiting,
+    total: awaiting,
+    amountPaid: paid,
   });
 }
 

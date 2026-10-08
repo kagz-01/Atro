@@ -33,9 +33,19 @@ export type Line = {
   amount: number;
 };
 
+export type DocumentLayout = "invoice" | "summary";
+
 export type DocumentData = {
   number: string;
   kind: DocumentKind;
+  /**
+   * `invoice` prices work and ends in an amount due. `summary` reports a
+   * position — a statement must never be rendered as a bill, or it ends up
+   * claiming the client owes the whole contract rather than the balance.
+   */
+  layout?: DocumentLayout;
+  /** What the bottom line is called. Never assume "total due". */
+  totalLabel?: string;
   issuedAt: string;
   issuedTo: string;
   issuedBy: string;
@@ -48,6 +58,7 @@ export type DocumentData = {
   vatAmount: number;
   total: number;
   amountPaid: number;
+  paidLabel?: string;
   currency: string;
 };
 
@@ -90,11 +101,23 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Shareable, printable HTML. Self-contained: no scripts, no external assets. */
+/**
+ * Shareable, printable HTML. Self-contained: no scripts, no external assets.
+ *
+ * Two layouts on purpose: an invoice prices work and ends in an amount due; a
+ * statement reports a position and ends in what is actually outstanding.
+ */
 export function renderHtml(data: DocumentData): string {
+  const layout = data.layout ?? "invoice";
+
   const rows = data.lines
-    .map(
-      (line) => `      <tr>
+    .map((line) =>
+      layout === "summary"
+        ? `      <tr>
+        <td>${escapeHtml(line.description)}</td>
+        <td class="num">${formatMoney(line.amount, data.currency)}</td>
+      </tr>`
+        : `      <tr>
         <td>${escapeHtml(line.description)}${
           line.quantity !== undefined && line.unit
             ? `<span class="muted"> · ${line.quantity} ${escapeHtml(line.unit)}</span>`
@@ -111,8 +134,25 @@ export function renderHtml(data: DocumentData): string {
     .join("\n");
 
   const vatRow =
-    data.vatRate > 0
+    layout === "invoice" && data.vatRate > 0
       ? `      <tr><td>VAT at ${(data.vatRate * 100).toFixed(1)}%</td><td></td><td class="num">${formatMoney(data.vatAmount, data.currency)}</td></tr>`
+      : "";
+
+  const headerCells =
+    layout === "summary"
+      ? `<th>Position</th><th class="num">Amount</th>`
+      : `<th>Description</th><th class="num">Basis</th><th class="num">Amount</th>`;
+
+  const subtotalRows =
+    layout === "summary"
+      ? ""
+      : `      <tr><td colspan="2">Subtotal</td><td class="num">${formatMoney(data.subtotal, data.currency)}</td></tr>
+${vatRow}`;
+
+  const totalSpan = layout === "summary" ? 1 : 2;
+  const paidLine =
+    data.amountPaid > 0
+      ? `<p class="paid">${escapeHtml(data.paidLabel ?? "Received")}: <strong>${formatMoney(data.amountPaid, data.currency)}</strong></p>`
       : "";
 
   return `<article class="doc">
@@ -132,22 +172,17 @@ export function renderHtml(data: DocumentData): string {
   ${data.narrative ? `<p class="narrative">${escapeHtml(data.narrative)}</p>` : ""}
 
   <table>
-    <thead><tr><th>Description</th><th class="num">Basis</th><th class="num">Amount</th></tr></thead>
+    <thead><tr>${headerCells}</tr></thead>
     <tbody>
 ${rows}
     </tbody>
     <tfoot>
-      <tr><td colspan="2">Subtotal</td><td class="num">${formatMoney(data.subtotal, data.currency)}</td></tr>
-${vatRow}
-      <tr class="total"><td colspan="2">Total due</td><td class="num">${formatMoney(data.total, data.currency)}</td></tr>
+${subtotalRows}
+      <tr class="total"><td colspan="${totalSpan}">${escapeHtml(data.totalLabel ?? "Total due")}</td><td class="num">${formatMoney(data.total, data.currency)}</td></tr>
     </tfoot>
   </table>
 
-  ${
-    data.amountPaid > 0
-      ? `<p class="paid">Received: <strong>${formatMoney(data.amountPaid, data.currency)}</strong></p>`
-      : ""
-  }
+  ${paidLine}
 
   <footer>
     <p>This document was issued by ATRO Design &amp; Construction and reflects the project record at the date above.</p>
@@ -158,8 +193,13 @@ ${vatRow}
 
 /** Plain text, for pasting into an email or a bank instruction. */
 export function renderText(data: DocumentData): string {
+  const layout = data.layout ?? "invoice";
+
   const lines = data.lines
     .map((line) => {
+      if (layout === "summary") {
+        return `  ${line.description} — ${line.amount.toLocaleString("en-KE")}`;
+      }
       const basis =
         line.quantity !== undefined && line.unit && line.rate !== undefined
           ? ` (${line.quantity} ${line.unit} @ ${line.rate.toLocaleString("en-KE")})`
@@ -168,10 +208,14 @@ export function renderText(data: DocumentData): string {
     })
     .join("\n");
 
-  const vat =
-    data.vatRate > 0
-      ? `\n  VAT at ${(data.vatRate * 100).toFixed(1)}% — ${data.vatAmount.toLocaleString("en-KE")}`
-      : "";
+  const subtotalBlock =
+    layout === "summary"
+      ? ""
+      : `\n  Subtotal — ${data.subtotal.toLocaleString("en-KE")}${
+          data.vatRate > 0
+            ? `\n  VAT at ${(data.vatRate * 100).toFixed(1)}% — ${data.vatAmount.toLocaleString("en-KE")}`
+            : ""
+        }`;
 
   return [
     `ATRO Design & Construction`,
@@ -182,11 +226,12 @@ export function renderText(data: DocumentData): string {
     `Issued to: ${data.issuedTo}`,
     `Issued by: ${data.issuedBy}`,
     data.narrative ? `\n${data.narrative}` : "",
-    `\nDescription`,
+    `\n${layout === "summary" ? "Position" : "Description"}`,
     lines,
-    `\n  Subtotal — ${data.subtotal.toLocaleString("en-KE")}${vat}`,
-    `  TOTAL DUE — ${data.total.toLocaleString("en-KE")} ${data.currency}`,
-    data.amountPaid > 0 ? `  Received — ${data.amountPaid.toLocaleString("en-KE")} ${data.currency}` : "",
+    `${subtotalBlock}\n  ${(data.totalLabel ?? "Total due").toUpperCase()} — ${data.total.toLocaleString("en-KE")} ${data.currency}`,
+    data.amountPaid > 0
+      ? `  ${data.paidLabel ?? "Received"} — ${data.amountPaid.toLocaleString("en-KE")} ${data.currency}`
+      : "",
     "",
     "Retention held against defects is not payable until the defects liability period closes.",
   ]

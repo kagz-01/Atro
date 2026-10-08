@@ -121,3 +121,54 @@ describe("frozen document body", () => {
     assert.match(html, /&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);
   });
 });
+
+describe("statement layout", () => {
+  const statement: DocumentData = {
+    ...doc,
+    kind: "statement",
+    layout: "summary",
+    totalLabel: "Outstanding balance",
+    paidLabel: "Paid to date",
+    number: "ATR-2026-STMT-0002",
+    // Report lines: these are positions, not charges.
+    lines: [
+      { description: "Contract value (priced bill of quantities)", amount: 41_800_000 },
+      { description: "Paid to date", amount: 17_940_000 },
+      { description: "Certified and awaiting your release", amount: 480_000 },
+      { description: "Retention held against defects", amount: 940_000 },
+    ],
+    subtotal: 480_000,
+    total: 480_000,
+    amountPaid: 17_940_000,
+  };
+
+  it("never calls a statement a bill", () => {
+    const text = renderText(statement);
+    assert.doesNotMatch(text, /TOTAL DUE/i);
+    assert.match(text, /OUTSTANDING BALANCE — 480,000 KES/);
+  });
+
+  it("does not total the report lines into a figure nobody owes", () => {
+    const naive = sumLines(statement.lines);
+    assert.equal(naive, 61_160_000, "summing report lines is meaningless");
+    assert.equal(statement.total, 480_000, "the balance is what is certified and unreleased");
+    assert.notEqual(statement.total, naive);
+  });
+
+  it("drops the subtotal row and the basis column in a summary", () => {
+    const html = renderHtml(statement);
+    assert.doesNotMatch(html, /Subtotal/);
+    assert.doesNotMatch(html, />Basis</);
+    assert.match(html, />Position</);
+  });
+
+  it("uses the paid label the caller chose", () => {
+    assert.match(renderText(statement), /Paid to date — 17,940,000 KES/);
+  });
+
+  it("still escapes hostile content in the summary layout", () => {
+    const html = renderHtml({ ...statement, lines: [{ description: "<script>x()</script>", amount: 1 }] });
+    assert.doesNotMatch(html, /<script>/);
+    assert.match(html, /&lt;script&gt;/);
+  });
+});

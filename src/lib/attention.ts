@@ -103,7 +103,6 @@ async function alertStudioOnBlocked(sql: Sql, channels: Channel[]): Promise<numb
     order by coalesce(m.updated_at, p.created_at)
   `;
 
-  const staff = await studioRecipients(sql);
   let sent = 0;
 
   for (const b of blocked) {
@@ -116,7 +115,6 @@ async function alertStudioOnBlocked(sql: Sql, channels: Channel[]): Promise<numb
       channels,
       dedupeKey: `blocked:${b.project_id}:${dayWindow(7)}`,
     });
-    void staff;
     if (result.created) sent += 1;
   }
   return sent;
@@ -141,10 +139,22 @@ async function sendDigest(sql: Sql, channels: Channel[]): Promise<boolean> {
   const total = Number(waiting[0]?.n ?? 0) + Number(blocked[0]?.n ?? 0) + Number(silent[0]?.n ?? 0);
   if (total === 0) return false;
 
-  const project = await sql<{ id: string }>`
-    select id from portal_projects order by created_at limit 1
+  // Attach the digest to the project that actually needs attention rather than
+  // whichever row happens to be oldest — otherwise deleting that project
+  // silently stops the studio being told anything.
+  const subject = await sql<{ id: string }>`
+    select p.id from portal_projects p
+    where exists (
+      select 1 from portal_milestones m
+        where m.project_id = p.id and m.status = 'blocked'
+    ) or exists (
+      select 1 from portal_decisions d
+        where d.project_id = p.id and d.state = 'awaiting-client'
+    )
+    order by p.created_at desc
+    limit 1
   `;
-  const projectId = project[0]?.id;
+  const projectId = subject[0]?.id;
   if (!projectId) return false;
 
   const result = await notify({
@@ -162,13 +172,6 @@ async function sendDigest(sql: Sql, channels: Channel[]): Promise<boolean> {
   });
 
   return result.created;
-}
-
-async function studioRecipients(sql: Sql): Promise<string[]> {
-  const rows = await sql<{ email: string }>`
-    select email from studio_contact where active order by created_at
-  `;
-  return rows.map((r) => r.email);
 }
 
 /**
