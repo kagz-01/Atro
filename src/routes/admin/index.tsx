@@ -42,6 +42,7 @@ import {
 } from "@/lib/staff-ops";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { cn } from "@/lib/utils";
+import { Accordion, AccordionItem } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminConsole,
@@ -404,407 +405,417 @@ function ProjectDetail({
   const undecided = data.decisions.filter((d) => d.state === "decided");
   const uncertified = data.payments.filter((x) => x.status === "due" || x.status === "scheduled");
 
-  return (
+return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink/10 bg-white p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="size-4" />
-              All projects
-            </Button>
-            <h2 className="mt-3 font-display text-2xl text-maroon">{p.title}</h2>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
-              <span className="font-mono">{p.reference}</span>
-              <span>{p.clientLabel}</span>
-              {p.clientCity ? <span>{p.clientCity}</span> : null}
-              <span>
-                {p.startedLabel} → {p.targetLabel}
-              </span>
-              {p.isSample ? <Badge tone="gold" className="h-5 text-[9px]">Sample</Badge> : null}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="font-display text-3xl text-maroon">{p.progress}%</p>
-            <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
-          </div>
-        </div>
-
-        <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-ink/8 pt-5 text-[12px] md:grid-cols-4">
-          {[
-            ["Contract", kes(p.contractValue)],
-            ["Paid", kes(p.budget.paidToDate)],
-            ["Certified, unreleased", kes(p.budget.currentlyCertified)],
-            ["Retention", kes(p.budget.retentionHeld)],
-          ].map(([k, v]) => (
-            <div key={k}>
-              <dt className="text-muted">{k}</dt>
-              <dd className="mt-1 text-[14px] text-maroon">{v}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <WriteBlock
-          title="Update a milestone"
-          hint="Set the stage status the client sees. Completing one opens the next automatically."
-          onRun={() =>
-            run("write", async () => {
-              if (!milestoneId) throw new Error("Pick a milestone first.");
-              await updateMilestone({
-                data: {
-                  projectId,
-                  milestoneId,
-                  status: status as "active" | "complete" | "blocked" | "pending",
-                  note: milestoneNote.trim() || undefined,
-                },
-              });
-              setMilestoneNote("");
-            }, "Milestone updated.")
-          }
-        >
-          <div>
-            <Label htmlFor="st-ms">Milestone</Label>
-            <Select id="st-ms" value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
-              <option value="">Choose a stage…</option>
-              {data.milestones.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.order}. {m.name} — {m.status}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="st-status">Status</Label>
-            <Select id="st-status" value={status} onChange={(e) => setStatus(e.target.value)}>
-              {STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="st-note">Note to the client (optional)</Label>
-            <Textarea
-              id="st-note"
-              className="min-h-20"
-              value={milestoneNote}
-              onChange={(e) => setMilestoneNote(e.target.value)}
-              placeholder="Frame completed to first floor ring beam; ring beam cast 12 May."
-            />
-          </div>
-        </WriteBlock>
-
-        <WriteBlock
-          title="Add evidence"
-          hint="A site photograph or inspection note against a stage. The client sees this in the milestone record."
-          onRun={() =>
-            run("write", async () => {
-              if (!milestoneId) throw new Error("Pick a milestone first.");
-              if (evidenceCaption.trim().length < 3) throw new Error("Give the evidence a caption.");
-              await addMilestoneEvidence({
-                data: {
-                  projectId,
-                  milestoneId,
-                  caption: evidenceCaption.trim(),
-                  detail: evidenceDetail.trim(),
-                },
-              });
-              setEvidenceCaption("");
-              setEvidenceDetail("");
-            }, "Evidence added.")
-          }
-        >
-          <div>
-            <Label htmlFor="st-cap">Caption</Label>
-            <Input
-              id="st-cap"
-              value={evidenceCaption}
-              onChange={(e) => setEvidenceCaption(e.target.value)}
-              placeholder="Ring beam cast — 21 m³"
-            />
-          </div>
-          <div>
-            <Label htmlFor="st-detail">Detail</Label>
-            <Textarea
-              id="st-detail"
-              className="min-h-20"
-              value={evidenceDetail}
-              onChange={(e) => setEvidenceDetail(e.target.value)}
-              placeholder="Reinforcement photographed before the pour. Engineer present."
-            />
-          </div>
-        </WriteBlock>
-
-        <WriteBlock
-          title="Raise a decision"
-          hint="Puts a choice to the client. One option per line. They record it in the decision log."
-          onRun={() =>
-            run("write", async () => {
-              const options = decisionOptions
-                .split("\n")
-                .map((o) => o.trim())
-                .filter(Boolean);
-              if (decisionTitle.trim().length < 3) throw new Error("Give the decision a title.");
-              if (options.length < 2) throw new Error("List at least two options, one per line.");
-              await raiseDecision({
-                data: {
-                  projectId,
-                  title: decisionTitle.trim(),
-                  detail: "",
-                  options,
-                  costImpact: 0,
-                },
-              });
-              setDecisionTitle("");
-              setDecisionOptions("");
-            }, "Decision raised.")
-          }
-        >
-          <div>
-            <Label htmlFor="st-dtitle">Title</Label>
-            <Input
-              id="st-dtitle"
-              value={decisionTitle}
-              onChange={(e) => setDecisionTitle(e.target.value)}
-              placeholder="Roof covering"
-            />
-          </div>
-          <div>
-            <Label htmlFor="st-dopts">Options (one per line)</Label>
-            <Textarea
-              id="st-dopts"
-              className="min-h-24"
-              value={decisionOptions}
-              onChange={(e) => setDecisionOptions(e.target.value)}
-              placeholder={"Stone-coated tile\nConcrete roof tile\nMetal sheet"}
-            />
-          </div>
-        </WriteBlock>
-
-        <WriteBlock
-          title="Post an update"
-          hint="Appears in the client's activity feed and counts as new since their last visit."
-          onRun={() =>
-            run("write", async () => {
-              if (updateTitle.trim().length < 3) throw new Error("Give the update a title.");
-              await postUpdate({
-                data: { projectId, title: updateTitle.trim(), body: updateBody.trim(), kind: "note" },
-              });
-              setUpdateTitle("");
-              setUpdateBody("");
-            }, "Update posted.")
-          }
-        >
-          <div>
-            <Label htmlFor="st-utitle">Title</Label>
-            <Input
-              id="st-utitle"
-              value={updateTitle}
-              onChange={(e) => setUpdateTitle(e.target.value)}
-              placeholder="Weekly report — Week 08"
-            />
-          </div>
-          <div>
-            <Label htmlFor="st-ubody">Detail</Label>
-            <Textarea
-              id="st-ubody"
-              className="min-h-24"
-              value={updateBody}
-              onChange={(e) => setUpdateBody(e.target.value)}
-              placeholder="Frame on track. Slab deck poured Thursday. Rain expected week 9."
-            />
-          </div>
-        </WriteBlock>
-      </div>
-
-      <WriteBlock
-        title="Add to the document vault"
-        hint="Contracts, approvals, drawings and certificates the client can see. They keep the record."
-        onRun={() =>
-          run("vault", async () => {
-            if (docName.trim().length < 3) throw new Error("Name the document.");
-            await addDocument({
-              data: {
-                projectId,
-                name: docName.trim(),
-                category: docCategory,
-                reference: docRef.trim(),
-                state: docState,
-              },
-            });
-            setDocName("");
-            setDocRef("");
-          }, "Document added to the vault.")
-        }
-      >
-        <div>
-          <Label htmlFor="st-docname">Document</Label>
-          <Input
-            id="st-docname"
-            value={docName}
-            onChange={(e) => setDocName(e.target.value)}
-            placeholder="Structural drawings Rev C"
-          />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <Label htmlFor="st-doccat">Category</Label>
-            <Select
-              id="st-doccat"
-              value={docCategory}
-              onChange={(e) =>
-                setDocCategory(e.target.value as (typeof DOC_CATEGORIES)[number]["value"])
-              }
-            >
-              {DOC_CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="st-docref">Reference</Label>
-            <Input
-              id="st-docref"
-              value={docRef}
-              onChange={(e) => setDocRef(e.target.value)}
-              placeholder="SD/Rev C"
-            />
-          </div>
-          <div>
-            <Label htmlFor="st-docstate">State</Label>
-            <Select
-              id="st-docstate"
-              value={docState}
-              onChange={(e) =>
-                setDocState(e.target.value as (typeof DOC_STATES)[number]["value"])
-              }
-            >
-              {DOC_STATES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-      </WriteBlock>
-
-      {uncertified.length > 0 ? (
-        <section className="rounded-3xl border border-ink/10 bg-white p-6">
-          <h3 className="font-display text-lg text-maroon">Certify a payment</h3>
-          <p className="mt-1 text-[12px] text-ink/55">
-            Only certified amounts appear as releasable in the client portal.
-          </p>
-          <ul className="mt-4 space-y-2">
-            {uncertified.map((pay) => (
-              <li
-                key={pay.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-cream p-4"
-              >
+      <Accordion className="space-y-4">
+        <AccordionItem title="Project info" defaultOpen>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <Button variant="ghost" size="sm" onClick={onBack}>
+                <ArrowLeft className="size-4" />
+                All projects
+              </Button>
+              <h2 className="mt-3 font-display text-2xl text-maroon">{p.title}</h2>
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
+                <span className="font-mono">{p.reference}</span>
+                <span>{p.clientLabel}</span>
+                {p.clientCity ? <span>{p.clientCity}</span> : null}
                 <span>
-                  <span className="block text-[14px] text-maroon">{pay.label}</span>
-                  <span className="text-[12px] text-ink/50">{kes(pay.amount)}</span>
+                  {p.startedLabel} → {p.targetLabel}
                 </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    void run(
-                      "inline",
-                      () =>
-                        certifyPayment({
-                          data: {
-                            projectId,
-                            paymentId: pay.id,
-                            certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
-                          },
-                        }),
-                      "Payment certified.",
-                    )
-                  }
+                {p.isSample ? <Badge tone="gold" className="h-5 text-[9px]">Sample</Badge> : null}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-display text-3xl text-maroon">{p.progress}%</p>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
+            </div>
+          </div>
+        </AccordionItem>
+        <AccordionItem title="Financial summary">
+          <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-ink/8 pt-5 text-[12px] md:grid-cols-4">
+            {[
+              ["Contract", kes(p.contractValue)],
+              ["Paid", kes(p.budget.paidToDate)],
+              ["Certified, unreleased", kes(p.budget.currentlyCertified)],
+              ["Retention", kes(p.budget.retentionHeld)],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <dt className="text-muted">{k}</dt>
+                <dd className="mt-1 text-[14px] text-maroon">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </AccordionItem>
+        <AccordionItem title="Milestone & evidence">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <WriteBlock
+              title="Update a milestone"
+              hint="Set the stage status the client sees. Completing one opens the next automatically."
+              onRun={() =>
+                run("write", async () => {
+                  if (!milestoneId) throw new Error("Pick a milestone first.");
+                  await updateMilestone({
+                    data: {
+                      projectId,
+                      milestoneId,
+                      status: status as "active" | "complete" | "blocked" | "pending",
+                      note: milestoneNote.trim() || undefined,
+                    },
+                  });
+                  setMilestoneNote("");
+                }, "Milestone updated.")
+              }
+            >
+              <div>
+                <Label htmlFor="st-ms">Milestone</Label>
+                <Select id="st-ms" value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
+                  <option value="">Choose a stage…</option>
+                  {data.milestones.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.order}. {m.name} — {m.status}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="st-status">Status</Label>
+                <Select id="st-status" value={status} onChange={(e) => setStatus(e.target.value)}>
+                  {STATUS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="st-note">Note to the client (optional)</Label>
+                <Textarea
+                  id="st-note"
+                  className="min-h-20"
+                  value={milestoneNote}
+                  onChange={(e) => setMilestoneNote(e.target.value)}
+                  placeholder="Frame completed to first floor ring beam; ring beam cast 12 May."
+                />
+              </div>
+            </WriteBlock>
+
+            <WriteBlock
+              title="Add evidence"
+              hint="A site photograph or inspection note against a stage. The client sees this in the milestone record."
+              onRun={() =>
+                run("write", async () => {
+                  if (!milestoneId) throw new Error("Pick a milestone first.");
+                  if (evidenceCaption.trim().length < 3) throw new Error("Give the evidence a caption.");
+                  await addMilestoneEvidence({
+                    data: {
+                      projectId,
+                      milestoneId,
+                      caption: evidenceCaption.trim(),
+                      detail: evidenceDetail.trim(),
+                    },
+                  });
+                  setEvidenceCaption("");
+                  setEvidenceDetail("");
+                }, "Evidence added.")
+              }
+            >
+              <div>
+                <Label htmlFor="st-cap">Caption</Label>
+                <Input
+                  id="st-cap"
+                  value={evidenceCaption}
+                  onChange={(e) => setEvidenceCaption(e.target.value)}
+                  placeholder="Ring beam cast — 21 m³"
+                />
+              </div>
+              <div>
+                <Label htmlFor="st-detail">Detail</Label>
+                <Textarea
+                  id="st-detail"
+                  className="min-h-20"
+                  value={evidenceDetail}
+                  onChange={(e) => setEvidenceDetail(e.target.value)}
+                  placeholder="Reinforcement photographed before the pour. Engineer present."
+                />
+              </div>
+            </WriteBlock>
+
+            <WriteBlock
+              title="Raise a decision"
+              hint="Puts a choice to the client. One option per line. They record it in the decision log."
+              onRun={() =>
+                run("write", async () => {
+                  const options = decisionOptions
+                    .split("\n")
+                    .map((o) => o.trim())
+                    .filter(Boolean);
+                  if (decisionTitle.trim().length < 3) throw new Error("Give the decision a title.");
+                  if (options.length < 2) throw new Error("List at least two options, one per line.");
+                  await raiseDecision({
+                    data: {
+                      projectId,
+                      title: decisionTitle.trim(),
+                      detail: "",
+                      options,
+                      costImpact: 0,
+                    },
+                  });
+                  setDecisionTitle("");
+                  setDecisionOptions("");
+                }, "Decision raised.")
+              }
+            >
+              <div>
+                <Label htmlFor="st-dtitle">Title</Label>
+                <Input
+                  id="st-dtitle"
+                  value={decisionTitle}
+                  onChange={(e) => setDecisionTitle(e.target.value)}
+                  placeholder="Roof covering"
+                />
+              </div>
+              <div>
+                <Label htmlFor="st-dopts">Options (one per line)</Label>
+                <Textarea
+                  id="st-dopts"
+                  className="min-h-24"
+                  value={decisionOptions}
+                  onChange={(e) => setDecisionOptions(e.target.value)}
+                  placeholder={"Stone-coated tile\nConcrete roof tile\nMetal sheet"}
+                />
+              </div>
+            </WriteBlock>
+
+            <WriteBlock
+              title="Post an update"
+              hint="Appears in the client's activity feed and counts as new since their last visit."
+              onRun={() =>
+                run("write", async () => {
+                  if (updateTitle.trim().length < 3) throw new Error("Give the update a title.");
+                  await postUpdate({
+                    data: { projectId, title: updateTitle.trim(), body: updateBody.trim(), kind: "note" },
+                  });
+                  setUpdateTitle("");
+                  setUpdateBody("");
+                }, "Update posted.")
+              }
+            >
+              <div>
+                <Label htmlFor="st-utitle">Title</Label>
+                <Input
+                  id="st-utitle"
+                  value={updateTitle}
+                  onChange={(e) => setUpdateTitle(e.target.value)}
+                  placeholder="Weekly report — Week 08"
+                />
+              </div>
+              <div>
+                <Label htmlFor="st-ubody">Detail</Label>
+                <Textarea
+                  id="st-ubody"
+                  className="min-h-24"
+                  value={updateBody}
+                  onChange={(e) => setUpdateBody(e.target.value)}
+                  placeholder="Frame on track. Slab deck poured Thursday. Rain expected week 9."
+                />
+              </div>
+            </WriteBlock>
+          </div>
+        </AccordionItem>
+        <AccordionItem title="Document vault">
+          <WriteBlock
+            title="Add to the document vault"
+            hint="Contracts, approvals, drawings and certificates the client can see. They keep the record."
+            onRun={() =>
+              run("vault", async () => {
+                if (docName.trim().length < 3) throw new Error("Name the document.");
+                await addDocument({
+                  data: {
+                    projectId,
+                    name: docName.trim(),
+                    category: docCategory,
+                    reference: docRef.trim(),
+                    state: docState,
+                  },
+                });
+                setDocName("");
+                setDocRef("");
+              }, "Document added to the vault.")
+            }
+          >
+            <div>
+              <Label htmlFor="st-docname">Document</Label>
+              <Input
+                id="st-docname"
+                value={docName}
+                onChange={(e) => setDocName(e.target.value)}
+                placeholder="Structural drawings Rev C"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label htmlFor="st-doccat">Category</Label>
+                <Select
+                  id="st-doccat"
+                  value={docCategory}
+                  onChange={(e) =>
+                    setDocCategory(e.target.value as (typeof DOC_CATEGORIES)[number]["value"])}
                 >
-                  Certify
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <section className="rounded-2xl border border-ink/10 bg-cream p-5">
-          <h3 className="font-display text-lg text-maroon">Statement of account</h3>
-          <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
-            A record of where the money stands — not a demand. The client sees it in
-            their documents.
-          </p>
-          <Button
-            className="mt-4 w-full"
-            variant="outline"
-            onClick={() =>
-              void run(
-                "statement",
-                () => issueStatementForProject({ data: { projectId } }),
-                "Statement issued.",
-              )
-            }
-            disabled={pending === "statement"}
-          >
-            Issue a statement
-          </Button>
-        </section>
-
-        <section className="rounded-2xl border border-ink/10 bg-cream p-5">
-          <h3 className="font-display text-lg text-maroon">Retention</h3>
-          <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
-            Held against defects. Releasing it records that the defects liability
-            period has closed and pays the money out.
-          </p>
-          <Button
-            className="mt-4 w-full"
-            variant="outline"
-            onClick={() =>
-              void run("retention", () => releaseRetention({ data: { projectId } }),
-                "Retention released.")
-            }
-            disabled={pending === "retention"}
-          >
-            Release retention
-          </Button>
-        </section>
-      </div>
-
-      <DeliveryLog projectId={projectId} onChanged={onChanged} />
-      <IssuedDocuments projectId={projectId} onChanged={onChanged} />
-
-      <section className="rounded-3xl border border-ink/10 bg-white p-6">
-        <h3 className="font-display text-lg text-maroon">What the client has decided</h3>
-        {data.decisions.length === 0 ? (
-          <p className="mt-3 text-[13px] text-ink/55">No decisions on this project yet.</p>
-        ) : (
-          <ul className="mt-4 space-y-2">
-            {data.decisions.map((d) => (
-              <li key={d.id} className="rounded-xl border border-ink/10 bg-cream p-4">
-                <p className="text-[14px] text-maroon">{d.title}</p>
+                  {DOC_CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="st-docref">Reference</Label>
+                <Input
+                  id="st-docref"
+                  value={docRef}
+                  onChange={(e) => setDocRef(e.target.value)}
+                  placeholder="SD/Rev C"
+                />
+              </div>
+              <div>
+                <Label htmlFor="st-docstate">State</Label>
+                <Select
+                  id="st-docstate"
+                  value={docState}
+                  onChange={(e) =>
+                    setDocState(e.target.value as (typeof DOC_STATES)[number]["value"])}
+                >
+                  {DOC_STATES.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+          </WriteBlock>
+        </AccordionItem>
+        {uncertified.length > 0 ? (
+          <>
+            <AccordionItem title="Payments">
+              <section className="rounded-3xl border border-ink/10 bg-white p-6">
+                <h3 className="font-display text-lg text-maroon">Certify a payment</h3>
                 <p className="mt-1 text-[12px] text-ink/55">
-                  {d.state === "decided" ? `Chose: ${d.chosen}` : "Awaiting the client"} ·{" "}
-                  {d.date}
+                  Only certified amounts appear as releasable in the client portal.
                 </p>
-              </li>
-            ))}
-          </ul>
-        )}
-        {undecided.length > 0 ? null : (
-          <p className="mt-4 text-[12px] text-muted">
-            Every decision on this project has been recorded.
-          </p>
-        )}
-      </section>
+                <ul className="mt-4 space-y-2">
+                  {uncertified.map((pay) => (
+                    <li
+                      key={pay.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-cream p-4"
+                    >
+                      <span>
+                        <span className="block text-[14px] text-maroon">{pay.label}</span>
+                        <span className="text-[12px] text-ink/50">{kes(pay.amount)}</span>
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          void run(
+                            "inline",
+                            () =>
+                              certifyPayment({
+                                data: {
+                                  projectId,
+                                  paymentId: pay.id,
+                                  certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
+                                },
+                              }),
+                          "Payment certified.",
+                        )
+                      }
+                    >
+                      Certify
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            </AccordionItem>
+          </>
+        ) : null}
+        <AccordionItem title="Statement">
+          <section className="rounded-2xl border border-ink/10 bg-cream p-5">
+            <h3 className="font-display text-lg text-maroon">Statement of account</h3>
+            <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
+              A record of where the money stands — not a demand. The client sees it in
+              their documents.
+            </p>
+            <Button
+              className="mt-4 w-full"
+              variant="outline"
+              onClick={() =>
+                void run(
+                  "statement",
+                  () => issueStatementForProject({ data: { projectId } }),
+                  "Statement issued.",
+                )
+              }
+              disabled={pending === "statement"}
+            >
+              Issue a statement
+            </Button>
+          </section>
+        </AccordionItem>
+        <AccordionItem title="Retention">
+          <section className="rounded-2xl border border-ink/10 bg-cream p-5">
+            <h3 className="font-display text-lg text-maroon">Retention</h3>
+            <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
+              Held against defects. Releasing it records that the defects liability
+              period has closed and pays the money out.
+            </p>
+            <Button
+              className="mt-4 w-full"
+              variant="outline"
+              onClick={() =>
+                void run("retention", () => releaseRetention({ data: { projectId } }),
+                  "Retention released.")
+              }
+              disabled={pending === "retention"}
+            >
+              Release retention
+            </Button>
+          </section>
+        </AccordionItem>
+        <AccordionItem title="Delivery log">
+          <DeliveryLog projectId={projectId} onChanged={onChanged} />
+        </AccordionItem>
+        <AccordionItem title="Issued documents">
+          <IssuedDocuments projectId={projectId} onChanged={onChanged} />
+        </AccordionItem>
+        <AccordionItem title="Client decisions">
+          <section className="rounded-3xl border border-ink/10 bg-white p-6">
+            <h3 className="font-display text-lg text-maroon">What the client has decided</h3>
+            {data.decisions.length === 0 ? (
+              <p className="mt-3 text-[13px] text-ink/55">No decisions on this project yet.</p>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {data.decisions.map((d) => (
+                  <li key={d.id} className="rounded-xl border border-ink/10 bg-cream p-4">
+                    <p className="text-[14px] text-maroon">{d.title}</p>
+                    <p className="mt-1 text-[12px] text-ink/55">
+                      {d.state === "decided" ? `Chose: ${d.chosen}` : "Awaiting the client"} ·{" "}
+                      {d.date}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {undecided.length > 0 ? null : (
+              <p className="mt-4 text-[12px] text-muted">
+                Every decision on this project has been recorded.
+              </p>
+            )}
+          </section>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }
@@ -881,12 +892,8 @@ function Overview({ onOpen }: { onOpen: (id: string) => void }) {
   const exposure = money.certifiedUnreleased + money.retentionHeld;
 
   return (
-    <div className="space-y-8">
-      {/* Funnel */}
-      <section>
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-          The funnel
-        </p>
+    <Accordion className="space-y-4">
+      <AccordionItem title="The funnel" defaultOpen>
         <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
             ["Enquiries received", String(funnel.enquiriesTotal), `${funnel.enquiriesLast7Days} in the last 7 days`],
@@ -901,13 +908,9 @@ function Overview({ onOpen }: { onOpen: (id: string) => void }) {
             </div>
           ))}
         </div>
-      </section>
+      </AccordionItem>
 
-      {/* Money */}
-      <section>
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-          Money
-        </p>
+      <AccordionItem title="Money">
         <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Money label="Contracted" value={kes(money.contractValue)} />
           <Money label="Paid to date" value={kes(money.paid)} tone="text-emerald-700" />
@@ -924,33 +927,30 @@ function Overview({ onOpen }: { onOpen: (id: string) => void }) {
             ? ` that is ${((exposure / money.contractValue) * 100).toFixed(1)}% of contracted value.`
             : " nothing contracted yet."}
         </p>
-      </section>
+      </AccordionItem>
 
-      {/* Workload */}
-      <section className="grid gap-8 lg:grid-cols-2">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-            Workload by kind of work
-          </p>
-          <div className="mt-4">
-            <GroupBars rows={data.byTrack} empty="No projects opened yet." />
+      <AccordionItem title="Workload">
+        <div className="grid gap-8 lg:grid-cols-2">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+              Workload by kind of work
+            </p>
+            <div className="mt-4">
+              <GroupBars rows={data.byTrack} empty="No projects opened yet." />
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+              Workload by county
+            </p>
+            <div className="mt-4">
+              <GroupBars rows={data.byZone} empty="No zones recorded yet." />
+            </div>
           </div>
         </div>
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-            Workload by county
-          </p>
-          <div className="mt-4">
-            <GroupBars rows={data.byZone} empty="No zones recorded yet." />
-          </div>
-        </div>
-      </section>
+      </AccordionItem>
 
-      {/* The queue that needs a human */}
-      <section>
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-          Needs a human
-        </p>
+      <AccordionItem title="Needs a human">
         {data.attention.length === 0 ? (
           <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-[13px] text-emerald-900">
             Nothing is stuck, nothing is waiting on a client, and everyone has looked
@@ -983,8 +983,8 @@ function Overview({ onOpen }: { onOpen: (id: string) => void }) {
             ))}
           </ul>
         )}
-      </section>
-    </div>
+      </AccordionItem>
+    </Accordion>
   );
 }
 
