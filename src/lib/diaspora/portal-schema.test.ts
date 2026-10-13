@@ -44,6 +44,28 @@ describe("ProjectInput", () => {
     assert.equal(parsed.serviceSlug, "");
   });
 
+  it("accepts the phone number as a Kenyan actually types it", () => {
+    // The old validator demanded a leading "+", so the local form was rejected
+    // outright — the form most people enter.
+    const parsed = ProjectInput.parse({ ...BRIEF, clientPhone: "0799 034 712" });
+    assert.equal(parsed.clientPhone, "+254799034712");
+  });
+
+  it("keeps a diaspora number international", () => {
+    const parsed = ProjectInput.parse({ ...BRIEF, clientPhone: "+44 7700 900123" });
+    assert.equal(parsed.clientPhone, "+447700900123");
+  });
+
+  it("treats the phone as optional", () => {
+    const parsed = ProjectInput.parse({ ...BRIEF, clientPhone: "" });
+    assert.equal(parsed.clientPhone, "");
+  });
+
+  it("rejects a phone that cannot be sent to", () => {
+    // Better a clear error now than a message that silently never arrives.
+    assert.throws(() => ProjectInput.parse({ ...BRIEF, clientPhone: "call the studio" }));
+  });
+
   it("accepts every service track", () => {
     for (const track of TRACK_IDS) {
       const parsed = ProjectInput.parse({ ...BRIEF, track });

@@ -17,6 +17,7 @@
 // client-supplied address is never trusted for delivery.
 
 import { getSql, type Sql } from "@/lib/db";
+import { toAfricaTalking, toE164 } from "@/lib/phone";
 
 export type Channel = "inapp" | "email" | "whatsapp" | "sms";
 
@@ -57,7 +58,13 @@ function whatsappConfig(): ChannelConfig {
 
 function smsConfig(): ChannelConfig {
   const key = process.env.AT_API_KEY;
-  return { configured: Boolean(key), reason: key ? "" : "AT_API_KEY not set" };
+  if (!key) return { configured: false, reason: "AT_API_KEY not set" };
+  // Their API rejects an unregistered sender id outright, so say which value is
+  // missing rather than letting every send fail with an opaque 400.
+  if (!process.env.AT_SENDER?.trim()) {
+    return { configured: false, reason: "AT_SENDER not set (a sender id registered with Africa’s Talking)" };
+  }
+  return { configured: true, reason: "" };
 }
 
 const CONFIG: Record<Channel, () => ChannelConfig> = {
@@ -102,8 +109,11 @@ async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | n
   if (!row) return null;
   return {
     email: row.email ?? null,
-    // Stored as digits with a leading +; a diaspora client may have left it blank.
-    phone: row.client_phone && /^\+\d{8,15}$/.test(row.client_phone) ? row.client_phone : null,
+    // Normalise rather than pattern-match: the strict E.164 test used to throw
+    // away every number stored the way a client actually types it
+    // ("0799 034 712"), so SMS and WhatsApp silently never reached them.
+    // A diaspora client may have left this blank entirely.
+    phone: toE164(row.client_phone),
     name: row.name ?? "there",
   };
 }
@@ -201,7 +211,7 @@ async function sendWhatsApp(
     },
     body: JSON.stringify({
       messaging_product: "whatsapp",
-      to: to.replace(/^\+/, ""),
+      to: toAfricaTalking(to) ?? to.replace(/^\+/, ""),
       type: "template",
       template: {
         name: template,
@@ -231,7 +241,7 @@ async function sendSms(to: string, title: string, body: string) {
     },
     body: JSON.stringify({
       from: process.env.AT_SENDER ?? "ATRO",
-      to: to.replace(/^\+/, ""),
+      to: toAfricaTalking(to) ?? to.replace(/^\+/, ""),
       message: `${title}. ${body}`,
     }),
   });

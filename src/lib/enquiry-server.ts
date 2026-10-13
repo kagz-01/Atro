@@ -2,10 +2,26 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
+import { toE164 } from "@/lib/phone";
 
 const EnquiryInput = z.object({
   name: z.string().min(1),
-  phone: z.string().min(1),
+  phone: z
+    .string()
+    .trim()
+    .min(1, "Enter a phone number we can reach you on.")
+    .transform((value, ctx) => {
+      const e164 = toE164(value);
+      if (!e164) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "That does not look like a phone number. Use the local form (0799 034 712) or include your country code.",
+        });
+        return z.NEVER;
+      }
+      return e164;
+    }),
   email: z.string().min(1),
   projectType: z.string(),
   zone: z.string(),

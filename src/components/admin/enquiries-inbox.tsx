@@ -33,6 +33,7 @@ import { TRACK_LIST } from "@/lib/diaspora/tracks";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { whatsappHref } from "@/lib/whatsapp";
+import { formatPhone } from "@/lib/phone";
 
 type Enquiry = {
   id: string;
@@ -492,7 +493,7 @@ export function EnquiriesInbox() {
                 <div className="space-y-2">
                   <a href={`tel:${selected.phone}`} className="flex items-center gap-3 text-sm hover:text-maroon transition-colors">
                     <Phone className="size-4 text-muted" />
-                    {selected.phone}
+                    {formatPhone(selected.phone)}
                   </a>
                   <a href={`mailto:${selected.email}`} className="flex items-center gap-3 text-sm hover:text-maroon transition-colors">
                     <Mail className="size-4 text-muted" />

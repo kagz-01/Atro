@@ -520,9 +520,10 @@ export async function openProjectFromEnquiryFor(
     zone: string;
     description: string;
     project_type: string;
+    phone: string;
     already: string | null;
   }>`
-    select e.id, e.email, e.name, e.zone, e.description, e.project_type,
+    select e.id, e.email, e.name, e.zone, e.description, e.project_type, e.phone,
       (select p.id::text from portal_projects p where p.id = e.project_id) as already
     from enquiries e where e.id = ${data.enquiryId} limit 1
   `;
@@ -549,7 +550,10 @@ export async function openProjectFromEnquiryFor(
     track: track.id,
     serviceSlug: "",
     zone: data.zone || enquiry.zone,
-    clientPhone: "",
+    // The enquiry already carries the number the client gave when they asked to
+    // build. Dropping it here meant every converted project had no phone on
+    // file, so SMS and WhatsApp updates silently never reached the client.
+    clientPhone: enquiry.phone,
   };
 
   // An unowned row: user_id '' and the address it is waiting for.

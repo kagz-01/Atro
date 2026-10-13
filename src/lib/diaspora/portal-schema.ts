@@ -5,6 +5,7 @@
 // for the RPC validators and the planners below.
 
 import { z } from "zod";
+import { toE164 } from "../phone.ts";
 import { TRACK_IDS } from "./tracks.ts";
 
 export const ProjectInput = z.object({
@@ -19,12 +20,26 @@ export const ProjectInput = z.object({
   track: z.enum(TRACK_IDS as [string, ...string[]]).default("construction"),
   serviceSlug: z.string().trim().max(80).default(""),
   zone: z.string().trim().max(60).default(""),
+  // Accepts every way a client writes their number — local, spaced, or with a
+  // country code — and stores one canonical form. The old regex did the
+  // opposite: it rejected "0799034712" (the form most Kenyans type) while
+  // accepting things like "+254 7XX XXX XXX" that no API can send.
   clientPhone: z
     .string()
     .trim()
-    .regex(/^\+[\d\s-]{7,20}$/, "Include the country code, e.g. +254 7XX XXX XXX")
-    .max(24)
-    .or(z.literal(""))
+    .max(40)
+    .transform((value, ctx) => {
+      if (!value) return "";
+      const e164 = toE164(value);
+      if (!e164) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Use the local form (0799 034 712) or include your country code.",
+        });
+        return z.NEVER;
+      }
+      return e164;
+    })
     .default(""),
 });
 
