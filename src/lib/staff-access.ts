@@ -10,6 +10,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/verify.server";
+import { demotesLastAdmin } from "@/lib/staff-access-rules";
 import { lookupRole, normaliseEmail, type StaffIdentity, type StaffRole } from "@/lib/staff";
 
 export type StaffMember = {
@@ -137,12 +138,21 @@ export const grantStaff = createServerFn({ method: "POST" })
     const sql = await getSql();
     const email = normaliseEmail(data.email);
 
-    // Never let the last admin remove themselves into a locked-out studio.
-    if (data.role === "admin") {
-      const admins = await sql<{ n: number }>`
-        select count(*) as n from client_role where role = 'admin'
-      `;
-      if (Number(admins[0]?.n ?? 0) === 0) throw new Error("No admin exists yet.");
+    // Guard the transition, not just the target state. Granting `staff` to an
+    // existing admin is an upsert, so without this the last admin could demote
+    // themselves, leave zero admins, and lock every future request out of the
+    // one screen that can approve them.
+    const others = await sql<{ n: number }>`
+      select count(*) as n from client_role
+      where role = 'admin' and lower(email) <> ${email}
+    `;
+    const demoting = demotesLastAdmin({
+      currentRole: await lookupRole(sql, email),
+      nextRole: data.role,
+      otherAdminCount: Number(others[0]?.n ?? 0),
+    });
+    if (demoting) {
+      throw new Error("That is the last admin. Promote someone else first.");
     }
 
     await sql`

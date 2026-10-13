@@ -134,9 +134,16 @@ export const retryDeliveries = createServerFn({ method: "POST" })
 
 /** Read-only role lookup for the UI: a session exists, and is it staff? */
 export const getMyStaffRole = createServerFn({ method: "GET" }).handler(async () => {
-  const { currentStaff } = await import("@/lib/staff-session.server");
-  const staff = await currentStaff();
-  return { userId: staff?.userId ?? null, role: staff?.role ?? null };
+  const { currentIdentity, currentStaff } = await import("@/lib/staff-session.server");
+  const [staff, identity] = await Promise.all([currentStaff(), currentIdentity()]);
+  // The email matters: it is what tells the console apart between "not signed
+  // in" and "signed in, not on the allowlist" — the second is the only state a
+  // person can act on from there.
+  return {
+    userId: staff?.userId ?? identity?.userId ?? null,
+    email: staff?.email ?? identity?.email ?? null,
+    role: staff?.role ?? null,
+  };
 });
 
 export const getStaffProject = createServerFn({ method: "GET" })

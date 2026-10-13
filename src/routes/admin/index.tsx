@@ -1062,31 +1062,33 @@ function IssuedDocuments({
 
 /* ── access: how a real person becomes staff ── */
 
-function AccessPanel({ isStaff, isAdmin }: { isStaff: boolean; isAdmin: boolean }) {
+/**
+ * The request form for a signed-in account that is not on the allowlist.
+ *
+ * This used to live inside AccessPanel, behind the tab strip — which made it
+ * unreachable, because non-staff never got past the console gate. Asking for
+ * access is the one thing a non-staff person can actually do here, so it gets
+ * its own screen.
+ */
+function RequestAccessCard() {
   const { data: me } = useQuery({
     queryKey: ["my-access"],
     queryFn: () => getMyAccess({ data: undefined }),
   });
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"staff" | "admin">("staff");
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
   const [askNote, setAskNote] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const { data, refetch } = useQuery({
-    queryKey: ["staff-list"],
-    queryFn: () => listStaff({ data: undefined }),
-    enabled: isStaff,
-  });
-
-  if (!isStaff) {
-    return (
-      <div className="rounded-3xl border border-ink/10 bg-white p-8">
-        <h2 className="font-display text-2xl text-maroon">Request studio access</h2>
-        <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-ink/65">
-          You are signed in as <strong>{me?.email ?? "an unknown account"}</strong>, which
-          is not on the studio access list. Ask below and an existing admin approves it
-          — usually the same day.
+  return (
+    <main className="min-h-[70vh] flex flex-col items-center justify-center bg-stone/30 px-4 py-24">
+      <div className="w-full max-w-xl rounded-3xl border border-line/50 bg-paper p-8 shadow-card">
+        <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-maroon/10 text-maroon">
+          <Lock className="size-6" />
+        </span>
+        <h1 className="mt-6 font-display text-2xl text-maroon">Request studio access</h1>
+        <p className="mt-3 text-[14px] leading-relaxed text-ink/65">
+          You are signed in as <strong>{me?.email ?? "this account"}</strong>, which is not
+          on the studio access list. Ask below and an existing admin approves it — usually the
+          same day.
         </p>
         {me?.requested ? (
           <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
@@ -1114,9 +1116,27 @@ function AccessPanel({ isStaff, isAdmin }: { isStaff: boolean; isAdmin: boolean 
         >
           Request access
         </Button>
+        <Link
+          to="/portal"
+          className="mt-6 inline-block text-[13px] text-burgundy underline decoration-gold decoration-2 underline-offset-4"
+        >
+          Client portal instead
+        </Link>
       </div>
-    );
-  }
+    </main>
+  );
+}
+
+function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"staff" | "admin">("staff");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const { data, refetch } = useQuery({
+    queryKey: ["staff-list"],
+    queryFn: () => listStaff({ data: undefined }),
+  });
 
   return (
     <div className="space-y-6">
@@ -1259,7 +1279,11 @@ function AccessPanel({ isStaff, isAdmin }: { isStaff: boolean; isAdmin: boolean 
 
 function AdminConsole() {
   const hydrated = useIsHydrated();
-  const [roleState, setRoleState] = useState<{ role: string | null; userId: string | null } | null>(
+  const [roleState, setRoleState] = useState<{
+    role: string | null;
+    userId: string | null;
+    email: string | null;
+  } | null>(
     null,
   );
   const [selected, setSelected] = useState<string | null>(null);
@@ -1270,7 +1294,7 @@ function AdminConsole() {
     let live = true;
     getMyStaffRole({ data: undefined })
       .then((r) => live && setRoleState(r))
-      .catch(() => live && setRoleState({ role: null, userId: null }));
+      .catch(() => live && setRoleState({ role: null, userId: null, email: null }));
     return () => {
       live = false;
     };
@@ -1292,7 +1316,9 @@ function AdminConsole() {
     );
   }
 
-  if (!isStaff) return <StaffWall />;
+  // Signed out: ask them to sign in. Signed in but not on the allowlist: let
+  // them ask for access, which is otherwise a one-way door.
+  if (!isStaff) return roleState.email ? <RequestAccessCard /> : <StaffWall />;
 
   const rows = (projects ?? []).filter((p) => {
     if (filter === "attention") return p.blockedStages > 0 || p.openDecisions > 0 || !p.onTrack;
@@ -1368,7 +1394,7 @@ function AdminConsole() {
           ) : null}
           {tab === "access" ? (
             <div className="mt-8">
-              <AccessPanel isStaff={isStaff} isAdmin={roleState?.role === "admin"} />
+              <AccessPanel isAdmin={roleState?.role === "admin"} />
             </div>
           ) : null}
           {tab === "projects" ? null : null}

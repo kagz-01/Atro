@@ -11,6 +11,7 @@
 // static `*.server.*` import from a module the browser can see.
 
 import { getSql, type Sql } from "@/lib/db";
+export { demotesLastAdmin } from "@/lib/staff-access-rules";
 
 export type StaffRole = "staff" | "admin";
 
@@ -40,3 +41,4 @@ export async function lookupRole(sql: Sql, email: string | null): Promise<StaffR
 export async function isStaffEmail(email: string | null): Promise<boolean> {
   return (await lookupRole(await getSql(), email)) !== null;
 }
+
