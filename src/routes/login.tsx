@@ -1,14 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Globe, Lock, Shield } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
-import { GROK_PROVIDERS, authEnabled, signIn } from "@/lib/auth/client";
-import { EmailPasswordForm } from "@/components/auth/email-password-form";
+import { authAvailable, startAuthCookieSync } from "@/lib/auth/client";
+import { PhoneSignInForm } from "@/components/auth/phone-sign-in-form";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/login")({
   component: Login,
@@ -23,14 +22,6 @@ export const Route = createFileRoute("/login")({
     ],
   }),
 });
-
-/** Sign-in methods: Google, or an email address and password. */
-const METHODS = [
-  ["oauth", "Google"],
-  ["email", "Email"],
-] as const;
-
-type Method = (typeof METHODS)[number][0];
 
 const PERKS = [
   {
@@ -53,7 +44,6 @@ const PERKS = [
 function Login() {
   const { user, isPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
-  const [method, setMethod] = useState<Method>("oauth");
 
   /**
    * Email sign-in creates the session server-side, but this page already
@@ -64,6 +54,9 @@ function Login() {
   const goToPortal = () => {
     if (typeof window !== "undefined") window.location.href = "/portal";
   };
+
+  // Keep the server-visible session cookie in step with the Supabase session.
+  useEffect(() => startAuthCookieSync(), []);
 
   return (
     <main className="min-h-screen bg-paper pt-24 pb-16 md:pt-28">
@@ -128,11 +121,21 @@ function Login() {
               </span>
             </div>
 
-            {!authEnabled ? (
+            {!authAvailable() ? (
               <div className="mt-10">
                 <h2 className="font-display text-3xl text-maroon">Sign in</h2>
-                <p className="mt-3 text-[15px] text-ink/60">
-                  Sign-in is disabled for this deployment.
+                <p className="mt-3 text-[15px] leading-relaxed text-ink/65">
+                  Sign-in is not configured on this deployment yet, so accounts
+                  cannot be created or verified here.
+                </p>
+                <p className="mt-3 text-[13px] leading-relaxed text-ink/50">
+                  It needs <code className="font-mono">VITE_SUPABASE_URL</code> and{" "}
+                  <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> set on the
+                  server that served this page.
+                </p>
+                <p className="mt-4 text-[14px] text-ink/65">
+                  In the meantime, call or WhatsApp the studio and we will open your
+                  project for you.
                 </p>
               </div>
             ) : isPending || !hydrated ? (
@@ -176,55 +179,9 @@ function Login() {
                   sign-in.
                 </p>
 
-                {/* One method at a time: showing two full sign-in forms stacked
-                    meant two "Sign in" headings and twice the decisions. */}
-                <div
-                  role="tablist"
-                  aria-label="Sign-in method"
-                  className="mt-7 grid grid-cols-2 gap-1 rounded-xl bg-cream p-1"
-                >
-                  {METHODS.map(([id, label]) => (
-                    <button
-                      key={id}
-                      role="tab"
-                      type="button"
-                      aria-selected={method === id}
-                      onClick={() => setMethod(id)}
-                      className={cn(
-                        "cursor-pointer rounded-lg px-4 py-2.5 text-[12px] font-medium transition-colors",
-                        method === id
-                          ? "bg-white text-maroon shadow-soft"
-                          : "text-ink/55 hover:text-maroon",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                <div className="mt-8">
+                  <PhoneSignInForm onDone={goToPortal} />
                 </div>
-
-                {method === "oauth" ? (
-                  <div className="mt-5">
-                    <div className="flex flex-col gap-3">
-                      {GROK_PROVIDERS.map((p) => (
-                        <button
-                          key={p.providerId}
-                          type="button"
-                          onClick={() => void signIn(p.providerId, { callbackURL: "/portal" })}
-                          className="group flex h-13 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-ink/15 bg-white px-5 text-[13px] font-medium text-ink transition-all hover:border-maroon hover:bg-maroon hover:text-paper"
-                        >
-                          <span>Continue with {p.label}</span>
-                          <ArrowRight className="size-4 opacity-50 transition-transform group-hover:translate-x-1 group-hover:opacity-100" />
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mt-5 text-[12px] leading-relaxed text-ink/50">
-                      We only read your name and account id — never your contacts,
-                      calendar or mail.
-                    </p>
-                  </div>
-                ) : (
-                  <EmailPasswordForm onDone={goToPortal} />
-                )}
 
                 <div className="mt-7 border-t border-ink/10 pt-5">
                   <p className="text-[13px] text-ink/60">

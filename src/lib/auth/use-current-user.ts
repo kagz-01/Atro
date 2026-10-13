@@ -1,26 +1,36 @@
-import { authClient, authEnabled } from "./client";
+import { useSyncExternalStore } from "react";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 
-/** Normalized user shape used across the app, auth on or off. */
+/**
+ * Normalized user shape used across the app.
+ *
+ * A phone-signed-in client has no email and no name by default, so `phone` is a
+ * first-class field here rather than an afterthought — it is often the only
+ * identifier the studio has for them.
+ */
 export type AppUser = {
   id: string;
   displayName: string | null;
   primaryEmail: string | null;
+  primaryPhone: string | null;
   profileImageUrl: string | null;
-  /** True when this is the sandbox/dev fallback (auth not configured). */
+  /** True when Supabase is not configured and the app falls back to a dev user. */
   isDevFallback: boolean;
 };
 
 /**
- * Stable fallback user, used ONLY when auth is disabled
- * (`VITE_AUTH_ENABLED=false`, the shipped default). With auth on, the sandbox
- * live preview does real sign-in via the baked preview client. Its id is
- * `"dev-user"` — the SAME id `verify.server.ts` returns server-side — so per-user
- * rows written in that mode belong to one consistent owner.
+ * Stable fallback user, used ONLY when Supabase is not configured. Its id is
+ * `"dev-user"` — the SAME id `verify.server.ts` returns server-side — so
+ * per-user rows written in that mode belong to one consistent owner.
  */
+const previewEmail =
+  (import.meta.env.VITE_PREVIEW_AUTH_EMAIL as string | undefined)?.trim() || "hello@atro.ke";
+
 export const DEV_USER: AppUser = {
   id: "dev-user",
-  displayName: "Dev User",
-  primaryEmail: "dev@example.com",
+  displayName: "Preview mode",
+  primaryEmail: previewEmail,
+  primaryPhone: null,
   profileImageUrl: null,
   isDevFallback: true,
 };
@@ -33,50 +43,103 @@ export type CurrentUserState = {
   isPending: boolean;
 };
 
-/**
- * Current user + loading state. Same behavior in live preview and when deployed:
- *   - Auth enabled -> the real signed-in user; `user` is `null` while
- *                            the session resolves (`isPending: true`) and when
- *                            signed out (`isPending: false`). Session comes from
- *                            Better Auth `useSession()` → `/api/auth/get-session`
- *                            (cookie when deployed; bearer in live preview).
- *   - Auth disabled (`VITE_AUTH_ENABLED=false`) -> `DEV_USER`, never pending.
- *
- * Protect a route by waiting out `isPending` before acting on `user` —
- * redirecting on `user: null` alone bounces signed-in visitors to sign-in on
- * every hard reload:
- *
- *   import { RedirectToSignIn } from "@/lib/auth/gates";
- *   const { user, isPending } = useCurrentUserState();
- *   if (isPending) return null;              // still resolving — don't redirect yet
- *   if (!user) return <RedirectToSignIn />;  // definitely signed out
- *
- * `authEnabled` is a module-level constant fixed at load, so the guarded hook
- * call keeps a stable hook order across every render of a given component.
- */
-export function useCurrentUserState(): CurrentUserState {
-  if (!authEnabled) return { user: DEV_USER, isPending: false };
-  const { data, isPending } = authClient.useSession();
-  const user = data?.user;
-  return {
-    user: user
-      ? {
-          id: user.id,
-          displayName: user.name ?? null,
-          primaryEmail: user.email ?? null,
-          profileImageUrl: user.image ?? null,
-          isDevFallback: false,
-        }
-      : null,
-    isPending,
-  };
+type Cache = {
+  user: AppUser | null;
+  isPending: boolean;
+  listeners: Set<() => void>;
+};
+
+const cache: Cache = { user: null, isPending: true, listeners: new Set() };
+let started = false;
+
+function emit() {
+  for (const listener of cache.listeners) listener();
+}
+
+function set(next: Partial<Cache>) {
+  Object.assign(cache, next);
+  emit();
 }
 
 /**
- * Convenience view of `useCurrentUserState().user` for display (e.g.
- * `user?.displayName ?? "Guest"`). NOTE: `null` means *loading OR signed out* —
- * for redirects/guards use `useCurrentUserState()` and check `isPending`.
+ * Subscribe to Supabase's session, mirrored into a tiny external store so
+ * every caller shares one listener and one auth call.
+ */
+function start() {
+  if (started || typeof window === "undefined") return;
+  const supabase = supabaseBrowser();
+  if (!supabase) {
+    // Unconfigured: behave as the dev fallback, never pending.
+    set({ user: DEV_USER, isPending: false });
+    return;
+  }
+  started = true;
+
+  void supabase.auth.getSession().then(({ data }) => {
+    const user = data.session?.user;
+    set({
+      user: user ? mapUser(user) : null,
+      isPending: false,
+    });
+  });
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    const user = session?.user;
+    set({ user: user ? mapUser(user) : null, isPending: false });
+  });
+}
+
+function mapUser(user: {
+  id: string;
+  email?: string | null;
+  phone?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+}): AppUser {
+  const metaName = user.user_metadata?.["full_name"];
+  const metaAlt = user.user_metadata?.["name"];
+  return {
+    id: user.id,
+    displayName:
+      (typeof metaName === "string" && metaName.trim() ? metaName.trim() : null) ??
+      (typeof metaAlt === "string" && metaAlt.trim() ? metaAlt.trim() : null),
+    primaryEmail: user.email ?? null,
+    primaryPhone: user.phone ?? null,
+    profileImageUrl: null,
+    isDevFallback: false,
+  };
+}
+
+function subscribe(listener: () => void): () => void {
+  cache.listeners.add(listener);
+  start();
+  return () => {
+    cache.listeners.delete(listener);
+  };
+}
+
+const getSnapshot = () => cache.user;
+const getServerSnapshot = () => null;
+
+/**
+ * Current user + loading state.
+ *
+ * `user` is `null` while the session resolves (`isPending: true`) and when
+ * signed out (`isPending: false`). Guard a route by waiting out `isPending`
+ * before acting on `user`:
+ *
+ *   const { user, isPending } = useCurrentUserState();
+ *   if (isPending) return null;              // still resolving — don't redirect
+ *   if (!user) return <RedirectToSignIn />;  // definitely signed out
+ */
+export function useCurrentUserState(): CurrentUserState {
+  start();
+  return { user: cache.user, isPending: cache.isPending };
+}
+
+/**
+ * Convenience view for display. NOTE: `null` means *loading OR signed out* —
+ * for redirects use `useCurrentUserState()` and check `isPending`.
  */
 export function useCurrentUser(): AppUser | null {
-  return useCurrentUserState().user;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

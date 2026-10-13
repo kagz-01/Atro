@@ -43,7 +43,6 @@ import { Route as ToolsMaterialPricesRouteImport } from './routes/tools/material
 import { Route as ToolsZoneMapRouteImport } from './routes/tools/zone-map'
 import { Route as ZonesIndexRouteImport } from './routes/zones/index'
 import { Route as ZonesSlugRouteImport } from './routes/zones/$slug'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as PortalDocumentIdRouteImport } from './routes/portal/document.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -216,11 +215,6 @@ const ZonesSlugRoute = ZonesSlugRouteImport.update({
   path: '/zones/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PortalDocumentIdRoute = PortalDocumentIdRouteImport.update({
   id: '/document/$id',
   path: '/document/$id',
@@ -262,7 +256,6 @@ export interface FileRoutesByFullPath {
   '/services/': typeof ServicesIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
 export interface FileRoutesByTo {
@@ -300,7 +293,6 @@ export interface FileRoutesByTo {
   '/services': typeof ServicesIndexRoute
   '/tools': typeof ToolsIndexRoute
   '/zones': typeof ZonesIndexRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
 export interface FileRoutesById {
@@ -339,7 +331,6 @@ export interface FileRoutesById {
   '/services/': typeof ServicesIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
 export interface FileRouteTypes {
@@ -379,7 +370,6 @@ export interface FileRouteTypes {
     | '/services/'
     | '/tools/'
     | '/zones/'
-    | '/api/auth/$'
     | '/portal/document/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -417,7 +407,6 @@ export interface FileRouteTypes {
     | '/services'
     | '/tools'
     | '/zones'
-    | '/api/auth/$'
     | '/portal/document/$id'
   id:
     | '__root__'
@@ -455,7 +444,6 @@ export interface FileRouteTypes {
     | '/services/'
     | '/tools/'
     | '/zones/'
-    | '/api/auth/$'
     | '/portal/document/$id'
   fileRoutesById: FileRoutesById
 }
@@ -494,7 +482,6 @@ export interface RootRouteChildren {
   ServicesIndexRoute: typeof ServicesIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
   ZonesIndexRoute: typeof ZonesIndexRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -737,13 +724,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ZonesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/portal/document/$id': {
       id: '/portal/document/$id'
       path: '/document/$id'
@@ -800,7 +780,6 @@ const rootRouteChildren: RootRouteChildren = {
   ServicesIndexRoute: ServicesIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,
   ZonesIndexRoute: ZonesIndexRoute,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

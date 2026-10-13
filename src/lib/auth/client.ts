@@ -1,236 +1,122 @@
-import { genericOAuthClient } from "better-auth/client/plugins";
-import { createAuthClient } from "better-auth/react";
-import { runPreSignInSignOut, runSignOut } from "../../../scripts/sign-out-plan.mjs";
-import { GROK_PROVIDERS } from "./providers";
+import { supabaseBrowser } from "@/lib/supabase/browser";
+import { ACCESS_TOKEN_COOKIE } from "@/lib/supabase/config";
 
 /**
- * Better Auth client for this React SPA (browser-side).
+ * Browser auth surface for this app.
  *
- * Talks to this app's OWN Better Auth at same-origin `/api/auth/*`. In the live
- * preview the app is an embedded iframe with PARTITIONED cookies, so after a
- * popup sign-in it can't read the session cookie — it authenticates with a
- * bearer token instead (captured from the popup, see `signIn`). The `onRequest`
- * hook attaches that token when present; when deployed (cookie auth) no token
- * is stored, so nothing changes.
+ * Sign-in is a phone number and a one-time code, verified by Supabase. The
+ * access token Supabase issues is mirrored into a cookie so it also rides along
+ * with SSR loaders and server functions — the browser alone cannot tell the
+ * server who it is, and reading a token the client minted would prove nothing.
  *
- * To sign out call `signOut()` below, NOT `authClient.signOut()`: the raw call
- * leaves the bearer token in place, and `onRequest` keeps re-attaching it, so
- * the visitor stays signed in.
+ * The cookie is readable by JavaScript on purpose: it is a bearer token for
+ * this origin's own API, and the server still verifies every one of them
+ * against Supabase Auth. Nothing here grants an identity on its own.
  */
-export const authClient = createAuthClient({
-  plugins: [genericOAuthClient()],
-  fetchOptions: {
-    onRequest(ctx) {
-      const token = getBearerToken();
-      if (token) ctx.headers.set("Authorization", `Bearer ${token}`);
-      return ctx;
-    },
-  },
-});
+
+export { configured as authEnabled } from "@/lib/supabase/config";
 
 /**
- * True when sign-in UI should be shown — i.e. whenever `VITE_AUTH_ENABLED` is
- * not `"false"`. The shipped template sets it to `"false"`
- * (`.grok/app-env.json`), which selects the dev user (see `use-current-user`);
- * with the key removed, sign-in is real in preview (baked preview client) and
- * when deployed (injected per-app client).
+ * True when sign-in UI should be shown. Present so callers keep one import
+ * site whether auth is Supabase-backed or not.
  */
-export const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== "false";
-
-/** The upstream providers to render sign-in buttons for. */
-export { GROK_PROVIDERS };
-
-// ── Live-preview bearer token ────────────────────────────────────────────────
-// The embedded preview iframe has partitioned cookies, so we keep the session's
-// bearer token in sessionStorage and attach it to every Better Auth request (and
-// to server functions, via `@/lib/auth/middleware`). Empty everywhere except the
-// preview after a popup sign-in, so the cookie path is untouched elsewhere.
-const BEARER_KEY = "grok-auth.bearer-token";
-
-/** The stored preview bearer token, or null. */
-export function getBearerToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.sessionStorage.getItem(BEARER_KEY);
-  } catch {
-    return null;
-  }
+export function authAvailable(): boolean {
+  return supabaseBrowser() !== null;
 }
 
-function setBearerToken(token: string | null): void {
-  if (typeof window === "undefined") return;
-  try {
-    if (token) window.sessionStorage.setItem(BEARER_KEY, token);
-    else window.sessionStorage.removeItem(BEARER_KEY);
-  } catch {
-    /* storage unavailable — ignore */
-  }
+function setAccessTokenCookie(token: string | null) {
+  if (typeof document === "undefined") return;
+  // Same-site, session-scoped: the token dies with the tab, and a stale value
+  // cannot outlive the session it belonged to.
+  document.cookie = token
+    ? `${ACCESS_TOKEN_COOKIE}=${encodeURIComponent(token)}; path=/; samesite=lax`
+    : `${ACCESS_TOKEN_COOKIE}=; path=/; samesite=lax; max-age=0`;
 }
 
 /**
- * The sandbox live preview runs this app inside an iframe on a `*.grok-sandbox.com`
- * host, where a full-page redirect to the broker can't work — so sign-in uses a
- * popup there and a normal redirect everywhere else.
- */
-function inLivePreview(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.location.hostname.endsWith(".grok-sandbox.com")
-  );
-}
-
-/** Message the popup posts back to the opener once sign-in completes. */
-type PopupMessage = { source: "grok-auth-popup"; token: string | null; error?: string };
-
-/**
- * Start sign-in with one upstream provider (`providerId` from `GROK_PROVIDERS`),
- * federating through the Grok auth broker.
+ * Keep the cookie in step with the session Supabase holds.
  *
- * - **Live preview** (`*.grok-sandbox.com` iframe): opens a POPUP to
- *   `/auth/popup`, served by the template Vite plugin (see `vite.config.ts` +
- *   `popup.server.ts`) — 302s to the broker/upstream login (no app chrome) and,
- *   on return, posts the session bearer token back. We store it and refresh the
- *   session; no top-level navigation of the iframe to the broker.
- * - **Deployed** (and local non-iframe): a normal full-page redirect into the broker.
- *
- * Either way it clears any existing local session FIRST so switching providers
- * actually switches identity.
+ * Called on load and after every sign-in/sign-out, and subscribes to token
+ * refresh so a long-lived tab never sends an expired token.
  */
-export async function signIn(
-  providerId: string,
-  opts: { callbackURL?: string; errorCallbackURL?: string } = {},
-): Promise<void> {
-  const callbackURL = opts.callbackURL ?? "/";
-  const errorCallbackURL = opts.errorCallbackURL ?? "/";
+export function startAuthCookieSync(): () => void {
+  const supabase = supabaseBrowser();
+  if (!supabase || typeof document === "undefined") return () => {};
 
-  // Open the popup SYNCHRONOUSLY on the user gesture — before any await
-  // (including signOut). Awaiting first drops user-gesture privilege in some
-  // browsers when the opener is a cross-origin live-preview iframe.
-  const popup = inLivePreview() ? openSignInPopup(providerId) : null;
+  const sync = () => {
+    void supabase.auth.getSession().then(({ data }) => {
+      setAccessTokenCookie(data.session?.access_token ?? null);
+    });
+  };
 
-  // Clear any prior session so switching providers actually switches identity.
-  // Bounded because the popup is already open — a request that never settles
-  // would leave it hanging — but bounded PER ENVIRONMENT: only the server can
-  // end a deployed session, so cutting it short at the preview's 1.5s would
-  // start OAuth with the old session still live.
-  await runPreSignInSignOut({
-    livePreview: inLivePreview(),
-    hasBearer: Boolean(getBearerToken()),
-    requestSignOut: () => authClient.signOut(),
-    clearToken: () => setBearerToken(null),
+  sync();
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    setAccessTokenCookie(session?.access_token ?? null);
   });
 
-  if (inLivePreview()) {
-    if (!popup) throw new Error("Pop-up blocked — allow pop-ups for sign-in");
-    const token = await waitForPopupToken(popup);
-    if (!token) throw new Error("Sign-in was cancelled or failed");
-    setBearerToken(token);
-    // Refresh the client session store with the bearer attached (onRequest).
-    // Avoid a full iframe reload when we're already on the destination — that
-    // reload was the slow "still loading after the popup closed" feeling.
-    try {
-      await authClient.getSession();
-    } catch {
-      /* session store will recover on next useSession fetch */
-    }
-    if (typeof window !== "undefined") {
-      const dest = new URL(callbackURL, window.location.origin);
-      const here = window.location;
-      if (dest.origin !== here.origin || dest.pathname !== here.pathname || dest.search !== here.search) {
-        window.location.href = callbackURL;
-      }
-    }
-    return;
+  return () => {
+    data.subscription.unsubscribe();
+    setAccessTokenCookie(null);
+  };
+}
+
+/** The current access token, for the middleware to forward as a bearer. */
+export async function getBearerToken(): Promise<string | null> {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${ACCESS_TOKEN_COOKIE}=([^;]+)`));
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+/**
+ * Send a sign-in code to a phone number.
+ *
+ * `0799 034 712` and `+254799034712` both work; anything ambiguous is refused
+ * before a provider is charged for a message that cannot be delivered.
+ */
+export async function sendPhoneCode(rawPhone: string): Promise<{ error: string | null }> {
+  const { toPhoneForOtp } = await import("@/lib/supabase/config");
+  const phone = toPhoneForOtp(rawPhone);
+  if (!phone) {
+    return { error: "That does not look like a phone number. Try 0799 034 712." };
   }
-
-  const { data, error } = await authClient.signIn.oauth2({
-    providerId,
-    callbackURL,
-    errorCallbackURL,
+  const supabase = supabaseBrowser();
+  if (!supabase) return { error: "Sign-in is not configured on this deployment." };
+  const { error } = await supabase.auth.signInWithOtp({
+    phone,
+    options: { shouldCreateUser: true },
   });
-  if (error) throw new Error(error.message ?? "Sign-in failed");
-  if (data?.url) window.location.href = data.url;
+  if (!error) {
+    const { data } = await supabase.auth.getSession();
+    setAccessTokenCookie(data.session?.access_token ?? null);
+  }
+  return { error: error ? error.message : null };
+}
+
+/** Exchange the code for a session. */
+export async function verifyPhoneCode(
+  rawPhone: string,
+  token: string,
+): Promise<{ error: string | null }> {
+  const { toPhoneForOtp } = await import("@/lib/supabase/config");
+  const phone = toPhoneForOtp(rawPhone);
+  if (!phone) return { error: "That phone number is not in a usable format." };
+  const supabase = supabaseBrowser();
+  if (!supabase) return { error: "Sign-in is not configured on this deployment." };
+  const { error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
+  if (!error) {
+    const { data } = await supabase.auth.getSession();
+    setAccessTokenCookie(data.session?.access_token ?? null);
+  }
+  return { error: error ? error.message : null };
 }
 
 /**
- * Open `/auth/popup` in a new window. Must run synchronously inside the click
- * handler (no await before this). The path is served by the template Vite
- * plugin (`authPopupPlugin` in vite.config.ts) — NOT by a React route.
- *
- * Opens the real URL directly (not about:blank → assign). From a cross-origin
- * iframe the about:blank dance often fails on the first click and the window
- * ends up showing the app shell.
- */
-function openSignInPopup(providerId: string): Window | null {
-  const origin = window.location.origin;
-  const url = `${origin}/auth/popup?providerId=${encodeURIComponent(providerId)}`;
-  // Unique name per attempt so a prior attempt stuck on the SPA is not reused.
-  const name = `grok-signin-${Date.now()}`;
-  return window.open(url, name, "popup,width=500,height=650");
-}
-
-/**
- * Wait for the popup's completion page to postMessage the session bearer (or
- * for the user to dismiss the popup).
- */
-function waitForPopupToken(popup: Window): Promise<string | null> {
-  return new Promise((resolve) => {
-    const origin = window.location.origin;
-    let settled = false;
-    let closeTimer: number | undefined;
-    const settle = (token: string | null) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      resolve(token);
-    };
-    const onMessage = (event: MessageEvent) => {
-      if (event.origin !== origin) return;
-      const data = event.data as PopupMessage | undefined;
-      if (!data || data.source !== "grok-auth-popup") return;
-      settle(data.token ?? null);
-    };
-    // Fallback when the user dismisses the popup. Grace period lets the
-    // completion page's postMessage win over a racing `popup.closed`.
-    const pollTimer = window.setInterval(() => {
-      if (!popup.closed) return;
-      window.clearInterval(pollTimer);
-      closeTimer = window.setTimeout(() => settle(null), 400);
-    }, 300);
-    function cleanup() {
-      window.clearInterval(pollTimer);
-      if (closeTimer !== undefined) window.clearTimeout(closeTimer);
-      window.removeEventListener("message", onMessage);
-    }
-    window.addEventListener("message", onMessage);
-  });
-}
-
-/**
- * Sign out of THIS app's local session, clear the preview token, then redirect.
- *
- * Use this, never `authClient.signOut()` — see the note on `authClient`.
- * Sequencing lives in `scripts/sign-out-plan.mjs` so it can be unit-tested.
- *
- * **Rejects when deployed if the server never confirms.** There the session is
- * an HttpOnly cookie only the server can clear, so redirecting anyway would
- * report a sign-out that did not happen. `<UserButton />` handles that for you;
- * a hand-rolled control must catch it and let the visitor retry. In the live
- * preview the local clear is sufficient, so it always resolves.
+ * Sign out. Resolves once the session is actually gone — the cookie is cleared
+ * here, so a caller that redirects on resolve can trust it.
  */
 export async function signOut(redirectTo = "/"): Promise<void> {
-  await runSignOut({
-    livePreview: inLivePreview(),
-    hasBearer: Boolean(getBearerToken()),
-    // Better Auth resolves with `{ error }` instead of rejecting, so surface a
-    // failed response as a rejection for the sequence to act on.
-    requestSignOut: async () => {
-      const { error } = await authClient.signOut();
-      if (error) throw new Error(error.message ?? "Sign-out failed");
-    },
-    clearToken: () => setBearerToken(null),
-    redirect: () => {
-      window.location.href = redirectTo;
-    },
-  });
+  const supabase = supabaseBrowser();
+  await supabase?.auth.signOut();
+  setAccessTokenCookie(null);
+  if (typeof window !== "undefined") window.location.href = redirectTo;
 }

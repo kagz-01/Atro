@@ -1,6 +1,7 @@
 import { useState, useSyncExternalStore, type ReactNode } from "react";
-import { Navigate } from "@tanstack/react-router";
-import { GROK_PROVIDERS, authEnabled, signIn, signOut } from "./client";
+import { Link, Navigate } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
+import { authAvailable, signOut } from "./client";
 import { hasGateSessionMarker } from "./gate-session-marker";
 import { resolveSignInGateState } from "./sign-in-gate";
 import { useCurrentUser, useCurrentUserState } from "./use-current-user";
@@ -64,19 +65,12 @@ export function SignInGate({
 }
 
 export function SignInButtons() {
+  // Sign-in is a phone number and a code, and it lives on one page — so this is
+  // a link, not a second copy of the form.
   return (
-    <div className="flex w-full max-w-sm flex-col gap-2">
-      {GROK_PROVIDERS.map((p) => (
-        <button
-          key={p.providerId}
-          type="button"
-          onClick={() => signIn(p.providerId, { callbackURL: "/" })}
-          className="w-full cursor-pointer rounded-md border border-neutral-300 px-4 py-2 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
-        >
-          Continue with {p.label}
-        </button>
-      ))}
-    </div>
+    <Link to={SIGN_IN_PATH} className="w-full">
+      <Button className="w-full">Sign in with your phone</Button>
+    </Link>
   );
 }
 
@@ -98,7 +92,7 @@ export function UserButton() {
     noGateSessionOnServer,
   );
   if (!user) return null;
-  const label = user.displayName ?? user.primaryEmail ?? "Account";
+  const label = user.displayName ?? user.primaryEmail ?? user.primaryPhone ?? "Account";
   return (
     <div className="flex items-center gap-2">
       {user.profileImageUrl ? (
@@ -113,7 +107,7 @@ export function UserButton() {
         </span>
       )}
       <span className="text-sm font-medium">{label}</span>
-      {authEnabled && !gateSession && (
+      {authAvailable() && !gateSession && (
         <button
           type="button"
           disabled={signingOut}
