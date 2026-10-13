@@ -24,9 +24,9 @@ export const Route = createFileRoute("/login")({
   }),
 });
 
-/** Only the methods this app's auth contract supports: Google/X and email. */
+/** Sign-in methods: Google, or an email address and password. */
 const METHODS = [
-  ["oauth", "Google or X"],
+  ["oauth", "Google"],
   ["email", "Email"],
 ] as const;
 
