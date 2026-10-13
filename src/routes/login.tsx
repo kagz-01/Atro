@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Globe, Lock, Shield } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { GROK_PROVIDERS, authEnabled, signIn } from "@/lib/auth/client";
+import { EmailPasswordForm } from "@/components/auth/email-password-form";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/login")({
   component: Login,
@@ -20,6 +23,14 @@ export const Route = createFileRoute("/login")({
     ],
   }),
 });
+
+/** Only the methods this app's auth contract supports: Google/X and email. */
+const METHODS = [
+  ["oauth", "Google or X"],
+  ["email", "Email"],
+] as const;
+
+type Method = (typeof METHODS)[number][0];
 
 const PERKS = [
   {
@@ -42,6 +53,17 @@ const PERKS = [
 function Login() {
   const { user, isPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
+  const [method, setMethod] = useState<Method>("oauth");
+
+  /**
+   * Email sign-in creates the session server-side, but this page already
+   * resolved its own session as "signed out". A real navigation is the honest
+   * fix — the client session store has no invalidation hook, and guessing with
+   * one would render the portal against a stale signed-out state.
+   */
+  const goToPortal = () => {
+    if (typeof window !== "undefined") window.location.href = "/portal";
+  };
 
   return (
     <main className="min-h-screen bg-paper pt-24 pb-16 md:pt-28">
@@ -154,26 +176,57 @@ function Login() {
                   sign-in.
                 </p>
 
-                <div className="mt-7 flex flex-col gap-3">
-                  {GROK_PROVIDERS.map((p) => (
+                {/* One method at a time: showing two full sign-in forms stacked
+                    meant two "Sign in" headings and twice the decisions. */}
+                <div
+                  role="tablist"
+                  aria-label="Sign-in method"
+                  className="mt-7 grid grid-cols-2 gap-1 rounded-xl bg-cream p-1"
+                >
+                  {METHODS.map(([id, label]) => (
                     <button
-                      key={p.providerId}
+                      key={id}
+                      role="tab"
                       type="button"
-                      onClick={() => signIn(p.providerId, { callbackURL: "/portal" })}
-                      className="group flex h-13 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-ink/15 bg-white px-5 text-[13px] font-medium text-ink transition-all hover:border-maroon hover:bg-maroon hover:text-paper"
+                      aria-selected={method === id}
+                      onClick={() => setMethod(id)}
+                      className={cn(
+                        "cursor-pointer rounded-lg px-4 py-2.5 text-[12px] font-medium transition-colors",
+                        method === id
+                          ? "bg-white text-maroon shadow-soft"
+                          : "text-ink/55 hover:text-maroon",
+                      )}
                     >
-                      <span>Continue with {p.label}</span>
-                      <ArrowRight className="size-4 opacity-50 transition-transform group-hover:translate-x-1 group-hover:opacity-100" />
+                      {label}
                     </button>
                   ))}
                 </div>
 
-                <p className="mt-6 text-[12px] leading-relaxed text-ink/50">
-                  We only read your name and account id — never your contacts,
-                  calendar or mail.
-                </p>
+                {method === "oauth" ? (
+                  <div className="mt-5">
+                    <div className="flex flex-col gap-3">
+                      {GROK_PROVIDERS.map((p) => (
+                        <button
+                          key={p.providerId}
+                          type="button"
+                          onClick={() => void signIn(p.providerId, { callbackURL: "/portal" })}
+                          className="group flex h-13 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-ink/15 bg-white px-5 text-[13px] font-medium text-ink transition-all hover:border-maroon hover:bg-maroon hover:text-paper"
+                        >
+                          <span>Continue with {p.label}</span>
+                          <ArrowRight className="size-4 opacity-50 transition-transform group-hover:translate-x-1 group-hover:opacity-100" />
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-5 text-[12px] leading-relaxed text-ink/50">
+                      We only read your name and account id — never your contacts,
+                      calendar or mail.
+                    </p>
+                  </div>
+                ) : (
+                  <EmailPasswordForm onDone={goToPortal} />
+                )}
 
-                <div className="mt-6 border-t border-ink/10 pt-5">
+                <div className="mt-7 border-t border-ink/10 pt-5">
                   <p className="text-[13px] text-ink/60">
                     New to ATRO?{" "}
                     <Link
