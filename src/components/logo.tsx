@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 
-export function LogoMark({ className }: { className?: string }) {
+export function LogoMark({ className, alt }: { className?: string; alt?: string }) {
   return (
     <img
       src="/logo/logo.png"
-      alt="ATRO Design & Construction"
+      alt={alt ?? "ATRO Design & Construction"}
       className={cn("block object-contain", className)}
     />
   );

@@ -3,18 +3,32 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
+  Banknote,
   CheckCircle2,
+  FolderKanban,
+  Hourglass,
   Inbox,
+  LayoutDashboard,
   Loader2,
   Lock,
-  MapPin,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/field";
+import { Panel } from "@/components/ui/panel";
+import { StatCard } from "@/components/ui/stat-card";
+import { Accordion, AccordionItem } from "@/components/ui/accordion";
+import { DashboardShell } from "@/components/dashboard/shell";
+import {
+  Donut,
+  GroupedBars,
+  MonthlyColumns,
+  type Slice,
+} from "@/components/dashboard/charts";
 import { EnquiriesInbox } from "@/components/admin/enquiries-inbox";
-import { getOpsOverview, type OpsOverview } from "@/lib/ops";
+import { getOpsOverview, type GroupRow } from "@/lib/ops";
 import {
   getMyAccess,
   grantStaff,
@@ -42,7 +56,6 @@ import {
 } from "@/lib/staff-ops";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { cn } from "@/lib/utils";
-import { Accordion, AccordionItem } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminConsole,
@@ -55,13 +68,21 @@ export const Route = createFileRoute("/admin/")({
 const KES = new Intl.NumberFormat("en-KE", { maximumFractionDigits: 0 });
 const kes = (n: number) => `KES ${KES.format(n)}`;
 
-function ago(iso: string | null): string {
-  if (!iso) return "—";
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
-  if (mins < 60) return `${Math.max(1, mins)}m ago`;
-  if (mins < 1440) return `${Math.round(mins / 60)}h ago`;
-  return `${Math.round(mins / 1440)}d ago`;
-}
+/**
+ * Short money for headline figures.
+ *
+ * "KES 82,500,000" wraps onto two lines in a quarter-width card and forces the
+ * label and the number apart. KES 82.5M reads at a glance and keeps the exact
+ * figure available in the card's tooltip.
+ */
+const kesShort = (n: number) => {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return `KES ${(n / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `KES ${(n / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `KES ${Math.round(n / 1_000)}k`;
+  return `KES ${KES.format(n)}`;
+};
+
 
 /* ── gate ── */
 
@@ -90,95 +111,6 @@ function StaffWall() {
     </main>
   );
 }
-
-/* ── one project in the list ── */
-
-function ProjectRow({
-  project,
-  onOpen,
-}: {
-  project: StaffProjectSummary;
-  onOpen: (id: string) => void;
-}) {
-  const needsAttention = project.blockedStages > 0 || project.openDecisions > 0;
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={() => onOpen(project.id)}
-        className={cn(
-          "w-full rounded-2xl border bg-white p-5 text-left transition-colors hover:border-burgundy",
-          needsAttention ? "border-amber-300" : "border-ink/10",
-        )}
-      >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="flex flex-wrap items-center gap-2">
-              <span className="font-display text-lg text-maroon">{project.title}</span>
-              <span className="font-mono text-[11px] text-muted">{project.reference}</span>
-              {project.source === "sample" ? (
-                <Badge tone="gold" className="h-5 text-[9px]">Sample</Badge>
-              ) : null}
-            </p>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="size-3" />
-                {project.clientCity || project.clientLabel || "Kenya"}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                {project.clientLabel || "Unnamed client"}
-              </span>
-              <span>Stage: {project.stage || "—"}</span>
-              <span>Last update {ago(project.lastActivityAt)}</span>
-              <span>Client viewed {ago(project.lastViewedAt)}</span>
-            </p>
-          </div>
-
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {project.blockedStages > 0 ? (
-              <Badge tone="live" className="h-5 text-[9px]">
-                {project.blockedStages} blocked
-              </Badge>
-            ) : null}
-            {project.openDecisions > 0 ? (
-              <Badge tone="gold" className="h-5 text-[9px]">
-                {project.openDecisions} awaiting client
-              </Badge>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px]">
-          <span className="flex items-center gap-2">
-            <span className="h-1.5 w-24 overflow-hidden rounded-full bg-ink/10">
-              <span
-                className="block h-full rounded-full bg-gradient-to-r from-gold to-gold-light"
-                style={{ width: `${project.progress}%` }}
-              />
-            </span>
-            <span className="text-ink/60">{project.progress}%</span>
-          </span>
-          <span className="text-ink/60">Contract {kes(project.contractValue)}</span>
-          <span className="text-ink/60">Paid {kes(project.paidToDate)}</span>
-          {project.currentlyCertified > 0 ? (
-            <span className="text-burgundy">
-              Certified {kes(project.currentlyCertified)}
-            </span>
-          ) : null}
-          <span
-            className={cn(
-              "ml-auto",
-              project.onTrack ? "text-emerald-700" : "text-amber-700",
-            )}
-          >
-            {project.onTrack ? "On track" : "Needs attention"}
-          </span>
-        </div>
-      </button>
-    </li>
-  );
-}
-
 
 const DELIVERY_STATUS: Record<string, string> = {
   sent: "bg-emerald-50 text-emerald-800 border-emerald-200",
@@ -305,18 +237,30 @@ function WriteBlock({
   hint,
   onRun,
   children,
+  hideHeading,
 }: {
   title: string;
   hint: string;
   onRun: () => Promise<void>;
   children: React.ReactNode;
+  /** Set when an accordion header already names the block. */
+  hideHeading?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   return (
-    <section className="rounded-2xl border border-ink/10 bg-cream p-5">
-      <h3 className="font-display text-lg text-maroon">{title}</h3>
-      <p className="mt-1 text-[12px] leading-relaxed text-ink/55">{hint}</p>
-      <div className="mt-4 space-y-3">{children}</div>
+    <section
+      className={cn(
+        "rounded-2xl border border-ink/10 bg-white p-5",
+        hideHeading && "border-transparent bg-transparent p-0",
+      )}
+    >
+      {hideHeading ? null : (
+        <>
+          <h3 className="font-display text-lg text-maroon">{title}</h3>
+          <p className="mt-1 text-[12px] leading-relaxed text-ink/55">{hint}</p>
+        </>
+      )}
+      <div className={cn("space-y-3", hideHeading ? "" : "mt-4")}>{children}</div>
       <Button
         className="mt-4 w-full"
         disabled={busy}
@@ -402,10 +346,13 @@ function ProjectDetail({
   }
 
   const p = data.project;
-  const undecided = data.decisions.filter((d) => d.state === "decided");
+  // Decisions the client has not answered yet. (This was inverted before: it
+  // counted the *decided* ones, so the "everything recorded" reassurance showed
+  // up precisely when nothing had been recorded.)
+  const stillOpen = data.decisions.filter((d) => d.state !== "decided").length;
   const uncertified = data.payments.filter((x) => x.status === "due" || x.status === "scheduled");
 
-return (
+  return (
     <div className="space-y-6">
       <Accordion className="space-y-4">
         <AccordionItem title="Project info" defaultOpen>
@@ -452,6 +399,7 @@ return (
             <WriteBlock
               title="Update a milestone"
               hint="Set the stage status the client sees. Completing one opens the next automatically."
+              hideHeading
               onRun={() =>
                 run("write", async () => {
                   if (!milestoneId) throw new Error("Pick a milestone first.");
@@ -503,6 +451,7 @@ return (
             <WriteBlock
               title="Add evidence"
               hint="A site photograph or inspection note against a stage. The client sees this in the milestone record."
+              hideHeading
               onRun={() =>
                 run("write", async () => {
                   if (!milestoneId) throw new Error("Pick a milestone first.");
@@ -544,6 +493,7 @@ return (
             <WriteBlock
               title="Raise a decision"
               hint="Puts a choice to the client. One option per line. They record it in the decision log."
+              hideHeading
               onRun={() =>
                 run("write", async () => {
                   const options = decisionOptions
@@ -590,6 +540,7 @@ return (
             <WriteBlock
               title="Post an update"
               hint="Appears in the client's activity feed and counts as new since their last visit."
+              hideHeading
               onRun={() =>
                 run("write", async () => {
                   if (updateTitle.trim().length < 3) throw new Error("Give the update a title.");
@@ -627,6 +578,7 @@ return (
           <WriteBlock
             title="Add to the document vault"
             hint="Contracts, approvals, drawings and certificates the client can see. They keep the record."
+              hideHeading
             onRun={() =>
               run("vault", async () => {
                 if (docName.trim().length < 3) throw new Error("Name the document.");
@@ -697,141 +649,115 @@ return (
           </WriteBlock>
         </AccordionItem>
         {uncertified.length > 0 ? (
-          <>
-            <AccordionItem title="Payments">
-              <section className="rounded-3xl border border-ink/10 bg-white p-6">
-                <h3 className="font-display text-lg text-maroon">Certify a payment</h3>
-                <p className="mt-1 text-[12px] text-ink/55">
-                  Only certified amounts appear as releasable in the client portal.
-                </p>
-                <ul className="mt-4 space-y-2">
-                  {uncertified.map((pay) => (
-                    <li
-                      key={pay.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-cream p-4"
-                    >
-                      <span>
-                        <span className="block text-[14px] text-maroon">{pay.label}</span>
-                        <span className="text-[12px] text-ink/50">{kes(pay.amount)}</span>
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          void run(
-                            "inline",
-                            () =>
-                              certifyPayment({
-                                data: {
-                                  projectId,
-                                  paymentId: pay.id,
-                                  certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
-                                },
-                              }),
-                          "Payment certified.",
-                        )
-                      }
-                    >
-                      Certify
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-            </AccordionItem>
-          </>
-        ) : null}
-        <AccordionItem title="Statement">
-          <section className="rounded-2xl border border-ink/10 bg-cream p-5">
-            <h3 className="font-display text-lg text-maroon">Statement of account</h3>
-            <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
-              A record of where the money stands — not a demand. The client sees it in
-              their documents.
+          <AccordionItem title="Certify a payment" hint={`${uncertified.length}`}>
+            <p className="text-[12px] text-ink/55">
+              Only certified amounts appear as releasable in the client portal.
             </p>
-            <Button
-              className="mt-4 w-full"
-              variant="outline"
-              onClick={() =>
-                void run(
-                  "statement",
-                  () => issueStatementForProject({ data: { projectId } }),
-                  "Statement issued.",
-                )
-              }
-              disabled={pending === "statement"}
-            >
-              Issue a statement
-            </Button>
-          </section>
+            <ul className="mt-4 space-y-2">
+              {uncertified.map((pay) => (
+                <li
+                  key={pay.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
+                >
+                  <span>
+                    <span className="block text-[14px] text-maroon">{pay.label}</span>
+                    <span className="text-[12px] text-ink/50">{kes(pay.amount)}</span>
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      void run(
+                        "inline",
+                        () =>
+                          certifyPayment({
+                            data: {
+                              projectId,
+                              paymentId: pay.id,
+                              certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
+                            },
+                          }),
+                        "Payment certified.",
+                      )
+                    }
+                  >
+                    Certify
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </AccordionItem>
+        ) : null}
+        <AccordionItem title="Statement of account">
+          <p className="text-[12px] leading-relaxed text-ink/55">
+            A record of where the money stands — not a demand. The client sees it in
+            their documents.
+          </p>
+          <Button
+            className="mt-4 w-full"
+            variant="outline"
+            onClick={() =>
+              void run(
+                "statement",
+                () => issueStatementForProject({ data: { projectId } }),
+                "Statement issued.",
+              )
+            }
+            disabled={pending === "statement"}
+          >
+            Issue a statement
+          </Button>
         </AccordionItem>
         <AccordionItem title="Retention">
-          <section className="rounded-2xl border border-ink/10 bg-cream p-5">
-            <h3 className="font-display text-lg text-maroon">Retention</h3>
-            <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
-              Held against defects. Releasing it records that the defects liability
-              period has closed and pays the money out.
+          <p className="text-[12px] leading-relaxed text-ink/55">
+            Held against defects. Releasing it records that the defects liability
+            period has closed and pays the money out.
+          </p>
+          <Button
+            className="mt-4 w-full"
+            variant="outline"
+            onClick={() =>
+              void run("retention", () => releaseRetention({ data: { projectId } }),
+                "Retention released.")
+            }
+            disabled={pending === "retention"}
+          >
+            Release retention
+          </Button>
+        </AccordionItem>
+        <AccordionItem title="What the client has decided" hint={`${data.decisions.length}`}>
+          {data.decisions.length === 0 ? (
+            <p className="text-[13px] text-ink/55">No decisions on this project yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {data.decisions.map((d) => (
+                <li key={d.id} className="rounded-xl border border-ink/10 bg-white p-4">
+                  <p className="text-[14px] text-maroon">{d.title}</p>
+                  <p className="mt-1 text-[12px] text-ink/55">
+                    {d.state === "decided" ? `Chose: ${d.chosen}` : "Awaiting the client"} ·{" "}
+                    {d.date}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {data.decisions.length > 0 && stillOpen === 0 ? (
+            <p className="mt-4 text-[12px] text-muted">
+              Every decision on this project has been recorded.
             </p>
-            <Button
-              className="mt-4 w-full"
-              variant="outline"
-              onClick={() =>
-                void run("retention", () => releaseRetention({ data: { projectId } }),
-                  "Retention released.")
-              }
-              disabled={pending === "retention"}
-            >
-              Release retention
-            </Button>
-          </section>
-        </AccordionItem>
-        <AccordionItem title="Delivery log">
-          <DeliveryLog projectId={projectId} onChanged={onChanged} />
-        </AccordionItem>
-        <AccordionItem title="Issued documents">
-          <IssuedDocuments projectId={projectId} onChanged={onChanged} />
-        </AccordionItem>
-        <AccordionItem title="Client decisions">
-          <section className="rounded-3xl border border-ink/10 bg-white p-6">
-            <h3 className="font-display text-lg text-maroon">What the client has decided</h3>
-            {data.decisions.length === 0 ? (
-              <p className="mt-3 text-[13px] text-ink/55">No decisions on this project yet.</p>
-            ) : (
-              <ul className="mt-4 space-y-2">
-                {data.decisions.map((d) => (
-                  <li key={d.id} className="rounded-xl border border-ink/10 bg-cream p-4">
-                    <p className="text-[14px] text-maroon">{d.title}</p>
-                    <p className="mt-1 text-[12px] text-ink/55">
-                      {d.state === "decided" ? `Chose: ${d.chosen}` : "Awaiting the client"} ·{" "}
-                      {d.date}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {undecided.length > 0 ? null : (
-              <p className="mt-4 text-[12px] text-muted">
-                Every decision on this project has been recorded.
-              </p>
-            )}
-          </section>
+          ) : null}
         </AccordionItem>
       </Accordion>
+
+      <DeliveryLog projectId={projectId} onChanged={onChanged} />
+      <IssuedDocuments projectId={projectId} onChanged={onChanged} />
     </div>
   );
 }
 
 /* ── overview: the numbers a studio runs on ── */
 
-function Money({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <div className="rounded-2xl border border-ink/10 bg-cream p-5">
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">{label}</p>
-      <p className={cn("mt-2 font-display text-2xl text-maroon", tone)}>{value}</p>
-    </div>
-  );
-}
-
-function GroupBars({ rows, empty }: { rows: OpsOverview["byTrack"]; empty: string }) {
+function GroupBars({ rows, empty }: { rows: GroupRow[]; empty: string }) {
   if (rows.length === 0) {
     return <p className="text-[13px] text-ink/55">{empty}</p>;
   }
@@ -861,11 +787,153 @@ function GroupBars({ rows, empty }: { rows: OpsOverview["byTrack"]; empty: strin
 const ATTENTION_COPY: Record<string, { label: string; cls: string }> = {
   blocked: { label: "Blocked", cls: "bg-red-50 text-red-800 border-red-200" },
   decision: { label: "Awaiting client", cls: "bg-amber-50 text-amber-900 border-amber-300" },
-  stalled: { label: "Gone quiet", cls: "bg-stone-100 text-stone-700 border-stone-300" },
+  stalled: { label: "Gone quiet", cls: "bg-stone/100 text-stone-700 border-stone-300" },
   unviewed: { label: "Client not looking", cls: "bg-sky-50 text-sky-900 border-sky-300" },
 };
 
-function Overview({ onOpen }: { onOpen: (id: string) => void }) {
+type SortKey = "newest" | "attention" | "largest";
+
+function ProjectsTable({
+  projects,
+  onOpen,
+}: {
+  projects: StaffProjectSummary[];
+  onOpen: (id: string) => void;
+}) {
+  const [sort, setSort] = useState<SortKey>("attention");
+
+  const sorted = [...projects].sort((a, b) => {
+    if (sort === "newest") return b.createdAt.localeCompare(a.createdAt);
+    if (sort === "largest") return b.contractValue - a.contractValue;
+    const score = (p: StaffProjectSummary) =>
+      (p.blockedStages > 0 ? 1000 : 0) +
+      (p.openDecisions > 0 ? 500 : 0) +
+      (p.onTrack ? 0 : 250);
+    return score(b) - score(a);
+  });
+
+  const select = (
+    <label className="flex items-center gap-2 text-[12px] text-muted">
+      <span className="hidden sm:inline">Sort by</span>
+      <select
+        value={sort}
+        onChange={(e) => setSort(e.target.value as SortKey)}
+        className="h-9 rounded-lg border border-ink/10 bg-white px-2.5 text-[12px] text-maroon outline-none focus:border-gold"
+      >
+        <option value="attention">Needs attention</option>
+        <option value="newest">Newest</option>
+        <option value="largest">Largest contract</option>
+      </select>
+    </label>
+  );
+
+  return (
+    <Panel
+      title="Projects"
+      subtitle={`${projects.length} in the studio`}
+      actions={select}
+      bodyClassName="p-0"
+    >
+      {projects.length === 0 ? (
+        <p className="p-6 text-center text-[13px] text-ink/55">
+          Projects appear as soon as a client opens one in their portal.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                <th scope="col" className="px-5 py-3 font-bold">Project</th>
+                <th scope="col" className="px-3 py-3 font-bold">Client</th>
+                <th scope="col" className="px-3 py-3 font-bold">Stage</th>
+                <th scope="col" className="px-3 py-3 font-bold">Progress</th>
+                <th scope="col" className="px-3 py-3 font-bold">Paid</th>
+                <th scope="col" className="px-5 py-3 font-bold">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((p) => (
+                <tr
+                  key={p.id}
+                  onClick={() => onOpen(p.id)}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onOpen(p.id);
+                    }
+                  }}
+                  className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
+                >
+                  <td className="px-5 py-3">
+                    <span className="block text-[13px] font-medium text-maroon">{p.title}</span>
+                    <span className="font-mono text-[11px] text-muted">{p.reference}</span>
+                  </td>
+                  <td className="px-3 py-3 text-[13px] text-ink/70">
+                    {p.clientLabel || "—"}
+                    {p.clientCity ? (
+                      <span className="block text-[11px] text-muted">{p.clientCity}</span>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-3 text-[13px] text-ink/70">{p.stage || "—"}</td>
+                  <td className="px-3 py-3">
+                    <span className="flex items-center gap-2">
+                      <span className="h-1.5 w-16 overflow-hidden rounded-full bg-ink/10">
+                        <span
+                          className="block h-full rounded-full bg-gradient-to-r from-gold to-gold-light"
+                          style={{ width: `${p.progress}%` }}
+                        />
+                      </span>
+                      <span className="text-[12px] text-ink/60">{p.progress}%</span>
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-[13px] text-ink/70">
+                    {kes(p.paidToDate)}
+                    <span className="block whitespace-nowrap text-[11px] text-muted">
+                      of {kes(p.contractValue)}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
+                        p.blockedStages > 0
+                          ? "border-red-200 bg-red-50 text-red-800"
+                          : p.openDecisions > 0
+                            ? "border-amber-300 bg-amber-50 text-amber-900"
+                            : p.onTrack
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                              : "border-stone-300 bg-stone/100 text-stone-700",
+                      )}
+                    >
+                      {p.blockedStages > 0
+                        ? "Blocked"
+                        : p.openDecisions > 0
+                          ? "Awaiting client"
+                          : p.onTrack
+                            ? "On track"
+                            : "Watch"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function Overview({
+  projects,
+  onOpen,
+  search,
+}: {
+  projects: StaffProjectSummary[];
+  onOpen: (id: string) => void;
+  search: string;
+}) {
   const { data, isLoading } = useQuery({
     queryKey: ["ops-overview"],
     queryFn: () => getOpsOverview({ data: undefined }),
@@ -882,112 +950,205 @@ function Overview({ onOpen }: { onOpen: (id: string) => void }) {
 
   if (isLoading || !data) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="size-6 animate-spin text-gold" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-28 animate-pulse rounded-2xl border border-ink/10 bg-white" />
+        ))}
       </div>
     );
   }
 
   const { funnel, money } = data;
   const exposure = money.certifiedUnreleased + money.retentionHeld;
+  const collectionRate =
+    money.contractValue > 0 ? (money.paid / money.contractValue) * 100 : 0;
+  const months = data.byMonth;
+
+  const moneySlices: Slice[] = [
+    { name: "Collected", value: money.paid, color: "var(--color-maroon)" },
+    {
+      name: "Certified, awaiting release",
+      value: money.certifiedUnreleased,
+      color: "var(--color-gold)",
+    },
+    { name: "Retention held", value: money.retentionHeld, color: "var(--color-burgundy)" },
+    {
+      name: "Not yet due",
+      value: Math.max(
+        0,
+        money.contractValue - money.paid - money.certifiedUnreleased - money.retentionHeld,
+      ),
+      color: "rgba(60,5,8,0.10)",
+    },
+  ];
+  const moneyTotal = moneySlices.reduce((sum, d) => sum + d.value, 0);
+
+  const trackBars = data.byTrack.slice(0, 6).map((r) => ({
+    label: r.label,
+    contracted: r.value,
+    collected: r.paid,
+  }));
+
+  const q = search.trim().toLowerCase();
+  const visible = q
+    ? projects.filter((p) =>
+        [p.title, p.reference, p.clientLabel, p.clientCity, p.stage]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      )
+    : projects;
 
   return (
-    <Accordion className="space-y-4">
-      <AccordionItem title="The funnel" defaultOpen>
-        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[
-            ["Enquiries received", String(funnel.enquiriesTotal), `${funnel.enquiriesLast7Days} in the last 7 days`],
-            ["Of those, diaspora", String(funnel.enquiriesDiaspora), `${funnel.enquiriesTotal ? Math.round((funnel.enquiriesDiaspora / funnel.enquiriesTotal) * 100) : 0}% of enquiries`],
-            ["Projects opened", String(funnel.projectsLive), `${funnel.clients} client account${funnel.clients === 1 ? "" : "s"}`],
-            ["Sample projects", String(funnel.projectsSample), "not real work"],
-          ].map(([label, value, sub]) => (
-            <div key={label} className="rounded-2xl border border-ink/10 bg-cream p-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">{label}</p>
-              <p className="mt-2 font-display text-2xl text-maroon">{value}</p>
-              <p className="mt-1 text-[12px] text-ink/50">{sub}</p>
-            </div>
-          ))}
-        </div>
-      </AccordionItem>
+    <div className="space-y-5">
+      {/* headline numbers */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Contracted"
+          value={kesShort(money.contractValue)}
+          exact={kes(money.contractValue)}
+          sub={`${funnel.projectsLive} live · ${funnel.projectsSample} sample`}
+          icon={Banknote}
+          trend={{ data: months.map((m) => m.received) }}
+        />
+        <StatCard
+          label="Collected"
+          value={kesShort(money.paid)}
+          exact={kes(money.paid)}
+          sub={`${collectionRate.toFixed(0)}% of contracted value`}
+          icon={CheckCircle2}
+          tone="good"
+          trend={{ data: months.map((m) => m.received) }}
+        />
+        <StatCard
+          label="Committed, not in"
+          value={kesShort(exposure)}
+          exact={kes(exposure)}
+          sub={
+            money.contractValue > 0
+              ? `${((exposure / money.contractValue) * 100).toFixed(1)}% of contracted value`
+              : "Nothing contracted yet"
+          }
+          icon={Hourglass}
+          tone="warn"
+        />
+        <StatCard
+          label="Enquiries"
+          value={String(funnel.enquiriesTotal)}
+          sub={`${funnel.enquiriesLast7Days} in the last 7 days · ${funnel.enquiriesDiaspora} diaspora`}
+          icon={Inbox}
+          trend={{ data: months.map((m) => m.enquiries) }}
+        />
+      </div>
 
-      <AccordionItem title="Money">
-        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Money label="Contracted" value={kes(money.contractValue)} />
-          <Money label="Paid to date" value={kes(money.paid)} tone="text-emerald-700" />
-          <Money
-            label="Certified, unreleased"
-            value={kes(money.certifiedUnreleased)}
-            tone="text-amber-700"
+      {/* money */}
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Panel title="Where the money sits" subtitle="Collected, certified and held">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,220px)_1fr] sm:items-center">
+            <Donut
+              data={moneySlices}
+              centerValue={kesShort(moneyTotal)}
+              centerLabel="contracted"
+              formatValue={kes}
+            />
+            <ul className="space-y-2.5">
+              {moneySlices.map((slice) => (
+                <li key={slice.name} className="flex items-center justify-between gap-3 text-[13px]">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ background: slice.color }}
+                      aria-hidden
+                    />
+                    <span className="truncate text-ink/70">{slice.name}</span>
+                  </span>
+                  <span className="shrink-0 text-ink/60">
+                    {moneyTotal > 0 ? ((slice.value / moneyTotal) * 100).toFixed(1) : "0.0"}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Panel>
+
+        <Panel
+          title="Contracted against collected"
+          subtitle="By kind of work"
+          actions={<span className="text-[11px] text-muted">{data.byTrack.length} tracks</span>}
+        >
+          <GroupedBars
+            data={trackBars}
+            series={[
+              { key: "contracted", label: "Contracted", color: "var(--color-gold)" },
+              { key: "collected", label: "Collected", color: "var(--color-maroon)" },
+            ]}
+            formatValue={kes}
           />
-          <Money label="Retention held" value={kes(money.retentionHeld)} tone="text-burgundy" />
-        </div>
-        <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
-          {kes(exposure)} of the studio&apos;s money is committed but not yet received —
-          {money.contractValue > 0
-            ? ` that is ${((exposure / money.contractValue) * 100).toFixed(1)}% of contracted value.`
-            : " nothing contracted yet."}
-        </p>
-      </AccordionItem>
+        </Panel>
+      </div>
 
-      <AccordionItem title="Workload">
-        <div className="grid gap-8 lg:grid-cols-2">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-              Workload by kind of work
-            </p>
-            <div className="mt-4">
-              <GroupBars rows={data.byTrack} empty="No projects opened yet." />
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-              Workload by county
-            </p>
-            <div className="mt-4">
-              <GroupBars rows={data.byZone} empty="No zones recorded yet." />
-            </div>
-          </div>
-        </div>
-      </AccordionItem>
+      {/* pipeline */}
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Panel title="Enquiries" subtitle="Last six months">
+          <MonthlyColumns data={months.map((m) => ({ label: m.label, enquiries: m.enquiries }))} />
+        </Panel>
 
-      <AccordionItem title="Needs a human">
-        {data.attention.length === 0 ? (
-          <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-[13px] text-emerald-900">
-            Nothing is stuck, nothing is waiting on a client, and everyone has looked
-            at their project recently.
-          </p>
-        ) : (
-          <ul className="mt-4 space-y-2">
-            {data.attention.map((item, i) => (
-              <li key={`${item.projectId}-${item.kind}-${i}`}>
-                <button
-                  type="button"
-                  onClick={() => onOpen(item.projectId)}
-                  className="flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-4 text-left transition-colors hover:border-burgundy"
-                >
-                  <span className="min-w-0">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-[14px] text-maroon">{item.title}</span>
-                      <span className="font-mono text-[11px] text-muted">{item.reference}</span>
-                      <Badge tone="gold" className="h-5 text-[9px]">
-                        {ATTENTION_COPY[item.kind]?.label ?? item.kind}
-                      </Badge>
+        <Panel title="Workload by county" subtitle="Projects and contracted value">
+          <GroupBars rows={data.byZone} empty="No zones recorded yet." />
+        </Panel>
+      </div>
+
+      {/* the work itself */}
+      <div className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
+        <ProjectsTable projects={visible} onOpen={onOpen} />
+
+        <Panel
+          title="Needs a human"
+          subtitle={data.attention.length > 0 ? "Sorted by how long it has waited" : "Nothing stuck"}
+        >
+          {data.attention.length === 0 ? (
+            <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
+              Nothing is stuck, nothing is waiting on a client, and everyone has looked at
+              their project recently.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {data.attention.slice(0, 8).map((item, i) => (
+                <li key={`${item.projectId}-${item.kind}-${i}`}>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(item.projectId)}
+                    className="flex w-full items-start justify-between gap-3 rounded-xl border border-ink/10 p-3 text-left transition-colors hover:border-burgundy hover:bg-cream"
+                  >
+                    <span className="min-w-0">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-[13px] text-maroon">{item.title}</span>
+                        <span
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+                            ATTENTION_COPY[item.kind]?.cls,
+                          )}
+                        >
+                          {ATTENTION_COPY[item.kind]?.label ?? item.kind}
+                        </span>
+                      </span>
+                      <span className="mt-1 block text-[12px] leading-snug text-ink/55">
+                        {item.detail}
+                      </span>
                     </span>
-                    <span className="mt-1 block text-[12px] text-ink/60">{item.detail}</span>
-                  </span>
-                  <span className="shrink-0 text-[12px] text-muted">
-                    {item.ageDays === 0 ? "today" : `${item.ageDays}d`}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </AccordionItem>
-    </Accordion>
+                    <span className="shrink-0 text-[11px] text-muted">
+                      {item.ageDays === 0 ? "today" : `${item.ageDays}d`}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+    </div>
   );
 }
-
 
 function IssuedDocuments({
   projectId,
@@ -1138,19 +1299,22 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
     queryFn: () => listStaff({ data: undefined }),
   });
 
+  const members = data?.members ?? [];
+  const requests = data?.requests ?? [];
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-3xl border border-ink/10 bg-white p-6">
-        <h2 className="font-display text-lg text-maroon">Who can open the console</h2>
-        <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
+    <Accordion>
+      <AccordionItem title="Who can open the console" hint={`${members.length}`} defaultOpen>
+        <p className="text-[12px] leading-relaxed text-ink/55">
           Access is an allowlist keyed on the address a person signs in with. You cannot
           grant it to yourself.
         </p>
+
         <ul className="mt-4 space-y-2">
-          {(data?.members ?? []).map((m) => (
+          {members.map((m) => (
             <li
               key={m.email}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-cream p-4"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
             >
               <span className="min-w-0">
                 <span className="block text-[13px] text-maroon">{m.email}</span>
@@ -1183,54 +1347,74 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
 
         {isAdmin ? (
           <div className="mt-5 grid gap-3 border-t border-ink/10 pt-5 sm:grid-cols-3">
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="their address"
-              className="h-11 rounded-xl border border-line bg-cream px-3 text-sm sm:col-span-2"
-            />
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as "staff" | "admin")}
-              className="h-11 rounded-xl border border-line bg-cream px-3 text-sm"
-            >
-              <option value="staff">Staff</option>
-              <option value="admin">Admin</option>
-            </select>
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="What they do"
-              className="h-11 rounded-xl border border-line bg-cream px-3 text-sm sm:col-span-2"
-            />
-            <Button
-              disabled={busy}
-              onClick={() => {
-                setBusy(true);
-                void grantStaff({ data: { email, role, note } })
-                  .then(() => {
-                    toast.success(`${email} can now open the console.`);
-                    setEmail("");
-                    setNote("");
-                    void refetch();
-                  })
-                  .catch((e: unknown) =>
-                    toast.error(e instanceof Error ? e.message : "Could not grant."),
-                  )
-                  .finally(() => setBusy(false));
-              }}
-            >
-              Grant access
-            </Button>
+            <div className="sm:col-span-2">
+              <Label htmlFor="st-email">Their address</Label>
+              <Input
+                id="st-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@atro.ke"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="st-role">Role</Label>
+              <Select
+                id="st-role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as "staff" | "admin")}
+                className="mt-1"
+              >
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
+              </Select>
+            </div>
+            <div className="sm:col-span-2">
+              <Label htmlFor="st-note">What they do</Label>
+              <Input
+                id="st-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Quantity surveying"
+                className="mt-1"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                className="w-full"
+                disabled={busy}
+                onClick={() => {
+                  setBusy(true);
+                  void grantStaff({ data: { email, role, note } })
+                    .then(() => {
+                      toast.success(`${email} can now open the console.`);
+                      setEmail("");
+                      setNote("");
+                      void refetch();
+                    })
+                    .catch((e: unknown) =>
+                      toast.error(e instanceof Error ? e.message : "Could not grant."),
+                    )
+                    .finally(() => setBusy(false));
+                }}
+              >
+                Grant access
+              </Button>
+            </div>
           </div>
         ) : null}
-      </section>
+      </AccordionItem>
 
-      {data && data.requests.length > 0 ? (
-        <section className="rounded-3xl border border-gold/40 bg-gold/5 p-6">
-          <h2 className="font-display text-lg text-maroon">Waiting to be let in</h2>
-          <ul className="mt-4 space-y-2">
-            {data.requests.map((r) => (
+      {requests.length > 0 ? (
+        <AccordionItem
+          title="Waiting to be let in"
+          hint={`${requests.length}`}
+          defaultOpen
+          className="border-gold/40 bg-gold/5"
+        >
+          <ul className="space-y-2">
+            {requests.map((r) => (
               <li
                 key={r.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
@@ -1269,13 +1453,20 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
               </li>
             ))}
           </ul>
-        </section>
+        </AccordionItem>
       ) : null}
-    </div>
+    </Accordion>
   );
 }
 
 /* ── console ── */
+
+const TABS = [
+  { id: "overview", label: "Overview", title: "Studio overview", body: "Every project, one page" },
+  { id: "projects", label: "Projects", title: "Projects", body: "Everything the studio is running" },
+  { id: "enquiries", label: "Enquiries", title: "Enquiries", body: "People who asked us to build" },
+  { id: "access", label: "Access", title: "Access", body: "Who can open the console" },
+] as const;
 
 function AdminConsole() {
   const hydrated = useIsHydrated();
@@ -1283,12 +1474,11 @@ function AdminConsole() {
     role: string | null;
     userId: string | null;
     email: string | null;
-  } | null>(
-    null,
-  );
+  } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "attention" | "sample">("all");
-  const [tab, setTab] = useState<"overview" | "projects" | "enquiries" | "access">("overview");
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("overview");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let live = true;
@@ -1308,6 +1498,12 @@ function AdminConsole() {
     enabled: isStaff,
   });
 
+  const { data: overview } = useQuery({
+    queryKey: ["ops-overview"],
+    queryFn: () => getOpsOverview({ data: undefined }),
+    enabled: isStaff && tab === "overview",
+  });
+
   if (!hydrated || roleState === null) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center" aria-busy>
@@ -1320,139 +1516,147 @@ function AdminConsole() {
   // them ask for access, which is otherwise a one-way door.
   if (!isStaff) return roleState.email ? <RequestAccessCard /> : <StaffWall />;
 
-  const rows = (projects ?? []).filter((p) => {
-    if (filter === "attention") return p.blockedStages > 0 || p.openDecisions > 0 || !p.onTrack;
-    if (filter === "sample") return p.source === "sample";
-    return true;
+  const all = projects ?? [];
+  const q = search.trim().toLowerCase();
+  const matches = (p: StaffProjectSummary) =>
+    !q ||
+    [p.title, p.reference, p.clientLabel, p.clientCity, p.stage]
+      .join(" ")
+      .toLowerCase()
+      .includes(q);
+
+  const rows = all.filter((p) => {
+    if (filter === "attention" && !(p.blockedStages > 0 || p.openDecisions > 0 || !p.onTrack)) {
+      return false;
+    }
+    if (filter === "sample" && p.source !== "sample") return false;
+    return matches(p);
   });
 
+  const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
+  const openProject = (id: string) => {
+    setSelected(id);
+    setTab("projects");
+  };
+
   return (
-    <>
-      <section className="relative overflow-hidden bg-maroon pt-28 pb-12 md:pt-36">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-burgundy/50 via-maroon to-maroon" />
-        <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <Badge tone="gold" className="mb-4">Studio console</Badge>
-              <h1 className="font-display text-4xl text-paper sm:text-5xl">
-                Every project, one page
-              </h1>
-              <p className="mt-4 max-w-2xl text-paper/75">
-                What ATRO posts here is what the client sees in their portal — stage
-                status, evidence, certificates, decisions and weekly updates.
-              </p>
-            </div>
-            <Link
-              to="/admin"
-              className="shrink-0 rounded-full border border-paper/25 px-5 py-3 text-[11px] uppercase tracking-[0.16em] text-paper transition-colors hover:border-gold hover:text-gold"
-            >
-              Enquiries inbox
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-paper py-10 md:py-14">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <div className="flex flex-wrap items-center gap-2">
-            {([
-              ["overview", "Overview"],
-              ["projects", "Projects"],
-              ["enquiries", "Enquiries"],
-              ["access", "Access"],
-            ] as const).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTab(id)}
-                className={cn(
-                  "cursor-pointer rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-[0.14em] transition-colors",
-                  tab === id
-                    ? "border-maroon bg-maroon text-paper"
-                    : "border-ink/12 text-ink/60 hover:border-burgundy hover:text-burgundy",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-            <Button
-              size="sm"
-              variant="ghost"
-              className="ml-auto"
-              onClick={() => void refetch()}
-              disabled={isLoading}
-            >
-              Refresh
-            </Button>
+    <DashboardShell
+      groups={[
+        {
+          title: "Studio",
+          items: [
+            { id: "overview", label: "Overview", icon: LayoutDashboard },
+            {
+              id: "projects",
+              label: "Projects",
+              icon: FolderKanban,
+              badge: all.length || undefined,
+            },
+            {
+              id: "enquiries",
+              label: "Enquiries",
+              icon: Inbox,
+              badge: overview?.funnel.enquiriesNew || undefined,
+            },
+          ],
+        },
+        {
+          title: "Administration",
+          items: [{ id: "access", label: "Access", icon: Users }],
+        },
+      ]}
+      active={tab}
+      onSelect={(id) => {
+        setTab(id as (typeof TABS)[number]["id"]);
+        setSelected(null);
+      }}
+      alerts={(overview?.attention ?? []).slice(0, 8).map((item, i) => ({
+        id: `${item.projectId}-${item.kind}-${i}`,
+        title: item.title,
+        detail: item.detail,
+        onSelect: () => openProject(item.projectId),
+      }))}
+      user={{
+        name: roleState?.email ?? "Studio",
+        role: roleState?.role ?? undefined,
+        email: roleState?.email ?? undefined,
+      }}
+      search={search}
+      onSearch={setSearch}
+      searchPlaceholder="Search projects, clients, references"
+      toolbar={
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-display text-lg leading-tight text-maroon">
+              {activeTab.title}
+            </h1>
+            <p className="text-[12px] text-muted">{activeTab.body}</p>
           </div>
 
-          {tab === "overview" ? <Overview onOpen={setSelected} /> : null}
-          {tab === "enquiries" ? (
-            <div className="mt-8">
-              <EnquiriesInbox />
+          {tab === "projects" && !selected ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {([
+                ["all", "All"],
+                ["attention", "Needs attention"],
+                ["sample", "Sample"],
+              ] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setFilter(id)}
+                  className={cn(
+                    "cursor-pointer rounded-full border px-3.5 py-1.5 text-[11px] uppercase tracking-[0.12em] transition-colors",
+                    filter === id
+                      ? "border-maroon bg-maroon text-paper"
+                      : "border-ink/12 text-ink/55 hover:border-burgundy hover:text-burgundy",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+              <Button size="sm" variant="ghost" onClick={() => void refetch()} disabled={isLoading}>
+                Refresh
+              </Button>
             </div>
-          ) : null}
-          {tab === "access" ? (
-            <div className="mt-8">
-              <AccessPanel isAdmin={roleState?.role === "admin"} />
-            </div>
-          ) : null}
-          {tab === "projects" ? null : null}
-
-          {tab === "projects" && selected ? (
-            <div className="mt-6">
-              <ProjectDetail
-              projectId={selected}
-              onBack={() => setSelected(null)}
-              onChanged={() => void refetch()}
-            />
-            </div>
-          ) : tab === "projects" && isLoading ? (
-            <div className="mt-6 flex justify-center py-16">
-              <Loader2 className="size-6 animate-spin text-gold" />
-            </div>
-          ) : tab === "projects" && rows.length === 0 ? (
-            <div className="mt-6 flex flex-col items-center rounded-3xl border border-dashed border-ink/15 py-16 text-center">
-              <Inbox className="size-7 text-ink/30" />
-              <p className="mt-4 font-display text-xl text-maroon">Nothing here yet</p>
-              <p className="mt-2 max-w-md text-[13px] text-ink/55">
-                Projects appear as soon as a client opens one in their portal, or you
-                create one for them.
-              </p>
-            </div>
-          ) : tab === "projects" ? (
-            <>
-              <div className="mt-6 flex flex-wrap items-center gap-2">
-                {([
-                  ["all", "All"],
-                  ["attention", "Needs attention"],
-                  ["sample", "Sample projects"],
-                ] as const).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setFilter(id)}
-                    className={cn(
-                      "cursor-pointer rounded-full border px-4 py-2 text-[11px] uppercase tracking-[0.14em] transition-colors",
-                      filter === id
-                        ? "border-burgundy bg-burgundy/10 text-burgundy"
-                        : "border-ink/12 text-ink/60 hover:border-burgundy hover:text-burgundy",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <ul className="mt-4 space-y-3">
-                {rows.map((p) => (
-                  <ProjectRow key={p.id} project={p} onOpen={setSelected} />
-                ))}
-              </ul>
-            </>
           ) : null}
         </div>
-      </section>
-    </>
+      }
+    >
+      {tab === "overview" ? (
+        <Overview projects={all} onOpen={openProject} search={search} />
+      ) : null}
+
+      {tab === "enquiries" ? <EnquiriesInbox /> : null}
+
+      {tab === "access" ? (
+        <AccessPanel isAdmin={roleState?.role === "admin"} />
+      ) : null}
+
+      {tab === "projects" && selected ? (
+        <ProjectDetail
+          projectId={selected}
+          onBack={() => setSelected(null)}
+          onChanged={() => void refetch()}
+        />
+      ) : tab === "projects" && isLoading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="size-6 animate-spin text-gold" />
+        </div>
+      ) : tab === "projects" && rows.length === 0 ? (
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-ink/15 py-16 text-center">
+          <Inbox className="size-7 text-ink/30" />
+          <p className="mt-4 font-display text-xl text-maroon">
+            {q ? "Nothing matches that search" : "Nothing here yet"}
+          </p>
+          <p className="mt-2 max-w-md text-[13px] text-ink/55">
+            {q
+              ? `No project, client or reference contains “${search.trim()}”.`
+              : "Projects appear as soon as a client opens one in their portal, or you create one for them."}
+          </p>
+        </div>
+      ) : tab === "projects" ? (
+        <ProjectsTable projects={rows} onOpen={setSelected} />
+      ) : null}
+    </DashboardShell>
   );
 }
-

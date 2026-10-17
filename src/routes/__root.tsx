@@ -1,4 +1,10 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  HeadContent,
+  Outlet,
+  Scripts,
+  useRouterState,
+} from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { SiteShell } from "@/components/site-shell";
@@ -42,6 +48,12 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  // The console and the portal are applications, not pages on the site: they
+  // bring their own navigation, so the marketing header, footer, WhatsApp
+  // button and concierge would only get in the way of the data.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isApp = pathname.startsWith("/admin") || pathname.startsWith("/portal");
+
   return (
     <html lang="en" className="antialiased" suppressHydrationWarning>
       <head>
@@ -51,9 +63,13 @@ function RootDocument() {
         <PreviewHostBridge />
         <PreviewBanner />
         <AuthProvider>
-          <SiteShell>
+          {isApp ? (
             <Outlet />
-          </SiteShell>
+          ) : (
+            <SiteShell>
+              <Outlet />
+            </SiteShell>
+          )}
         </AuthProvider>
         <Scripts />
       </body>

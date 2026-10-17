@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { previewIdentity } from "@/lib/supabase/config";
 
@@ -18,6 +18,7 @@ const DISMISS_KEY = "atro.preview-banner-dismissed";
 export function PreviewBanner() {
   const [visible, setVisible] = useState(false);
   const identity = previewIdentity();
+  const bar = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!identity) return;
@@ -28,10 +29,36 @@ export function PreviewBanner() {
     }
   }, [identity]);
 
+  // The console's sidebar and topbar are sticky to the top of the viewport, so
+  // without this they would slide underneath the notice. Publishing the measured
+  // height as a custom property lets them offset by exactly the right amount —
+  // and the notice wraps to two lines on a phone, so it has to be measured
+  // rather than assumed.
+  useLayoutEffect(() => {
+    if (!visible) return;
+    const node = bar.current;
+    if (!node) return;
+    const publish = () =>
+      document.documentElement.style.setProperty(
+        "--preview-banner-h",
+        `${node.offsetHeight}px`,
+      );
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--preview-banner-h");
+    };
+  }, [visible]);
+
   if (!identity || !visible) return null;
 
   return (
-    <div className="sticky top-0 z-[60] flex items-center gap-3 bg-amber-100 px-4 py-2 text-[12px] text-amber-950">
+    <div
+      ref={bar}
+      className="sticky top-0 z-[60] flex items-center gap-3 bg-amber-100 px-4 py-2 text-[12px] text-amber-950"
+    >
       <span className="size-1.5 shrink-0 rounded-full bg-amber-600" />
       <p className="flex-1">
         <strong className="font-semibold">Preview mode.</strong> Sign-in is not

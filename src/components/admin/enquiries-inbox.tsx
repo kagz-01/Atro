@@ -25,6 +25,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionItem } from "@/components/ui/accordion";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { listEnquiriesFromDb } from "@/lib/enquiry-server";
@@ -332,7 +333,7 @@ export function EnquiriesInbox() {
     <div>
       {/* Header */}
       <div className="bg-paper border-b border-line/50">
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-8 md:px-12 lg:px-16 py-4 flex items-center justify-between">
+        <div className="max-w-[1400px] mx-auto px-6 sm:px-8 md:px-12 lg:px-16 py-4 flex flex-wrap items-center justify-between gap-y-2">
           <div className="flex items-center gap-4">
             <Link
               to="/"
@@ -343,11 +344,11 @@ export function EnquiriesInbox() {
             </Link>
             <h1 className="font-display text-xl text-maroon">Enquiries</h1>
           </div>
-          <div className="flex items-center gap-3 text-sm text-muted">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
             <span>{stats.total} total</span>
-            <span className="text-gold">·</span>
+            <span className="hidden text-gold sm:inline">·</span>
             <span>{stats.diaspora} diaspora</span>
-            <span className="text-gold">·</span>
+            <span className="hidden text-gold sm:inline">·</span>
             <span>{stats.thisWeek} this week</span>
           </div>
         </div>
@@ -486,122 +487,116 @@ export function EnquiriesInbox() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Contact */}
-              <div>
-                <h3 className="text-[11px] uppercase tracking-[0.14em] text-muted mb-3">Contact</h3>
-                <div className="space-y-2">
-                  <a href={`tel:${selected.phone}`} className="flex items-center gap-3 text-sm hover:text-maroon transition-colors">
-                    <Phone className="size-4 text-muted" />
-                    {formatPhone(selected.phone)}
-                  </a>
-                  <a href={`mailto:${selected.email}`} className="flex items-center gap-3 text-sm hover:text-maroon transition-colors">
-                    <Mail className="size-4 text-muted" />
-                    {selected.email}
-                  </a>
-                </div>
-              </div>
+            <div className="p-5 sm:p-6">
+              {/* Detail, collapsed by default so the reply buttons stay reachable
+                  without scrolling past a wall of fields. */}
+              <Accordion>
+                <AccordionItem title="Contact" defaultOpen>
+                  <div className="space-y-2">
+                    <a href={`tel:${selected.phone}`} className="flex items-center gap-3 text-sm hover:text-maroon transition-colors">
+                      <Phone className="size-4 text-muted" />
+                      {formatPhone(selected.phone)}
+                    </a>
+                    <a href={`mailto:${selected.email}`} className="flex items-center gap-3 text-sm hover:text-maroon transition-colors">
+                      <Mail className="size-4 text-muted" />
+                      {selected.email}
+                    </a>
+                  </div>
+                </AccordionItem>
 
-              {/* Project */}
-              <div>
-                <h3 className="text-[11px] uppercase tracking-[0.14em] text-muted mb-3">Project</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-stone/50 rounded-xl">
-                    <p className="text-xs text-muted">Type</p>
-                    <p className="text-sm font-medium text-maroon">{selected.project_type}</p>
+                <AccordionItem title="Project">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-white rounded-xl border border-ink/10">
+                      <p className="text-xs text-muted">Type</p>
+                      <p className="text-sm font-medium text-maroon">{selected.project_type}</p>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-ink/10">
+                      <p className="text-xs text-muted">Zone</p>
+                      <p className="text-sm font-medium text-maroon">{ZONE_LABELS[selected.zone] || selected.zone}</p>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-ink/10">
+                      <p className="text-xs text-muted">Size</p>
+                      <p className="text-sm font-medium text-maroon">{selected.sqm ? `${selected.sqm} m²` : "—"}</p>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-ink/10">
+                      <p className="text-xs text-muted">Finish</p>
+                      <p className="text-sm font-medium text-maroon capitalize">{selected.finish || "—"}</p>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-ink/10">
+                      <p className="text-xs text-muted">Stage</p>
+                      <p className="text-sm font-medium text-maroon">{selected.stage || "—"}</p>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-ink/10">
+                      <p className="text-xs text-muted">Start date</p>
+                      <p className="text-sm font-medium text-maroon">{selected.start_date || "—"}</p>
+                    </div>
                   </div>
-                  <div className="p-3 bg-stone/50 rounded-xl">
-                    <p className="text-xs text-muted">Zone</p>
-                    <p className="text-sm font-medium text-maroon">{ZONE_LABELS[selected.zone] || selected.zone}</p>
-                  </div>
-                  <div className="p-3 bg-stone/50 rounded-xl">
-                    <p className="text-xs text-muted">Size</p>
-                    <p className="text-sm font-medium text-maroon">{selected.sqm ? `${selected.sqm} m²` : "—"}</p>
-                  </div>
-                  <div className="p-3 bg-stone/50 rounded-xl">
-                    <p className="text-xs text-muted">Finish</p>
-                    <p className="text-sm font-medium text-maroon capitalize">{selected.finish || "—"}</p>
-                  </div>
-                  <div className="p-3 bg-stone/50 rounded-xl">
-                    <p className="text-xs text-muted">Stage</p>
-                    <p className="text-sm font-medium text-maroon">{selected.stage || "—"}</p>
-                  </div>
-                  <div className="p-3 bg-stone/50 rounded-xl">
-                    <p className="text-xs text-muted">Start date</p>
-                    <p className="text-sm font-medium text-maroon">{selected.start_date || "—"}</p>
-                  </div>
-                </div>
-              </div>
+                </AccordionItem>
 
-              {/* Estimate */}
-              {selected.indicative_min && selected.indicative_max && (
-                <div>
-                  <h3 className="text-[11px] uppercase tracking-[0.14em] text-muted mb-3">Indicative range</h3>
-                  <div className="p-4 bg-gradient-to-br from-maroon to-burgundy rounded-2xl">
-                    <p className="font-display text-2xl text-paper">
-                      {formatKes(selected.indicative_min)} – {formatKes(selected.indicative_max)}
+                {selected.indicative_min && selected.indicative_max ? (
+                  <AccordionItem title="Indicative range">
+                    <div className="p-4 bg-gradient-to-br from-maroon to-burgundy rounded-2xl">
+                      <p className="font-display text-2xl text-paper">
+                        {formatKes(selected.indicative_min)} – {formatKes(selected.indicative_max)}
+                      </p>
+                    </div>
+                  </AccordionItem>
+                ) : null}
+
+                {selected.description ? (
+                  <AccordionItem title="Notes">
+                    <p className="text-sm text-ink/80 bg-white border border-ink/10 p-4 rounded-xl whitespace-pre-wrap">
+                      {selected.description}
                     </p>
-                  </div>
-                </div>
-              )}
+                  </AccordionItem>
+                ) : null}
 
-              {/* Notes */}
-              {selected.description && (
-                <div>
-                  <h3 className="text-[11px] uppercase tracking-[0.14em] text-muted mb-3">Notes</h3>
-                  <p className="text-sm text-ink/80 bg-stone/50 p-4 rounded-xl whitespace-pre-wrap">{selected.description}</p>
-                </div>
-              )}
+                {selected.diaspora ? (
+                  <AccordionItem title="Diaspora details">
+                    <div className="p-4 bg-white border border-gold/25 rounded-xl space-y-3">
+                      <div className="flex items-center gap-3 text-sm">
+                        <Globe className="size-4 text-gold shrink-0" />
+                        <span className="text-muted">Country:</span>
+                        <span className="font-medium text-maroon">{selected.diaspora_country || "Not specified"}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <Clock className="size-4 text-gold shrink-0" />
+                        <span className="text-muted">Time zone:</span>
+                        <span className="font-medium text-maroon">{selected.diaspora_timezone || "Not specified"}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <Users className="size-4 text-gold shrink-0" />
+                        <span className="text-muted">Kenya contact:</span>
+                        <span className="font-medium text-maroon">{selected.diaspora_kenya_contact || "None"}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <Plane className="size-4 text-gold shrink-0" />
+                        <span className="text-muted">Visit plans:</span>
+                        <span className="font-medium text-maroon">{selected.diaspora_visit_plans || "Not specified"}</span>
+                      </div>
+                    </div>
+                  </AccordionItem>
+                ) : null}
+              </Accordion>
 
-              {/* Diaspora details */}
-              {selected.diaspora && (
-                <div>
-                  <h3 className="text-[11px] uppercase tracking-[0.14em] text-gold mb-3 flex items-center gap-2">
-                    <Globe className="size-3" />
-                    Diaspora details
-                  </h3>
-                  <div className="p-4 bg-gold/5 border border-gold/20 rounded-xl space-y-3">
-                    <div className="flex items-center gap-3 text-sm">
-                      <Globe className="size-4 text-gold shrink-0" />
-                      <span className="text-muted">Country:</span>
-                      <span className="font-medium text-maroon">{selected.diaspora_country || "Not specified"}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <Clock className="size-4 text-gold shrink-0" />
-                      <span className="text-muted">Time zone:</span>
-                      <span className="font-medium text-maroon">{selected.diaspora_timezone || "Not specified"}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <Users className="size-4 text-gold shrink-0" />
-                      <span className="text-muted">Kenya contact:</span>
-                      <span className="font-medium text-maroon">{selected.diaspora_kenya_contact || "None"}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <Plane className="size-4 text-gold shrink-0" />
-                      <span className="text-muted">Visit plans:</span>
-                      <span className="font-medium text-maroon">{selected.diaspora_visit_plans || "Not specified"}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Turn this enquiry into real work */}
-              <div className="pt-2">
+              {/* The two things a studio does with an enquiry: answer it, or turn it
+                  into work. Both stay visible — hiding them behind a toggle would
+                  only add a step. */}
+              <div className="mt-4">
                 <ConvertEnquiry enquiry={selected} />
               </div>
 
-              {/* Actions */}
-              <div className="flex flex-wrap gap-3 pt-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 <a
                   href={`tel:${selected.phone}`}
-                  className="inline-flex h-10 px-5 items-center gap-2 bg-maroon text-white text-[11px] uppercase tracking-[0.14em] font-semibold rounded-xl hover:bg-burgundy transition-colors"
+                  className="inline-flex h-11 flex-1 items-center justify-center gap-2 bg-maroon text-white text-[11px] uppercase tracking-[0.14em] font-semibold rounded-xl hover:bg-burgundy transition-colors sm:flex-none sm:px-5"
                 >
                   <Phone className="size-4" />
                   Call
                 </a>
                 <a
                   href={`mailto:${selected.email}?subject=ATRO — Your project enquiry`}
-                  className="inline-flex h-10 px-5 items-center gap-2 border border-maroon text-maroon text-[11px] uppercase tracking-[0.14em] font-semibold rounded-xl hover:bg-maroon/5 transition-colors"
+                  className="inline-flex h-11 flex-1 items-center justify-center gap-2 border border-maroon text-maroon text-[11px] uppercase tracking-[0.14em] font-semibold rounded-xl hover:bg-maroon/5 transition-colors sm:flex-none sm:px-5"
                 >
                   <Mail className="size-4" />
                   Email
@@ -610,7 +605,7 @@ export function EnquiriesInbox() {
                   href={whatsappHref(`Hello ${selected.name} — thank you for your enquiry with ATRO. We have received your brief and would like to schedule a call.`)}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-10 px-5 items-center gap-2 bg-green-600 text-white text-[11px] uppercase tracking-[0.14em] font-semibold rounded-xl hover:bg-green-700 transition-colors"
+                  className="inline-flex h-11 flex-1 items-center justify-center gap-2 bg-green-600 text-white text-[11px] uppercase tracking-[0.14em] font-semibold rounded-xl hover:bg-green-700 transition-colors sm:flex-none sm:px-5"
                 >
                   <MessageCircle className="size-4" />
                   WhatsApp

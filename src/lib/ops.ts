@@ -26,6 +26,8 @@ export type Funnel = {
   enquiriesTotal: number;
   enquiriesDiaspora: number;
   enquiriesLast7Days: number;
+  /** Not yet marked as contacted — the number the sidebar badge shows. */
+  enquiriesNew: number;
   projectsTotal: number;
   projectsLive: number;
   projectsSample: number;
@@ -33,6 +35,22 @@ export type Funnel = {
 };
 
 export type GroupRow = { key: string; label: string; count: number; value: number };
+
+/** Contracted and collected per track — the two bars the money panel compares. */
+export type TrackRow = GroupRow & { paid: number };
+
+/**
+ * Six months of enquiry and cash-in history.
+ *
+ * month is the numeric month so the two series can be merged in JS rather than
+ * forcing a full outer join in SQL — the labels come out sorted either way.
+ */
+export type MonthRow = {
+  label: string;
+  month: number;
+  enquiries: number;
+  received: number;
+};
 
 export type AttentionItem = {
   kind: "blocked" | "decision" | "stalled" | "unviewed";
@@ -46,8 +64,9 @@ export type AttentionItem = {
 export type OpsOverview = {
   funnel: Funnel;
   money: MoneyPosition;
-  byTrack: GroupRow[];
+  byTrack: TrackRow[];
   byZone: GroupRow[];
+  byMonth: MonthRow[];
   attention: AttentionItem[];
 };
 
@@ -78,14 +97,40 @@ export const getOpsOverview = createServerFn({ method: "GET" }).handler(
       select
         count(*) as total,
         count(*) filter (where diaspora) as diaspora,
-        count(*) filter (where created_at > now() - interval '7 days') as last_7
+        count(*) filter (where created_at > now() - interval '7 days') as last_7,
+        count(*) filter (where status = 'new') as new_enquiries
       from enquiries
     `;
 
-    const trackRows = await sql<{ track: string; count: number; value: number }>`
+    const trackRows = await sql<{ track: string; count: number; value: number; paid: number }>`
       select coalesce(nullif(track, ''), 'construction') as track,
-        count(*) as count, coalesce(sum(contract_value), 0) as value
+        count(*) as count, coalesce(sum(contract_value), 0) as value,
+        coalesce(sum(paid_to_date), 0) as paid
       from portal_projects group by 1
+    `;
+
+    // ── six months of history for the dashboard charts ──
+    const enquiryMonths = await sql<{ label: string; month: number; count: number }>`
+      select to_char(date_trunc('month', created_at), 'Mon') as label,
+        extract(month from created_at)::int as month,
+        count(*) as count
+      from enquiries
+      where created_at > now() - make_interval(months => 6)
+      group by 1, 2
+    `;
+
+    // paid_date is stored as free text (it carries "Week 08" style labels on some
+    // rows), so it is filtered to ISO dates before being cast — casting the whole
+    // column would throw on a single unparseable value.
+    const cashMonths = await sql<{ label: string; month: number; received: number }>`
+      select to_char(date_trunc('month', paid_date::timestamptz), 'Mon') as label,
+        extract(month from paid_date::timestamptz)::int as month,
+        coalesce(sum(amount), 0) as received
+      from portal_payments
+      where status = 'paid'
+        and paid_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+        and paid_date::timestamptz > now() - make_interval(months => 6)
+      group by 1, 2
     `;
 
     const zoneRows = await sql<{ zone: string; count: number; value: number }>`
@@ -195,11 +240,26 @@ export const getOpsOverview = createServerFn({ method: "GET" }).handler(
 
     const n = (v: unknown) => Number(v ?? 0);
 
+    // Merge the two monthly series on the month number, then order by month so
+    // the chart reads Jan → Jun regardless of which query saw which month.
+    const monthly = new Map<number, MonthRow>();
+    const month = (key: number, label: string): MonthRow => {
+      const found = monthly.get(key);
+      if (found) return found;
+      const fresh: MonthRow = { label, month: key, enquiries: 0, received: 0 };
+      monthly.set(key, fresh);
+      return fresh;
+    };
+    for (const r of enquiryMonths) month(r.month, r.label).enquiries = n(r.count);
+    for (const r of cashMonths) month(r.month, r.label).received = n(r.received);
+    const byMonth = [...monthly.values()].sort((a, b) => a.month - b.month);
+
     return {
       funnel: {
         enquiriesTotal: n(enquiries?.total),
         enquiriesDiaspora: n(enquiries?.diaspora),
         enquiriesLast7Days: n(enquiries?.last_7),
+        enquiriesNew: n(enquiries?.new_enquiries),
         projectsTotal: n(projects?.total),
         projectsLive: n(projects?.live),
         projectsSample: n(projects?.sample_projects),
@@ -218,6 +278,7 @@ export const getOpsOverview = createServerFn({ method: "GET" }).handler(
         label: trackLabel(r.track),
         count: n(r.count),
         value: n(r.value),
+        paid: n(r.paid),
       })),
       byZone: zoneRows.map((r) => ({
         key: r.zone,
@@ -225,6 +286,7 @@ export const getOpsOverview = createServerFn({ method: "GET" }).handler(
         count: n(r.count),
         value: n(r.value),
       })),
+      byMonth,
       attention,
     };
   },

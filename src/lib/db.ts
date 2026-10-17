@@ -160,11 +160,44 @@ async function createPgliteSql(): Promise<Sql> {
     .then(migrate);
   globalRef.__pgliteMigrateChain__ = pass;
   await pass;
+  await seedLocalDemoData(pg);
 
   return toSql(async <T>(text: string, params: unknown[]) => {
     const result = await pg.query<T>(text, params);
     return result.rows;
   });
+}
+
+/**
+ * Demonstration data for the local database only.
+ *
+ * This file is NOT in migrations/, deliberately: those files are the schema of
+ * record and are applied to Neon as well, and sample contracts must never reach
+ * a real deployment. Here it runs after migrations, once, and only when the
+ * local database has no projects at all — so a fresh clone shows the console,
+ * the portal and every chart working, and an existing local database is left
+ * exactly as the developer left it.
+ *
+ * Everything it writes is `source = 'sample'`, which the UI labels as a
+ * demonstration project.
+ */
+async function seedLocalDemoData(pg: import("@electric-sql/pglite").PGlite) {
+  try {
+    const { rows } = await pg.query<{ n: number }>(
+      "select count(*)::int as n from portal_projects",
+    );
+    if ((rows[0]?.n ?? 0) > 0) return;
+    const sql = import.meta.glob("/scripts/local-seed.sql", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>;
+    const text = Object.values(sql)[0];
+    if (text) await pg.exec(text);
+  } catch {
+    // A demo dataset is never worth failing a boot over: an empty local database
+    // still works, it just has nothing to show.
+  }
 }
 
 let sqlPromise: Promise<Sql> | null = null;

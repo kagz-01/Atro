@@ -61,7 +61,7 @@ export function PhoneSignInForm({ onDone }: { onDone: () => void }) {
           e.preventDefault();
           void sendCode();
         }}
-        className="mt-4"
+        className="mt-4 max-w-md"
         noValidate
       >
         <h2 className="font-display text-3xl text-maroon">Sign in</h2>
@@ -98,68 +98,68 @@ export function PhoneSignInForm({ onDone }: { onDone: () => void }) {
     );
   }
 
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        void verify();
-      }}
-      className="mt-4"
-      noValidate
-    >
-      <h2 className="font-display text-3xl text-maroon">Enter your code</h2>
-      <p className="mt-2 text-[15px] leading-relaxed text-ink/65">
-        {sent ? (
-          <>
-            We sent a code to <strong>{phone}</strong>. It is six digits and it is
-            good for a few minutes.
-          </>
-        ) : null}
-      </p>
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void verify();
+        }}
+        className="mt-4 max-w-md"
+        noValidate
+      >
+        <h2 className="font-display text-3xl text-maroon">Enter your code</h2>
+        <p className="mt-2 text-[15px] leading-relaxed text-ink/65">
+          {sent ? (
+            <>
+              We sent a code to <strong>{phone}</strong>. It is six digits and it is
+              good for a few minutes.
+            </>
+          ) : null}
+        </p>
 
-      <div className="mt-6">
-        <Label htmlFor="pi-code">Code</Label>
-        <Input
-          id="pi-code"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
-          placeholder="123456"
-          className="text-center text-lg tracking-[0.4em]"
-        />
-      </div>
+        <div className="mt-6">
+          <Label htmlFor="pi-code">Code</Label>
+          <Input
+            id="pi-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+            placeholder="123456"
+            className="text-center text-lg tracking-[0.4em]"
+          />
+        </div>
 
-      {error ? <Alert>{error}</Alert> : null}
+        {error ? <Alert>{error}</Alert> : null}
 
-      <Button type="submit" variant="primary" size="lg" className="mt-6 w-full" disabled={busy || code.length < 4}>
-        {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-        Sign in
-      </Button>
+        <Button type="submit" variant="primary" size="lg" className="mt-6 w-full" disabled={busy || code.length < 4}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+          Sign in
+        </Button>
 
-      <div className="mt-4 flex items-center justify-between text-[13px]">
-        <button
-          type="button"
-          onClick={() => {
-            setStage("phone");
-            setCode("");
-            setError(null);
-          }}
-          className="cursor-pointer text-ink/55 underline decoration-gold decoration-2 underline-offset-4 hover:text-maroon"
-        >
-          Change number
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void sendCode()}
-          className="cursor-pointer text-burgundy underline decoration-gold decoration-2 underline-offset-4 hover:text-maroon disabled:cursor-wait disabled:opacity-50"
-        >
-          Resend code
-        </button>
-      </div>
-    </form>
-  );
+        <div className="mt-4 flex items-center justify-between text-[13px]">
+          <button
+            type="button"
+            onClick={() => {
+              setStage("phone");
+              setCode("");
+              setError(null);
+            }}
+            className="cursor-pointer text-ink/55 underline decoration-gold decoration-2 underline-offset-4 hover:text-maroon"
+          >
+            Change number
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void sendCode()}
+            className="cursor-pointer text-burgundy underline decoration-gold decoration-2 underline-offset-4 hover:text-maroon disabled:cursor-wait disabled:opacity-50"
+          >
+            Resend code
+          </button>
+        </div>
+      </form>
+    );
 }
 
 function Alert({ children }: { children: React.ReactNode }) {
