@@ -345,3 +345,55 @@ where o.selection_id = portal_selection.id
   and o.label = 'Quartz'
   and portal_selection.title = 'Kitchen worktop'
   and portal_selection.status = 'chosen';
+
+-- ── approvals: the paperwork, and one that has stopped moving ──
+insert into portal_approval (
+  project_id, ord, kind, title, authority, reference, status, submitted_on,
+  decided_on, fee_amount, fee_paid, blocking, chased_on, chase_note, note, updated_at
+)
+select p.id, s.ord, s.kind, s.title, s.authority, s.reference, s.status, s.submitted_on,
+  s.decided_on, s.fee_amount::bigint, s.fee_paid::bigint, s.blocking, s.chased_on,
+  s.chase_note, s.note, now() - (s.idle_days || ' days')::interval
+from portal_projects p
+cross join lateral (values
+  (1, 'ncc', 'Planning consent', 'Nairobi City County', 'NCC/MUN/2024/1187', 'approved',
+   '2024-05-18', '2024-07-30', 285000, 285000, true, '', '',
+   'Approved in 41 days with no conditions attached.', 200),
+  (2, 'nema', 'Environmental impact assessment', 'NEMA', 'NEMA/EIA/2024/2210', 'approved',
+   '2024-06-02', '2024-08-15', 120000, 120000, false, '', '',
+   'Not required for the house itself, but required for the borehole.', 190),
+  (3, 'nca', 'Contractor registration', 'National Construction Authority', 'NCA/2024/8812', 'approved',
+   '2024-04-11', '2024-04-28', 45000, 45000, false, '', '',
+   'Registration and the annual levy.', 185),
+  (4, 'county', 'Building permit', 'Nairobi City County', 'NCC/permit/2024/1187', 'approved',
+   '2024-08-05', '2024-08-22', 165000, 165000, true, '', '',
+   'Permit issued against the approved drawings.', 170),
+  (5, 'utilities', 'Water connection', 'Nairobi Water and Sewerage', 'NWS/2025/4412', 'under_review',
+   '2025-09-20', '', 38000, 38000, true, '', '',
+   'Application lodged; the surveyor is booked for the boundary.', 40),
+  (6, 'utilities', 'Power connection (KPLC)', 'Kenya Power', 'KPLC/DU/NBO/2025/771', 'submitted',
+   '2025-10-02', '', 95000, 0, false, '', '',
+   'Deposit not yet paid — the transformer deposit is the long pole.', 18)
+) as s(ord, kind, title, authority, reference, status, submitted_on, decided_on,
+      fee_amount, fee_paid, blocking, chased_on, chase_note, note, idle_days)
+where p.reference = 'ATRO-2401';
+
+-- The second project is the one that is stuck: the structural drawings have not
+-- been released, and the county permit is sitting on them.
+insert into portal_approval (
+  project_id, ord, kind, title, authority, reference, status, submitted_on,
+  decided_on, fee_amount, fee_paid, blocking, chased_on, chase_note, note, updated_at
+)
+select p.id, s.ord, s.kind, s.title, s.authority, s.reference, s.status, s.submitted_on,
+  s.decided_on, s.fee_amount::bigint, s.fee_paid::bigint, s.blocking, s.chased_on,
+  s.chase_note, s.note, now() - (s.idle_days || ' days')::interval
+from portal_projects p
+cross join lateral (values
+  (1, 'ncc', 'Change of use permit', 'Nairobi City County', 'NCC/COU/2025/0044', 'submitted',
+   '2025-11-14', '', 210000, 210000, true, '2025-12-02', 'Called the county; the file is with the assessment desk.',
+   'Assessment has not been booked — the file is waiting on the revised drawings from the client.', 60),
+  (2, 'nca', 'Contractor registration', 'National Construction Authority', 'NCA/2025/4410', 'approved',
+   '2025-09-01', '2025-09-19', 45000, 45000, false, '', '', '', 300)
+) as s(ord, kind, title, authority, reference, status, submitted_on, decided_on,
+      fee_amount, fee_paid, blocking, chased_on, chase_note, note, idle_days)
+where p.reference = 'ATRO-2402';

@@ -29,6 +29,7 @@ import {
 } from "@/components/dashboard/charts";
 import { EnquiriesInbox } from "@/components/admin/enquiries-inbox";
 import { SelectionsPanel } from "@/components/admin/selections-panel";
+import { ApprovalsPanel } from "@/components/admin/approvals-panel";
 import { getOpsOverview, type GroupRow } from "@/lib/ops";
 import {
   getMyAccess,
@@ -574,6 +575,9 @@ function ProjectDetail({
               </div>
             </WriteBlock>
           </div>
+        </AccordionItem>
+        <AccordionItem title="Approvals">
+          <ApprovalsPanel projectId={projectId} onChanged={onChanged} />
         </AccordionItem>
         <AccordionItem title="Selections">
           <SelectionsPanel projectId={projectId} onChanged={onChanged} />

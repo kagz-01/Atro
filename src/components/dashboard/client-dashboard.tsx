@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   CreditCard,
   FileText,
+  FileCheck2,
   FolderOpen,
   Hourglass,
   LayoutDashboard,
@@ -24,6 +25,8 @@ import { DashboardShell } from "@/components/dashboard/shell";
 import { ProfilePanel } from "@/components/profile/profile-panel";
 import { SelectionsPanel } from "@/components/dashboard/selections-panel";
 import { listMySelections } from "@/lib/selections-server";
+import { ApprovalsPanel } from "@/components/dashboard/approvals-panel";
+import { listMyApprovals } from "@/lib/approvals-server";
 import { KIND_LABEL } from "@/lib/invoices";
 import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
 import type { Decision, Milestone, Payment } from "@/lib/diaspora/portal";
@@ -74,6 +77,7 @@ const DOC_TONE: Record<string, string> = {
 
 type Section =
   | "overview"
+  | "approvals"
   | "selections"
   | "milestones"
   | "money"
@@ -115,6 +119,14 @@ export function ClientDashboard({
     queryFn: () => listMySelections({ data: { projectId: p.id } }),
   });
   const openSelections = (selections ?? []).filter((s) => s.status === "open").length;
+
+  const { data: approvals } = useQuery({
+    queryKey: ["my-approvals", p.id],
+    queryFn: () => listMyApprovals({ data: { projectId: p.id } }),
+  });
+  const blockingApprovals = (approvals ?? []).filter(
+    (a) => a.blocking && a.status !== "approved" && a.status !== "not_required",
+  ).length;
   const b = p.budget;
 
   const openDecisions = data.decisions.filter((d) => d.state !== "decided");
@@ -154,6 +166,12 @@ export function ClientDashboard({
           title: "Your project",
           items: [
             { id: "overview", label: "Overview", icon: LayoutDashboard },
+            {
+              id: "approvals",
+              label: "Approvals",
+              icon: FileCheck2,
+              badge: blockingApprovals || undefined,
+            },
             {
               id: "selections",
               label: "Selections",
@@ -457,6 +475,8 @@ export function ClientDashboard({
           </div>
         </div>
       ) : null}
+
+      {section === "approvals" ? <ApprovalsPanel projectId={p.id} /> : null}
 
       {section === "selections" ? (
         <SelectionsPanel projectId={p.id} onChanged={() => void onReloaded?.()} />
