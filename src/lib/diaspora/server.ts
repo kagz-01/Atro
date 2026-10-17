@@ -648,6 +648,8 @@ async function buildProjectPayload(
   sql: Sql,
   row: ProjectRow,
   markViewed: boolean,
+  /** Owner of the project, used to fall back to their profile. */
+  userId: string,
 ): Promise<PortalPayload> {
 
   const projectId = row.id;
@@ -828,9 +830,28 @@ async function buildProjectPayload(
         generated: false,
       };
 
+  // A project carries its own copy of who the client is, because a project
+  // opened for someone before they had a profile has to render on its own. Now
+  // that a profile exists, an empty copy falls back to it — so a client who adds
+  // their name once is not still anonymous on a project they opened earlier.
+  const record = toRecord(row);
+  // The staff path passes no owner, so a project opened before a profile existed
+  // is shown exactly as it was typed rather than back-filled behind the studio's
+  // back.
+  if (userId && (!record.clientLabel || !record.clientCity)) {
+    const [p] = await sql<{ display_name: string; city: string }>`
+      select display_name, city from client_profile where user_id = ${userId}
+    `;
+    if (p) {
+      record.clientLabel ||= p.display_name;
+      record.clientCity ||= p.city;
+      record.clientInitials ||= p.display_name.slice(0, 2).toUpperCase();
+    }
+  }
+
   return {
     projects: [toSummary(row)],
-    project: toRecord(row),
+    project: record,
     milestones,
     payments,
     documents,
@@ -881,7 +902,7 @@ export async function loadPortal(sql: Sql, userId: string): Promise<PortalPayloa
   }
   const row = rows[0];
   if (!row) throw new Error("No project available for this account.");
-  return buildProjectPayload(sql, row, true);
+  return buildProjectPayload(sql, row, true, userId);
 }
 
 /** Any single project, for staff. Callers must gate with `requireStaff()` first. */
@@ -889,7 +910,7 @@ export async function loadProjectById(sql: Sql, projectId: string): Promise<Port
   const rows = await selectProjectById(sql, projectId);
   const row = rows[0];
   if (!row) throw new Error("Project not found.");
-  return buildProjectPayload(sql, row, false);
+  return buildProjectPayload(sql, row, false, "");
 }
 
 export async function createProjectFor(

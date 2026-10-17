@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   ListChecks,
   MessageSquareWarning,
+  UserRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { Panel } from "@/components/ui/panel";
 import { StatCard } from "@/components/ui/stat-card";
 import { Gauge, type Slice } from "@/components/dashboard/charts";
 import { DashboardShell } from "@/components/dashboard/shell";
+import { ProfilePanel } from "@/components/profile/profile-panel";
 import { KIND_LABEL } from "@/lib/invoices";
 import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
 import type { Decision, Milestone, Payment } from "@/lib/diaspora/portal";
@@ -66,7 +68,7 @@ const DOC_TONE: Record<string, string> = {
   statement: "bg-stone/100 text-stone-700 border-stone-300",
 };
 
-type Section = "overview" | "milestones" | "money" | "documents" | "decisions";
+type Section = "overview" | "milestones" | "money" | "documents" | "decisions" | "profile";
 
 export function ClientDashboard({
   data,
@@ -152,6 +154,10 @@ export function ClientDashboard({
             },
             { id: "documents", label: "Documents", icon: FolderOpen },
           ],
+        },
+        {
+          title: "You",
+          items: [{ id: "profile", label: "Profile", icon: UserRound }],
         },
       ]}
       active={section}
@@ -503,6 +509,8 @@ export function ClientDashboard({
       {section === "documents" ? (
         <VaultPanel documents={documents} projects={data.projects} />
       ) : null}
+
+      {section === "profile" ? <ProfilePanel /> : null}
     </DashboardShell>
   );
 }
