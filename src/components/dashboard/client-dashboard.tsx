@@ -439,7 +439,7 @@ export function ClientDashboard({
 
       {section === "money" ? (
         <div className="space-y-5">
-          <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="grid min-w-0 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
             <Panel title="Your budget" subtitle="Open book — every line is inspectable">
               <dl className="space-y-3">
                 {[
@@ -479,6 +479,7 @@ export function ClientDashboard({
             <Panel
               title="Payment ledger"
               subtitle="Pay for work, not promises"
+              className="min-w-0"
               bodyClassName="p-0"
             >
               <PaymentTable
@@ -865,7 +866,12 @@ function VaultPanel({
 }) {
   return (
     <div className="space-y-5">
-      <Panel title="Documents" subtitle="Your paperwork, ready to print" bodyClassName="p-0">
+      <Panel
+        title="Documents"
+        subtitle="Your paperwork, ready to print"
+        className="min-w-0"
+        bodyClassName="p-0"
+      >
         {documents.length === 0 ? (
           <div className="p-6 text-center">
             <FileText className="mx-auto size-6 text-ink/30" />

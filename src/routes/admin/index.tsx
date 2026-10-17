@@ -832,6 +832,7 @@ function ProjectsTable({
       title="Projects"
       subtitle={`${projects.length} in the studio`}
       actions={select}
+      className="min-w-0"
       bodyClassName="p-0"
     >
       {projects.length === 0 ? (
@@ -1099,7 +1100,7 @@ function Overview({
       </div>
 
       {/* the work itself */}
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[1.35fr_1fr]">
         <ProjectsTable projects={visible} onOpen={onOpen} />
 
         <Panel
