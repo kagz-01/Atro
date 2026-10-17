@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Banknote,
@@ -11,6 +12,7 @@ import {
   LayoutDashboard,
   ListChecks,
   MessageSquareWarning,
+  SlidersHorizontal,
   UserRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +22,8 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Gauge, type Slice } from "@/components/dashboard/charts";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { ProfilePanel } from "@/components/profile/profile-panel";
+import { SelectionsPanel } from "@/components/dashboard/selections-panel";
+import { listMySelections } from "@/lib/selections-server";
 import { KIND_LABEL } from "@/lib/invoices";
 import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
 import type { Decision, Milestone, Payment } from "@/lib/diaspora/portal";
@@ -68,7 +72,14 @@ const DOC_TONE: Record<string, string> = {
   statement: "bg-stone/100 text-stone-700 border-stone-300",
 };
 
-type Section = "overview" | "milestones" | "money" | "documents" | "decisions" | "profile";
+type Section =
+  | "overview"
+  | "selections"
+  | "milestones"
+  | "money"
+  | "documents"
+  | "decisions"
+  | "profile";
 
 export function ClientDashboard({
   data,
@@ -76,6 +87,7 @@ export function ClientDashboard({
   onRelease,
   onApprove,
   onDecide,
+  onReloaded,
   pending,
   documents,
   nudges,
@@ -86,6 +98,8 @@ export function ClientDashboard({
   onRelease: (paymentId: string) => void;
   onApprove: (milestoneId: string) => void;
   onDecide: (decisionId: string, chosen: string) => void;
+  /** Called when a write lands on the client side, so the portal can refetch. */
+  onReloaded?: () => void;
   pending: string;
   documents: DocumentSummary[];
   /** Open decisions the client has not answered. */
@@ -95,6 +109,12 @@ export function ClientDashboard({
 }) {
   const [section, setSection] = useState<Section>("overview");
   const p = data.project;
+
+  const { data: selections } = useQuery({
+    queryKey: ["my-selections", p.id],
+    queryFn: () => listMySelections({ data: { projectId: p.id } }),
+  });
+  const openSelections = (selections ?? []).filter((s) => s.status === "open").length;
   const b = p.budget;
 
   const openDecisions = data.decisions.filter((d) => d.state !== "decided");
@@ -134,6 +154,12 @@ export function ClientDashboard({
           title: "Your project",
           items: [
             { id: "overview", label: "Overview", icon: LayoutDashboard },
+            {
+              id: "selections",
+              label: "Selections",
+              icon: SlidersHorizontal,
+              badge: openSelections || undefined,
+            },
             {
               id: "milestones",
               label: "Milestones",
@@ -430,6 +456,10 @@ export function ClientDashboard({
             </Panel>
           </div>
         </div>
+      ) : null}
+
+      {section === "selections" ? (
+        <SelectionsPanel projectId={p.id} onChanged={() => void onReloaded?.()} />
       ) : null}
 
       {section === "milestones" ? (
@@ -755,6 +785,8 @@ function DecisionsPanel({
 }: {
   decisions: Decision[];
   onDecide: (decisionId: string, chosen: string) => void;
+  /** Called when a write lands on the client side, so the portal can refetch. */
+  onReloaded?: () => void;
   pending: string;
 }) {
   const [choice, setChoice] = useState<Record<string, string>>({});

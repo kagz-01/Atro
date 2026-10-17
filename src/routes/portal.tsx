@@ -560,6 +560,7 @@ function PortalPage() {
             "Milestone approved.",
           )
         }
+        onReloaded={() => void load()}
         onDecide={(decisionId: string, chosen: string) =>
           void run(
             `dec-${decisionId}`,

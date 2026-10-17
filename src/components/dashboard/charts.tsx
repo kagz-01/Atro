@@ -284,7 +284,8 @@ export function Gauge({
           <Pie
             data={data}
             dataKey="value"
-            innerRadius="72%"
+            innerRadius="76%"
+            outerRadius="94%"
             startAngle={90}
             endAngle={-90}
             stroke="none"
@@ -295,14 +296,16 @@ export function Gauge({
           </Pie>
         </PieChart>
       </ResponsiveContainer>
-      <div className="pointer-events-none absolute inset-x-0 bottom-1 text-center">
-        <p className="font-display text-2xl leading-none text-maroon">
+      {/* Below the arc, not inside it: at 100% the two ends of a 180° gauge meet
+          in the middle and a centred label sits right on top of them. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 text-center">
+        <p className="font-display text-xl leading-none text-maroon">
           {Math.round(clamped)}%
         </p>
         {label ? (
-          <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-muted">{label}</p>
+          <p className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-muted">{label}</p>
         ) : null}
-        {caption ? <p className="mt-0.5 text-[11px] text-ink/50">{caption}</p> : null}
+        {caption ? <p className="mt-0.5 text-[10px] text-ink/50">{caption}</p> : null}
       </div>
     </div>
   );

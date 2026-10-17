@@ -28,6 +28,7 @@ import {
   type Slice,
 } from "@/components/dashboard/charts";
 import { EnquiriesInbox } from "@/components/admin/enquiries-inbox";
+import { SelectionsPanel } from "@/components/admin/selections-panel";
 import { getOpsOverview, type GroupRow } from "@/lib/ops";
 import {
   getMyAccess,
@@ -573,6 +574,9 @@ function ProjectDetail({
               </div>
             </WriteBlock>
           </div>
+        </AccordionItem>
+        <AccordionItem title="Selections">
+          <SelectionsPanel projectId={projectId} onChanged={onChanged} />
         </AccordionItem>
         <AccordionItem title="Document vault">
           <WriteBlock

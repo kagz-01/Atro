@@ -299,3 +299,49 @@ from (values
   name, phone, email, kind, zone, stage, note, sqm, finish, lo, hi, diaspora,
   country, tz, kenya_contact, visit, status, age
 );
+
+-- ── selections: priced choices, one already over its allowance ──
+-- Deadlines are relative to the day the seed runs, not hard-coded: a fixed date
+-- quietly turns every open selection into "deadline passed" and the client side
+-- stops being demonstrable at all.
+insert into portal_selection (project_id, ord, title, category, stage, allowance_amount, deadline, status, chosen_at, chosen_by, note)
+select p.id, s.ord, s.title, s.category, s.stage, s.allowance::bigint,
+  case when s.in_days is null then s.deadline
+       else to_char((now() + make_interval(days => s.in_days))::date, 'YYYY-MM-DD') end,
+  s.status,
+  case when s.chosen_label is null then null else now() - (s.chosen_days || ' days')::interval end,
+  'dev-user', s.note
+from portal_projects p
+cross join lateral (values
+  (1, 'Roof covering', 'Roof', 'Superstructure', 6300000, '', 'open', null, null, 18,
+   'All three are quoted for the same specification, so the comparison is like for like. The allowance covers supply and laying.'),
+  (2, 'Kitchen worktop', 'Kitchen', 'Superstructure', 900000, '2026-02-10', 'chosen', 'Quartz', 14, null,
+   'Quartz and granite were within a few thousand of each other at the time of pricing.'),
+  (3, 'Living room floor', 'Floor', 'Roof and first fix', 1800000, '', 'open', null, null, 45,
+   'Sealed hardwood or porcelain. Both are quoted installed.')
+) as s(ord, title, category, stage, allowance, deadline, status, chosen_label, chosen_days, in_days, note)
+where p.reference = 'ATRO-2401';
+
+insert into portal_selection_option (selection_id, ord, label, description, supplier, price, lead_time, recommended)
+select sel.id, o.opt_ord, o.label, o.description, o.supplier, o.price::bigint, o.lead_time, o.recommended
+from portal_selection sel
+join portal_projects p on p.id = sel.project_id
+cross join lateral (values
+  (1, 1, 'Stone-coated tile', 'Concrete tiles with a stone finish, twenty-year profile.', 'Roofline Tiles', 5850000, '3 weeks', true),
+  (1, 2, 'Concrete roof tile', 'Standard concrete tile — the base specification.', 'Atlas Roofing', 5250000, '2 weeks', false),
+  (1, 3, 'Metal sheet', 'Long-run profiled steel: lightest and quickest to fix.', 'Kenya Steel', 6100000, '4 weeks', false),
+  (2, 1, 'Quartz', 'Engineered stone, 20mm, polished.', 'Stoneworks', 1120000, '5 weeks', false),
+  (2, 2, 'Granite', 'Natural 20mm slab, honed.', 'Stoneworks', 1080000, '6 weeks', true),
+  (3, 1, 'Sealed hardwood', 'Oak, sealed with a matt polyurethane finish.', 'Mwanza Timber', 2450000, '8 weeks', true),
+  (3, 2, 'Porcelain', 'Large-format 600x600 porcelain, rectified.', 'Tile Africa', 1950000, '3 weeks', false)
+) as o(sel_ord, opt_ord, label, description, supplier, price, lead_time, recommended)
+where p.reference = 'ATRO-2401' and sel.ord = o.sel_ord;
+
+-- The chosen option is linked after the fact: a row cannot reference its own id
+-- from inside the VALUES list that is inserting it.
+update portal_selection set chosen_option_id = o.id
+from portal_selection_option o
+where o.selection_id = portal_selection.id
+  and o.label = 'Quartz'
+  and portal_selection.title = 'Kitchen worktop'
+  and portal_selection.status = 'chosen';
