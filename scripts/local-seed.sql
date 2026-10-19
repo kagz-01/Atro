@@ -430,3 +430,36 @@ cross join lateral (values
 ) as s(ord, milestone_ord, caption, detail, taken_on, b64, uploaded_by)
 join portal_milestones m on m.project_id = p.id and m.ord = s.milestone_ord
 where p.reference = 'ATRO-2401';
+
+-- The conversation, on the record.
+--
+-- Two states, both worth showing: on ATRO-2401 the studio has replied and the
+-- client has not opened it yet (their badge shows 1), and on ATRO-2402 the
+-- client is waiting on the studio (the console's attention bell shows it and
+-- the thread opens itself). A portal where neither side knows the other has
+-- read something is the WhatsApp problem this exists to replace.
+insert into portal_message (project_id, ord, author_role, author_id, author_label, body, created_at, read_at)
+select p.id, s.ord, s.author_role, '', s.author_label, s.body,
+  now() - make_interval(hours => s.age_hours),
+  case when s.read_hours is null then null
+       else now() - make_interval(hours => s.read_hours) end
+from portal_projects p
+cross join lateral (values
+  (1, 'client', 'Wanjiku Njeri',
+   'Has the roof covering arrived? The next call still lists it as outstanding.',
+   96, 95),
+  (2, 'studio', 'Nanjala Oduor',
+   'Arriving Thursday. I will post photographs against the roof stage as it goes up, so you can see it fixed before the finishes start.',
+   48, null)
+) as s(ord, author_role, author_label, body, age_hours, read_hours)
+where p.reference = 'ATRO-2401';
+
+-- The stuck project: the client asked three weeks ago and nobody has opened it.
+insert into portal_message (project_id, ord, author_role, author_id, author_label, body, created_at, read_at)
+select p.id, 1, 'client', '', s.author_label, s.body,
+  now() - make_interval(days => s.age_days), null
+from portal_projects p
+cross join lateral (values
+  ('Brian Otieno', 'Any movement on the change of use permit? It has been two months and I am paying rent on a site that cannot start.', 21)
+) as s(author_label, body, age_days)
+where p.reference = 'ATRO-2402';

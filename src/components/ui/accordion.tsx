@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +36,19 @@ export function AccordionItem({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
+
+  /**
+   * React to `defaultOpen` arriving late.
+   *
+   * The message-thread hint only knows the client is waiting once its query
+   * lands, which is after the first render — so reading the prop once in
+   * useState would leave it shut exactly when it should open itself. Only the
+   * transition to true acts: nothing here ever closes a panel somebody has
+   * opened, including the one that closes itself by marking the thread read.
+   */
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
 
   return (
     <section

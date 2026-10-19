@@ -12,6 +12,7 @@ import {
   Hourglass,
   LayoutDashboard,
   ListChecks,
+  MessageSquare,
   MessageSquareWarning,
   SlidersHorizontal,
   UserRound,
@@ -31,6 +32,9 @@ import { KIND_LABEL } from "@/lib/invoices";
 import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
 import type { Decision, Milestone, Payment } from "@/lib/diaspora/portal";
 import { EvidencePanel } from "@/components/dashboard/evidence-panel";
+import { MessagesPanel } from "@/components/dashboard/messages-panel";
+import { listMyMessages } from "@/lib/messages-server";
+import { unreadFor } from "@/lib/messages";
 import type {
   ActivityItem,
   PortalPayload,
@@ -84,6 +88,7 @@ type Section =
   | "money"
   | "documents"
   | "decisions"
+  | "messages"
   | "profile";
 
 export function ClientDashboard({
@@ -120,6 +125,12 @@ export function ClientDashboard({
     queryFn: () => listMySelections({ data: { projectId: p.id } }),
   });
   const openSelections = (selections ?? []).filter((s) => s.status === "open").length;
+
+  const { data: messages } = useQuery({
+    queryKey: ["my-messages", p.id],
+    queryFn: () => listMyMessages({ data: { projectId: p.id } }),
+  });
+  const unreadMessages = unreadFor(messages ?? [], "client");
 
   const { data: approvals } = useQuery({
     queryKey: ["my-approvals", p.id],
@@ -198,6 +209,12 @@ export function ClientDashboard({
               badge: openDecisions.length || undefined,
             },
             { id: "documents", label: "Documents", icon: FolderOpen },
+            {
+              id: "messages",
+              label: "Messages",
+              icon: MessageSquare,
+              badge: unreadMessages || undefined,
+            },
           ],
         },
         {
@@ -560,6 +577,14 @@ export function ClientDashboard({
 
       {section === "documents" ? (
         <VaultPanel documents={documents} projects={data.projects} />
+      ) : null}
+
+      {section === "messages" ? (
+        <MessagesPanel
+          projectId={p.id}
+          clientName={p.clientLabel}
+          onChanged={() => void onReloaded?.()}
+        />
       ) : null}
 
       {section === "profile" ? <ProfilePanel /> : null}

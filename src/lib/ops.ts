@@ -7,6 +7,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getSql } from "@/lib/db";
 import { TRACKS, trackById, type TrackId } from "@/lib/diaspora/tracks";
 import { ZONES } from "@/lib/site";
+import { unreadClientMessages } from "@/lib/messages-server";
 
 async function staff() {
   const { requireStaff } = await import("@/lib/staff-session.server");
@@ -53,7 +54,7 @@ export type MonthRow = {
 };
 
 export type AttentionItem = {
-  kind: "blocked" | "decision" | "stalled" | "unviewed";
+  kind: "blocked" | "decision" | "stalled" | "unviewed" | "message";
   projectId: string;
   reference: string;
   title: string;
@@ -199,6 +200,11 @@ export const getOpsOverview = createServerFn({ method: "GET" }).handler(
       order by age desc
     `;
 
+    // A client who has written in and been left waiting is the failure this
+    // whole feature exists to prevent, so it sits with the other attention
+    // items rather than hiding in an inbox nobody opens.
+    const waitingOnUs = await unreadClientMessages(sql);
+
     const trackLabel = (id: string) => trackById(id).label;
     const zoneLabel = (slug: string) =>
       ZONES.find((z) => z.slug === slug)?.name ?? (slug ? slug : "Unassigned");
@@ -234,6 +240,14 @@ export const getOpsOverview = createServerFn({ method: "GET" }).handler(
         reference: r.reference,
         title: r.title,
         detail: "You have posted updates the client has not looked at",
+        ageDays: Number(r.age ?? 0),
+      })),
+      ...waitingOnUs.map((r) => ({
+        kind: "message" as const,
+        projectId: r.projectId,
+        reference: r.reference,
+        title: r.title,
+        detail: `${r.body.slice(0, 90)}${r.body.length > 90 ? "…" : ""}`,
         ageDays: Number(r.age ?? 0),
       })),
     ].sort((a, b) => b.ageDays - a.ageDays);

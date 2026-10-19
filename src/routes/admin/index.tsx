@@ -31,6 +31,8 @@ import { EnquiriesInbox } from "@/components/admin/enquiries-inbox";
 import { SelectionsPanel } from "@/components/admin/selections-panel";
 import { ApprovalsPanel } from "@/components/admin/approvals-panel";
 import { EvidenceUploader } from "@/components/admin/evidence-uploader";
+import { StudioMessagesPanel } from "@/components/admin/messages-panel";
+import { readMessagesForStaff } from "@/lib/messages-server";
 import { getOpsOverview, type GroupRow } from "@/lib/ops";
 import {
   getMyAccess,
@@ -293,6 +295,17 @@ function ProjectDetail({
     queryFn: () => getStaffProject({ data: { projectId } }),
   });
 
+  // Same key the thread panel uses, so the hint and the panel are one fetch.
+  // Reading this never marks anything read — that only happens when the panel
+  // opens — so a closed accordion can still say "2 waiting".
+  const { data: thread } = useQuery({
+    queryKey: ["staff-messages", projectId],
+    queryFn: () => readMessagesForStaff({ data: { projectId } }),
+  });
+  const waitingToReply = (thread ?? []).filter(
+    (m) => m.authorRole === "client" && !m.readAt,
+  ).length;
+
   // Form state
   const [milestoneId, setMilestoneId] = useState("");
   const [status, setStatus] = useState<string>("active");
@@ -381,6 +394,13 @@ function ProjectDetail({
               <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
             </div>
           </div>
+        </AccordionItem>
+        <AccordionItem
+          title="Message thread"
+          hint={waitingToReply ? `${waitingToReply} waiting` : undefined}
+          defaultOpen={waitingToReply > 0}
+        >
+          <StudioMessagesPanel projectId={projectId} />
         </AccordionItem>
         <AccordionItem title="Financial summary">
           <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-ink/8 pt-5 text-[12px] md:grid-cols-4">
