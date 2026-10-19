@@ -8,6 +8,8 @@ import { getSql } from "@/lib/db";
 import { TRACKS, trackById, type TrackId } from "@/lib/diaspora/tracks";
 import { ZONES } from "@/lib/site";
 import { unreadClientMessages } from "@/lib/messages-server";
+import { proposedVariations } from "@/lib/variations-server";
+import { signedKes } from "@/lib/variations";
 
 async function staff() {
   const { requireStaff } = await import("@/lib/staff-session.server");
@@ -54,7 +56,7 @@ export type MonthRow = {
 };
 
 export type AttentionItem = {
-  kind: "blocked" | "decision" | "stalled" | "unviewed" | "message";
+  kind: "blocked" | "decision" | "stalled" | "unviewed" | "message" | "variation";
   projectId: string;
   reference: string;
   title: string;
@@ -205,6 +207,11 @@ export const getOpsOverview = createServerFn({ method: "GET" }).handler(
     // items rather than hiding in an inbox nobody opens.
     const waitingOnUs = await unreadClientMessages(sql);
 
+    // A priced change with nobody chasing it is money the studio has already
+    // committed time to thinking about; it belongs next to the messages, not
+    // in a spreadsheet somebody checks on Fridays.
+    const waitingOnClient = await proposedVariations(sql);
+
     const trackLabel = (id: string) => trackById(id).label;
     const zoneLabel = (slug: string) =>
       ZONES.find((z) => z.slug === slug)?.name ?? (slug ? slug : "Unassigned");
@@ -248,6 +255,14 @@ export const getOpsOverview = createServerFn({ method: "GET" }).handler(
         reference: r.reference,
         title: r.title,
         detail: `${r.body.slice(0, 90)}${r.body.length > 90 ? "…" : ""}`,
+        ageDays: Number(r.age ?? 0),
+      })),
+      ...waitingOnClient.map((r) => ({
+        kind: "variation" as const,
+        projectId: r.projectId,
+        reference: r.reference,
+        title: r.title,
+        detail: `${signedKes(r.amount)} waiting for the client: ${r.variationTitle.slice(0, 60)}`,
         ageDays: Number(r.age ?? 0),
       })),
     ].sort((a, b) => b.ageDays - a.ageDays);

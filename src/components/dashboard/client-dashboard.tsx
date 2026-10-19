@@ -8,6 +8,7 @@ import {
   CreditCard,
   FileText,
   FileCheck2,
+  FileDiff,
   FolderOpen,
   Hourglass,
   LayoutDashboard,
@@ -39,6 +40,9 @@ import { unreadFor } from "@/lib/messages";
 import { AfterHandoverPanel } from "@/components/dashboard/after-handover-panel";
 import { listMyAfterHandover } from "@/lib/defects-server";
 import { awaitingClient, daysLeft } from "@/lib/defects";
+import { VariationsPanel } from "@/components/dashboard/variations-panel";
+import { listMyVariations } from "@/lib/variations-server";
+import { countAwaiting } from "@/lib/variations";
 import type {
   ActivityItem,
   PortalPayload,
@@ -90,6 +94,7 @@ type Section =
   | "selections"
   | "milestones"
   | "money"
+  | "changes"
   | "documents"
   | "decisions"
   | "messages"
@@ -141,6 +146,12 @@ export function ClientDashboard({
     queryKey: ["my-approvals", p.id],
     queryFn: () => listMyApprovals({ data: { projectId: p.id } }),
   });
+  const { data: variations } = useQuery({
+    queryKey: ["my-variations", p.id],
+    queryFn: () => listMyVariations({ data: { projectId: p.id } }),
+  });
+  const changesWaiting = countAwaiting(variations ?? []);
+
   const { data: afterHandover } = useQuery({
     queryKey: ["my-after-handover", p.id],
     queryFn: () => listMyAfterHandover({ data: { projectId: p.id } }),
@@ -215,6 +226,12 @@ export function ClientDashboard({
               label: "Money",
               icon: CreditCard,
               badge: releasable.length || undefined,
+            },
+            {
+              id: "changes",
+              label: "Changes",
+              icon: FileDiff,
+              badge: changesWaiting || undefined,
             },
             {
               id: "decisions",
@@ -609,6 +626,10 @@ export function ClientDashboard({
 
       {section === "documents" ? (
         <VaultPanel documents={documents} projects={data.projects} />
+      ) : null}
+
+      {section === "changes" ? (
+        <VariationsPanel project={p} onChanged={onReloaded} />
       ) : null}
 
       {section === "after-handover" ? (

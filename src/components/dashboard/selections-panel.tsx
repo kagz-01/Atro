@@ -27,6 +27,8 @@ import {
   verdictLine,
   type Selection,
 } from "@/lib/selections";
+import { listMyVariations } from "@/lib/variations-server";
+import { signedKes, type Variation } from "@/lib/variations";
 import { cn } from "@/lib/utils";
 
 /**
@@ -52,6 +54,12 @@ export function SelectionsPanel({
   const { data, isLoading, error } = useQuery({
     queryKey: ["my-selections", projectId],
     queryFn: () => listMySelections({ data: { projectId } }),
+  });
+  // Shared with the Changes panel: a variation sent from here shows in both
+  // places without either side needing a second round trip.
+  const { data: variations } = useQuery({
+    queryKey: ["my-variations", projectId],
+    queryFn: () => listMyVariations({ data: { projectId } }),
   });
 
   const choose = useMutation({
@@ -147,6 +155,11 @@ export function SelectionsPanel({
         <SelectionCard
           key={s.id}
           selection={s}
+          variation={
+            (variations ?? []).find(
+              (v) => v.sourceKind === "selection" && v.sourceId === s.id,
+            ) ?? null
+          }
           busy={choose.isPending}
           error={
             choose.error instanceof Error ? choose.error.message : null
@@ -160,11 +173,14 @@ export function SelectionsPanel({
 
 function SelectionCard({
   selection,
+  variation,
   busy,
   error,
   onChoose,
 }: {
   selection: Selection;
+  /** The variation raised from this choice, once the studio has priced it. */
+  variation: Variation | null;
   busy: boolean;
   error: string | null;
   onChoose: (optionId: string) => void;
@@ -353,10 +369,26 @@ function SelectionCard({
               <p
                 className={cn(
                   "mt-3 text-[12px] leading-relaxed",
-                  verdict.needsVariation ? "text-amber-900" : "text-emerald-900",
+                  variation
+                    ? variation.status === "proposed"
+                      ? "text-amber-900"
+                      : variation.status === "approved"
+                        ? "text-emerald-900"
+                        : "text-ink/60"
+                    : verdict.needsVariation
+                      ? "text-amber-900"
+                      : "text-emerald-900",
                 )}
               >
-                {verdictLine(verdict)}
+                {variation
+                  ? variation.status === "proposed"
+                    ? `Priced as a variation of ${signedKes(variation.amount)} — waiting for your approval in Changes.`
+                    : variation.status === "approved"
+                      ? `Approved: ${signedKes(variation.amount)} is part of your contract now.`
+                      : variation.status === "declined"
+                        ? "You declined this variation — the contract is unchanged."
+                        : `The studio withdrew the ${signedKes(variation.amount)} variation. They will send a new price if it is still needed.`
+                  : verdictLine(verdict)}
               </p>
             </>
           ) : null}

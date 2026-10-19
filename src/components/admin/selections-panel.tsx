@@ -12,6 +12,8 @@ import {
   setSelectionAllowance,
 } from "@/lib/selections-server";
 import { allowanceVerdict, kes, summariseAllowances } from "@/lib/selections";
+import { raiseVariation, readVariationsForStaff } from "@/lib/variations-server";
+import { signedKes } from "@/lib/variations";
 import { cn } from "@/lib/utils";
 
 /**
@@ -31,14 +33,22 @@ export function SelectionsPanel({
 }) {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
+  const [pricingFor, setPricingFor] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["staff-selections", projectId],
     queryFn: () => readSelectionsForStaff({ data: { projectId } }),
   });
+  // The same key the Variations accordion queries, so pricing a choice here
+  // updates both views at once.
+  const { data: variations } = useQuery({
+    queryKey: ["variations-staff", projectId],
+    queryFn: () => readVariationsForStaff({ data: { projectId } }),
+  });
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["staff-selections", projectId] });
+    void queryClient.invalidateQueries({ queryKey: ["variations-staff", projectId] });
     onChanged?.();
   };
 
@@ -134,12 +144,19 @@ export function SelectionsPanel({
       <ul className="mt-4 space-y-3">
         {selections.map((s) => {
           const verdict = allowanceVerdict(s);
+          const linked = (variations ?? []).find(
+            (v) => v.sourceKind === "selection" && v.sourceId === s.id,
+          );
+          // Over the allowance with nothing live against it is the moment to
+          // price. Withdrawn counts as nothing live — that is the re-price.
+          const needsPricing =
+            verdict.needsVariation && (!linked || linked.status === "withdrawn");
           return (
             <li
               key={s.id}
               className={cn(
                 "rounded-xl border bg-white p-4",
-                verdict.needsVariation ? "border-amber-300" : "border-ink/10",
+                needsPricing ? "border-amber-300" : "border-ink/10",
               )}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -153,9 +170,26 @@ export function SelectionsPanel({
                     ) : (
                       <Badge tone="gold" className="h-5 text-[9px]">Closed</Badge>
                     )}
-                    {verdict.needsVariation ? (
+                    {verdict.needsVariation && linked && linked.status !== "withdrawn" ? (
+                      <span
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+                          linked.status === "proposed"
+                            ? "border-amber-300 bg-amber-50 text-amber-900"
+                            : linked.status === "approved"
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                              : "border-ink/15 bg-stone/100 text-ink/60",
+                        )}
+                      >
+                        {linked.status === "proposed"
+                          ? `Variation sent — ${signedKes(linked.amount)} with the client`
+                          : linked.status === "approved"
+                            ? "Approved — added to the contract"
+                            : "Declined by the client"}
+                      </span>
+                    ) : needsPricing ? (
                       <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-amber-900">
-                        {kes(verdict.delta)} over — price a variation
+                        {kes(verdict.delta)} over
                       </span>
                     ) : null}
                   </p>
@@ -168,6 +202,15 @@ export function SelectionsPanel({
                 </div>
 
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {needsPricing ? (
+                    <Button
+                      size="sm"
+                      variant={pricingFor === s.id ? "ghost" : "primary"}
+                      onClick={() => setPricingFor(pricingFor === s.id ? null : s.id)}
+                    >
+                      {pricingFor === s.id ? "Cancel" : "Price a variation"}
+                    </Button>
+                  ) : null}
                   {s.status === "open" ? (
                     <>
                       <label className="sr-only" htmlFor={`al-${s.id}`}>
@@ -220,11 +263,136 @@ export function SelectionsPanel({
                   ))}
                 </ul>
               ) : null}
+
+              {pricingFor === s.id && verdict.chosen ? (
+                <PriceVariationForm
+                  projectId={projectId}
+                  selection={s}
+                  delta={verdict.delta}
+                  onDone={() => {
+                    setPricingFor(null);
+                    invalidate();
+                  }}
+                />
+              ) : null}
             </li>
           );
         })}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Put the overage to the client.
+ *
+ * The price defaults to the overage itself — the number that was already on
+ * screen — so the common case is one glance and a send, and anything else is
+ * a deliberate edit rather than a figure somebody typed from memory.
+ */
+function PriceVariationForm({
+  projectId,
+  selection,
+  delta,
+  onDone,
+}: {
+  projectId: string;
+  selection: { id: string; title: string; chosenOptionId: string | null };
+  delta: number;
+  onDone: () => void;
+}) {
+  const [title, setTitle] = useState(selection.title);
+  const [reason, setReason] = useState("");
+  const [amount, setAmount] = useState(String(delta));
+  const [days, setDays] = useState("");
+
+  const raise = useMutation({
+    mutationFn: () =>
+      raiseVariation({
+        data: {
+          projectId,
+          title,
+          detail: `Chosen over the allowance by ${kes(delta)}.`,
+          reason,
+          amount: Number(amount) || 0,
+          days: Number(days) || 0,
+          sourceKind: "selection",
+          sourceId: selection.id,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Variation sent to the client for approval.");
+      onDone();
+    },
+  });
+
+  return (
+    <div className="mt-3 space-y-3 rounded-xl border border-gold/40 bg-gold/5 p-4">
+      <p className="text-[12px] leading-relaxed text-ink/65">
+        {kes(delta)} over the allowance. The price goes to the client, and the contract does not
+        move until they approve it.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <Label htmlFor={`pv-title-${selection.id}`}>What is changing</Label>
+          <Input
+            id={`pv-title-${selection.id}`}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`pv-amount-${selection.id}`}>Price (KES)</Label>
+          <Input
+            id={`pv-amount-${selection.id}`}
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`pv-days-${selection.id}`}>Time impact (days)</Label>
+          <Input
+            id={`pv-days-${selection.id}`}
+            type="number"
+            value={days}
+            onChange={(e) => setDays(e.target.value)}
+            placeholder="0"
+            className="mt-1"
+          />
+        </div>
+      </div>
+      <div>
+        <Label htmlFor={`pv-reason-${selection.id}`}>Why it is needed (the client reads this)</Label>
+        <Textarea
+          id={`pv-reason-${selection.id}`}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="mt-1 min-h-16"
+          placeholder="Quartz carries a thicker slab and a longer lead time than the allowance covered."
+        />
+      </div>
+      {raise.error instanceof Error ? (
+        <p role="alert" className="text-[12px] text-red-700">
+          {raise.error.message}
+        </p>
+      ) : null}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          disabled={title.trim().length < 5 || raise.isPending}
+          onClick={() => raise.mutate()}
+        >
+          {raise.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+          Send to the client
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+    </div>
   );
 }
 

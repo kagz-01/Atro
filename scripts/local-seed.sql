@@ -533,3 +533,53 @@ select p.id,
   (current_date - 305)::text
 from portal_projects p
 where p.reference = 'ATRO-2401';
+
+-- ── variations: priced changes, and the one that moved the contract ──
+--
+-- The project was seeded at its signed figure — 42,000,000 — and approval is
+-- what amends a contract, so the seed amends it here in the same order the
+-- product does. That leaves the BoQ and every other row untouched, and the
+-- client's "signed at" figure derives straight back out of the amended sum.
+update portal_projects
+set contract_value = 42150000,
+    updated_at = now()
+where reference = 'ATRO-2401';
+
+insert into portal_variation (
+  project_id, ord, title, detail, reason, source_kind, source_id,
+  amount, days, status, proposed_on, decided_on, decision_note, decided_by,
+  created_at, updated_at
+)
+select
+  p.id, v.ord, v.title, v.detail, v.reason, 'studio', null,
+  v.amount::bigint, v.days, v.status,
+  (current_date - v.rep)::text,
+  case when v.dec is null then '' else (current_date - v.dec)::text end,
+  v.note, v.by,
+  now() - make_interval(days => v.rep),
+  now() - make_interval(days => coalesce(v.dec, v.rep))
+from portal_projects p
+cross join lateral (values
+  -- Settled states first so the ord order reads oldest → newest like the rest
+  -- of the seed: withdrawn, approved, declined, and one still with the client.
+  (1, 'Gypsum ceiling upgrade, first floor',
+   'Set ceiling with cove lighting to the lounge and first-floor landing.',
+   'The client asked for it after seeing the sample board.',
+   320000, 5, 'withdrawn', 20, 9,
+   'The ceiling decision is still open — I will re-price it once you have chosen.', 'studio'),
+  (2, 'Underfloor heating, ground floor wet areas',
+   'Electric mat to the ensuite and guest WC, thermostat to the wall.',
+   'Added before the screed went down, while it was still cheap to fit.',
+   150000, 4, 'approved', 42, 38, '', 'client'),
+  (3, 'Roof covering to natural slate',
+   'Natural slate instead of the stone-coated tile in the roof selection.',
+   'The slate quotation came in from the client’s own surveyor after tender.',
+   430000, 10, 'declined', 25, 18,
+   'We will stay with the stone-coated tile — put the saving into the kitchen instead.',
+   'client'),
+  (4, 'Bigger roof overhang to the east terrace',
+   'Extend the eave from 600 to 900 mm across the east face, fascia and gutter to suit.',
+   'The terrace bakes in the afternoon sun and the slider gets no shade after 2 pm.',
+   275000, 7, 'proposed', 2, null, '', '')
+) as v(ord, title, detail, reason, amount, days, status, rep, dec, note, by)
+where p.reference = 'ATRO-2401';
