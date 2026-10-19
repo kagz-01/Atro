@@ -18,14 +18,20 @@
 //
 // For a client, consent is the ceiling: the profile's channel switches are
 // permission, not preferences, so a channel switched off is never contacted
-// (channelsFor in src/lib/abroad.ts). The studio's own contact has no such
-// switches — staff messages use whatever transport the credentials allow.
+// (partitionChannels in src/lib/delivery.ts) — and the outbox records it as
+// `suppressed`, so the log shows the switch was honoured instead of hiding the
+// channel as if nobody had ever meant to use it. The studio's own contact has
+// no such switches — staff messages use whatever transport the credentials
+// allow.
 
+import { createServerFn } from "@tanstack/react-start";
+import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { toAfricaTalking, toE164 } from "@/lib/phone";
-import { channelsFor, type Consent } from "@/lib/abroad";
+import { type Consent } from "@/lib/abroad";
+import { ALL_CHANNELS, partitionChannels, type Channel } from "@/lib/delivery";
 
-export type Channel = "inapp" | "email" | "whatsapp" | "sms";
+export type { Channel };
 
 export type NotificationInput = {
   projectId: string;
@@ -111,28 +117,38 @@ async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | n
     email: string | null;
     name: string | null;
     client_phone: string;
+    phone: string | null;
     notify_email: boolean;
     notify_whatsapp: boolean;
     notify_sms: boolean;
   }>`
-    select u.email, u.name, p.client_phone,
+    select coalesce(nullif(c.email, ''), u.email) as email,
+           coalesce(nullif(c.display_name, ''), u.name) as name,
+           p.client_phone,
+           nullif(c.phone, '') as phone,
            coalesce(c.notify_email, true) as notify_email,
            coalesce(c.notify_whatsapp, true) as notify_whatsapp,
            coalesce(c.notify_sms, false) as notify_sms
     from portal_projects p
-    join "user" u on u.id = p.user_id
+    left join "user" u on u.id = p.user_id
     left join client_profile c on c.user_id = p.user_id
     where p.id = ${projectId} limit 1
   `;
   const row = rows[0];
   if (!row) return null;
   return {
+    // The profile is the record the client maintains — the address they typed
+    // and the name they want to be called by — with the account's own details
+    // as the fallback. Both joins are LEFT: nothing in this deployment ever
+    // writes to `user`, so an inner join there made this function return null
+    // on every call and the whole client branch quietly ran on the all-false
+    // consent fallback instead.
     email: row.email ?? null,
     // Normalise rather than pattern-match: the strict E.164 test used to throw
     // away every number stored the way a client actually types it
     // ("0799 034 712"), so SMS and WhatsApp silently never reached them.
     // A diaspora client may have left this blank entirely.
-    phone: toE164(row.client_phone),
+    phone: toE164(row.phone ?? row.client_phone),
     name: row.name ?? "there",
     consent: {
       email: row.notify_email,
@@ -304,19 +320,26 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
   // and for the studio whichever transports have credentials. A channel with
   // no credentials is not silently omitted — it is recorded as skipped, so the
   // delivery log shows the studio is not reaching that person yet.
-  const allowed: Channel[] =
+  //
+  // The client's split is consent alone: `partitionChannels` aims the message
+  // at everything the caller chose (or all four channels when it chose
+  // nothing) and divides it into what we may try and what we may not. The
+  // studio's ceiling is configuration instead, and its explicit choice stands
+  // even for an unconfigured transport — recorded as skipped, which is how the
+  // log shows a provider missing. A client's explicit choice can still never
+  // exceed what they consented to.
+  const { wanted, suppressed } =
     audience === "studio"
-      ? (Object.keys(CONFIG) as Channel[]).filter((c) => CONFIG[c]().configured)
-      : channelsFor(
+      ? {
+          wanted:
+            input.channels ??
+            (Object.keys(CONFIG) as Channel[]).filter((c) => CONFIG[c]().configured),
+          suppressed: [] as Channel[],
+        }
+      : partitionChannels(
+          input.channels ?? ALL_CHANNELS,
           recipient?.consent ?? { email: false, whatsapp: false, sms: false },
         );
-  // The studio's explicit choice stands even for an unconfigured transport —
-  // it is recorded as skipped, which is how the log shows a provider missing.
-  // A client's explicit choice can still never exceed what they consented to.
-  const wanted =
-    audience === "studio"
-      ? (input.channels ?? allowed)
-      : (input.channels ?? allowed).filter((c) => allowed.includes(c));
 
   const projectRow = await sql<{ reference: string }>`
     select reference from portal_projects where id = ${input.projectId} limit 1
@@ -365,8 +388,16 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
     if (!id) continue;
     if (!config.configured) continue;
 
-    // inapp needs no transport — the portal feed is the delivery.
-    if (channel === "inapp") continue;
+    // inapp needs no transport — the row in this table IS the portal's feed,
+    // so the insert was the delivery. Settle it: a log that says "queued"
+    // forever for a message the portal already shows is just noise.
+    if (channel === "inapp") {
+      await sql`
+        update portal_notification set status = 'sent', sent_at = now()
+        where id = ${id}
+      `;
+      continue;
+    }
 
     const target = channel === "email" ? recipient?.email : recipient?.phone;
     if (!target) {
@@ -394,6 +425,32 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
       set status = ${result.ok ? "sent" : "failed"}, attempts = attempts + 1,
           detail = ${result.detail}, sent_at = case when ${result.ok} then now() else sent_at end
       where id = ${id}
+    `;
+  }
+
+  // Consent deserves a row of its own. A forbidden channel is the one fact
+  // this log used to omit entirely: now it is recorded as suppressed with the
+  // client's own switch as the reason, so "we did not send it" and "we were
+  // not allowed to" are different sentences on the page — which is the entire
+  // point of having asked for consent. When a dedupe key already claimed the
+  // event above the loop returned before reaching here; the explicit check
+  // covers the callers that aim at nothing the client allows.
+  for (const channel of suppressed) {
+    if (input.dedupeKey) {
+      const previous = await sql<{ id: string }>`
+        select id from portal_notification
+        where dedupe_key = ${input.dedupeKey} and channel = ${channel}
+          and status = 'suppressed'
+        limit 1
+      `;
+      if (previous[0]) continue;
+    }
+    await sql`
+      insert into portal_notification
+        (project_id, channel, audience, kind, title, body, status, detail, dedupe_key)
+      values (${input.projectId}, ${channel}, ${audience}, ${input.kind},
+              ${input.title}, ${body}, 'suppressed',
+              'switched off in your profile', ${input.dedupeKey ?? null})
     `;
   }
 
@@ -447,6 +504,53 @@ function iso(value: unknown): string {
   const d = value instanceof Date ? value : new Date(String(value));
   return Number.isNaN(d.getTime()) ? "" : d.toISOString();
 }
+
+export type ClientDelivery = {
+  id: string;
+  channel: Channel;
+  kind: string;
+  title: string;
+  status: string;
+  detail: string;
+  createdAt: string;
+};
+
+async function myDeliveries(sql: Sql, userId: string, limit: number): Promise<ClientDelivery[]> {
+  const rows = await sql<{
+    id: string;
+    channel: string;
+    kind: string;
+    title: string;
+    status: string;
+    detail: string;
+    created_at: unknown;
+  }>`
+    select n.id, n.channel, n.kind, n.title, n.status, n.detail, n.created_at
+    from portal_notification n
+    join portal_projects p on p.id = n.project_id
+    where p.user_id = ${userId} and n.audience = 'client'
+    order by n.created_at desc
+    limit ${limit}
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    channel: r.channel as Channel,
+    kind: r.kind,
+    title: r.title,
+    status: r.status,
+    detail: r.detail,
+    createdAt: iso(r.created_at),
+  }));
+}
+
+/**
+ * The client's own log: every message aimed at them, including the ones
+ * consent forbade. This is the profile's promise made checkable — the switches
+ * say what may happen, and this says what did.
+ */
+export const listMyDeliveries = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => myDeliveries(await getSql(), context.userId, 12));
 
 /** Retry anything left pending or failed — used by a staff action. */
 export async function retryPending(sql: Sql, projectId: string): Promise<number> {

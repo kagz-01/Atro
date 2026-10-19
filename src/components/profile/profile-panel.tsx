@@ -13,6 +13,8 @@ import {
 } from "@/lib/profile-server";
 import { CLIENT_TYPES } from "@/lib/profile";
 import { formatPhone } from "@/lib/phone";
+import { listMyDeliveries } from "@/lib/notify";
+import { CHANNEL_NAMES, clientStatusLine, type Channel } from "@/lib/delivery";
 
 /**
  * The client's own record, in their own words.
@@ -213,6 +215,8 @@ function ProfileForm({
             </span>
           </p>
         </Panel>
+
+        <DeliveryLog />
       </div>
     );
   }
@@ -441,6 +445,73 @@ function ProfileForm({
         ) : null}
       </div>
     </div>
+  );
+}
+
+const DELIVERY_TONE: Record<string, "stone" | "gold" | "maroon" | "live" | "paper"> = {
+  sent: "live",
+  pending: "gold",
+  skipped: "gold",
+  suppressed: "stone",
+  failed: "maroon",
+};
+
+/**
+ * The switches above are a promise; this is the receipt.
+ *
+ * Every message aimed at the client lands here after the fact, including the
+ * ones consent forbade — "switched off in your profile" is a sentence about
+ * their own decision, which is exactly what makes the promise checkable. Raw
+ * outbox detail (provider names, missing keys) is translated by
+ * clientStatusLine before it reaches this page.
+ */
+function DeliveryLog() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["my-deliveries"],
+    queryFn: () => listMyDeliveries({ data: undefined }),
+  });
+
+  if (isLoading || !data) {
+    return (
+      <Panel title="What we have sent you" subtitle="And what we were not allowed to">
+        <div className="h-24 animate-pulse rounded-xl bg-ink/6" />
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel title="What we have sent you" subtitle="And what we were not allowed to">
+      {data.length === 0 ? (
+        <p className="text-[13px] text-ink/55">Nothing has been sent yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {data.map((n) => (
+            <li key={n.id} className="rounded-xl border border-ink/10 bg-cream p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex min-w-0 flex-wrap items-center gap-2">
+                  <Badge tone={DELIVERY_TONE[n.status] ?? "stone"}>
+                    {CHANNEL_NAMES[n.channel as Channel]}
+                  </Badge>
+                  <span className="text-[13px] text-maroon">{n.title}</span>
+                </span>
+                <span className="shrink-0 text-[11px] text-muted">
+                  {n.createdAt
+                    ? new Date(n.createdAt).toLocaleDateString("en-KE", {
+                        day: "numeric",
+                        month: "short",
+                        year: "2-digit",
+                      })
+                    : ""}
+                </span>
+              </div>
+              <p className="mt-1.5 text-[12px] text-ink/55">
+                {clientStatusLine(n.status, n.detail, n.channel)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
   );
 }
 

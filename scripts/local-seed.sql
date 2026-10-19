@@ -583,3 +583,29 @@ cross join lateral (values
    275000, 7, 'proposed', 2, null, '', '')
 ) as v(ord, title, detail, reason, amount, days, status, rep, dec, note, by)
 where p.reference = 'ATRO-2401';
+
+-- ── delivery history: the log the client reads ──
+--
+-- What this deployment would actually have: the portal feed needs no
+-- provider; email and WhatsApp have no credentials in this environment, so
+-- they are recorded as skipped rather than lost; SMS is switched off in the
+-- profile — the row that consent used to filter out before the insert, now
+-- kept as `suppressed` with the client's own switch as the reason.
+insert into portal_notification
+  (project_id, channel, audience, kind, title, body, status, detail,
+   created_at, sent_at)
+select p.id, v.channel, 'client', v.kind, v.title, '', v.status, v.detail,
+       now() - make_interval(days => v.age),
+       case when v.status = 'sent'
+            then now() - make_interval(days => v.age) end
+from portal_projects p
+cross join lateral (values
+  ('inapp', 'decision', 'Still waiting on you: Roof covering', 'sent', '', 5),
+  ('email', 'update', 'Weekly report — Week 07', 'skipped',
+   'RESEND_API_KEY not set', 8),
+  ('whatsapp', 'update', 'Weekly report — Week 07', 'skipped',
+   'WhatsApp credentials not set', 8),
+  ('sms', 'update', 'Weekly report — Week 07', 'suppressed',
+   'switched off in your profile', 8)
+) as v(channel, kind, title, status, detail, age)
+where p.reference = 'ATRO-2401';

@@ -124,6 +124,7 @@ const DELIVERY_STATUS: Record<string, string> = {
   pending: "bg-amber-50 text-amber-900 border-amber-300",
   skipped: "bg-stone-100 text-stone-600 border-stone-300",
   failed: "bg-red-50 text-red-800 border-red-200",
+  suppressed: "bg-burgundy/5 text-burgundy border-burgundy/25",
 };
 
 function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: () => void }) {
