@@ -463,3 +463,73 @@ cross join lateral (values
   ('Brian Otieno', 'Any movement on the change of use permit? It has been two months and I am paying rent on a site that cannot start.', 21)
 ) as s(author_label, body, age_days)
 where p.reference = 'ATRO-2402';
+
+-- ── after handover: a live defect window, four reports, the care fee ──
+--
+-- Like every other date here the deadline runs from the seed date, so a fresh
+-- database always shows a countdown rather than a date that quietly went stale.
+-- The state is the one a client meets in the months after the keys: a fix
+-- waiting for them to confirm, a fresh report on the studio's desk, a closed one
+-- with its full history, and a decline with a reason attached — because a
+-- defect window is judged on how the last of those is handled.
+update portal_projects
+set defect_period_ends = (current_date + 45)::text,
+    updated_at = now()
+where reference = 'ATRO-2401';
+
+insert into portal_defect (
+  project_id, ord, title, detail, area, severity, status,
+  reported_on, accepted_on, fixed_on, verified_on, reject_reason, note,
+  reported_by, created_at, updated_at
+)
+select
+  p.id, d.ord, d.title, d.detail, d.area, d.severity, d.status,
+  (current_date - d.rep)::text,
+  case when d.acc is null then '' else (current_date - d.acc)::text end,
+  case when d.fix is null then '' else (current_date - d.fix)::text end,
+  case when d.ver is null then '' else (current_date - d.ver)::text end,
+  d.reject_reason, d.note, d.reported_by,
+  now() - make_interval(days => d.rep),
+  now() - make_interval(days => d.upd)
+from portal_projects p
+cross join lateral (values
+  (1, 'Paint touch-up on the north elevation',
+   'Weather staining above the window head, three patches.',
+   'North elevation', 'minor', 'verified',
+   40, 38, 30, 25, 0, '',
+   'Repaired and confirmed by the client on inspection.', 'client'),
+  (2, 'Crack above the ensuite door',
+   'Hairline crack on the reveal, about 30 cm, appeared after the plaster dried out.',
+   'Ensuite, first floor', 'major', 'fixed',
+   25, 20, 6, null, 6, '',
+   'Reopened the reveal, filled and repainted. Please check it in daylight — it is most visible late afternoon.', 'client'),
+  (3, 'Kitchen cabinetry finish',
+   'Two door fronts chipped along the lower edge.',
+   'Kitchen', 'minor', 'rejected',
+   18, null, null, null, 16,
+   'The bought-in cabinetry carries the supplier''s two-year warranty. Report it to them and we will attend with them — this contract covers the fit, not the finish.',
+   '', 'studio'),
+  (4, 'Garden tap drips when closed',
+   'Drips from the spout when fully shut; started after the washer was replaced.',
+   'Ground floor, garden', 'minor', 'reported',
+   3, null, null, null, 3, '',
+   '', 'client')
+) as d(ord, title, detail, area, severity, status, rep, acc, fix, ver, upd, reject_reason, note, reported_by)
+where p.reference = 'ATRO-2401'
+order by d.ord;
+
+-- One care plan, renewing far enough out to read as active but close enough to
+-- count down. The fee is 0.35% of contract — the sort of annual figure a client
+-- can check against the build without a spreadsheet.
+insert into portal_retainer (
+  project_id, name, covers, annual_amount, renews_on, status, last_paid_on
+)
+select p.id,
+  'Annual care',
+  'Roof and rainwater goods, gutters cleared twice a year, two planned visits a year, and first response to any leak within 24 hours.',
+  150000,
+  (current_date + 60)::text,
+  'active',
+  (current_date - 305)::text
+from portal_projects p
+where p.reference = 'ATRO-2401';

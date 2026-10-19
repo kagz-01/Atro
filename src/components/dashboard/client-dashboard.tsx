@@ -16,6 +16,7 @@ import {
   MessageSquareWarning,
   SlidersHorizontal,
   UserRound,
+  Wrench,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,9 @@ import { EvidencePanel } from "@/components/dashboard/evidence-panel";
 import { MessagesPanel } from "@/components/dashboard/messages-panel";
 import { listMyMessages } from "@/lib/messages-server";
 import { unreadFor } from "@/lib/messages";
+import { AfterHandoverPanel } from "@/components/dashboard/after-handover-panel";
+import { listMyAfterHandover } from "@/lib/defects-server";
+import { awaitingClient, daysLeft } from "@/lib/defects";
 import type {
   ActivityItem,
   PortalPayload,
@@ -89,6 +93,7 @@ type Section =
   | "documents"
   | "decisions"
   | "messages"
+  | "after-handover"
   | "profile";
 
 export function ClientDashboard({
@@ -136,6 +141,15 @@ export function ClientDashboard({
     queryKey: ["my-approvals", p.id],
     queryFn: () => listMyApprovals({ data: { projectId: p.id } }),
   });
+  const { data: afterHandover } = useQuery({
+    queryKey: ["my-after-handover", p.id],
+    queryFn: () => listMyAfterHandover({ data: { projectId: p.id } }),
+  });
+  const awaitingFixCheck = (afterHandover?.defects ?? []).filter((d) =>
+    awaitingClient(d.status),
+  ).length;
+  const periodDaysLeft = daysLeft(afterHandover?.periodEnd ?? "", new Date());
+
   const blockingApprovals = (approvals ?? []).filter(
     (a) => a.blocking && a.status !== "approved" && a.status !== "not_required",
   ).length;
@@ -215,6 +229,12 @@ export function ClientDashboard({
               icon: MessageSquare,
               badge: unreadMessages || undefined,
             },
+            {
+              id: "after-handover",
+              label: "After handover",
+              icon: Wrench,
+              badge: awaitingFixCheck || undefined,
+            },
           ],
         },
         {
@@ -224,12 +244,24 @@ export function ClientDashboard({
       ]}
       active={section}
       onSelect={(id) => setSection(id as Section)}
-      alerts={openDecisions.map((d) => ({
-        id: d.id,
-        title: d.title,
-        detail: "Waiting on your decision",
-        onSelect: () => setSection("decisions"),
-      }))}
+      alerts={[
+        ...openDecisions.map((d) => ({
+          id: d.id,
+          title: d.title,
+          detail: "Waiting on your decision",
+          onSelect: () => setSection("decisions"),
+        })),
+        ...(periodDaysLeft !== null && periodDaysLeft > 0 && periodDaysLeft <= 14
+          ? [
+              {
+                id: "defect-period",
+                title: `Defect period ends in ${periodDaysLeft} days`,
+                detail: `Report anything before ${afterHandover?.periodEnd ?? ""}`,
+                onSelect: () => setSection("after-handover" as Section),
+              },
+            ]
+          : []),
+      ]}
       user={{ name: p.clientLabel || "Your account", email: p.clientLabel }}
       toolbar={
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -577,6 +609,10 @@ export function ClientDashboard({
 
       {section === "documents" ? (
         <VaultPanel documents={documents} projects={data.projects} />
+      ) : null}
+
+      {section === "after-handover" ? (
+        <AfterHandoverPanel projectId={p.id} onChanged={onReloaded} />
       ) : null}
 
       {section === "messages" ? (

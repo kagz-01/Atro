@@ -32,6 +32,7 @@ import { SelectionsPanel } from "@/components/admin/selections-panel";
 import { ApprovalsPanel } from "@/components/admin/approvals-panel";
 import { EvidenceUploader } from "@/components/admin/evidence-uploader";
 import { StudioMessagesPanel } from "@/components/admin/messages-panel";
+import { AfterHandoverPanel } from "@/components/admin/after-handover-panel";
 import { readMessagesForStaff } from "@/lib/messages-server";
 import { getOpsOverview, type GroupRow } from "@/lib/ops";
 import {
@@ -615,6 +616,9 @@ function ProjectDetail({
         </AccordionItem>
         <AccordionItem title="Selections">
           <SelectionsPanel projectId={projectId} onChanged={onChanged} />
+        </AccordionItem>
+        <AccordionItem title="Defects & care">
+          <AfterHandoverPanel projectId={projectId} />
         </AccordionItem>
         <AccordionItem title="Document vault">
           <WriteBlock
