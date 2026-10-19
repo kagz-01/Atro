@@ -308,7 +308,7 @@ function ProfileForm({
                 "Africa/Johannesburg",
                 "Europe/London",
                 "Europe/Stockholm",
-                "Africa/Dubai",
+                "Asia/Dubai",
                 "Asia/Qatar",
                 "America/New_York",
                 "America/Chicago",

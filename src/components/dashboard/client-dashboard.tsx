@@ -10,6 +10,7 @@ import {
   FileCheck2,
   FileDiff,
   FolderOpen,
+  Globe,
   Hourglass,
   LayoutDashboard,
   ListChecks,
@@ -43,6 +44,10 @@ import { awaitingClient, daysLeft } from "@/lib/defects";
 import { VariationsPanel } from "@/components/dashboard/variations-panel";
 import { listMyVariations } from "@/lib/variations-server";
 import { countAwaiting } from "@/lib/variations";
+import { AbroadPanel } from "@/components/dashboard/abroad-panel";
+import { isAbroad } from "@/lib/abroad";
+import { clientZone, isHomeZone, zonedClock } from "@/lib/tz";
+import { getMyProfile } from "@/lib/profile-server";
 import type {
   ActivityItem,
   PortalPayload,
@@ -99,6 +104,7 @@ type Section =
   | "decisions"
   | "messages"
   | "after-handover"
+  | "abroad"
   | "profile";
 
 export function ClientDashboard({
@@ -129,6 +135,15 @@ export function ClientDashboard({
 }) {
   const [section, setSection] = useState<Section>("overview");
   const p = data.project;
+
+  // Shared with ProfilePanel under the same key: flipping "I live abroad" or
+  // a timezone there updates this nav and the abroad section without a reload.
+  const { data: profile } = useQuery({
+    queryKey: ["my-profile"],
+    queryFn: () => getMyProfile({ data: undefined }),
+  });
+  const abroad = isAbroad(profile?.clientType ?? "");
+  const zone = clientZone(profile?.timezone ?? "", p.clientTz);
 
   const { data: selections } = useQuery({
     queryKey: ["my-selections", p.id],
@@ -252,6 +267,9 @@ export function ClientDashboard({
               icon: Wrench,
               badge: awaitingFixCheck || undefined,
             },
+            ...(abroad
+              ? [{ id: "abroad", label: "Abroad", icon: Globe }]
+              : []),
           ],
         },
         {
@@ -551,7 +569,7 @@ export function ClientDashboard({
 
       {section === "milestones" ? (
         <div className="space-y-5">
-          <ProgrammePanel project={p} />
+          <ProgrammePanel project={p} zone={zone} />
           <MilestonePanel
             milestones={data.milestones}
             onApprove={onApprove}
@@ -645,6 +663,14 @@ export function ClientDashboard({
       ) : null}
 
       {section === "profile" ? <ProfilePanel /> : null}
+
+      {section === "abroad" ? (
+        <AbroadPanel
+          project={p}
+          milestones={data.milestones}
+          onOpenProfile={() => setSection("profile")}
+        />
+      ) : null}
     </DashboardShell>
   );
 }
@@ -654,8 +680,10 @@ const oldestNudge = (nudges: { ageDays: number }[]) =>
 
 function ProgrammePanel({
   project,
+  zone,
 }: {
   project: PortalPayload["project"];
+  zone: string;
 }) {
   const items: [string, string][] = [
     ["Client", project.clientLabel],
@@ -667,6 +695,22 @@ function ProgrammePanel({
     ["Stage", project.stage],
     ["Your city", project.clientCity || "—"],
   ];
+
+  // "Your time" is a conversion, not a caption: computed from the stored
+  // instant against the client's zone, hidden when their clock is EAT (the
+  // line would only repeat the site's), and only falling back to the old
+  // hand-typed text for projects that predate the instant being stored.
+  const clock =
+    project.nextCall.at && zone && !isHomeZone(zone)
+      ? zonedClock(project.nextCall.at, zone)
+      : null;
+  const yourTime = clock
+    ? `${clock.clock} ${clock.zone}`
+    : !project.nextCall.at &&
+        project.nextCall.localTimeForYou &&
+        project.nextCall.localTimeForYou !== "To be scheduled"
+      ? project.nextCall.localTimeForYou
+      : "";
 
   return (
     <Panel title="Programme" subtitle={`Day ${project.schedule.daysElapsed} of ${project.schedule.daysTotal}`}>
@@ -709,10 +753,9 @@ function ProgrammePanel({
           Next call
         </p>
         <p className="mt-1.5 text-[15px] text-maroon">{project.nextCall.when}</p>
-        {project.nextCall.localTimeForYou &&
-        project.nextCall.localTimeForYou !== "To be scheduled" ? (
+        {yourTime ? (
           <p className="text-[12px] text-ink/50">
-            {project.nextCall.localTimeForYou} for you — scheduled, not negotiated weekly
+            {yourTime} for you — scheduled, not negotiated weekly
           </p>
         ) : null}
         {project.nextCall.agenda.length > 0 ? (

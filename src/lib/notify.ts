@@ -15,9 +15,15 @@
 //
 // Every recipient is derived from the project row or the signed-in account — a
 // client-supplied address is never trusted for delivery.
+//
+// For a client, consent is the ceiling: the profile's channel switches are
+// permission, not preferences, so a channel switched off is never contacted
+// (channelsFor in src/lib/abroad.ts). The studio's own contact has no such
+// switches — staff messages use whatever transport the credentials allow.
 
 import { getSql, type Sql } from "@/lib/db";
 import { toAfricaTalking, toE164 } from "@/lib/phone";
+import { channelsFor, type Consent } from "@/lib/abroad";
 
 export type Channel = "inapp" | "email" | "whatsapp" | "sms";
 
@@ -27,7 +33,7 @@ export type NotificationInput = {
   title: string;
   body?: string;
   audience?: "client" | "studio";
-  /** Channels to try. Defaults to inapp plus every configured transport. */
+  /** Channels to try. For a client these are still filtered by consent. */
   channels?: Channel[];
   /** Deep link, e.g. the certificate this message is about. */
   documentUrl?: string;
@@ -87,6 +93,8 @@ type Recipient = {
   email: string | null;
   phone: string | null;
   name: string;
+  /** The client's channel consent; absent for the studio, which has none. */
+  consent?: Consent;
 };
 
 async function resolveStudio(sql: Sql): Promise<Recipient | null> {
@@ -99,10 +107,21 @@ async function resolveStudio(sql: Sql): Promise<Recipient | null> {
 }
 
 async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | null> {
-  const rows = await sql<{ email: string | null; name: string | null; client_phone: string }>`
-    select u.email, u.name, p.client_phone
+  const rows = await sql<{
+    email: string | null;
+    name: string | null;
+    client_phone: string;
+    notify_email: boolean;
+    notify_whatsapp: boolean;
+    notify_sms: boolean;
+  }>`
+    select u.email, u.name, p.client_phone,
+           coalesce(c.notify_email, true) as notify_email,
+           coalesce(c.notify_whatsapp, true) as notify_whatsapp,
+           coalesce(c.notify_sms, false) as notify_sms
     from portal_projects p
     join "user" u on u.id = p.user_id
+    left join client_profile c on c.user_id = p.user_id
     where p.id = ${projectId} limit 1
   `;
   const row = rows[0];
@@ -115,6 +134,11 @@ async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | n
     // A diaspora client may have left this blank entirely.
     phone: toE164(row.client_phone),
     name: row.name ?? "there",
+    consent: {
+      email: row.notify_email,
+      whatsapp: row.notify_whatsapp,
+      sms: row.notify_sms,
+    },
   };
 }
 
@@ -274,13 +298,25 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
   const sql = await getSql();
   const body = input.body ?? "";
   const audience = input.audience ?? "client";
-  // Default: the portal feed always, plus whichever transports have credentials.
-  // A channel without credentials is not silently omitted — it is recorded as
-  // skipped, so the delivery log shows the studio is not reaching that person yet.
-  const wanted =
-    input.channels ?? (Object.keys(CONFIG) as Channel[]).filter((c) => CONFIG[c]().configured);
   const recipient =
     audience === "studio" ? await resolveStudio(sql) : await resolveClient(sql, input.projectId);
+  // The portal feed is always on; everything else follows consent for a client,
+  // and for the studio whichever transports have credentials. A channel with
+  // no credentials is not silently omitted — it is recorded as skipped, so the
+  // delivery log shows the studio is not reaching that person yet.
+  const allowed: Channel[] =
+    audience === "studio"
+      ? (Object.keys(CONFIG) as Channel[]).filter((c) => CONFIG[c]().configured)
+      : channelsFor(
+          recipient?.consent ?? { email: false, whatsapp: false, sms: false },
+        );
+  // The studio's explicit choice stands even for an unconfigured transport —
+  // it is recorded as skipped, which is how the log shows a provider missing.
+  // A client's explicit choice can still never exceed what they consented to.
+  const wanted =
+    audience === "studio"
+      ? (input.channels ?? allowed)
+      : (input.channels ?? allowed).filter((c) => allowed.includes(c));
 
   const projectRow = await sql<{ reference: string }>`
     select reference from portal_projects where id = ${input.projectId} limit 1

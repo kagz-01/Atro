@@ -63,6 +63,7 @@ export type ProjectRecord = {
   title: string;
   clientLabel: string;
   clientCity: string;
+  clientTz: string;
   clientInitials: string;
   plot: string;
   area: string;
@@ -94,6 +95,11 @@ export type ProjectRecord = {
   nextCall: {
     when: string;
     localTimeForYou: string;
+    /**
+     * The call as an instant, when the project has one — what "your time" is
+     * computed from. Null on projects created before the moment was stored.
+     */
+    at: string | null;
     agenda: string[];
   };
   progress: number;
@@ -221,6 +227,7 @@ type ProjectRow = {
   client_label: string;
   client_initials: string;
   client_city: string;
+  client_tz: string | null;
   plot: string;
   area: string;
   contract_type: string;
@@ -247,6 +254,7 @@ type ProjectRow = {
   next_call_when: string;
   next_call_local: string;
   next_call_agenda: unknown;
+  next_call_at: unknown;
   progress: number;
   last_viewed_at: unknown;
   created_at: unknown;
@@ -273,6 +281,7 @@ function toRecord(row: ProjectRow): ProjectRecord {
     title: row.title,
     clientLabel: row.client_label,
     clientCity: row.client_city,
+    clientTz: row.client_tz ?? "",
     clientInitials: row.client_initials,
     plot: row.plot,
     area: row.area,
@@ -304,6 +313,7 @@ function toRecord(row: ProjectRow): ProjectRecord {
     nextCall: {
       when: row.next_call_when,
       localTimeForYou: row.next_call_local,
+      at: iso(row.next_call_at),
       agenda: arr(row.next_call_agenda),
     },
     progress: num(row.progress),
@@ -608,13 +618,13 @@ export async function generateProject(
 /* ── the payload ── */
 
 const PROJECT_SELECT = `
-  id, reference, title, client_label, client_initials, client_city, plot, area,
+  id, reference, title, client_label, client_initials, client_city, client_tz, plot, area,
   contract_type, started_label, target_label, stage, source, track, zone,
   contract_value,
   boq_value, certified_to_date, paid_to_date, currently_certified,
   retention_held, retention_pct, projected_at_completion, days_elapsed,
   days_total, days_remaining, on_track, variance_days, programme_note,
-  next_call_when, next_call_local, next_call_agenda, progress,
+  next_call_when, next_call_local, next_call_agenda, next_call_at, progress,
   last_viewed_at, created_at`;
 
 /**
