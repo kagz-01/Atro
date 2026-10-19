@@ -30,6 +30,7 @@ import { listMyApprovals } from "@/lib/approvals-server";
 import { KIND_LABEL } from "@/lib/invoices";
 import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
 import type { Decision, Milestone, Payment } from "@/lib/diaspora/portal";
+import { EvidencePanel } from "@/components/dashboard/evidence-panel";
 import type {
   ActivityItem,
   PortalPayload,
@@ -490,6 +491,7 @@ export function ClientDashboard({
             onApprove={onApprove}
             pending={pending}
           />
+          <EvidencePanel projectId={p.id} />
         </div>
       ) : null}
 
@@ -700,7 +702,7 @@ function MilestonePanel({
                 </span>
                 <span className="mt-0.5 block text-[11px] text-ink/45">
                   {m.stage} · {m.plannedStart} – {m.plannedEnd}
-                  {m.evidence?.length ? ` · ${m.evidence.length} photos` : ""}
+                  {m.evidence?.length ? ` · ${m.evidence.length} notes` : ""}
                 </span>
               </span>
 

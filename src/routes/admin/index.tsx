@@ -30,6 +30,7 @@ import {
 import { EnquiriesInbox } from "@/components/admin/enquiries-inbox";
 import { SelectionsPanel } from "@/components/admin/selections-panel";
 import { ApprovalsPanel } from "@/components/admin/approvals-panel";
+import { EvidenceUploader } from "@/components/admin/evidence-uploader";
 import { getOpsOverview, type GroupRow } from "@/lib/ops";
 import {
   getMyAccess,
@@ -490,6 +491,19 @@ function ProjectDetail({
                   placeholder="Reinforcement photographed before the pour. Engineer present."
                 />
               </div>
+            </WriteBlock>
+
+            <WriteBlock
+              title="Post a photograph"
+              hint="The picture that proves the stage happened. It appears against the milestone in the client's Evidence tab."
+              hideHeading
+              onRun={async () => {}}
+            >
+              <EvidenceUploader
+                projectId={projectId}
+                milestones={data.milestones.map((m) => ({ id: m.id, order: m.order, name: m.name }))}
+                onUploaded={() => void refetch()}
+              />
             </WriteBlock>
 
             <WriteBlock
