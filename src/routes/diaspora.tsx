@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -33,6 +34,8 @@ import {
   abroadService,
 } from "@/lib/diaspora/abroad";
 import { DIASPORA_LINK, SERVICES } from "@/lib/site";
+import { getDiasporaHome } from "@/lib/diaspora-home";
+import { stampIn } from "@/lib/tz";
 import { whatsappHref, defaultWhatsappText } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/diaspora")({
@@ -70,6 +73,72 @@ const PROCESS_ICON: Record<string, typeof Phone> = {
   card: CreditCard,
   check: CheckCircle2,
 };
+
+/**
+ * The same URL as a home: for the signed-in client, the projects with the
+ * milestone being built now and the last thing the studio said — the doorstep
+ * view, with the portal one click further. Nobody signed in, or no project
+ * yet, and this band is not there: the page stays the pitch it always was.
+ */
+function YourProjects() {
+  const { data } = useQuery({
+    queryKey: ["diaspora-home"],
+    queryFn: () => getDiasporaHome({ data: undefined }),
+  });
+  if (!data?.signedIn || data.projects.length === 0) return null;
+  const first = data.name?.trim().split(/\s+/)[0] ?? null;
+  return (
+    <section className="border-b border-ink/10 bg-cream">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-12 md:py-14">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <Badge tone="gold">Your projects</Badge>
+            <h2 className="mt-3 font-display text-2xl md:text-3xl text-maroon">
+              {first ? `${first}, here is where things stand.` : "Here is where things stand."}
+            </h2>
+          </div>
+          <Button asChild>
+            <Link to="/portal">
+              Open the portal
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        </div>
+
+        <ul className="mt-8 grid gap-4 md:grid-cols-2">
+          {data.projects.map((p) => (
+            <li
+              key={p.reference}
+              className="flex flex-col rounded-3xl border border-ink/10 bg-white p-6"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+                {p.reference}
+              </p>
+              <h3 className="mt-1 font-display text-xl text-maroon">{p.title}</h3>
+              {p.activeMilestone ? (
+                <p className="mt-2 text-[13px] text-ink/65">
+                  Now building: <span className="text-maroon">{p.activeMilestone}</span>
+                </p>
+              ) : null}
+              {p.lastActivityTitle ? (
+                <p className="mt-2 text-[12px] leading-relaxed text-ink/55">
+                  Last from the studio — {p.lastActivityTitle}
+                  {p.lastActivityAt ? `, ${stampIn(p.lastActivityAt, "Africa/Nairobi")}` : ""}
+                </p>
+              ) : null}
+              <Button asChild variant="outline" size="sm" className="mt-5 self-start">
+                <Link to="/portal">
+                  Open in the portal
+                  <ArrowRight className="size-3.5" />
+                </Link>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
 
 function DiasporaPage() {
   const service = abroadService(SERVICES);
@@ -136,6 +205,8 @@ function DiasporaPage() {
           </div>
         </div>
       </section>
+
+      <YourProjects />
 
       {/* ── The service, as a scope ── */}
       {service ? (
