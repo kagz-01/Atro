@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { channelsFor, journeyStageFor, reachLine } from "@/lib/abroad";
+import { WalkthroughPanel } from "@/components/dashboard/presence-panel";
 import { formatPhone } from "@/lib/phone";
 import { getMyProfile } from "@/lib/profile-server";
 import { clientZone, isHomeZone, zonedClock } from "@/lib/tz";
@@ -18,7 +19,9 @@ import type { PortalPayload } from "@/lib/diaspora/server";
  * that is what this panel carries: the journey stage written for checking from
  * a distance, the next call quoted on their clock as well as EAT, and an honest
  * line about which channels can actually reach them, since their consent
- * switches — not the studio's convenience — decide that.
+ * switches — not the studio's convenience — decide that. It also carries the
+ * track's half of presence: walkthroughs the studio filmed, which is the
+ * attendance this section exists to replace.
  *
  * A card is omitted rather than fudged when its answer is unknown: no journey
  * match means no "here is where you are", and no zone means an invitation to
@@ -67,6 +70,10 @@ export function AbroadPanel({
           reach you. Every switch here is yours, in your profile.
         </p>
       </Panel>
+
+      {/* The abroad track's half of the presence split: the building walked
+          on camera, delivered to the same record. */}
+      <WalkthroughPanel projectId={project.id} />
 
       {stage ? (
         <Panel

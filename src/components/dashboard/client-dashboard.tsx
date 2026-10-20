@@ -45,6 +45,7 @@ import { VariationsPanel } from "@/components/dashboard/variations-panel";
 import { listMyVariations } from "@/lib/variations-server";
 import { countAwaiting } from "@/lib/variations";
 import { AbroadPanel } from "@/components/dashboard/abroad-panel";
+import { VisitPanel } from "@/components/dashboard/presence-panel";
 import { isAbroad } from "@/lib/abroad";
 import { clientZone, isHomeZone, zonedClock } from "@/lib/tz";
 import { getMyProfile } from "@/lib/profile-server";
@@ -394,6 +395,18 @@ export function ClientDashboard({
               tone={releasable.length > 0 ? "warn" : "default"}
             />
           </div>
+
+          {/* The local track's half of the presence split: ask to walk the
+              building. The abroad track gets the walkthrough card in its own
+              section instead — one table, two doors. */}
+          {abroad ? null : (
+            <VisitPanel
+              projectId={p.id}
+              activeMilestoneName={
+                data.milestones.find((m) => m.status === "active")?.name ?? null
+              }
+            />
+          )}
 
           <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
             <Panel title="Where your money stands" subtitle="Against the priced contract">

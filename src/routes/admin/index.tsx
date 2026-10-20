@@ -34,7 +34,10 @@ import { EvidenceUploader } from "@/components/admin/evidence-uploader";
 import { StudioMessagesPanel } from "@/components/admin/messages-panel";
 import { AfterHandoverPanel } from "@/components/admin/after-handover-panel";
 import { VariationsPanel } from "@/components/admin/variations-panel";
+import { PresencePanel } from "@/components/admin/presence-panel";
 import { readMessagesForStaff } from "@/lib/messages-server";
+import { listPresenceForStaff } from "@/lib/presence-server";
+import { isOpen } from "@/lib/presence";
 import { getOpsOverview, type GroupRow } from "@/lib/ops";
 import {
   getMyAccess,
@@ -309,6 +312,17 @@ function ProjectDetail({
     (m) => m.authorRole === "client" && !m.readAt,
   ).length;
 
+  // Presence requests waiting on an answer, for the accordion hint — same
+  // shape as the thread above: ProjectDetail reads the shared cache key, so
+  // the hint (and the auto-open it drives) works even while the panel is
+  // unmounted inside a closed accordion. The panel's mutations invalidate this
+  // key too, so the count follows every answer.
+  const { data: presence } = useQuery({
+    queryKey: ["staff-presence", projectId],
+    queryFn: () => listPresenceForStaff({ data: { projectId } }),
+  });
+  const presenceOpen = (presence ?? []).filter(isOpen).length;
+
   // Form state
   const [milestoneId, setMilestoneId] = useState("");
   const [status, setStatus] = useState<string>("active");
@@ -404,6 +418,13 @@ function ProjectDetail({
           defaultOpen={waitingToReply > 0}
         >
           <StudioMessagesPanel projectId={projectId} />
+        </AccordionItem>
+        <AccordionItem
+          title="Site presence"
+          hint={presenceOpen ? `${presenceOpen} waiting` : undefined}
+          defaultOpen={presenceOpen > 0}
+        >
+          <PresencePanel projectId={projectId} onChanged={onChanged} />
         </AccordionItem>
         <AccordionItem title="Financial summary">
           <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-ink/8 pt-5 text-[12px] md:grid-cols-4">

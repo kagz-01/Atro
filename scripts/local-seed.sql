@@ -609,3 +609,37 @@ cross join lateral (values
    'switched off in your profile', 8)
 ) as v(channel, kind, title, status, detail, age)
 where p.reference = 'ATRO-2401';
+
+-- ── site presence: one visit answered, one still waiting ──
+--
+-- The two tracks read this table differently — a local client asks to walk the
+-- building, an abroad client asks for it to be walked on camera — and the
+-- demo client is in Nairobi, so what the portal opens on is the local half: a
+-- visit the studio already confirmed (the card leads with it) and one request
+-- nobody has answered yet (so the console's "Site presence" queue is not
+-- empty on a fresh database). Both dates run from the seed date, like every
+-- other date here, so a fresh install always shows a future visit rather than
+-- one that quietly went stale.
+insert into portal_presence
+  (project_id, kind, status, requested_by, client_note, proposed_on,
+   scheduled_at, delivery_url, staff_note, responded_by, created_at, updated_at)
+select p.id, v.kind, v.status, 'dev-user', v.client_note, v.proposed,
+  case when v.scheduled_days is null then null
+       else date_trunc('day', now()) + make_interval(days => v.scheduled_days, hours => 10)
+       end,
+  '', v.staff_note, case when v.status = 'requested' then '' else 'hello@atro.ke' end,
+  now() - make_interval(days => v.asked_days),
+  now() - make_interval(days => v.asked_days + v.answered_gap)
+from portal_projects p
+cross join lateral (values
+  ('visit', 'scheduled',
+   'I want to walk it before the finishes go on.',
+   (now() + interval '8 days')::date, 8,
+   'Confirmed with the site lead. Meet at the gate — hard hat and boots provided. Ask for Nanjala when you arrive.',
+   12, 3),
+  ('visit', 'requested',
+   'Saturday works better for me if the team is on site.',
+   (now() + interval '15 days')::date, null,
+   '', 1, 0)
+) as v(kind, status, client_note, proposed, scheduled_days, staff_note, asked_days, answered_gap)
+where p.reference = 'ATRO-2401';
