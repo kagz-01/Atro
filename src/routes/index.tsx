@@ -146,6 +146,13 @@ function Hero() {
             >
               View our work
             </Link>
+            <Link
+              to="/portal"
+              className="group inline-flex items-center gap-3 px-8 py-4 bg-gold/10 backdrop-blur-sm text-gold border border-gold/40 rounded-2xl text-lg btn-lift transition-all duration-300 hover:bg-gold/15 hover:shadow-glow-gold"
+            >
+              Client portal
+              <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
 
           {/* Trust row */}

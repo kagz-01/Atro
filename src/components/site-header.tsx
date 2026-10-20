@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, X, Home, Briefcase, Wrench, Info, Phone, Globe, ArrowRight, LogIn } from "lucide-react";
+import { Menu, X, Home, Briefcase, Wrench, Info, Phone, Globe, ArrowRight, LogIn, LayoutDashboard } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
 import { UserButton } from "@/lib/auth/gates";
@@ -20,31 +20,62 @@ const NAV_ICONS: Record<string, typeof Home> = {
 /**
  * Desktop account slot. While the session resolves it holds a same-sized
  * placeholder, so a hard reload on /portal never flashes a signed-out button.
+ * Both states are labelled — signed out a "Sign in" pill, signed in a
+ * "Portal" pill beside the identity chip — so the header offers the portal
+ * the way it offers Abroad, instead of a bare icon only insiders recognise.
  */
 function AuthSlot({ className }: { className?: string }) {
   const { user, isPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   if (isPending || !hydrated) {
     return (
       <span
         aria-hidden
-        className={cn("size-9 shrink-0 animate-pulse rounded-full", className === "on-dark" ? "bg-white/15" : "bg-ink/10")}
+        className={cn("h-9 w-24 shrink-0 animate-pulse rounded-full", className === "on-dark" ? "bg-white/15" : "bg-ink/10")}
       />
     );
   }
-  if (user) return <UserButton />;
+  const pill =
+    "h-9 px-3.5 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] border rounded-full transition-all duration-300 whitespace-nowrap";
+  const onDark = className === "on-dark";
+  if (user) {
+    // No active state: the portal is an app route with no site header
+    // (see isApp in __root.tsx), so this pill never appears "where you are".
+    return (
+      <div className="flex items-center gap-2.5">
+        <Link
+          to="/portal"
+          aria-label="Open the client portal"
+          className={cn(
+            pill,
+            onDark
+              ? "text-white/70 border-white/20 hover:border-gold hover:text-gold"
+              : "text-muted border-line hover:border-burgundy hover:text-burgundy",
+          )}
+        >
+          <LayoutDashboard className="size-3.5" />
+          Portal
+        </Link>
+        <UserButton />
+      </div>
+    );
+  }
   return (
     <Link
       to="/login"
       aria-label="Sign in to the client portal"
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors",
-        className === "on-dark"
-          ? "border-white/20 text-white/70 hover:border-gold hover:text-gold"
-          : "border-line text-muted hover:border-burgundy hover:text-burgundy",
+        pill,
+        pathname === "/login"
+          ? "bg-gradient-to-r from-gold to-gold-light text-maroon border-gold shadow-glow-gold"
+          : onDark
+            ? "text-white/70 border-white/20 hover:border-gold hover:text-gold"
+            : "text-muted border-line hover:border-burgundy hover:text-burgundy",
       )}
     >
       <LogIn className="size-3.5" />
+      Sign in
     </Link>
   );
 }
@@ -60,12 +91,18 @@ function MobileAccountRow() {
   if (user) {
     return (
       <div className="mt-3 flex items-center justify-between gap-4 rounded-2xl border border-line p-4">
-        <span className="min-w-0">
-          <span className="block font-display text-base text-ink truncate">
-            {user.displayName ?? user.primaryEmail ?? "Your account"}
+        <Link
+          to="/portal"
+          className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left transition-colors hover:text-maroon"
+        >
+          <span className="min-w-0">
+            <span className="block font-display text-base text-ink truncate">
+              {user.displayName ?? user.primaryEmail ?? "Your account"}
+            </span>
+            <span className="text-sm text-muted">Open your client portal</span>
           </span>
-          <span className="text-sm text-muted">Signed in to the client portal</span>
-        </span>
+          <ArrowRight className="size-5 text-gold shrink-0" />
+        </Link>
         <UserButton />
       </div>
     );
