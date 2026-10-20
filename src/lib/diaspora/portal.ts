@@ -24,6 +24,8 @@ export type Milestone = {
   summary: string;
   evidence?: Evidence[];
   verifiedBy?: string;
+  /** True once the studio has marked the stage ready for the client to approve. */
+  approvalReady?: boolean;
 };
 export type PaymentStatus =
   | "paid"

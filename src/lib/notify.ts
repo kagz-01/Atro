@@ -117,13 +117,11 @@ type Recipient = {
   consent?: Consent;
 };
 
-async function resolveStudio(sql: Sql): Promise<Recipient | null> {
+async function resolveStudio(sql: Sql): Promise<Recipient[]> {
   const rows = await sql<{ email: string; label: string }>`
     select email, label from studio_contact where active order by created_at
   `;
-  const row = rows[0];
-  if (!row) return null;
-  return { email: row.email, phone: null, name: row.label };
+  return rows.map((row) => ({ email: row.email, phone: null, name: row.label }));
 }
 
 async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | null> {
@@ -334,8 +332,12 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
   await drainDue(sql);
   const body = input.body ?? "";
   const audience = input.audience ?? "client";
-  const recipient =
-    audience === "studio" ? await resolveStudio(sql) : await resolveClient(sql, input.projectId);
+  // The studio audience fans out to every active contact; a client is one.
+  const clientRecipient =
+    audience === "client" ? await resolveClient(sql, input.projectId) : null;
+  const recipients =
+    audience === "studio" ? await resolveStudio(sql) : clientRecipient ? [clientRecipient] : [];
+  const recipient = recipients[0] ?? null;
   // The clock ceiling, read on the client's own zone: outside 08:00–20:00
   // there, every push channel holds its row for the morning instead of
   // firing into their night. The studio's own audience never holds, and an
@@ -453,7 +455,7 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
         body,
         document_url: input.documentUrl ?? null,
       },
-      recipient,
+      recipients,
       projectRef,
     );
   }
@@ -502,7 +504,7 @@ type AttemptRow = {
 async function attemptSend(
   sql: Sql,
   row: AttemptRow,
-  recipient: Recipient | null,
+  recipients: Recipient[],
   projectRef: string,
 ): Promise<void> {
   const channel = row.channel as Channel;
@@ -514,29 +516,52 @@ async function attemptSend(
     `;
     return;
   }
-  const target = channel === "email" ? recipient?.email : recipient?.phone;
-  if (!target) {
+  // The studio is a team, not a mailbox: a message aimed at the studio goes to
+  // every active contact, so the digest does not stop at whoever happened to
+  // be first in the table. A client is always exactly one recipient.
+  const targets = recipients
+    .map((r) => (channel === "email" ? r.email : r.phone))
+    .filter((t): t is string => Boolean(t));
+  if (targets.length === 0) {
     await sql`
       update portal_notification set status = 'skipped', detail = 'no contact on file'
       where id = ${row.id}
     `;
     return;
   }
-  const result =
-    channel === "email"
-      ? await sendEmail(target, row.title, row.body, projectRef, row.document_url ?? undefined)
-      : channel === "whatsapp"
-        ? await sendWhatsApp(
-            target,
-            row.title,
-            row.body,
-            TEMPLATE_FOR[row.kind] ?? TEMPLATE_FOR.update,
-          )
-        : await sendSms(target, row.title, row.body);
+  let ok = true;
+  const details: string[] = [];
+  for (const target of targets) {
+    const result =
+      channel === "email"
+        ? await sendEmail(target, row.title, row.body, projectRef, row.document_url ?? undefined)
+        : channel === "whatsapp"
+          ? await sendWhatsApp(
+              target,
+              row.title,
+              row.body,
+              TEMPLATE_FOR[row.kind] ?? TEMPLATE_FOR.update,
+            )
+          : await sendSms(target, row.title, row.body);
+    if (!result.ok) {
+      ok = false;
+      details.push(result.detail);
+    }
+  }
+  // With one recipient the detail is that recipient's; with the studio team it
+  // records how many were reached, so a partial fan-out is visible in the log.
+  const detail =
+    details.length === 0
+      ? targets.length > 1
+        ? `reached ${targets.length} of ${targets.length} studio contacts`
+        : ""
+      : targets.length > 1
+        ? `reached ${targets.length - details.length} of ${targets.length} studio contacts — ${details.join("; ")}`
+        : details.join("; ");
   await sql`
     update portal_notification
-    set status = ${result.ok ? "sent" : "failed"}, attempts = attempts + 1,
-        detail = ${result.detail}, sent_at = case when ${result.ok} then now() else sent_at end
+    set status = ${ok ? "sent" : "failed"}, attempts = attempts + 1,
+        detail = ${detail}, sent_at = case when ${ok} then now() else sent_at end
     where id = ${row.id}
   `;
 }
@@ -570,15 +595,15 @@ export async function drainDue(sql: Sql, projectId?: string): Promise<number> {
       returning id
     `;
     if (!claim[0]) continue;
-    const recipient =
-      row.audience === "studio"
-        ? await resolveStudio(sql)
-        : await resolveClient(sql, row.project_id);
+    const studioRecipients = row.audience === "studio" ? await resolveStudio(sql) : null;
+    const clientRecipient =
+      row.audience === "client" ? await resolveClient(sql, row.project_id) : null;
+    const recipients = studioRecipients ?? (clientRecipient ? [clientRecipient] : []);
     const ref = await sql<{ reference: string }>`
       select reference from portal_projects where id = ${row.project_id} limit 1
     `;
     try {
-      await attemptSend(sql, row, recipient, ref[0]?.reference ?? "");
+      await attemptSend(sql, row, recipients, ref[0]?.reference ?? "");
       attempted++;
     } catch (e) {
       const detail = `error: ${e instanceof Error ? e.message : String(e)}`.slice(0, 200);

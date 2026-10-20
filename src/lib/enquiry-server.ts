@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { toE164 } from "@/lib/phone";
+import { requireStaff } from "@/lib/staff-session.server";
 
 const EnquiryInput = z.object({
   name: z.string().min(1),
@@ -86,12 +87,15 @@ type EnquiryRow = {
 
 /**
  * Every enquiry is a named person's phone number and email, so this is
- * account-gated: signed out it throws 401 rather than returning the list. The
- * admin page is the only caller.
+ * staff-gated: signed out it throws, and so does any signed-in account that is
+ * not on the allowlist — a client must not be able to read the whole leads
+ * inbox by calling the admin page's data function directly. The admin page is
+ * the only caller.
  */
 export const listEnquiriesFromDb = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async () => {
+    await requireStaff();
     const sql = await getSql();
     return sql<EnquiryRow>`select * from enquiries order by created_at desc limit 50`;
   });

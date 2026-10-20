@@ -10,7 +10,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/verify.server";
-import { demotesLastAdmin } from "@/lib/staff-access-rules";
+import { demotesLastAdmin, grantDemotesAdmin } from "@/lib/staff-access-rules";
 import { lookupRole, normaliseEmail, type StaffIdentity, type StaffRole } from "@/lib/staff";
 
 export type StaffMember = {
@@ -142,12 +142,18 @@ export const grantStaff = createServerFn({ method: "POST" })
     // existing admin is an upsert, so without this the last admin could demote
     // themselves, leave zero admins, and lock every future request out of the
     // one screen that can approve them.
+    const currentRole = await lookupRole(sql, email);
+    if (grantDemotesAdmin({ currentRole, nextRole: data.role })) {
+      throw new Error(
+        "That account is already an admin. Revoke access first if you want to change their role.",
+      );
+    }
     const others = await sql<{ n: number }>`
       select count(*) as n from client_role
       where role = 'admin' and lower(email) <> ${email}
     `;
     const demoting = demotesLastAdmin({
-      currentRole: await lookupRole(sql, email),
+      currentRole,
       nextRole: data.role,
       otherAdminCount: Number(others[0]?.n ?? 0),
     });

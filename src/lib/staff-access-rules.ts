@@ -24,3 +24,22 @@ export function demotesLastAdmin(input: {
   if (otherAdminCount > 0) return false;
   return currentRole === "admin" && nextRole !== "admin";
 }
+
+/**
+ * Whether re-granting a role would demote someone who is already an admin.
+ *
+ * `grantStaff` is an upsert, so choosing "staff" for an existing admin is a
+ * demotion wearing a grant's clothes. That is not what the grant form is for:
+ * demotion is a separate, deliberate decision (revoke, or an explicit demote),
+ * and it should never be reachable by re-filling a form whose purpose is to
+ * give access. This is the hole the `demotesLastAdmin` guard only half-closed
+ * — it blocked demoting the *last* admin, but any other admin could still be
+ * silently demoted by re-submitting the grant form.
+ */
+export function grantDemotesAdmin(input: {
+  currentRole: StaffRole | null;
+  nextRole: StaffRole;
+}): boolean {
+  const { currentRole, nextRole } = input;
+  return currentRole === "admin" && nextRole !== "admin";
+}

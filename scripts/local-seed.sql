@@ -66,46 +66,47 @@ from (values
 -- ── milestones: nine stages per project, worked to a believable point ──
 insert into portal_milestones (
   project_id, ord, stage, name, status, progress, planned_start, planned_end,
-  actual_end, summary, evidence, verified_by, approved_at, approved_by
+  actual_end, summary, evidence, verified_by, approved_at, approved_by, approval_ready
 )
 select
   p.id, s.ord, s.stage, s.name, s.status, s.progress, s.planned_start, s.planned_end,
-  s.actual_end, s.summary, s.evidence::jsonb, s.verified_by, s.approved_at::timestamptz, s.approved_by
+  s.actual_end, s.summary, s.evidence::jsonb, s.verified_by, s.approved_at::timestamptz, s.approved_by,
+  s.approval_ready
 from portal_projects p
 cross join lateral (values
   (1, 'Pre-construction', 'Land and due diligence', 'complete', 100, 'Mar 2024', 'Apr 2024', '04 Apr 2024',
    'Searches, boundaries and the county plot file checked against the title.',
    '[{"date":"04 Apr 2024","caption":"Title deed and search","detail":"County search returned a clean register over the title number."}]',
-   'Nanjala, lands registrar', '04 Apr 2024', 'Wanjiku Njeri'),
+   'Nanjala, lands registrar', '04 Apr 2024', 'Wanjiku Njeri', false),
   (2, 'Pre-construction', 'Concept and cost options', 'complete', 100, 'Apr 2024', 'May 2024', '21 May 2024',
    'Two massing options costed; the client chose the courtyard option.',
    '[{"date":"18 May 2024","caption":"Option B cost comparison","detail":"Courtyard option 6% over Option A for a larger kitchen court."}]',
-   'Nanjala, lands registrar', '21 May 2024', 'Wanjiku Njeri'),
+   'Nanjala, lands registrar', '21 May 2024', 'Wanjiku Njeri', false),
   (3, 'Pre-construction', 'Developed design and approvals', 'complete', 100, 'May 2024', 'Jul 2024', '30 Jul 2024',
    'Planning approved in 41 days; the county raised no conditions.',
    '[{"date":"30 Jul 2024","caption":"Planning approval letter","detail":"NCC/Nairobi/MUN/2024/1187 approved."}]',
-   'Nanjala, lands registrar', '30 Jul 2024', 'Wanjiku Njeri'),
+   'Nanjala, lands registrar', '30 Jul 2024', 'Wanjiku Njeri', false),
   (4, 'Pre-construction', 'Bill of Quantities and contract', 'complete', 100, 'Jul 2024', 'Aug 2024', '12 Aug 2024',
    'BOQ priced line by line; the contract is the priced sum, not a margin on top.',
    '[{"date":"12 Aug 2024","caption":"Signed contract and BOQ","detail":"Four schedules, 612 lines, priced against the March 2024 rate build-up."}]',
-   'Nanjala, lands registrar', '12 Aug 2024', 'Wanjiku Njeri'),
+   'Nanjala, lands registrar', '12 Aug 2024', 'Wanjiku Njeri', false),
   (5, 'Construction', 'Site establishment and substructure', 'complete', 100, 'Aug 2024', 'Nov 2024', '19 Nov 2024',
    'Foundation slab cast and cured; the termite treatment warranty is in the vault.',
    '[{"date":"02 Oct 2024","caption":"Reinforcement before the pour","detail":"Engineer present; bar spacing verified at 150mm throughout."}]',
-   'Nanjala, lands registrar', '19 Nov 2024', 'Wanjiku Njeri'),
+   'Nanjala, lands registrar', '19 Nov 2024', 'Wanjiku Njeri', false),
   (6, 'Construction', 'Superstructure', 'active', 62, 'Nov 2024', 'Mar 2025', null,
    'Ground floor complete; first-floor ring beam cast last week. Formwork striking on Thursday.',
    '[{"date":"06 Mar 2025","caption":"First floor ring beam cast — 21 m³","detail":"Engineer attended; cube results logged at 7 and 28 days."}]',
-   null, null, null),
+   null, null, null, true),
   (7, 'Construction', 'Roof, first fix and finishes', 'pending', 0, 'Mar 2025', 'Jun 2025', null,
-   'Begins once the superstructure is struck and dried.', '[]', null, null, null),
+   'Begins once the superstructure is struck and dried.', '[]', null, null, null, false),
   (8, 'Construction', 'Second fix, testing and approvals', 'pending', 0, 'Jun 2025', 'Jul 2025', null,
-   'Services testing and the occupancy inspection.', '[]', null, null, null),
+   'Services testing and the occupancy inspection.', '[]', null, null, null, false),
   (9, 'Handover', 'Snagging and handover', 'pending', 0, 'Jul 2025', 'Aug 2025', null,
-   'Defects list, keys, and the retention clock starts.', '[]', null, null, null)
+   'Defects list, keys, and the retention clock starts.', '[]', null, null, null, false)
 ) as s(
   ord, stage, name, status, progress, planned_start, planned_end, actual_end,
-  summary, evidence, verified_by, approved_at, approved_by
+  summary, evidence, verified_by, approved_at, approved_by, approval_ready
 )
 where p.reference = 'ATRO-2401';
 

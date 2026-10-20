@@ -216,7 +216,7 @@ export const addEvidencePhoto = createServerFn({ method: "POST" })
         project_id, milestone_id, ord, caption, detail, taken_on, mime, bytes, uploaded_by
       ) values (
         ${data.projectId}, ${data.milestoneId}, ${ord}, ${caption.caption},
-        ${data.detail.trim()}, ${data.takenOn}, ${data.mime}, ${bytes}, ${staff}
+        ${data.detail.trim()}, ${data.takenOn}, ${data.mime}, ${bytes}, ${staff.email}
       )
     `;
     return { ok: true as const, id: null as string | null };

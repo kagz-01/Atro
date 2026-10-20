@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { demotesLastAdmin } from "./staff-access-rules.ts";
+import { demotesLastAdmin, grantDemotesAdmin } from "./staff-access-rules.ts";
 
 describe("staff access allowlist", () => {
   describe("demotesLastAdmin", () => {
@@ -52,6 +52,46 @@ describe("staff access allowlist", () => {
       );
       assert.equal(
         demotesLastAdmin({ currentRole: "admin", nextRole: "admin", otherAdminCount: 0 }),
+        false,
+      );
+    });
+  });
+
+  describe("grantDemotesAdmin", () => {
+    it("blocks demoting any existing admin, even when others exist", () => {
+      // demotesLastAdmin let this through once a second admin existed; the
+      // grant form is still the wrong place to demote anyone.
+      assert.equal(
+        grantDemotesAdmin({ currentRole: "admin", nextRole: "staff" }),
+        true,
+      );
+    });
+
+    it("blocks demoting the last admin via the grant form", () => {
+      assert.equal(
+        grantDemotesAdmin({ currentRole: "admin", nextRole: "staff" }),
+        true,
+      );
+    });
+
+    it("allows re-granting admin (a note update, not a demotion)", () => {
+      assert.equal(
+        grantDemotesAdmin({ currentRole: "admin", nextRole: "admin" }),
+        false,
+      );
+    });
+
+    it("allows granting staff to a non-admin or a new account", () => {
+      assert.equal(
+        grantDemotesAdmin({ currentRole: "staff", nextRole: "staff" }),
+        false,
+      );
+      assert.equal(
+        grantDemotesAdmin({ currentRole: null, nextRole: "staff" }),
+        false,
+      );
+      assert.equal(
+        grantDemotesAdmin({ currentRole: null, nextRole: "admin" }),
         false,
       );
     });

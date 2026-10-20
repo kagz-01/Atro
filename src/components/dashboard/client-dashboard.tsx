@@ -185,8 +185,10 @@ export function ClientDashboard({
 
   const openDecisions = data.decisions.filter((d) => d.state !== "decided");
   const releasable = data.payments.filter((x) => x.status === "certified");
+  // Only stages the studio has marked ready can be approved from the overview.
   const awaitingApproval = data.milestones.filter(
-    (m) => m.status === "active" || m.status === "blocked",
+    (m) =>
+      m.approvalReady === true && (m.status === "active" || m.status === "blocked"),
   );
   const newActivity = data.activity.filter(
     (a) => firstVisit && a.at > firstVisit,
@@ -816,7 +818,10 @@ function MilestonePanel({
     >
       <ul className="divide-y divide-ink/8">
         {milestones.map((m) => {
-          const canApprove = m.status === "active" || m.status === "blocked";
+          // The studio decides when a stage is finished; the client only
+          // signs off on one the studio has marked ready.
+          const canApprove =
+            m.approvalReady === true && (m.status === "active" || m.status === "blocked");
           const key = `ms-${m.id}`;
           return (
             <li key={m.id} className="flex flex-wrap items-center gap-4 px-5 py-4">

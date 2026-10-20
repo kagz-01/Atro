@@ -29,6 +29,12 @@ const UpdateMilestone = z.object({
   status: z.enum(["pending", "active", "blocked", "complete"]).optional(),
   progress: z.number().int().min(0).max(100).optional(),
   note: z.string().trim().max(600).optional(),
+  /**
+   * Mark the stage ready for the client to approve. The portal's Approve
+   * button only appears once this is set — the studio, not the client,
+   * decides when work is finished enough to be signed off.
+   */
+  approvalReady: z.boolean().optional(),
 });
 
 const AddEvidence = z.object({
@@ -187,6 +193,7 @@ export const listStaffProjects = createServerFn({ method: "GET" }).handler(async
       (select max(a.at) from portal_activity a where a.project_id = p.id) as last_activity_at
     from portal_projects p
     left join client_profile c on c.user_id = p.user_id
+    where p.deleted_at is null
     order by
       (select max(a.at) from portal_activity a where a.project_id = p.id) desc nulls last,
       p.created_at desc
@@ -254,8 +261,8 @@ export async function updateMilestoneFor(
   staff: { email: string; userId: string },
   data: z.infer<typeof UpdateMilestone>,
 ) {
-  const current = await sql<{ name: string; status: string; progress: number }>`
-      select name, status, progress from portal_milestones
+  const current = await sql<{ name: string; status: string; progress: number; approval_ready: boolean }>`
+      select name, status, progress, approval_ready from portal_milestones
       where id = ${data.milestoneId} and project_id = ${data.projectId} limit 1
     `;
   const milestone = current[0];
@@ -263,10 +270,14 @@ export async function updateMilestoneFor(
 
   const status = data.status ?? milestone.status;
   const progress = status === "complete" ? 100 : (data.progress ?? milestone.progress ?? 0);
+  // Completing a stage clears the flag: it is already approved, so there is
+  // nothing left for the client to approve.
+  const approvalReady = status === "complete" ? false : (data.approvalReady ?? milestone.approval_ready);
 
   await sql`
       update portal_milestones
       set status = ${status}, progress = ${Math.max(0, Math.min(100, progress))},
+          approval_ready = ${approvalReady},
           actual_end = case when ${status} = 'complete' then coalesce(actual_end, ${todayLabel()})
                             else actual_end end
       where id = ${data.milestoneId} and project_id = ${data.projectId}

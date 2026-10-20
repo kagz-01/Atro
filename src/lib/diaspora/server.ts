@@ -202,7 +202,8 @@ function shortDate(date: Date): string {
 /** The signed-in caller's project, or null when the id is not theirs. */
 export async function ownedProject(sql: Sql, userId: string, projectId: string) {
   const rows = await sql<{ id: string }>`
-    select id from portal_projects where id = ${projectId} and user_id = ${userId} limit 1
+    select id from portal_projects
+    where id = ${projectId} and user_id = ${userId} and deleted_at is null limit 1
   `;
   return rows[0]?.id ?? null;
 }
@@ -632,7 +633,7 @@ const PROJECT_SELECT = `
  */
 function selectOwnedProjects(sql: Sql, userId: string) {
   return sql.query<ProjectRow>(
-    `select ${PROJECT_SELECT} from portal_projects where user_id = $1 order by created_at desc`,
+    `select ${PROJECT_SELECT} from portal_projects where user_id = $1 and deleted_at is null order by created_at desc`,
     [userId],
   );
 }
@@ -679,9 +680,11 @@ async function buildProjectPayload(
     summary: string;
     evidence: unknown;
     verified_by: string | null;
+    approval_ready: boolean;
   }>`select 
     id, ord, stage, name, status, progress, planned_start,
-      planned_end, actual_end, summary, evidence, verified_by from portal_milestones where project_id = ${projectId} order by ord`;
+      planned_end, actual_end, summary, evidence, verified_by, approval_ready
+    from portal_milestones where project_id = ${projectId} order by ord`;
   const paymentRows = await sql<{
     id: string;
     ord: number;
@@ -754,6 +757,7 @@ async function buildProjectPayload(
       detail: str(e.detail),
     })),
     verifiedBy: m.verified_by ?? undefined,
+    approvalReady: m.approval_ready === true,
   }));
 
   const payments: Payment[] = paymentRows.map((p) => ({
@@ -1020,18 +1024,25 @@ export async function approveMilestoneFor(
   const projectId = await ownedProject(sql, userId, data.projectId);
   if (!projectId) throw new Error("Project not found.");
 
-  const target = await sql<{ name: string; status: string }>`
-    select name, status from portal_milestones
+  const target = await sql<{ name: string; status: string; approval_ready: boolean }>`
+    select name, status, approval_ready from portal_milestones
     where id = ${data.milestoneId} and project_id = ${projectId} limit 1
   `;
   const milestone = target[0];
   if (!milestone) throw new Error("Milestone not found.");
   if (milestone.status === "complete") throw new Error("That milestone is already approved.");
+  // The studio decides when a stage is finished, not the client. Without this
+  // gate a client could mark any stage complete on their own — including one
+  // the studio had not started — and the progress bar would report work that
+  // was never done.
+  if (!milestone.approval_ready) {
+    throw new Error("The studio has not marked this stage ready for your approval yet.");
+  }
 
   await sql`
     update portal_milestones
     set status = 'complete', progress = 100, actual_end = ${todayLabel()},
-        approved_at = now(), approved_by = ${userId}
+        approved_at = now(), approved_by = ${userId}, approval_ready = false
     where id = ${data.milestoneId} and project_id = ${projectId}
   `;
 
@@ -1186,7 +1197,14 @@ export async function deleteProjectFor(
 ): Promise<{ ok: true }> {
   const projectId = await ownedProject(sql, userId, data.projectId);
   if (!projectId) throw new Error("Project not found.");
-  await sql`delete from portal_projects where id = ${projectId} and user_id = ${userId}`;
+  // Archive, not erase. A hard delete cascaded through every message,
+  // certificate and photograph attached to the project — the studio lost its
+  // record of work actually done. Soft-deleting keeps the row for the studio's
+  // books and simply takes it out of the client's view.
+  await sql`
+    update portal_projects set deleted_at = now()
+    where id = ${projectId} and user_id = ${userId}
+  `;
   return { ok: true };
 }
 

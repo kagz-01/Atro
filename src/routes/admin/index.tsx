@@ -447,6 +447,7 @@ function ProjectDetail({
   const [milestoneId, setMilestoneId] = useState("");
   const [status, setStatus] = useState<string>("active");
   const [milestoneNote, setMilestoneNote] = useState("");
+  const [readyToApprove, setReadyToApprove] = useState(false);
   const [evidenceCaption, setEvidenceCaption] = useState("");
   const [evidenceDetail, setEvidenceDetail] = useState("");
   const [decisionTitle, setDecisionTitle] = useState("");
@@ -588,6 +589,7 @@ function ProjectDetail({
                       milestoneId,
                       status: status as "active" | "complete" | "blocked" | "pending",
                       note: milestoneNote.trim() || undefined,
+                      approvalReady: readyToApprove,
                     },
                   });
                   setMilestoneNote("");
@@ -614,6 +616,22 @@ function ProjectDetail({
                     </option>
                   ))}
                 </Select>
+              </div>
+              <div className="flex items-start gap-2 rounded-xl border border-ink/10 bg-ink/2 px-3 py-2.5">
+                <input
+                  id="st-ready"
+                  type="checkbox"
+                  className="mt-0.5 size-4 shrink-0 accent-[#7a1f2b]"
+                  checked={readyToApprove}
+                  onChange={(e) => setReadyToApprove(e.target.checked)}
+                />
+                <div className="min-w-0">
+                  <Label htmlFor="st-ready">Ready for the client to approve</Label>
+                  <p className="mt-0.5 text-[11px] leading-snug text-ink/55">
+                    Shows the Approve button on their portal. Completing a stage clears this on its
+                    own.
+                  </p>
+                </div>
               </div>
               <div>
                 <Label htmlFor="st-note">Note to the client (optional)</Label>
