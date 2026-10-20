@@ -221,6 +221,7 @@ export function EnquiryWizard({ forcedDiaspora = false }: { forcedDiaspora?: boo
             { icon: Phone, text: `Via ${phone} or ${email} — your choice.` },
             { icon: Clock, text: diaspora ? "We will schedule the first call at a time that works for your time zone." : "We will call during EAT working hours (8am-5pm)." },
             { icon: FileText, text: "You will receive an indicative cost range and a realistic programme before any commitment." },
+            { icon: Mail, text: `When we open your project it waits for you in your portal — sign in with ${email}, no sign-up needed first.` },
             { icon: MapPin, text: "If you have a plot, we will arrange a site visit (or verify remotely if you are abroad)." },
           ].map((item, i) => (
             <div key={i} className="flex items-start gap-3">
@@ -235,6 +236,9 @@ export function EnquiryWizard({ forcedDiaspora = false }: { forcedDiaspora?: boo
             <p className="text-sm text-burgundy font-medium">Diaspora enquiry</p>
             <p className="text-sm text-ink/70 mt-1">
               We will contact you via email to schedule a video call. Your time zone ({diasporaTimezone || "not specified"}) and location ({diasporaCountry || "abroad"}) are on file.
+            </p>
+            <p className="text-sm text-ink/70 mt-2">
+              When we open it, your portal starts on the Abroad view — the journey, the calls on your clock, the channels that can reach you.
             </p>
           </div>
         )}

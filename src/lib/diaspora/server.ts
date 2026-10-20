@@ -9,7 +9,9 @@ import type { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { issueReceiptFor } from "@/lib/invoice-server";
+import { leadProfile } from "@/lib/enquiry-lead";
 import { notify } from "@/lib/notify";
+import { toE164 } from "@/lib/phone";
 import {
   DecisionActionInput,
   MilestoneActionInput,
@@ -519,8 +521,8 @@ export async function generateProject(
     insert into portal_projects (
       user_id, reference, title, client_label, client_initials, plot, area,
       contract_type, started_label, target_label, stage, source, track,
-      service_slug, zone, client_phone, claimed_email, contract_value,
-      days_elapsed, days_total, days_remaining, programme_note,
+      service_slug, zone, client_city, client_tz, client_phone, claimed_email,
+      contract_value, days_elapsed, days_total, days_remaining, programme_note,
       next_call_when, next_call_local, next_call_agenda, progress, last_viewed_at
     ) values (
       ${userId}, ${reference}, ${input.title}, ${clientLabel}, ${clientLabel.slice(0, 2).toUpperCase()},
@@ -528,7 +530,9 @@ export async function generateProject(
       ${track.id === "construction" ? "Design and build" : track.label},
       ${shortDate(start)}, ${shortDate(target)},
       ${track.stages[0]?.name ?? "Mobilisation"}, 'created', ${track.id},
-      ${input.serviceSlug}, ${input.zone}, ${input.clientPhone},
+      ${input.serviceSlug}, ${input.zone}, ${input.clientCity},
+      ${input.clientTz || null},
+      ${input.clientPhone ? (toE164(input.clientPhone) ?? input.clientPhone) : ""},
       ${claimedEmail}, ${input.contractValue},
       ${daysElapsed}, ${totalDays},
       ${Math.max(0, totalDays - daysElapsed)},
@@ -605,12 +609,6 @@ export async function generateProject(
     "Project created",
     `Programme runs ${shortDate(start)} to ${shortDate(target)} · ${totalDays} days · contract value KES ${input.contractValue.toLocaleString("en-KE")}.`,
   );
-
-  if (input.clientTz) {
-    await sql`
-      update portal_projects set client_tz = ${input.clientTz} where id = ${projectId} and user_id = ${userId}
-    `;
-  }
 
   return projectId;
 }
@@ -883,28 +881,105 @@ function normalise(email: string | null | undefined): string {
 }
 
 /**
- * Take ownership of any project the studio opened for this email before the
- * client had an account. This is what makes an enquiry convertible: the work is
- * set up first, and the client finds it waiting the first time they sign in.
+ * Take ownership of any project the studio opened for this person before they
+ * had an account. This is what makes an enquiry convertible: the work is set
+ * up first, and the client finds it waiting the first time they sign in.
+ *
+ * The match is on the verified session — the email sign-in proved, or the phone
+ * number OTP proved — never on a lookup of our own `user` table. That table is
+ * Better Auth's (migrations/0001_auth.sql) and nothing in this codebase writes
+ * it, so reading it back returned nobody: every provisioned project sat
+ * unclaimed forever, most of all for the phone sign-ins that /login actually
+ * offers. The enquiry's number is stored E.164 (enquiry-server.ts) and so is
+ * the session's, so the two meet as written.
+ *
+ * Returns the claimed project ids — one is the normal case — so the caller can
+ * seed the person's profile from the lead's own enquiry.
  */
-export async function claimProvisionedProjects(sql: Sql, userId: string): Promise<number> {
-  const rows = await sql<{ email: string }>`
-    select email from "user" where id = ${userId} limit 1
-  `;
-  const email = normalise(rows[0]?.email);
-  if (!email) return 0;
+export async function claimProvisionedProjects(
+  sql: Sql,
+  userId: string,
+  session: { email: string; phone: string | null },
+): Promise<string[]> {
+  const email = normalise(session.email);
+  const phone = (session.phone ?? "").trim();
+  if (!email && !phone) return [];
 
   const claimed = await sql<{ id: string }>`
     update portal_projects set user_id = ${userId}
-    where user_id = '' and lower(claimed_email) = ${email}
+    where user_id = ''
+      and (
+        (${email} <> '' and lower(claimed_email) = ${email})
+        or (${phone} <> '' and client_phone = ${phone})
+      )
     returning id
   `;
-  return claimed.length;
+  const ids = claimed.map((row) => row.id);
+  if (ids.length) await seedClaimedProfile(sql, userId, ids);
+  return ids;
+}
+
+/**
+ * The person behind a claim gets the profile their enquiry already described —
+ * typed `diaspora` and carrying the zone, so the Abroad view, the "your clock"
+ * call quotes and the consent log exist on the first load rather than after a
+ * trip through Settings. Only ever fills a hole: a profile the client has
+ * already shaped is theirs to keep.
+ *
+ * Consent columns are left to their table defaults (email and WhatsApp on, SMS
+ * off) — the record of what the studio may use, not a permission grab.
+ */
+async function seedClaimedProfile(sql: Sql, userId: string, projectIds: string[]) {
+  const existing = await sql<{ user_id: string }>`
+    select user_id from client_profile where user_id = ${userId} limit 1
+  `;
+  if (existing[0]) return;
+
+  // A claim is almost always a single project; walk the ids rather than bend an
+  // array parameter across the uuid/text boundary.
+  for (const projectId of projectIds) {
+    const rows = await sql<{
+      name: string;
+      email: string;
+      phone: string;
+      diaspora: boolean;
+      diaspora_country: string;
+      diaspora_timezone: string;
+    }>`
+      select name, email, phone, diaspora, diaspora_country, diaspora_timezone
+      from enquiries where project_id = ${projectId} limit 1
+    `;
+    const lead = rows[0];
+    if (!lead) continue;
+    const profile = leadProfile({
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      diaspora: lead.diaspora,
+      country: lead.diaspora_country,
+      timezone: lead.diaspora_timezone,
+    });
+    if (!profile.displayName) continue;
+    await sql`
+      insert into client_profile (
+        user_id, display_name, initials, phone, email, country, timezone, client_type
+      ) values (
+        ${userId}, ${profile.displayName}, ${profile.initials}, ${profile.phone},
+        ${profile.email}, ${profile.country}, ${profile.timezone}, ${profile.clientType}
+      )
+      on conflict (user_id) do nothing
+    `;
+    return;
+  }
 }
 
 /** The signed-in owner's newest project; seeds the sample on first read. */
-export async function loadPortal(sql: Sql, userId: string): Promise<PortalPayload> {
-  await claimProvisionedProjects(sql, userId);
+export async function loadPortal(
+  sql: Sql,
+  userId: string,
+  session: { email: string; phone: string | null },
+): Promise<PortalPayload> {
+  await claimProvisionedProjects(sql, userId, session);
   let rows = await selectOwnedProjects(sql, userId);
   if (rows.length === 0) {
     await seedSampleProject(sql, userId);
@@ -1119,7 +1194,12 @@ export async function deleteProjectFor(
 
 export const getPortal = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(async ({ context }) => loadPortal(await getSql(), context.userId));
+  .handler(async ({ context }) =>
+    loadPortal(await getSql(), context.userId, {
+      email: context.email,
+      phone: context.phone,
+    }),
+  );
 
 export const createPortalProject = createServerFn({ method: "POST" })
   .validator(ProjectInput)

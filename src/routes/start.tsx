@@ -8,6 +8,16 @@ import { COMPANY, ZONES } from "@/lib/site";
 import { defaultWhatsappText, whatsappHref } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/start")({
+  // Read the query through the router, never `window.location`: the server
+  // renders this route too and has no window, so /diaspora's links hydrated
+  // "Five steps" over a server-rendered "Four steps" — a text mismatch React
+  // refuses — and no server-rendered reader ever saw the diaspora variant.
+  validateSearch: (search: Record<string, unknown>): { from?: string; zone?: string } => ({
+    // `undefined` rather than "": an empty string would ride into the canonical
+    // URL (`/start?zone=`) and bounce every visitor through a redirect.
+    from: typeof search.from === "string" && search.from ? search.from : undefined,
+    zone: typeof search.zone === "string" && search.zone ? search.zone : undefined,
+  }),
   component: StartPage,
   head: () => ({
     meta: [
@@ -22,9 +32,8 @@ export const Route = createFileRoute("/start")({
 });
 
 function StartPage() {
-  const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-  const isDiaspora = params.get("from") === "diaspora";
-  const zoneParam = params.get("zone");
+  const { from, zone: zoneParam } = Route.useSearch();
+  const isDiaspora = from === "diaspora";
   const setSelectedZone = useSiteStore((s) => s.setSelectedZone);
 
   // A link from a county page carries the county, so the enquiry opens with the

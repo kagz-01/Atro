@@ -104,7 +104,13 @@ function timeAgo(dateStr: string) {
  * to create an account before we have decided to work with them loses the
  * enquiry at exactly the wrong moment.
  */
-function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
+function ConvertEnquiry({
+  enquiry,
+  onConverted,
+}: {
+  enquiry: Enquiry;
+  onConverted?: () => void;
+}) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [track, setTrack] = useState<string>("construction");
@@ -136,6 +142,10 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
     onSuccess: (result) => {
       toast.success(`Project opened for ${result.clientEmail}.`);
       setOpen(false);
+      // The modal holds the enquiry it was opened with; flip the copy in place,
+      // or the staff member is left looking at "Open a project" for a project
+      // that now exists.
+      onConverted?.();
       void queryClient.invalidateQueries({ queryKey: ["admin-enquiries"] });
     },
     onError: (err: unknown) =>
@@ -151,8 +161,8 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
   if (enquiry.status === "converted") {
     return (
       <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-        Project opened. It is waiting for {enquiry.email} — they will find it in their
-        portal the first time they sign in.
+        Project opened. It is waiting for {enquiry.email} or the number on the
+        enquiry — whichever they sign in with finds it in the portal.
       </p>
     );
   }
@@ -237,8 +247,8 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
       </div>
       <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
         Stages and the payment schedule are generated from this. The client does not
-        need an account yet — the project waits for {enquiry.email} and appears the
-        first time they sign in.
+        need an account yet — the project waits for {enquiry.email} (or the enquiry's
+        number) and appears the first time they sign in.
       </p>
       <div className="mt-4 flex gap-2">
         <button
@@ -583,7 +593,12 @@ export function EnquiriesInbox() {
                   into work. Both stay visible — hiding them behind a toggle would
                   only add a step. */}
               <div className="mt-4">
-                <ConvertEnquiry enquiry={selected} />
+                <ConvertEnquiry
+                  enquiry={selected}
+                  onConverted={() =>
+                    setSelected((s) => (s ? { ...s, status: "converted" } : s))
+                  }
+                />
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">

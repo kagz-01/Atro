@@ -17,6 +17,7 @@ import {
 } from "@/lib/diaspora/portal-schema";
 import { generateProject } from "@/lib/diaspora/server";
 import { loadProjectById, logActivity, type PortalPayload } from "@/lib/diaspora/server";
+import { leadLocality } from "@/lib/enquiry-lead";
 import { channelStatus, notificationLog, notify, retryPending } from "@/lib/notify";
 import { issueCertificateFor, issueStatementFor } from "@/lib/invoice-server";
 
@@ -504,9 +505,15 @@ const OpenFromEnquiry = z.object({
  * Open a project for a client who may never have signed up.
  *
  * The row is written with no owner and a `claimed_email`, so it waits for them:
- * the first time they sign in with that address the project becomes theirs. The
- * alternative — asking a lead to create an account before we have decided to
- * work with them — loses the enquiry at exactly the wrong moment.
+ * the first sign-in with that address — or with the phone number they enquired
+ * from, proved by OTP — takes ownership. The alternative — asking a lead to
+ * create an account before we have decided to work with them — loses the
+ * enquiry at exactly the wrong moment.
+ *
+ * The abroad facts the wizard collected ride along into the project rather
+ * than being written over with empty strings: without the country and zone a
+ * converted diaspora lead landed in a portal that did not know they were
+ * abroad, and the /diaspora page's promise died at the funnel's last step.
  */
 export async function openProjectFromEnquiryFor(
   sql: Sql,
@@ -521,9 +528,13 @@ export async function openProjectFromEnquiryFor(
     description: string;
     project_type: string;
     phone: string;
+    diaspora: boolean;
+    diaspora_country: string;
+    diaspora_timezone: string;
     already: string | null;
   }>`
     select e.id, e.email, e.name, e.zone, e.description, e.project_type, e.phone,
+      e.diaspora, e.diaspora_country, e.diaspora_timezone,
       (select p.id::text from portal_projects p where p.id = e.project_id) as already
     from enquiries e where e.id = ${data.enquiryId} limit 1
   `;
@@ -538,6 +549,11 @@ export async function openProjectFromEnquiryFor(
   const year = new Date().getFullYear();
   const reference = `ATR-${year}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
   const track = trackById(data.track);
+  const locality = leadLocality({
+    diaspora: enquiry.diaspora,
+    country: enquiry.diaspora_country,
+    timezone: enquiry.diaspora_timezone,
+  });
   const brief: ProjectBrief = {
     title: data.title.trim(),
     plot: data.plot.trim() || enquiry.zone,
@@ -545,8 +561,8 @@ export async function openProjectFromEnquiryFor(
     contractValue: data.contractValue,
     startDate: data.startDate,
     targetDate: data.targetDate,
-    clientCity: "",
-    clientTz: "",
+    clientCity: locality.clientCity,
+    clientTz: locality.clientTz,
     track: track.id,
     serviceSlug: "",
     zone: data.zone || enquiry.zone,
@@ -568,7 +584,10 @@ export async function openProjectFromEnquiryFor(
     projectId,
     "note",
     "Project opened from an enquiry",
-    `Prepared by ${staff.email} from enquiry ${enquiry.id}. It will appear for ${email} as soon as they sign in.`,
+    `Prepared by ${staff.email} from enquiry ${enquiry.id}. It will appear for ${email} as soon as they sign in with that address or the number on the enquiry.` +
+      (enquiry.diaspora
+        ? ` They are based in ${enquiry.diaspora_country || "abroad"}${locality.clientTz ? `, on ${locality.clientTz}` : ""}.`
+        : ""),
   );
 
   return { projectId, clientEmail: email };

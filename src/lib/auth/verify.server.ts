@@ -75,24 +75,41 @@ export async function getSessionUser(
 }
 
 /**
- * Resolve the current user id for a server function, or throw when unauthorized.
- * - Supabase configured -> the verified session user id; throws
- *   `UnauthorizedError` when signed out.
+ * The verified caller: the id every query is scoped by, plus the contact
+ * points the session itself proved — the email sign-in carried or the phone
+ * number OTP dialled. A provisioned project matches on these two (see
+ * `claimProvisionedProjects`), which is why they travel together: asking our
+ * own `user` table "who is this?" answered nobody, because nothing writes it.
+ *
+ * - Supabase configured -> the verified session; throws `UnauthorizedError`
+ *   when signed out.
  * - Not configured + `DATABASE_URL` set -> throw (fail closed): one shared dev
  *   user on a real database would let every visitor read/write everyone's rows.
- * - Not configured + no database -> the shared dev user id.
+ * - Not configured + no database -> the preview identity (`dev-user`, and the
+ *   studio address it signs in as).
  */
-export async function requireUserId(bearerToken?: string): Promise<string> {
-  if (!configured) {
-    if (databaseConfigured) {
-      throw new Error(
-        "Supabase is not configured but DATABASE_URL is set — " +
-          "refusing to fall back to the shared dev user against a real database.",
-      );
-    }
-    return DEV_USER_ID;
+export type SessionIdentity = {
+  userId: string;
+  email: string;
+  phone: string | null;
+};
+
+export async function requireSession(bearerToken?: string): Promise<SessionIdentity> {
+  if (!configured && databaseConfigured) {
+    throw new Error(
+      "Supabase is not configured but DATABASE_URL is set — " +
+        "refusing to fall back to the shared dev user against a real database.",
+    );
   }
   const user = await getSessionUser(bearerToken);
   if (!user) throw new UnauthorizedError();
-  return user.id;
+  return { userId: user.id, email: user.email ?? "", phone: user.phone ?? null };
+}
+
+/**
+ * Resolve just the current user id — `requireSession(...).userId`, kept for
+ * the callers that only ever needed the scope. Same three cases as above.
+ */
+export async function requireUserId(bearerToken?: string): Promise<string> {
+  return (await requireSession(bearerToken)).userId;
 }

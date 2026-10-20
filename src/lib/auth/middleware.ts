@@ -2,7 +2,7 @@ import { createMiddleware } from "@tanstack/react-start";
 
 /**
  * Auth middleware for server functions — the standard way to get the caller's
- * verified user id. When deployed the session cookie is same-origin and rides
+ * verified identity. When deployed the session cookie is same-origin and rides
  * along automatically. In the live preview the client also forwards the bearer
  * token (partitioned cookies) via the `.client` hook below — call sites do not
  * thread it themselves.
@@ -17,6 +17,10 @@ import { createMiddleware } from "@tanstack/react-start";
  *       const sql = await getSql();
  *       return sql`select * from todos where user_id = ${context.userId}`;
  *     });
+ *
+ * `context` carries `userId` plus the contact points the session proved —
+ * `email` and `phone` — which is how a provisioned project finds its client
+ * (see `claimProvisionedProjects`); most callers only read `userId`.
  *
  * Signed out with auth on (live preview included) -> throws `UnauthorizedError`
  * (see `verify.server.ts`). With auth disabled (`VITE_AUTH_ENABLED=false`, the
@@ -39,9 +43,11 @@ export const authMiddleware = createMiddleware({ type: "function" })
     // `isolation.server.ts` — keep this import in sync so image `tsc` resolves
     // it, and so Vite does not ship `@tanstack/react-start/server` to the browser.
     const { assertSameSiteRequest } = await import("./isolation.server");
-    const { requireUserId } = await import("./verify.server");
+    const { requireSession } = await import("./verify.server");
     // Reject scripted cross-site/sibling requests before touching per-user data.
     assertSameSiteRequest();
-    const userId = await requireUserId(context.bearerToken);
-    return next({ context: { userId } });
+    const session = await requireSession(context.bearerToken);
+    return next({
+      context: { userId: session.userId, email: session.email, phone: session.phone },
+    });
   });
