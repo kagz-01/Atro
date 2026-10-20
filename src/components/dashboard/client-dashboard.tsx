@@ -45,6 +45,7 @@ import { VariationsPanel } from "@/components/dashboard/variations-panel";
 import { listMyVariations } from "@/lib/variations-server";
 import { countAwaiting } from "@/lib/variations";
 import { AbroadPanel } from "@/components/dashboard/abroad-panel";
+import { HowToPayPanel } from "@/components/dashboard/how-to-pay-panel";
 import { VisitPanel } from "@/components/dashboard/presence-panel";
 import { isAbroad } from "@/lib/abroad";
 import { clientZone, isHomeZone, zonedClock } from "@/lib/tz";
@@ -645,6 +646,8 @@ export function ClientDashboard({
               />
             </Panel>
           </div>
+
+          <HowToPayPanel projectId={p.id} abroad={abroad} />
         </div>
       ) : null}
 

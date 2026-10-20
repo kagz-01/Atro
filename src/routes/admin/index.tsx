@@ -65,6 +65,10 @@ import {
   updateMilestone,
   type StaffProjectSummary,
 } from "@/lib/staff-ops";
+import {
+  getPaymentInstructions,
+  savePaymentInstructions,
+} from "@/lib/how-to-pay-server";
 import { stampIn } from "@/lib/tz";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { cn } from "@/lib/utils";
@@ -325,6 +329,80 @@ function WriteBlock({
   );
 }
 
+/**
+ * The two sheets a client pays from — typed once, here, read on the portal by
+ * whoever they belong to: the local one for a client in the country, the
+ * international one for a client abroad. The boxes prefill from what is
+ * already saved so opening the accordion shows the studio's own words; a
+ * cleared box takes that sheet down, and the portal panel with it.
+ */
+function HowToPayBlock({
+  projectId,
+  run,
+  onChanged,
+}: {
+  projectId: string;
+  run: (key: string, action: () => Promise<unknown>, done: string) => Promise<void>;
+  onChanged: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ["payment-instructions", projectId],
+    queryFn: () => getPaymentInstructions({ data: { projectId } }),
+  });
+  const [local, setLocal] = useState("");
+  const [international, setInternational] = useState("");
+  // Sync the boxes once per fetch: a background refetch landing mid-edit must
+  // not overwrite what somebody is typing.
+  const [synced, setSynced] = useState(false);
+  useEffect(() => {
+    if (data && !synced) {
+      setLocal(data.local);
+      setInternational(data.international);
+      setSynced(true);
+    }
+  }, [data, synced]);
+
+  return (
+    <WriteBlock
+      title="How to pay"
+      hint="Both halves live here; the portal shows each client the one that matches where they are. Clear a box to take that sheet down."
+      onRun={() =>
+        run(
+          "write",
+          async () => {
+            await savePaymentInstructions({ data: { projectId, local, international } });
+            void queryClient.invalidateQueries({ queryKey: ["payment-instructions", projectId] });
+            onChanged();
+          },
+          "How to pay saved.",
+        )
+      }
+    >
+      <div>
+        <Label htmlFor="st-pay-local">In the country</Label>
+        <Textarea
+          id="st-pay-local"
+          className="min-h-24"
+          value={local}
+          onChange={(e) => setLocal(e.target.value)}
+          placeholder={"M-Pesa Paybill …, Account ATRO-….\nBank …, Branch …, Account …."}
+        />
+      </div>
+      <div>
+        <Label htmlFor="st-pay-intl">From abroad</Label>
+        <Textarea
+          id="st-pay-intl"
+          className="min-h-24"
+          value={international}
+          onChange={(e) => setInternational(e.target.value)}
+          placeholder={"SWIFT …, Bank …, Branch ….\nQuote the project reference on the transfer."}
+        />
+      </div>
+    </WriteBlock>
+  );
+}
+
 function ProjectDetail({
   projectId,
   onBack,
@@ -483,6 +561,9 @@ function ProjectDetail({
               </div>
             ))}
           </dl>
+          <div className="mt-6">
+            <HowToPayBlock projectId={projectId} run={run} onChanged={onChanged} />
+          </div>
         </AccordionItem>
         <AccordionItem title="Milestone & evidence">
           <div className="grid gap-6 lg:grid-cols-2">

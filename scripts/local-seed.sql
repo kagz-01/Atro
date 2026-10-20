@@ -663,3 +663,21 @@ select p.id, 'email', 'client', 'update',
   '/portal', now() + interval '6 hours', now() - interval '2 days'
 from portal_projects p
 where p.reference = 'ATRO-2401';
+
+-- ── how to pay, both halves ──
+--
+-- The studio's account told two ways, exactly as the console stores it: what
+-- a client in the country uses, and what a bank abroad needs to send a wire.
+-- The portal shows each client the half that matches where they live.
+insert into portal_payment_instructions (project_id, kind, body)
+select p.id, v.kind, v.body
+from portal_projects p
+cross join lateral (values
+  ('local', 'M-Pesa Paybill 247247, Account ATRO-2401. 
+KCB Karen Branch, Account 1234567890, Account name ATRO Studio Ltd.
+Quote the project reference ATRO-2401 on every payment so it lands on your statement.'),
+  ('international', 'KCB Kenya, Nairobi Karen Branch.
+SWIFT: KCBKENAXXX. Account 1234567890, Account name ATRO Studio Ltd.
+Quote ATRO-2401 as the payment reference, and send the transfer advice to your project manager so the payment is matched the day it lands.')
+) as v(kind, body)
+where p.reference = 'ATRO-2401';
