@@ -23,6 +23,17 @@
 // channel as if nobody had ever meant to use it. The studio's own contact has
 // no such switches — staff messages use whatever transport the credentials
 // allow.
+//
+// Time is the other ceiling, and it is read on the client's clock: outside
+// their 08:00–20:00 a push channel's row is written `pending` with a
+// deliver_after (src/lib/tz.ts computes the morning) instead of being
+// attempted at three in their morning. The row still carries intent — the
+// definition of this outbox — and the attempt happens when the drain finds it
+// due, at the next touch that runs one: every notify(), the studio opening a
+// project's delivery log, the client opening their own. In-app never waits
+// (the portal is where they would read it), the studio's own audience never
+// waits, and a zone that cannot be read sends now rather than being held on a
+// guess.
 
 import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
@@ -30,6 +41,7 @@ import { getSql, type Sql } from "@/lib/db";
 import { toAfricaTalking, toE164 } from "@/lib/phone";
 import { type Consent } from "@/lib/abroad";
 import { ALL_CHANNELS, partitionChannels, type Channel } from "@/lib/delivery";
+import { quietHoldUntil } from "@/lib/tz";
 
 export type { Channel };
 
@@ -99,6 +111,8 @@ type Recipient = {
   email: string | null;
   phone: string | null;
   name: string;
+  /** The client's own zone, for reading their waking hours; absent for the studio. */
+  timezone?: string;
   /** The client's channel consent; absent for the studio, which has none. */
   consent?: Consent;
 };
@@ -121,6 +135,7 @@ async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | n
     notify_email: boolean;
     notify_whatsapp: boolean;
     notify_sms: boolean;
+    timezone: string | null;
   }>`
     select coalesce(nullif(c.email, ''), u.email) as email,
            coalesce(nullif(c.display_name, ''), u.name) as name,
@@ -128,7 +143,8 @@ async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | n
            nullif(c.phone, '') as phone,
            coalesce(c.notify_email, true) as notify_email,
            coalesce(c.notify_whatsapp, true) as notify_whatsapp,
-           coalesce(c.notify_sms, false) as notify_sms
+           coalesce(c.notify_sms, false) as notify_sms,
+           coalesce(nullif(c.timezone, ''), nullif(p.client_tz, '')) as timezone
     from portal_projects p
     left join "user" u on u.id = p.user_id
     left join client_profile c on c.user_id = p.user_id
@@ -150,6 +166,7 @@ async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | n
     // A diaspora client may have left this blank entirely.
     phone: toE164(row.phone ?? row.client_phone),
     name: row.name ?? "there",
+    timezone: row.timezone ?? "",
     consent: {
       email: row.notify_email,
       whatsapp: row.notify_whatsapp,
@@ -312,10 +329,20 @@ export type NotifyResult = {
 
 export async function notify(input: NotificationInput): Promise<NotifyResult> {
   const sql = await getSql();
+  // Arriving is also a chance to deliver: anything whose client morning has
+  // come since the last touch goes out before this new message is written.
+  await drainDue(sql);
   const body = input.body ?? "";
   const audience = input.audience ?? "client";
   const recipient =
     audience === "studio" ? await resolveStudio(sql) : await resolveClient(sql, input.projectId);
+  // The clock ceiling, read on the client's own zone: outside 08:00–20:00
+  // there, every push channel holds its row for the morning instead of
+  // firing into their night. The studio's own audience never holds, and an
+  // unreadable zone resolves to the site's clock rather than being guessed.
+  const zone = recipient?.timezone?.trim() || "Africa/Nairobi";
+  const holdUntil =
+    audience === "client" ? quietHoldUntil(new Date().toISOString(), zone) : null;
   // The portal feed is always on; everything else follows consent for a client,
   // and for the studio whichever transports have credentials. A channel with
   // no credentials is not silently omitted — it is recorded as skipped, so the
@@ -349,13 +376,24 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
   for (const channel of wanted) {
     const config = CONFIG[channel]();
     const dedupe = input.dedupeKey && channel === wanted[0] ? input.dedupeKey : null;
+    // inapp never holds — the portal is where they would read it — and a held
+    // row is recorded as intent whatever the channel's credentials say today:
+    // keys can be configured before the morning comes, and the drain checks.
+    const held = holdUntil !== null && channel !== "inapp";
+    const status = held || config.configured ? "pending" : "skipped";
+    const detail = held
+      ? `outside your waking hours (${zone})`
+      : config.configured
+        ? ""
+        : config.reason;
+    const deliverAfter = held ? holdUntil : null;
 
     const rows = dedupe
       ? await sql.query<{ id: string }>(
           `insert into portal_notification
-             (project_id, channel, audience, kind, title, body, status, detail, dedupe_key)
-           values ($1, $2, $3, $4, $5, $6,
-                   case when $7 then 'pending' else 'skipped' end, $8, $9)
+             (project_id, channel, audience, kind, title, body, status, detail,
+              document_url, deliver_after, dedupe_key)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
            on conflict (dedupe_key) where dedupe_key is not null
              and status in ('pending', 'sent') do nothing
            returning id`,
@@ -366,18 +404,20 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
             input.kind,
             input.title,
             body,
-            config.configured,
-            config.configured ? "" : config.reason,
+            status,
+            detail,
+            input.documentUrl ?? null,
+            deliverAfter,
             dedupe,
           ],
         )
       : await sql<{ id: string }>`
           insert into portal_notification
-            (project_id, channel, audience, kind, title, body, status, detail)
+            (project_id, channel, audience, kind, title, body, status, detail,
+             document_url, deliver_after)
           values (${input.projectId}, ${channel}, ${audience}, ${input.kind},
-                  ${input.title}, ${body},
-                  ${config.configured ? "pending" : "skipped"},
-                  ${config.configured ? "" : config.reason})
+                  ${input.title}, ${body}, ${status}, ${detail},
+                  ${input.documentUrl ?? null}, ${deliverAfter})
           returning id
         `;
 
@@ -386,6 +426,8 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
     // so this message was sent before and must not be sent twice.
     if (dedupe && !id) return { created: false, channels: [] };
     if (!id) continue;
+    // Held for the client's morning — the drain attempts it when due.
+    if (held) continue;
     if (!config.configured) continue;
 
     // inapp needs no transport — the row in this table IS the portal's feed,
@@ -399,33 +441,21 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
       continue;
     }
 
-    const target = channel === "email" ? recipient?.email : recipient?.phone;
-    if (!target) {
-      await sql`
-        update portal_notification set status = 'skipped', detail = 'no contact on file'
-        where id = ${id}
-      `;
-      continue;
-    }
-
-    const result =
-      channel === "email"
-        ? await sendEmail(target, input.title, body, projectRef, input.documentUrl)
-        : channel === "whatsapp"
-          ? await sendWhatsApp(
-              target,
-              input.title,
-              body,
-              TEMPLATE_FOR[input.kind] ?? TEMPLATE_FOR.update,
-            )
-          : await sendSms(target, input.title, body);
-
-    await sql`
-      update portal_notification
-      set status = ${result.ok ? "sent" : "failed"}, attempts = attempts + 1,
-          detail = ${result.detail}, sent_at = case when ${result.ok} then now() else sent_at end
-      where id = ${id}
-    `;
+    await attemptSend(
+      sql,
+      {
+        id,
+        project_id: input.projectId,
+        kind: input.kind,
+        channel,
+        audience,
+        title: input.title,
+        body,
+        document_url: input.documentUrl ?? null,
+      },
+      recipient,
+      projectRef,
+    );
   }
 
   // Consent deserves a row of its own. A forbidden channel is the one fact
@@ -457,6 +487,123 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
   return { created: true, channels: wanted };
 }
 
+/** One row's attempt: credentials, address, provider, settle — in that order. */
+type AttemptRow = {
+  id: string;
+  project_id: string;
+  kind: string;
+  channel: string;
+  audience: string;
+  title: string;
+  body: string;
+  document_url: string | null;
+};
+
+async function attemptSend(
+  sql: Sql,
+  row: AttemptRow,
+  recipient: Recipient | null,
+  projectRef: string,
+): Promise<void> {
+  const channel = row.channel as Channel;
+  const config = CONFIG[channel]();
+  if (!config.configured) {
+    await sql`
+      update portal_notification set status = 'skipped', detail = ${config.reason}
+      where id = ${row.id}
+    `;
+    return;
+  }
+  const target = channel === "email" ? recipient?.email : recipient?.phone;
+  if (!target) {
+    await sql`
+      update portal_notification set status = 'skipped', detail = 'no contact on file'
+      where id = ${row.id}
+    `;
+    return;
+  }
+  const result =
+    channel === "email"
+      ? await sendEmail(target, row.title, row.body, projectRef, row.document_url ?? undefined)
+      : channel === "whatsapp"
+        ? await sendWhatsApp(
+            target,
+            row.title,
+            row.body,
+            TEMPLATE_FOR[row.kind] ?? TEMPLATE_FOR.update,
+          )
+        : await sendSms(target, row.title, row.body);
+  await sql`
+    update portal_notification
+    set status = ${result.ok ? "sent" : "failed"}, attempts = attempts + 1,
+        detail = ${result.detail}, sent_at = case when ${result.ok} then now() else sent_at end
+    where id = ${row.id}
+  `;
+}
+
+/**
+ * Attempt the held rows whose client morning has come — the drain.
+ *
+ * There is no scheduler in this deployment, so the work runs when somebody
+ * arrives, the same trigger style as the attention sweep: every notify(), the
+ * studio opening a project's delivery log, and the client opening their own.
+ * Each row is claimed by pushing its due-time forward before the attempt, so
+ * two arrivals at the same moment cannot send it twice; a transport that
+ * throws settles the row as failed rather than breaking the read that woke it.
+ */
+export async function drainDue(sql: Sql, projectId?: string): Promise<number> {
+  const rows = await sql.query<AttemptRow>(
+    `select id, project_id, kind, channel, audience, title, body, document_url
+     from portal_notification
+     where status = 'pending' and deliver_after is not null and deliver_after <= now()
+       and ($1::uuid is null or project_id = $1::uuid)
+     order by deliver_after asc
+     limit 25`,
+    [projectId ?? null],
+  );
+  let attempted = 0;
+  for (const row of rows) {
+    const claim = await sql<{ id: string }>`
+      update portal_notification
+      set deliver_after = now() + interval '1 hour'
+      where id = ${row.id} and status = 'pending' and deliver_after <= now()
+      returning id
+    `;
+    if (!claim[0]) continue;
+    const recipient =
+      row.audience === "studio"
+        ? await resolveStudio(sql)
+        : await resolveClient(sql, row.project_id);
+    const ref = await sql<{ reference: string }>`
+      select reference from portal_projects where id = ${row.project_id} limit 1
+    `;
+    try {
+      await attemptSend(sql, row, recipient, ref[0]?.reference ?? "");
+      attempted++;
+    } catch (e) {
+      const detail = `error: ${e instanceof Error ? e.message : String(e)}`.slice(0, 200);
+      await sql`
+        update portal_notification
+        set status = 'failed', attempts = attempts + 1, detail = ${detail}
+        where id = ${row.id}
+      `;
+    }
+  }
+  return attempted;
+}
+
+/**
+ * The staff override: send this project's held rows now rather than waiting
+ * for their morning — a client who says "I am awake, send it" gets their mail.
+ */
+export async function releaseHeld(sql: Sql, projectId: string): Promise<number> {
+  await sql`
+    update portal_notification set deliver_after = now()
+    where project_id = ${projectId} and status = 'pending' and deliver_after is not null
+  `;
+  return drainDue(sql, projectId);
+}
+
 export type NotificationLog = {
   id: string;
   channel: Channel;
@@ -467,6 +614,8 @@ export type NotificationLog = {
   detail: string;
   createdAt: string;
   sentAt: string | null;
+  /** When a held row becomes due; null for everything not waiting on a clock. */
+  deliverAfter: string | null;
 };
 
 export async function notificationLog(sql: Sql, projectId: string, limit = 20): Promise<NotificationLog[]> {
@@ -480,8 +629,9 @@ export async function notificationLog(sql: Sql, projectId: string, limit = 20): 
     detail: string;
     created_at: unknown;
     sent_at: unknown;
+    deliver_after: unknown;
   }>`
-    select id, channel, audience, kind, title, status, detail, created_at, sent_at
+    select id, channel, audience, kind, title, status, detail, created_at, sent_at, deliver_after
     from portal_notification where project_id = ${projectId}
     order by created_at desc limit ${limit}
   `;
@@ -496,6 +646,7 @@ export async function notificationLog(sql: Sql, projectId: string, limit = 20): 
     detail: r.detail,
     createdAt: iso(r.created_at),
     sentAt: iso(r.sent_at),
+    deliverAfter: iso(r.deliver_after) || null,
   }));
 }
 
@@ -516,6 +667,9 @@ export type ClientDelivery = {
 };
 
 async function myDeliveries(sql: Sql, userId: string, limit: number): Promise<ClientDelivery[]> {
+  // Reading their own log is one of the arrivals that runs the drain — a
+  // client opening the profile fetches the mail their morning has released.
+  await drainDue(sql);
   const rows = await sql<{
     id: string;
     channel: string;
@@ -552,10 +706,14 @@ export const listMyDeliveries = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => myDeliveries(await getSql(), context.userId, 12));
 
-/** Retry anything left pending or failed — used by a staff action. */
+/**
+ * Retry anything left failed — used by a staff action. deliver_after is set
+ * to now so the next drain claims the rows: a pending row with no due time is
+ * how a retry used to quietly go nowhere.
+ */
 export async function retryPending(sql: Sql, projectId: string): Promise<number> {
   const rows = await sql<{ id: string }>`
-    update portal_notification set status = 'pending'
+    update portal_notification set status = 'pending', deliver_after = now()
     where project_id = ${projectId} and status = 'failed'
     returning id
   `;

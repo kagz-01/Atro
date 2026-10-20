@@ -18,6 +18,7 @@ import {
   SITE_ZONE,
 } from "@/lib/presence";
 import { listMyPresence, requestVisit, requestWalkthrough } from "@/lib/presence-server";
+import { isHomeZone, zonedClock } from "@/lib/tz";
 
 /**
  * The two cards the presence split puts on the client's side.
@@ -45,9 +46,13 @@ function usePresence(projectId: string) {
 export function VisitPanel({
   projectId,
   activeMilestoneName,
+  zone,
 }: {
   projectId: string;
   activeMilestoneName?: string | null;
+  /** The client's own zone — when it is not the site's, the confirmed slot
+   *  also reads on their clock, the same way the programme quotes calls. */
+  zone?: string;
 }) {
   const { query, invalidate } = usePresence(projectId);
   const [day, setDay] = useState("");
@@ -59,6 +64,10 @@ export function VisitPanel({
   const confirmed = headline && headline.status === "scheduled" ? headline : null;
   const isUpcoming =
     confirmed?.scheduledAt != null && Date.parse(confirmed.scheduledAt) >= Date.now();
+  const yourClock =
+    confirmed?.scheduledAt && zone && !isHomeZone(zone)
+      ? zonedClock(confirmed.scheduledAt, zone)
+      : null;
 
   const ask = useMutation({
     mutationFn: () => requestVisit({ data: { projectId, proposedOn: day, note: note.trim() || undefined } }),
@@ -97,6 +106,11 @@ export function VisitPanel({
             {formatInstant(confirmed.scheduledAt, SITE_ZONE) ??
               "A time the studio will confirm."}
           </p>
+          {yourClock ? (
+            <p className="mt-1 text-[13px] text-ink/55">
+              Your time — {yourClock.clock} {yourClock.zone}
+            </p>
+          ) : null}
           {confirmed.staffNote ? (
             <p className="mt-2 text-[14px] leading-relaxed text-ink/75">{confirmed.staffNote}</p>
           ) : null}

@@ -15,6 +15,7 @@ import { CLIENT_TYPES } from "@/lib/profile";
 import { formatPhone } from "@/lib/phone";
 import { listMyDeliveries } from "@/lib/notify";
 import { CHANNEL_NAMES, clientStatusLine, type Channel } from "@/lib/delivery";
+import { stampIn } from "@/lib/tz";
 
 /**
  * The client's own record, in their own words.
@@ -216,7 +217,7 @@ function ProfileForm({
           </p>
         </Panel>
 
-        <DeliveryLog />
+        <DeliveryLog zone={profile.timezone} />
       </div>
     );
   }
@@ -464,8 +465,13 @@ const DELIVERY_TONE: Record<string, "stone" | "gold" | "maroon" | "live" | "pape
  * their own decision, which is exactly what makes the promise checkable. Raw
  * outbox detail (provider names, missing keys) is translated by
  * clientStatusLine before it reaches this page.
+ *
+ * The stamp reads in the reader's own zone — date AND time, where this list
+ * used to show a browser-guessed date that could be the wrong calendar day
+ * for a client on the far side of midnight — with EAT when they live on the
+ * site's clock.
  */
-function DeliveryLog() {
+function DeliveryLog({ zone }: { zone: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["my-deliveries"],
     queryFn: () => listMyDeliveries({ data: undefined }),
@@ -495,13 +501,7 @@ function DeliveryLog() {
                   <span className="text-[13px] text-maroon">{n.title}</span>
                 </span>
                 <span className="shrink-0 text-[11px] text-muted">
-                  {n.createdAt
-                    ? new Date(n.createdAt).toLocaleDateString("en-KE", {
-                        day: "numeric",
-                        month: "short",
-                        year: "2-digit",
-                      })
-                    : ""}
+                  {stampIn(n.createdAt, zone)}
                 </span>
               </div>
               <p className="mt-1.5 text-[12px] text-ink/55">

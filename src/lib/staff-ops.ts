@@ -18,7 +18,7 @@ import {
 import { generateProject } from "@/lib/diaspora/server";
 import { loadProjectById, logActivity, type PortalPayload } from "@/lib/diaspora/server";
 import { leadLocality } from "@/lib/enquiry-lead";
-import { channelStatus, notificationLog, notify, retryPending } from "@/lib/notify";
+import { channelStatus, drainDue, notificationLog, notify, releaseHeld, retryPending } from "@/lib/notify";
 import { issueCertificateFor, issueStatementFor } from "@/lib/invoice-server";
 
 /* ── input ── */
@@ -108,6 +108,9 @@ export const getDeliveryLog = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
+    // Opening the log is one of the arrivals that runs the drain: what the
+    // client's morning has released is attempted before it is read.
+    await drainDue(sql);
     return {
       channels: channelStatus(),
       log: await notificationLog(sql, data.projectId),
@@ -130,7 +133,20 @@ export const retryDeliveries = createServerFn({ method: "POST" })
     await requireStaff();
     const sql = await getSql();
     const queued = await retryPending(sql, data.projectId);
+    // The retry only means something if the drain runs: that is what attempts
+    // the rows the retry just made due.
+    await drainDue(sql, data.projectId);
     return { ok: true as const, queued };
+  });
+
+/** Send this project's held rows now — the client is awake and asked for it. */
+export const releaseHeldDeliveries = createServerFn({ method: "POST" })
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    await requireStaff();
+    const sql = await getSql();
+    const sent = await releaseHeld(sql, data.projectId);
+    return { ok: true as const, sent };
   });
 
 /** Read-only role lookup for the UI: a session exists, and is it staff? */

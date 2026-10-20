@@ -84,6 +84,17 @@ describe("clientStatusLine", () => {
     );
   });
 
+  test("a hold for the client's morning says when, in their clock's terms", () => {
+    assert.equal(
+      clientStatusLine("pending", "outside your waking hours (Europe/London)", "email"),
+      "Held until 08:00 your time",
+    );
+    assert.equal(
+      clientStatusLine("pending", "outside your waking hours (Pacific/Auckland)", "whatsapp"),
+      "Held until 08:00 your time",
+    );
+  });
+
   test("every channel has a spoken name", () => {
     for (const c of ALL_CHANNELS) assert.ok(CHANNEL_NAMES[c]);
   });

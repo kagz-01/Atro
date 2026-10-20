@@ -643,3 +643,23 @@ cross join lateral (values
    '', 1, 0)
 ) as v(kind, status, client_note, proposed, scheduled_days, staff_note, asked_days, answered_gap)
 where p.reference = 'ATRO-2401';
+
+-- ── a held email: the outbox waiting for the client's morning ──
+--
+-- Written exactly as notify() writes a row aimed at a client whose zone is
+-- asleep — pending, with the reason and the moment it becomes due — so a fresh
+-- database opens with the quiet-hours state visible on both sides: "Held until
+-- 08:00 your time" in the portal's delivery log, and a held row the console
+-- can send early with Send held now. The due time runs six hours out, relative
+-- like every other date here, so it demonstrates the hold instead of draining
+-- the moment somebody opens a log.
+insert into portal_notification
+  (project_id, channel, audience, kind, title, body, status, detail,
+   document_url, deliver_after, created_at)
+select p.id, 'email', 'client', 'update',
+  'The roof covering is on',
+  'Tiles laid Friday, ridges seal Monday. The photographs are in the document vault.',
+  'pending', 'outside your waking hours (Africa/Nairobi)',
+  '/portal', now() + interval '6 hours', now() - interval '2 days'
+from portal_projects p
+where p.reference = 'ATRO-2401';

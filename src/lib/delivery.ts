@@ -20,6 +20,7 @@
 // resolver, so `@/lib/...` would not load under `node --test`.
 
 import { channelsFor, type Consent, type ReachChannel } from "./abroad.ts";
+import { QUIET_BEFORE_HOUR } from "./tz.ts";
 
 export type Channel = ReachChannel;
 
@@ -67,7 +68,11 @@ export function clientStatusLine(status: string, detail: string, channel: Channe
     case "sent":
       return channel === "inapp" ? "Shown in your portal" : "Sent";
     case "pending":
-      return "Queued";
+      // Held for the client's own waking hours — say when, in their clock's
+      // terms, instead of leaving "queued" to look like a fault.
+      return detail.includes("waking hours")
+        ? `Held until ${String(QUIET_BEFORE_HOUR).padStart(2, "0")}:00 your time`
+        : "Queued";
     case "failed":
       return "Did not go through — the studio can retry";
     case "suppressed":

@@ -402,6 +402,7 @@ export function ClientDashboard({
           {abroad ? null : (
             <VisitPanel
               projectId={p.id}
+              zone={zone}
               activeMilestoneName={
                 data.milestones.find((m) => m.status === "active")?.name ?? null
               }

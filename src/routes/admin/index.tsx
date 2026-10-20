@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Banknote,
@@ -60,10 +60,12 @@ import {
   listStaffProjects,
   postUpdate,
   raiseDecision,
+  releaseHeldDeliveries,
   retryDeliveries,
   updateMilestone,
   type StaffProjectSummary,
 } from "@/lib/staff-ops";
+import { stampIn } from "@/lib/tz";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { cn } from "@/lib/utils";
 
@@ -131,11 +133,22 @@ const DELIVERY_STATUS: Record<string, string> = {
 };
 
 function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: () => void }) {
+  const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["delivery-log", projectId],
     queryFn: () => getDeliveryLog({ data: { projectId } }),
   });
   const [retrying, setRetrying] = useState(false);
+  const [releasing, setReleasing] = useState(false);
+  const heldCount = (data?.log ?? []).filter((n) => n.status === "pending" && n.deliverAfter)
+    .length;
+  /* onChanged refetches the project's headline, not this query key — so a
+     release or retry redraws its own rows too, else the held button keeps
+     counting rows that have already gone. */
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["delivery-log", projectId] });
+    void onChanged();
+  };
 
   if (isLoading || !data) return null;
 
@@ -146,28 +159,53 @@ function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: (
           <h3 className="font-display text-lg text-maroon">What the client was told</h3>
           <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
             Every post records what it tried to send. A channel with no credentials is
-            marked skipped rather than quietly dropped.
+            marked skipped rather than quietly dropped, and one aimed at a client whose
+            zone is asleep waits for their morning instead of their three a.m.
           </p>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={retrying}
-          onClick={() => {
-            setRetrying(true);
-            void retryDeliveries({ data: { projectId } })
-              .then((r) => {
-                toast.success(`${r.queued} queued for another attempt.`);
-                void onChanged();
-              })
-              .catch((e: unknown) =>
-                toast.error(e instanceof Error ? e.message : "Retry failed."),
-              )
-              .finally(() => setRetrying(false));
-          }}
-        >
-          Retry failed
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {heldCount > 0 ? (
+            <Button
+              size="sm"
+              disabled={releasing}
+              onClick={() => {
+                setReleasing(true);
+                void releaseHeldDeliveries({ data: { projectId } })
+                  .then((r) => {
+                    toast.success(
+                      r.sent === 1 ? "1 held row sent on its way." : `${r.sent} held rows sent on their way.`,
+                    );
+                    refresh();
+                  })
+                  .catch((e: unknown) =>
+                    toast.error(e instanceof Error ? e.message : "Release failed."),
+                  )
+                  .finally(() => setReleasing(false));
+              }}
+            >
+              Send held now ({heldCount})
+            </Button>
+          ) : null}
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={retrying}
+            onClick={() => {
+              setRetrying(true);
+              void retryDeliveries({ data: { projectId } })
+                .then((r) => {
+                  toast.success(`${r.queued} queued for another attempt.`);
+                  refresh();
+                })
+                .catch((e: unknown) =>
+                  toast.error(e instanceof Error ? e.message : "Retry failed."),
+                )
+                .finally(() => setRetrying(false));
+            }}
+          >
+            Retry failed
+          </Button>
+        </div>
       </div>
 
       <ul className="mt-4 flex flex-wrap gap-2">
@@ -209,7 +247,7 @@ function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: (
                 ) : null}
               </span>
               <span className="shrink-0 text-[11px] text-muted">
-                {n.createdAt ? new Date(n.createdAt).toLocaleDateString("en-KE", { day: "numeric", month: "short" }) : ""}
+                {stampIn(n.createdAt, "Africa/Nairobi")}
               </span>
             </li>
           ))}
@@ -300,6 +338,7 @@ function ProjectDetail({
     queryKey: ["staff-project", projectId],
     queryFn: () => getStaffProject({ data: { projectId } }),
   });
+  const queryClient = useQueryClient();
 
   // Same key the thread panel uses, so the hint and the panel are one fetch.
   // Reading this never marks anything read — that only happens when the panel
@@ -347,6 +386,10 @@ function ProjectDetail({
     try {
       await action();
       await refetch();
+      /* The delivery log reads on its own key; a write that can append to it
+         (a post, a certification, a vault drop) marks it stale too, else the
+         console keeps showing the rows that existed a moment ago. */
+      void queryClient.invalidateQueries({ queryKey: ["delivery-log", projectId] });
       onChanged();
       toast.success(done);
     } catch (err) {
