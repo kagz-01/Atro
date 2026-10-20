@@ -405,10 +405,13 @@ function HowToPayBlock({
 
 function ProjectDetail({
   projectId,
+  clientType,
   onBack,
   onChanged,
 }: {
   projectId: string;
+  /** From the list row that opened this project — the profile's own flag. */
+  clientType?: string;
   onBack: () => void;
   onChanged: () => void;
 }) {
@@ -521,6 +524,11 @@ function ProjectDetail({
                 <span className="font-mono">{p.reference}</span>
                 <span>{p.clientLabel}</span>
                 {p.clientCity ? <span>{p.clientCity}</span> : null}
+                {clientType === "diaspora" ? (
+                  <Badge tone="gold" className="h-5 text-[9px]">
+                    From abroad
+                  </Badge>
+                ) : null}
                 <span>
                   {p.startedLabel} → {p.targetLabel}
                 </span>
@@ -1068,6 +1076,13 @@ function ProjectsTable({
                   </td>
                   <td className="px-3 py-3 text-[13px] text-ink/70">
                     {p.clientLabel || "—"}
+                    {p.clientType === "diaspora" ? (
+                      <span className="mt-1 block">
+                        <Badge tone="gold" className="h-4 text-[8px]">
+                          From abroad
+                        </Badge>
+                      </span>
+                    ) : null}
                     {p.clientCity ? (
                       <span className="block text-[11px] text-muted">{p.clientCity}</span>
                     ) : null}
@@ -1673,7 +1688,9 @@ function AdminConsole() {
     email: string | null;
   } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "attention" | "sample">("all");
+  const [filter, setFilter] = useState<"all" | "local" | "diaspora" | "attention" | "sample">(
+    "all",
+  );
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("overview");
   const [search, setSearch] = useState("");
 
@@ -1723,6 +1740,10 @@ function AdminConsole() {
       .includes(q);
 
   const rows = all.filter((p) => {
+    // "At home" is everyone who has not said otherwise — the flag comes from
+    // the client's own profile, and silence reads as local, not as unknown.
+    if (filter === "diaspora" && p.clientType !== "diaspora") return false;
+    if (filter === "local" && p.clientType === "diaspora") return false;
     if (filter === "attention" && !(p.blockedStages > 0 || p.openDecisions > 0 || !p.onTrack)) {
       return false;
     }
@@ -1794,6 +1815,8 @@ function AdminConsole() {
             <div className="flex flex-wrap items-center gap-2">
               {([
                 ["all", "All"],
+                ["local", "At home"],
+                ["diaspora", "From abroad"],
                 ["attention", "Needs attention"],
                 ["sample", "Sample"],
               ] as const).map(([id, label]) => (
@@ -1832,6 +1855,7 @@ function AdminConsole() {
       {tab === "projects" && selected ? (
         <ProjectDetail
           projectId={selected}
+          clientType={all.find((x) => x.id === selected)?.clientType}
           onBack={() => setSelected(null)}
           onChanged={() => void refetch()}
         />
@@ -1843,12 +1867,18 @@ function AdminConsole() {
         <div className="flex flex-col items-center rounded-2xl border border-dashed border-ink/15 py-16 text-center">
           <Inbox className="size-7 text-ink/30" />
           <p className="mt-4 font-display text-xl text-maroon">
-            {q ? "Nothing matches that search" : "Nothing here yet"}
+            {q
+              ? "Nothing matches that search"
+              : filter !== "all"
+                ? "Nothing matches that filter"
+                : "Nothing here yet"}
           </p>
           <p className="mt-2 max-w-md text-[13px] text-ink/55">
             {q
               ? `No project, client or reference contains “${search.trim()}”.`
-              : "Projects appear as soon as a client opens one in their portal, or you create one for them."}
+              : filter !== "all"
+                ? "Try another filter, or All to see every project."
+                : "Projects appear as soon as a client opens one in their portal, or you create one for them."}
           </p>
         </div>
       ) : tab === "projects" ? (

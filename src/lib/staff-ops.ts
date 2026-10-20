@@ -85,6 +85,8 @@ export type StaffProjectSummary = {
   title: string;
   clientLabel: string;
   clientCity: string;
+  /** The client's own "I live abroad" flag, from their profile; '' when unset. */
+  clientType: string;
   stage: string;
   progress: number;
   source: string;
@@ -177,12 +179,14 @@ export const listStaffProjects = createServerFn({ method: "GET" }).handler(async
     select p.id, p.user_id, p.reference, p.title, p.client_label, p.client_city,
       p.stage, p.progress, p.source, p.days_remaining, p.on_track, p.contract_value,
       p.paid_to_date, p.currently_certified, p.last_viewed_at, p.created_at,
+      coalesce(nullif(c.client_type, ''), '') as client_type,
       coalesce((select count(*) from portal_decisions d
         where d.project_id = p.id and d.state <> 'decided'), 0) as open_decisions,
       coalesce((select count(*) from portal_milestones m
         where m.project_id = p.id and m.status = 'blocked'), 0) as blocked_stages,
       (select max(a.at) from portal_activity a where a.project_id = p.id) as last_activity_at
     from portal_projects p
+    left join client_profile c on c.user_id = p.user_id
     order by
       (select max(a.at) from portal_activity a where a.project_id = p.id) desc nulls last,
       p.created_at desc
@@ -195,6 +199,7 @@ export const listStaffProjects = createServerFn({ method: "GET" }).handler(async
     title: String(row.title),
     clientLabel: String(row.client_label ?? ""),
     clientCity: String(row.client_city ?? ""),
+    clientType: String(row.client_type ?? ""),
     stage: String(row.stage ?? ""),
     progress: Number(row.progress ?? 0),
     source: String(row.source ?? ""),
