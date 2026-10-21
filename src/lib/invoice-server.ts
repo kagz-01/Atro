@@ -328,8 +328,8 @@ export const listProjectDocuments = createServerFn({ method: "GET" })
 export const issueStatement = createServerFn({ method: "POST" })
   .validator(z.object({ projectId: z.string().min(1) }))
   .handler(async ({ data }) => {
-    const { requireStaff } = await import("@/lib/staff-session.server");
-    const staff = await requireStaff();
+    const { requireAdmin } = await import("@/lib/staff-session.server");
+    const staff = await requireAdmin("issue-statement");
     const sql = await getSql();
     const issued = await issueStatementFor(sql, staff.email, data.projectId);
     if (!issued) throw new Error("Could not issue the statement.");
@@ -340,8 +340,8 @@ export const issueStatement = createServerFn({ method: "POST" })
 export const voidDocument = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().min(1), reason: z.string().trim().min(3).max(200) }))
   .handler(async ({ data }) => {
-    const { requireStaff } = await import("@/lib/staff-session.server");
-    const staff = await requireStaff();
+    const { requireAdmin } = await import("@/lib/staff-session.server");
+    const staff = await requireAdmin("void-document");
     const sql = await getSql();
     const rows = await sql<{ id: string }>`
       update portal_invoice

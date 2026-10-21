@@ -84,6 +84,14 @@ async function requireStaff(): Promise<StaffIdentity> {
   return guard();
 }
 
+/** The money moves: certify, release retention, issue a statement. */
+async function requireAdmin(
+  op: "certify-payment" | "release-retention" | "issue-statement",
+): Promise<StaffIdentity> {
+  const { requireAdmin: guard } = await import("@/lib/staff-session.server");
+  return guard(op);
+}
+
 export type StaffProjectSummary = {
   id: string;
   userId: string;
@@ -128,7 +136,7 @@ export const getDeliveryLog = createServerFn({ method: "GET" })
 export const issueStatementForProject = createServerFn({ method: "POST" })
   .validator(z.object({ projectId: z.string().min(1) }))
   .handler(async ({ data }) => {
-    await requireStaff();
+    await requireAdmin("issue-statement");
     const sql = await getSql();
     const issued = await issueStatementFor(sql, "ATRO", data.projectId);
     if (!issued) throw new Error("Could not issue the statement.");
@@ -509,7 +517,9 @@ export const raiseDecision = createServerFn({ method: "POST" })
 
 export const certifyPayment = createServerFn({ method: "POST" })
   .validator(CertifyPayment)
-  .handler(async ({ data }) => certifyPaymentFor(await getSql(), await requireStaff(), data));
+  .handler(async ({ data }) =>
+    certifyPaymentFor(await getSql(), await requireAdmin("certify-payment"), data),
+  );
 
 export const addDocument = createServerFn({ method: "POST" })
   .validator(AddDocument)
@@ -813,5 +823,5 @@ export async function releaseRetentionFor(
 export const releaseRetention = createServerFn({ method: "POST" })
   .validator(z.object({ projectId: z.string().min(1) }))
   .handler(async ({ data }) =>
-    releaseRetentionFor(await getSql(), await requireStaff(), data.projectId),
+    releaseRetentionFor(await getSql(), await requireAdmin("release-retention"), data.projectId),
   );

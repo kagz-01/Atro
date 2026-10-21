@@ -10,6 +10,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/verify.server";
+import { requireAdmin } from "@/lib/staff-session.server";
 import { demotesLastAdmin, grantDemotesAdmin } from "@/lib/staff-access-rules";
 import { lookupRole, normaliseEmail, type StaffIdentity, type StaffRole } from "@/lib/staff";
 
@@ -83,12 +84,6 @@ export const requestStaffAccess = createServerFn({ method: "POST" })
     return { ok: true as const, alreadyStaff: false };
   });
 
-async function requireAdmin(): Promise<StaffIdentity> {
-  const staff = await requireStaffIdentity();
-  if (staff.role !== "admin") throw new Error("Only an admin can change studio access.");
-  return staff;
-}
-
 export const listStaff = createServerFn({ method: "GET" }).handler(async () => {
   await requireStaffIdentity();
   const sql = await getSql();
@@ -134,7 +129,7 @@ export const grantStaff = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const admin = await requireAdmin();
+    const admin = await requireAdmin("grant-access");
     const sql = await getSql();
     const email = normaliseEmail(data.email);
 
@@ -181,7 +176,7 @@ export const grantStaff = createServerFn({ method: "POST" })
 export const revokeStaff = createServerFn({ method: "POST" })
   .validator(z.object({ email: z.string().trim().email() }))
   .handler(async ({ data }) => {
-    const admin = await requireAdmin();
+    const admin = await requireAdmin("revoke-access");
     const sql = await getSql();
     const email = normaliseEmail(data.email);
 

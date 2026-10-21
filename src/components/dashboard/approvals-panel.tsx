@@ -178,6 +178,13 @@ function ApprovalRow({ approval }: { approval: Approval }) {
             {approval.note}
           </span>
         ) : null}
+
+        {approval.chasedOn ? (
+          <span className="mt-1.5 block text-[12px] leading-snug text-ink/60">
+            ATRO chased {approval.authority || "the authority"} on {approval.chasedOn}
+            {approval.chaseNote ? ` — ${approval.chaseNote}` : "."}
+          </span>
+        ) : null}
       </span>
 
       <span className="shrink-0 text-right">

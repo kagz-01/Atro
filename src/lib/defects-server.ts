@@ -17,7 +17,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { requireStaff } from "@/lib/staff-session.server";
+import { requireAdmin, requireStaff } from "@/lib/staff-session.server";
 import { getSql, type Sql } from "@/lib/db";
 import { notify } from "@/lib/notify";
 import {
@@ -388,7 +388,7 @@ export const setRetainer = createServerFn({ method: "POST" })
   )
   .middleware([authMiddleware])
   .handler(async ({ data }) => {
-    await requireStaff();
+    await requireAdmin("set-retainer");
     const sql = await getSql();
     const [project] = await sql<{ id: string }>`
       select id from portal_projects where id = ${data.projectId}

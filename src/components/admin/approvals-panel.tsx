@@ -138,7 +138,7 @@ export function ApprovalsPanel({
             busy={update.isPending || chase.isPending}
             onStatus={(status) => update.mutate({ data: { approvalId: a.id, status } })}
             onFeePaid={(feePaid) => update.mutate({ data: { approvalId: a.id, feePaid } })}
-            onChase={() => chase.mutate({ data: { approvalId: a.id } })}
+            onChase={(note) => chase.mutate({ data: { approvalId: a.id, note } })}
           />
         ))}
       </ul>
@@ -157,12 +157,17 @@ function ApprovalRow({
   busy: boolean;
   onStatus: (status: ApprovalStatus) => void;
   onFeePaid: (feePaid: number) => void;
-  onChase: () => void;
+  onChase: (note: string) => void;
 }) {
   const settled = isSettled(approval.status);
   const stalled = isStalled(approval, new Date());
   const chase = needsChase(approval, new Date());
   const outstanding = Math.max(0, approval.feeAmount - approval.feePaid);
+  // The chase is only worth recording if it says what was done — "chased" on
+  // its own tells the client nothing and tells the studio nothing a week
+  // later. The note is optional but asked for, right where the button is.
+  const [chasing, setChasing] = useState(false);
+  const [chaseNote, setChaseNote] = useState("");
 
   return (
     <li
@@ -201,6 +206,11 @@ function ApprovalRow({
             {approval.reference ? ` · ${approval.reference}` : ""}
             {approval.chasedOn ? ` · chased ${approval.chasedOn}` : ""}
           </p>
+          {approval.chaseNote ? (
+            <p className="mt-1 text-[11px] leading-snug text-ink/50">
+              Last chase: {approval.chaseNote}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -241,14 +251,51 @@ function ApprovalRow({
             }}
           />
 
-          {chase ? (
-            <Button size="sm" variant="outline" disabled={busy} onClick={onChase}>
+          {chase && !chasing ? (
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => setChasing(true)}>
               <Bell className="size-3.5" />
               Record chase
             </Button>
           ) : null}
         </div>
       </div>
+
+      {chasing ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="sr-only" htmlFor={`chase-${approval.id}`}>
+            What did you do about {approval.title}?
+          </label>
+          <Input
+            id={`chase-${approval.id}`}
+            value={chaseNote}
+            onChange={(e) => setChaseNote(e.target.value)}
+            placeholder="Called the county; the file is with the assessment desk."
+            className="h-9 w-80 text-[12px]"
+            autoFocus
+          />
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() => {
+              onChase(chaseNote.trim());
+              setChasing(false);
+              setChaseNote("");
+            }}
+          >
+            Save chase
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setChasing(false);
+              setChaseNote("");
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      ) : null}
 
       <p className="mt-2 text-[11px] text-muted">
         {approval.feeAmount > 0

@@ -4,6 +4,7 @@
 
 import { getSql, type Sql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/verify.server";
+import { refusalFor, type PrivilegedOp } from "@/lib/privileges";
 import { lookupRole, normaliseEmail, type StaffIdentity } from "@/lib/staff";
 
 /** Throws unless the caller is signed in AND on the allowlist. */
@@ -13,6 +14,20 @@ export async function requireStaff(): Promise<StaffIdentity> {
   const role = await lookupRole(await getSql(), user.email);
   if (!role) throw new Error("This area is for ATRO staff.");
   return { userId: user.id, email: normaliseEmail(user.email), role };
+}
+
+/**
+ * Throws unless the caller is signed in, on the allowlist, AND an admin.
+ *
+ * `op` names the privileged write being attempted — money moves, document
+ * voids, access changes — and the refusal sentence comes from the privilege
+ * matrix, so the console's hidden buttons and this guard always tell the same
+ * story.
+ */
+export async function requireAdmin(op: PrivilegedOp): Promise<StaffIdentity> {
+  const staff = await requireStaff();
+  if (staff.role !== "admin") throw new Error(refusalFor(op));
+  return staff;
 }
 
 /**

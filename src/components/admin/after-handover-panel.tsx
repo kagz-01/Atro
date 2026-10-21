@@ -180,7 +180,14 @@ function DefectRow({
   );
 }
 
-export function AfterHandoverPanel({ projectId }: { projectId: string }) {
+export function AfterHandoverPanel({
+  projectId,
+  isAdmin,
+}: {
+  projectId: string;
+  /** The retainer fee is a money write — the form is read-only without it. */
+  isAdmin: boolean;
+}) {
   const queryClient = useQueryClient();
   const key = ["after-handover-staff", projectId];
   const { data, isLoading, error } = useQuery({
@@ -390,6 +397,7 @@ export function AfterHandoverPanel({ projectId }: { projectId: string }) {
             <Input
               id="rt-name"
               value={rName ?? r?.name ?? ""}
+              disabled={!isAdmin}
               onChange={(e) => setRName(e.target.value)}
             />
           </div>
@@ -401,6 +409,7 @@ export function AfterHandoverPanel({ projectId }: { projectId: string }) {
               min={0}
               step={1000}
               value={rAmount ?? (r ? String(r.annualAmount) : "")}
+              disabled={!isAdmin}
               onChange={(e) => setRAmount(e.target.value)}
             />
           </div>
@@ -410,6 +419,7 @@ export function AfterHandoverPanel({ projectId }: { projectId: string }) {
               id="rt-covers"
               className="min-h-16"
               value={rCovers ?? r?.covers ?? ""}
+              disabled={!isAdmin}
               onChange={(e) => setRCovers(e.target.value)}
               placeholder="Roof, gutters, waterproofing, two visits a year."
             />
@@ -420,6 +430,7 @@ export function AfterHandoverPanel({ projectId }: { projectId: string }) {
               id="rt-renews"
               type="date"
               value={rRenews ?? r?.renewsOn ?? ""}
+              disabled={!isAdmin}
               onChange={(e) => setRRenews(e.target.value)}
             />
           </div>
@@ -428,6 +439,7 @@ export function AfterHandoverPanel({ projectId }: { projectId: string }) {
             <Select
               id="rt-status"
               value={rStatus ?? r?.status ?? "active"}
+              disabled={!isAdmin}
               onChange={(e) => setRStatus(e.target.value)}
             >
               <option value="active">Active</option>
@@ -441,19 +453,28 @@ export function AfterHandoverPanel({ projectId }: { projectId: string }) {
               id="rt-paid"
               type="date"
               value={rPaid ?? r?.lastPaidOn ?? ""}
+              disabled={!isAdmin}
               onChange={(e) => setRPaid(e.target.value)}
             />
           </div>
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <Button size="sm" disabled={saveRetainer.isPending} onClick={() => saveRetainer.mutate()}>
-            {saveRetainer.isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Save className="size-3.5" />
-            )}
-            Save retainer
-          </Button>
+          {isAdmin ? (
+            <Button
+              size="sm"
+              disabled={saveRetainer.isPending}
+              onClick={() => saveRetainer.mutate()}
+            >
+              {saveRetainer.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Save className="size-3.5" />
+              )}
+              Save retainer
+            </Button>
+          ) : (
+            <p className="text-[12px] text-muted">Setting the retainer fee is an admin action.</p>
+          )}
           {saveRetainer.error instanceof Error ? (
             <p className="text-[12px] text-red-700">{saveRetainer.error.message}</p>
           ) : (

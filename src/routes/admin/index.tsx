@@ -409,12 +409,20 @@ function HowToPayBlock({
 function ProjectDetail({
   projectId,
   clientType,
+  isAdmin,
   onBack,
   onChanged,
 }: {
   projectId: string;
   /** From the list row that opened this project — the profile's own flag. */
   clientType?: string;
+  /**
+   * Whether the signed-in staff account may move money. The console hides the
+   * buttons it cannot press — certify, statement, retention, void, retainer —
+   * so a staff account sees the record but never a write the server would
+   * refuse.
+   */
+  isAdmin: boolean;
   onBack: () => void;
   onChanged: () => void;
 }) {
@@ -471,10 +479,12 @@ function ProjectDetail({
     try {
       await action();
       await refetch();
-      /* The delivery log reads on its own key; a write that can append to it
-         (a post, a certification, a vault drop) marks it stale too, else the
-         console keeps showing the rows that existed a moment ago. */
+      /* The delivery log and the issued documents read on their own keys; a
+         write that can append to either (a post, a certification, a statement)
+         marks them stale too, else the console keeps showing the rows that
+         existed a moment ago. */
       void queryClient.invalidateQueries({ queryKey: ["delivery-log", projectId] });
+      void queryClient.invalidateQueries({ queryKey: ["project-documents", projectId] });
       onChanged();
       toast.success(done);
     } catch (err) {
@@ -806,7 +816,7 @@ function ProjectDetail({
           <VariationsPanel projectId={projectId} />
         </AccordionItem>
         <AccordionItem title="Defects & care">
-          <AfterHandoverPanel projectId={projectId} />
+          <AfterHandoverPanel projectId={projectId} isAdmin={isAdmin} />
         </AccordionItem>
         <AccordionItem title="Document vault">
           <WriteBlock
@@ -897,26 +907,30 @@ function ProjectDetail({
                     <span className="block text-[14px] text-maroon">{pay.label}</span>
                     <span className="text-[12px] text-ink/50">{kes(pay.amount)}</span>
                   </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      void run(
-                        "inline",
-                        () =>
-                          certifyPayment({
-                            data: {
-                              projectId,
-                              paymentId: pay.id,
-                              certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
-                            },
-                          }),
-                        "Payment certified.",
-                      )
-                    }
-                  >
-                    Certify
-                  </Button>
+                  {isAdmin ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        void run(
+                          "inline",
+                          () =>
+                            certifyPayment({
+                              data: {
+                                projectId,
+                                paymentId: pay.id,
+                                certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
+                              },
+                            }),
+                          "Payment certified.",
+                        )
+                      }
+                    >
+                      Certify
+                    </Button>
+                  ) : (
+                    <span className="text-[11px] text-muted">Admins only</span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -927,37 +941,49 @@ function ProjectDetail({
             A record of where the money stands — not a demand. The client sees it in
             their documents.
           </p>
-          <Button
-            className="mt-4 w-full"
-            variant="outline"
-            onClick={() =>
-              void run(
-                "statement",
-                () => issueStatementForProject({ data: { projectId } }),
-                "Statement issued.",
-              )
-            }
-            disabled={pending === "statement"}
-          >
-            Issue a statement
-          </Button>
+          {isAdmin ? (
+            <Button
+              className="mt-4 w-full"
+              variant="outline"
+              onClick={() =>
+                void run(
+                  "statement",
+                  () => issueStatementForProject({ data: { projectId } }),
+                  "Statement issued.",
+                )
+              }
+              disabled={pending === "statement"}
+            >
+              Issue a statement
+            </Button>
+          ) : (
+            <p className="mt-4 text-[12px] text-muted">
+              Issuing a statement is an admin action.
+            </p>
+          )}
         </AccordionItem>
         <AccordionItem title="Retention">
           <p className="text-[12px] leading-relaxed text-ink/55">
             Held against defects. Releasing it records that the defects liability
             period has closed and pays the money out.
           </p>
-          <Button
-            className="mt-4 w-full"
-            variant="outline"
-            onClick={() =>
-              void run("retention", () => releaseRetention({ data: { projectId } }),
-                "Retention released.")
-            }
-            disabled={pending === "retention"}
-          >
-            Release retention
-          </Button>
+          {isAdmin ? (
+            <Button
+              className="mt-4 w-full"
+              variant="outline"
+              onClick={() =>
+                void run("retention", () => releaseRetention({ data: { projectId } }),
+                  "Retention released.")
+              }
+              disabled={pending === "retention"}
+            >
+              Release retention
+            </Button>
+          ) : (
+            <p className="mt-4 text-[12px] text-muted">
+              Releasing retention is an admin action.
+            </p>
+          )}
         </AccordionItem>
         <AccordionItem title="What the client has decided" hint={`${data.decisions.length}`}>
           {data.decisions.length === 0 ? (
@@ -984,7 +1010,7 @@ function ProjectDetail({
       </Accordion>
 
       <DeliveryLog projectId={projectId} onChanged={onChanged} />
-      <IssuedDocuments projectId={projectId} onChanged={onChanged} />
+      <IssuedDocuments projectId={projectId} isAdmin={isAdmin} onChanged={onChanged} />
     </div>
   );
 }
@@ -1503,16 +1529,24 @@ function StudioActivityFeed({ items }: { items: ActivityItem[] }) {
 
 function IssuedDocuments({
   projectId,
+  isAdmin,
   onChanged,
 }: {
   projectId: string;
+  isAdmin: boolean;
   onChanged: () => void;
 }) {
   const { data } = useQuery({
     queryKey: ["project-documents", projectId],
     queryFn: () => listProjectDocuments({ data: { projectId } }),
   });
+  const queryClient = useQueryClient();
+  // The void is a two-step action: pick the document, then say why. The reason
+  // is required — a void that cannot explain itself is how a paper trail
+  // loses the studio's trust — so the confirm stays disabled until it is
+  // written.
   const [voiding, setVoiding] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState("");
 
   if (!data || data.length === 0) return null;
 
@@ -1541,30 +1575,62 @@ function IssuedDocuments({
             </span>
             <span className="flex items-center gap-3">
               <span className="text-[13px] text-maroon">{kes(doc.total)}</span>
-              {doc.status === "issued" ? (
+              {doc.status === "issued" && isAdmin && voiding !== doc.id ? (
+                <Button size="sm" variant="ghost" onClick={() => setVoiding(doc.id)}>
+                  Void
+                </Button>
+              ) : null}
+            </span>
+            {doc.status === "issued" && isAdmin && voiding === doc.id ? (
+              <span className="flex w-full flex-wrap items-center gap-2">
+                <label className="sr-only" htmlFor={`void-${doc.id}`}>
+                  Why is {doc.number} being voided?
+                </label>
+                <Input
+                  id={`void-${doc.id}`}
+                  value={voidReason}
+                  onChange={(e) => setVoidReason(e.target.value)}
+                  placeholder="Why is this being voided? (required)"
+                  className="h-9 w-72 text-[12px]"
+                  autoFocus
+                />
                 <Button
                   size="sm"
-                  variant="ghost"
-                  disabled={voiding === doc.id}
+                  disabled={voidReason.trim().length < 3}
                   onClick={() => {
-                    setVoiding(doc.id);
                     void voidDocument({
-                      data: { id: doc.id, reason: "Voided from the studio console" },
+                      data: { id: doc.id, reason: voidReason.trim() },
                     })
                       .then(() => {
                         toast.success(`${doc.number} voided. Issue a corrected one.`);
+                        void queryClient.invalidateQueries({
+                          queryKey: ["project-documents", projectId],
+                        });
                         onChanged();
                       })
                       .catch((e: unknown) =>
                         toast.error(e instanceof Error ? e.message : "Could not void."),
                       )
-                      .finally(() => setVoiding(null));
+                      .finally(() => {
+                        setVoiding(null);
+                        setVoidReason("");
+                      });
                   }}
                 >
-                  Void
+                  Confirm void
                 </Button>
-              ) : null}
-            </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setVoiding(null);
+                    setVoidReason("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -1995,6 +2061,7 @@ function AdminConsole() {
         <ProjectDetail
           projectId={selected}
           clientType={all.find((x) => x.id === selected)?.clientType}
+          isAdmin={roleState?.role === "admin"}
           onBack={() => setSelected(null)}
           onChanged={() => void refetch()}
         />
