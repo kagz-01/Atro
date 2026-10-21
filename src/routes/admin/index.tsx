@@ -56,6 +56,7 @@ import {
   certifyPayment,
   getDeliveryLog,
   getMyStaffRole,
+  getStaffClientProfile,
   getStaffProject,
   listStaffProjects,
   postUpdate,
@@ -65,6 +66,7 @@ import {
   updateMilestone,
   type StaffProjectSummary,
 } from "@/lib/staff-ops";
+import type { ActivityItem } from "@/lib/diaspora/server";
 import {
   getPaymentInstructions,
   savePaymentInstructions,
@@ -160,11 +162,12 @@ function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: (
     <section className="rounded-3xl border border-ink/10 bg-white p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="font-display text-lg text-maroon">What the client was told</h3>
+          <h3 className="font-display text-lg text-maroon">Delivery log</h3>
           <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
-            Every post records what it tried to send. A channel with no credentials is
-            marked skipped rather than quietly dropped, and one aimed at a client whose
-            zone is asleep waits for their morning instead of their three a.m.
+            Every post records what it tried to send and who it was for — the client,
+            or the studio's own contacts. A channel with no credentials is marked
+            skipped rather than quietly dropped, and one aimed at a client whose zone
+            is asleep waits for their morning instead of their three a.m.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -243,7 +246,7 @@ function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: (
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="text-[13px] text-maroon">{n.title}</span>
                   <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]", DELIVERY_STATUS[n.status] ?? DELIVERY_STATUS.pending)}>
-                    {n.channel} · {n.status}
+                    {n.audience === "studio" ? "studio" : "client"} · {n.channel} · {n.status}
                   </span>
                 </span>
                 {n.detail ? (
@@ -541,6 +544,15 @@ function ProjectDetail({
               <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
             </div>
           </div>
+        </AccordionItem>
+        <AccordionItem title="Client & consent">
+          <ClientCard projectId={projectId} />
+        </AccordionItem>
+        <AccordionItem
+          title="Activity"
+          hint={data.activity.length ? `${data.activity.length}` : undefined}
+        >
+          <StudioActivityFeed items={data.activity} />
         </AccordionItem>
         <AccordionItem
           title="Message thread"
@@ -1377,6 +1389,115 @@ function Overview({
         </Panel>
       </div>
     </div>
+  );
+}
+
+/**
+ * Who the client is and what they have allowed.
+ *
+ * The consent switches are the point of this card: they are a record of
+ * permission, not a preference, and the delivery layer honours them. Seeing
+ * them here answers "why did my message not arrive?" without reading the
+ * outbox — the switch was off, and this is who turned it.
+ */
+function ClientCard({ projectId }: { projectId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["staff-client", projectId],
+    queryFn: () => getStaffClientProfile({ data: { projectId } }),
+  });
+
+  if (isLoading) {
+    return <Loader2 className="size-5 animate-spin text-gold" aria-label="Loading client" />;
+  }
+  if (!data) return null;
+
+  const consent: [string, boolean][] = [
+    ["Email", data.notifyEmail],
+    ["WhatsApp", data.notifyWhatsapp],
+    ["SMS", data.notifySms],
+    ["Site photos", data.sitePhotoConsent],
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-display text-lg text-maroon">
+            {data.displayName || "Not named yet"}
+          </p>
+          <div className="mt-1 space-y-0.5 text-[13px] text-ink/65">
+            {data.email ? <p>{data.email}</p> : null}
+            {data.phone ? <p>{data.phone}</p> : null}
+            {data.city || data.country ? (
+              <p>{[data.city, data.country].filter(Boolean).join(", ")}</p>
+            ) : null}
+            {data.company ? <p>{data.company}</p> : null}
+          </div>
+        </div>
+        <div className="text-right text-[11px] uppercase tracking-[0.14em] text-muted">
+          {data.clientType ? <p>{data.clientType}</p> : null}
+          {data.timezone ? <p className="normal-case tracking-normal">{data.timezone}</p> : null}
+        </div>
+      </div>
+      {!data.hasProfile ? (
+        <p className="rounded-xl border border-ink/10 bg-ink/2 px-4 py-3 text-[12px] leading-relaxed text-ink/55">
+          This project is waiting for its client to sign in and fill in their
+          profile. Contact details here come from the enquiry it was opened from.
+        </p>
+      ) : null}
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.14em] text-muted">Allowed channels</p>
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {consent.map(([label, on]) => (
+            <li
+              key={label}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px]",
+                on
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-ink/10 bg-ink/2 text-ink/45",
+              )}
+            >
+              <span aria-hidden>{on ? "✓" : "✕"}</span>
+              {label}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-[11px] leading-snug text-ink/45">
+          Set by the client in their portal. A channel switched off is never contacted —
+          the outbox records it as suppressed rather than dropping it.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The project's shared timeline — the same feed the client reads, so the studio
+ * and the portal can never tell different stories about what happened.
+ */
+function StudioActivityFeed({ items }: { items: ActivityItem[] }) {
+  if (items.length === 0) {
+    return <p className="text-[13px] text-ink/55">Nothing posted yet.</p>;
+  }
+  return (
+    <ul className="divide-y divide-ink/8">
+      {items.map((a) => (
+        <li key={a.id} className="py-3 first:pt-0 last:pb-0">
+          <p className="text-[13px] text-maroon">{a.title}</p>
+          {a.body ? <p className="mt-0.5 text-[12px] leading-relaxed text-ink/60">{a.body}</p> : null}
+          <p className="mt-0.5 text-[11px] text-muted">
+            {new Date(a.at).toLocaleString("en-KE", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
 

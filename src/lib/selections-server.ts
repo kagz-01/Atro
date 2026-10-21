@@ -16,6 +16,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { requireStaff } from "@/lib/staff-session.server";
 import { getSql, type Sql } from "@/lib/db";
 import { canChoose, type Selection, type SelectionOption } from "@/lib/selections";
+import { notify } from "@/lib/notify";
 
 /* ── shared reading ── */
 
@@ -192,6 +193,19 @@ export const chooseSelectionOption = createServerFn({ method: "POST" })
         ${`${option.label}${delta > 0 ? ` — KES ${delta.toLocaleString("en-KE")} over the allowance, pending a variation.` : ""}`}
       )
     `;
+
+    // A choice above the allowance is a variation the studio has to price, so
+    // they are told either way — "within the allowance" is still news that the
+    // selection can be closed and the order placed.
+    await notify({
+      projectId: sel.projectId,
+      kind: "selection",
+      title: `${sel.title} chosen`,
+      body: delta > 0
+        ? `${option.label} — KES ${delta.toLocaleString("en-KE")} over the allowance. Price it as a variation.`
+        : `${option.label} — within the allowance.`,
+      audience: "studio",
+    });
 
     return { ok: true as const, delta };
   });

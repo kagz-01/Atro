@@ -1084,6 +1084,17 @@ export async function approveMilestoneFor(
     `Marked complete from your portal. Progress is now ${progress}%.`,
   );
 
+  // The client signing off a stage is the studio's cue to move to the next one
+  // (and, on the final stage, to release retention). Telling the studio here
+  // means the console's next action is never a surprise discovered by accident.
+  await notify({
+    projectId,
+    kind: "milestone",
+    title: `Milestone approved: ${milestone.name}`,
+    body: `The client signed off. Progress is now ${progress}%.`,
+    audience: "studio",
+  });
+
   return { ok: true, progress };
 }
 
@@ -1151,6 +1162,16 @@ export async function releasePaymentFor(
     documentUrl: receipt ? `/portal/document/${receipt.id}` : undefined,
   });
 
+  // Money in is the studio's news too. The client's copy above is the receipt;
+  // this is the ledger catching up with whoever runs the accounts.
+  await notify({
+    projectId,
+    kind: "payment",
+    title: `Payment received: ${payment.label}`,
+    body: `KES ${amount.toLocaleString("en-KE")} released by the client against ${payment.certificate ?? "the certificate"}.`,
+    audience: "studio",
+  });
+
   return { ok: true, paidToDate: amount, receiptNumber: receipt?.number ?? null };
 }
 
@@ -1186,6 +1207,17 @@ export async function recordDecisionFor(
     `Decision recorded: ${decision.title}`,
     `You chose “${data.choice}”. It is now in the decision log with today's date.`,
   );
+
+  // The studio asked the question; they need the answer. This is the client
+  // answering it, so the audience is the studio — the same reason the
+  // variation and message paths are explicit about theirs.
+  await notify({
+    projectId,
+    kind: "decision",
+    title: `Decision recorded: ${decision.title}`,
+    body: `The client chose “${data.choice}”.`,
+    audience: "studio",
+  });
 
   return { ok: true };
 }

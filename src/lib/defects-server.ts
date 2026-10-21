@@ -161,6 +161,16 @@ export const reportDefect = createServerFn({ method: "POST" })
       )
     `;
 
+    await sql`
+      insert into portal_activity (project_id, kind, title, body)
+      values (
+        ${data.projectId},
+        'defect',
+        ${`Defect reported: ${title.title}`},
+        ${data.detail.trim().slice(0, 200)}
+      )
+    `;
+
     await notify({
       projectId: data.projectId,
       kind: "defect",
@@ -189,8 +199,8 @@ export const verifyDefect = createServerFn({ method: "POST" })
     `;
     if (!owned) throw new Error("Project not found.");
 
-    const [row] = await sql<{ status: DefectStatus }>`
-      select status from portal_defect where id = ${data.defectId} and project_id = ${data.projectId}
+    const [row] = await sql<{ status: DefectStatus; title: string }>`
+      select status, title from portal_defect where id = ${data.defectId} and project_id = ${data.projectId}
     `;
     if (!row) throw new Error("That report is not on this project.");
     if (!canTransition(row.status, "verified")) {
@@ -200,8 +210,26 @@ export const verifyDefect = createServerFn({ method: "POST" })
     await sql`
       update portal_defect
       set status = 'verified', verified_on = ${today()}, updated_at = now()
-      where id = ${data.defectId}
+      where id = ${data.defectId} and project_id = ${data.projectId}
     `;
+
+    // The client is the only one who can close a defect, so the studio is the
+    // only one who needs telling. Without this the confirmation sat unseen in
+    // the panel until somebody opened it — and anything counting on a closed
+    // defect (retention, the care period) waited on a fact nobody had been
+    // handed.
+    await sql`
+      insert into portal_activity (project_id, kind, title, body)
+      values (${data.projectId}, 'defect', ${`Defect confirmed fixed: ${row.title}`}, 'Verified by the client.')
+    `;
+    await notify({
+      projectId: data.projectId,
+      kind: "defect",
+      title: `Defect confirmed fixed: ${row.title}`,
+      body: "Verified by the client.",
+      audience: "studio",
+    });
+
     return { ok: true as const };
   });
 

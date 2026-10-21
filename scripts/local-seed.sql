@@ -281,24 +281,25 @@ with seeded as (
 insert into enquiries (
   name, phone, email, project_type, zone, stage, start_date, description, sqm,
   finish, indicative_min, indicative_max, diaspora, diaspora_country,
-  diaspora_timezone, diaspora_kenya_contact, diaspora_visit_plans, status, created_at
+  diaspora_timezone, diaspora_kenya_contact, diaspora_visit_plans, status,
+  assigned_to, created_at
 )
 select
   v.name, v.phone, v.email, v.kind, v.zone, v.stage, '', v.note, v.sqm, v.finish,
   v.lo, v.hi, v.diaspora, v.country, v.tz, v.kenya_contact, v.visit, v.status,
-  now() - (v.age || ' days')::interval
+  v.assigned, now() - (v.age || ' days')::interval
 from (values
-  ('Wanjiku Njeri', '+254799034712', 'wanjiku@example.com', 'Residential', 'nairobi', 'Concept design', 'Four-bedroom maisonette in Karen; plot already bought.', 312, 'Premium', 38000000, 45000000, false, '', 'Africa/Nairobi', '', '', 'converted', 210),
-  ('Brian Otieno', '+447700900123', 'b.otieno@example.com', 'Commercial', 'nairobi', 'Feasibility', 'Office refurbishment while our London office is leased.', 640, 'Standard', 24000000, 31000000, true, 'United Kingdom', 'Europe/London', 'Mr. Otieno (brother)', 'Planning a visit in June', 'converted', 168),
-  ('Amina Yusuf', '+971501234567', 'amina@example.com', 'Residential', 'kiambu', 'Cost options', 'Feasibility and cost plan before committing to build.', 1100, 'Premium', 10500000, 13500000, true, 'United Arab Emirates', 'Asia/Dubai', 'Mr. Yusuf (uncle)', 'May visit the plot', 'converted', 74),
-  ('Faith Chebet', '+254712345678', 'faith@example.com', 'Residential', 'kiambu', 'Enquiry', 'Three-bedroom house for my parents; I work in Nairobi.', 240, 'Standard', 18000000, 22000000, false, '', 'Africa/Nairobi', '', '', 'contacted', 38),
-  ('Peter Mwangi', '+254722334455', 'p.mwangi@example.com', 'Institutional', 'nairobi', 'Enquiry', 'Day-care centre for 60 children; need approvals handled.', 480, 'Standard', 32000000, 38000000, false, '', 'Africa/Nairobi', '', '', 'quoted', 21),
-  ('Grace Wambui', '+254733445566', 'grace@example.com', 'Residential', 'machakos', 'Enquiry', 'Rental yield check before I commit to a plot.', 200, 'Standard', 14000000, 17000000, false, '', 'Africa/Nairobi', '', '', 'new', 9),
-  ('Samuel Adeyemi', '+2348030000000', 's.adeyemi@example.com', 'Commercial', 'coast', 'Enquiry', 'Warehouse conversion for a logistics client in Mombasa.', 1200, 'Standard', 41000000, 52000000, true, 'Nigeria', 'Africa/Lagos', 'Mr. Adeyemi (brother)', 'Visiting Mombasa in April', 'new', 4),
-  ('Halima Noor', '+254744556677', 'halima@example.com', 'Residential', 'nairobi', 'Enquiry', 'Two-bedroom apartment for my sister; modest budget.', 95, 'Standard', 9500000, 11500000, false, '', 'Africa/Nairobi', '', '', 'new', 1)
+  ('Wanjiku Njeri', '+254799034712', 'wanjiku@example.com', 'Residential', 'nairobi', 'Concept design', 'Four-bedroom maisonette in Karen; plot already bought.', 312, 'Premium', 38000000, 45000000, false, '', 'Africa/Nairobi', '', '', 'converted', 'hello@atro.ke', 210),
+  ('Brian Otieno', '+447700900123', 'b.otieno@example.com', 'Commercial', 'nairobi', 'Feasibility', 'Office refurbishment while our London office is leased.', 640, 'Standard', 24000000, 31000000, true, 'United Kingdom', 'Europe/London', 'Mr. Otieno (brother)', 'Planning a visit in June', 'converted', 'hello@atro.ke', 168),
+  ('Amina Yusuf', '+971501234567', 'amina@example.com', 'Residential', 'kiambu', 'Cost options', 'Feasibility and cost plan before committing to build.', 1100, 'Premium', 10500000, 13500000, true, 'United Arab Emirates', 'Asia/Dubai', 'Mr. Yusuf (uncle)', 'May visit the plot', 'converted', 'hello@atro.ke', 74),
+  ('Faith Chebet', '+254712345678', 'faith@example.com', 'Residential', 'kiambu', 'Enquiry', 'Three-bedroom house for my parents; I work in Nairobi.', 240, 'Standard', 18000000, 22000000, false, '', 'Africa/Nairobi', '', '', 'contacted', 'hello@atro.ke', 38),
+  ('Peter Mwangi', '+254722334455', 'p.mwangi@example.com', 'Institutional', 'nairobi', 'Enquiry', 'Day-care centre for 60 children; need approvals handled.', 480, 'Standard', 32000000, 38000000, false, '', 'Africa/Nairobi', '', '', 'quoted', 'hello@atro.ke', 21),
+  ('Grace Wambui', '+254733445566', 'grace@example.com', 'Residential', 'machakos', 'Enquiry', 'Rental yield check before I commit to a plot.', 200, 'Standard', 14000000, 17000000, false, '', 'Africa/Nairobi', '', '', 'new', '', 9),
+  ('Samuel Adeyemi', '+2348030000000', 's.adeyemi@example.com', 'Commercial', 'coast', 'Enquiry', 'Warehouse conversion for a logistics client in Mombasa.', 1200, 'Standard', 41000000, 52000000, true, 'Nigeria', 'Africa/Lagos', 'Mr. Adeyemi (brother)', 'Visiting Mombasa in April', 'new', '', 4),
+  ('Halima Noor', '+254744556677', 'halima@example.com', 'Residential', 'nairobi', 'Enquiry', 'Two-bedroom apartment for my sister; modest budget.', 95, 'Standard', 9500000, 11500000, false, '', 'Africa/Nairobi', '', '', 'new', '', 1)
 ) as v(
   name, phone, email, kind, zone, stage, note, sqm, finish, lo, hi, diaspora,
-  country, tz, kenya_contact, visit, status, age
+  country, tz, kenya_contact, visit, status, assigned, age
 );
 
 -- ── selections: priced choices, one already over its allowance ──

@@ -641,15 +641,116 @@ export const setEnquiryStatus = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    await requireStaff();
+    const staff = await requireStaff();
     const sql = await getSql();
+    // Moving a lead claims it for whoever moved it, unless someone else already
+    // has it. The alternative — a shared pile where nobody's name is on
+    // anything — is how two people call the same prospect.
     const rows = await sql<{ id: string }>`
-      update enquiries set status = ${data.status}, updated_at = now()
+      update enquiries
+      set status = ${data.status},
+          assigned_to = case when assigned_to = '' then ${staff.email} else assigned_to end,
+          updated_at = now()
       where id = ${data.enquiryId} and status <> 'converted'
       returning id
     `;
     if (!rows[0]) throw new Error("That enquiry has already been converted, or is gone.");
     return { ok: true as const };
+  });
+
+/**
+ * Take ownership of an enquiry without moving it along the funnel.
+ *
+ * A lead can be claimed the moment it lands — the person who rings first owns
+ * the conversation. Refusing a claim someone else already holds is the whole
+ * point: silent reassignment is how a prospect gets called twice.
+ */
+export const claimEnquiry = createServerFn({ method: "POST" })
+  .validator(z.object({ enquiryId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    const staff = await requireStaff();
+    const sql = await getSql();
+    const rows = await sql<{ id: string }>`
+      update enquiries
+      set assigned_to = ${staff.email}, updated_at = now()
+      where id = ${data.enquiryId}
+        and status <> 'converted'
+        and (assigned_to = '' or lower(assigned_to) = lower(${staff.email}))
+      returning id
+    `;
+    if (!rows[0]) {
+      const owner = await sql<{ assigned_to: string }>`
+        select assigned_to from enquiries where id = ${data.enquiryId} limit 1
+      `;
+      if (!owner[0]) throw new Error("That enquiry no longer exists.");
+      if (owner[0].assigned_to) {
+        throw new Error(`${owner[0].assigned_to} is already working on this enquiry.`);
+      }
+      throw new Error("That enquiry has already been converted.");
+    }
+    return { ok: true as const, assignedTo: staff.email };
+  });
+
+/**
+ * The studio's read of who this client is and what they have allowed.
+ *
+ * The consent switches are the point: they are a record of permission, not a
+ * preference, and the delivery layer honours them. The studio seeing them here
+ * means "why did my message not arrive?" is answerable without reading the
+ * outbox — the switch was off, and this is the date they set it.
+ */
+export const getStaffClientProfile = createServerFn({ method: "GET" })
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    await requireStaff();
+    const sql = await getSql();
+    const rows = await sql<{
+      user_id: string | null;
+      display_name: string | null;
+      email: string | null;
+      phone: string | null;
+      city: string | null;
+      country: string | null;
+      timezone: string | null;
+      client_type: string | null;
+      company: string | null;
+      notify_email: boolean | null;
+      notify_sms: boolean | null;
+      notify_whatsapp: boolean | null;
+      site_photo_consent: boolean | null;
+      project_email: string;
+      project_phone: string;
+    }>`
+      select p.user_id, p.claimed_email as project_email, p.client_phone as project_phone,
+        c.display_name, c.email, c.phone, c.city, c.country, c.timezone,
+        c.client_type, c.company,
+        c.notify_email, c.notify_sms, c.notify_whatsapp, c.site_photo_consent
+      from portal_projects p
+      left join client_profile c on c.user_id = p.user_id
+      where p.id = ${data.projectId} limit 1
+    `;
+    const r = rows[0];
+    if (!r) throw new Error("Project not found.");
+    // The profile is the record the client maintains; the project's own contact
+    // details are the fallback for a lead who was converted but has never
+    // signed in to fill the profile in.
+    return {
+      hasProfile: Boolean(r.display_name || r.email || r.phone),
+      displayName: r.display_name ?? "",
+      email: r.email ?? r.project_email ?? "",
+      phone: r.phone ?? r.project_phone ?? "",
+      city: r.city ?? "",
+      country: r.country ?? "",
+      timezone: r.timezone ?? "",
+      clientType: r.client_type ?? "",
+      company: r.company ?? "",
+      // Defaults match the column defaults and the delivery layer's fallback:
+      // email and WhatsApp on, SMS off until a number is asked for.
+      notifyEmail: r.notify_email !== false,
+      notifySms: r.notify_sms === true,
+      notifyWhatsapp: r.notify_whatsapp !== false,
+      sitePhotoConsent: r.site_photo_consent !== false,
+    };
   });
 
 /* ── retention ── */

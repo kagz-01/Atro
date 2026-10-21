@@ -155,6 +155,11 @@ export const decideVariation = createServerFn({ method: "POST" })
       kind: "variation",
       title: `${data.accept ? "Approved" : "Declined"}: ${row.title}`,
       body: note || `${signedKes(Number(row.amount))} ${data.accept ? "added to" : "kept out of"} the contract.`,
+      // The client is the one who decided, so the studio is the one who needs
+      // telling. Without an explicit audience this notified the client about
+      // their own choice and the studio heard nothing — a decision that moves
+      // money sat unseen until someone opened the console.
+      audience: "studio",
     });
 
     return { ok: true as const };

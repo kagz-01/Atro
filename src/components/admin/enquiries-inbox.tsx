@@ -29,7 +29,8 @@ import { Accordion, AccordionItem } from "@/components/ui/accordion";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { listEnquiriesFromDb } from "@/lib/enquiry-server";
-import { openProjectFromEnquiry, setEnquiryStatus } from "@/lib/staff-ops";
+import { claimEnquiry, openProjectFromEnquiry, setEnquiryStatus } from "@/lib/staff-ops";
+import { claimState, enquiryTransitions, statusLabel, type EnquiryStatus } from "@/lib/enquiry-funnel";
 import { TRACK_LIST } from "@/lib/diaspora/tracks";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ type Enquiry = {
   diaspora_kenya_contact: string;
   diaspora_visit_plans: string;
   status: string;
+  assigned_to: string;
   project_id: string | null;
   created_at: string;
 };
@@ -69,6 +71,16 @@ const ZONE_LABELS: Record<string, string> = {
   nakuru: "Nakuru",
   kisumu: "Kisumu",
   diaspora: "Diaspora",
+};
+
+/** How a stage reads on a card — colour follows the funnel, not decoration. */
+const STATUS_TONES: Record<string, "stone" | "gold" | "maroon" | "live"> = {
+  new: "stone",
+  contacted: "gold",
+  quoted: "gold",
+  won: "live",
+  lost: "maroon",
+  converted: "live",
 };
 
 const TYPE_ICONS: Record<string, typeof Home> = {
@@ -104,14 +116,9 @@ function timeAgo(dateStr: string) {
  * to create an account before we have decided to work with them loses the
  * enquiry at exactly the wrong moment.
  */
-function ConvertEnquiry({
-  enquiry,
-  onConverted,
-}: {
-  enquiry: Enquiry;
-  onConverted?: () => void;
-}) {
+function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
   const queryClient = useQueryClient();
+  const { user } = useCurrentUserState();
   const [open, setOpen] = useState(false);
   const [track, setTrack] = useState<string>("construction");
   const [title, setTitle] = useState(
@@ -119,6 +126,18 @@ function ConvertEnquiry({
   );
   const [value, setValue] = useState("25000000");
   const [months, setMonths] = useState("12");
+
+  // The modal reads the enquiry from the refetched list, so invalidating here
+  // is what updates the copy in place — the staff member is never left looking
+  // at "Open a project" for a project that now exists.
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["admin-enquiries"] });
+    // Converting opens a real project; moving a lead changes the funnel counts.
+    // Both are read on their own keys elsewhere in the console, so a write here
+    // would otherwise leave the rest of the page showing yesterday's shape.
+    void queryClient.invalidateQueries({ queryKey: ["staff-projects"] });
+    void queryClient.invalidateQueries({ queryKey: ["ops-overview"] });
+  };
 
   const convert = useMutation({
     mutationFn: () => {
@@ -145,17 +164,30 @@ function ConvertEnquiry({
       // The modal holds the enquiry it was opened with; flip the copy in place,
       // or the staff member is left looking at "Open a project" for a project
       // that now exists.
-      onConverted?.();
-      void queryClient.invalidateQueries({ queryKey: ["admin-enquiries"] });
+      refresh();
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "Could not open the project."),
   });
 
   const advance = useMutation({
-    mutationFn: (status: "contacted" | "quoted" | "won" | "lost") =>
+    // enquiryTransitions only ever emits the live funnel, so the cast is sound;
+    // the server's own enum is the real gate.
+    mutationFn: (status: EnquiryStatus) =>
       setEnquiryStatus({ data: { enquiryId: enquiry.id, status } }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin-enquiries"] }),
+    onSuccess: () => refresh(),
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "Could not move that enquiry."),
+  });
+
+  const claim = useMutation({
+    mutationFn: () => claimEnquiry({ data: { enquiryId: enquiry.id } }),
+    onSuccess: () => {
+      toast.success("You are now working on this enquiry.");
+      refresh();
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "Could not claim that enquiry."),
   });
 
   if (enquiry.status === "converted") {
@@ -167,25 +199,48 @@ function ConvertEnquiry({
     );
   }
 
+  const transitions = enquiryTransitions(enquiry.status);
+  const owner = claimState(enquiry.assigned_to, user?.primaryEmail ?? "");
+
   if (!open) {
     return (
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-maroon px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white hover:bg-burgundy"
-        >
-          Open a project
-        </button>
-        {enquiry.status === "new" ? (
+      <div className="space-y-3">
+        {transitions.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-maroon px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white hover:bg-burgundy"
+            >
+              Open a project
+            </button>
+            {transitions.map((t) => (
+              <button
+                key={t.status}
+                type="button"
+                onClick={() => advance.mutate(t.status)}
+                disabled={advance.isPending}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-line px-5 text-[11px] uppercase tracking-[0.14em] hover:border-burgundy hover:text-burgundy disabled:opacity-50"
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {owner === "unclaimed" ? (
           <button
             type="button"
-            onClick={() => advance.mutate("contacted")}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-line px-5 text-[11px] uppercase tracking-[0.14em] hover:border-burgundy hover:text-burgundy"
+            onClick={() => claim.mutate()}
+            disabled={claim.isPending}
+            className="inline-flex h-9 items-center gap-2 rounded-xl border border-gold/50 bg-gold/10 px-4 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:bg-gold/20 disabled:opacity-50"
           >
-            Mark contacted
+            Claim this enquiry
           </button>
-        ) : null}
+        ) : (
+          <p className="text-[11px] uppercase tracking-[0.14em] text-muted">
+            {owner === "mine" ? "Yours" : `Claimed by ${enquiry.assigned_to}`}
+          </p>
+        )}
       </div>
     );
   }
@@ -277,7 +332,7 @@ export function EnquiriesInbox() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterDiaspora, setFilterDiaspora] = useState<"all" | "diaspora" | "local">("all");
-  const [selected, setSelected] = useState<Enquiry | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Enquiries carry real names, emails and phone numbers, so the read is
   // account-gated server-side. No client-side password stands in for that.
@@ -289,6 +344,11 @@ export function EnquiriesInbox() {
     },
     enabled: Boolean(user),
   });
+
+  // The modal reads the enquiry from the list rather than a snapshot, so a
+  // claim or a status move shows up the moment the query refetches — otherwise
+  // the detail panel keeps showing the stage it had when it was opened.
+  const selected = (enquiries ?? []).find((e) => e.id === selectedId) ?? null;
 
   // The server always renders "pending", so the first client paint must match it.
   if (isPending || !hydrated) return null;
@@ -412,7 +472,7 @@ export function EnquiriesInbox() {
                 <button
                   key={e.id}
                   type="button"
-                  onClick={() => setSelected(e)}
+                  onClick={() => setSelectedId(e.id)}
                   className={cn(
                     "w-full text-left p-5 bg-paper border rounded-2xl hover:border-burgundy/30 hover:shadow-card-hover transition-all duration-200",
                     e.diaspora ? "border-gold/30" : "border-line/50",
@@ -429,11 +489,21 @@ export function EnquiriesInbox() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-display text-lg text-maroon truncate">{e.name}</p>
+                          <Badge tone={STATUS_TONES[e.status] ?? "stone"} className="text-[9px]">
+                            {statusLabel(e.status)}
+                          </Badge>
                           {e.diaspora && (
                             <Badge tone="gold" className="text-[9px]">
                               {e.diaspora_country || "Diaspora"}
                             </Badge>
                           )}
+                          {e.assigned_to ? (
+                            <span className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                              {claimState(e.assigned_to, user?.primaryEmail ?? "") === "mine"
+                                ? "Yours"
+                                : e.assigned_to}
+                            </span>
+                          ) : null}
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-sm text-muted flex-wrap">
                           <span className="flex items-center gap-1">
@@ -471,7 +541,7 @@ export function EnquiriesInbox() {
           <button
             type="button"
             className="absolute inset-0 bg-ink/50"
-            onClick={() => setSelected(null)}
+            onClick={() => setSelectedId(null)}
           />
           <div className="relative w-full sm:max-w-lg bg-paper rounded-t-2xl sm:rounded-2xl shadow-soft max-h-[85vh] overflow-y-auto">
             {/* Header */}
@@ -484,13 +554,18 @@ export function EnquiriesInbox() {
                   {selected.diaspora ? <Globe className="size-5" /> : <FileText className="size-5" />}
                 </div>
                 <div>
-                  <p className="font-display text-lg text-maroon">{selected.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-display text-lg text-maroon">{selected.name}</p>
+                    <Badge tone={STATUS_TONES[selected.status] ?? "stone"} className="text-[9px]">
+                      {statusLabel(selected.status)}
+                    </Badge>
+                  </div>
                   <p className="text-xs text-muted">{timeAgo(selected.created_at)}</p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setSelected(null)}
+                onClick={() => setSelectedId(null)}
                 className="size-10 inline-flex items-center justify-center rounded-full hover:bg-stone transition-colors"
               >
                 <X className="size-5" />
@@ -593,12 +668,7 @@ export function EnquiriesInbox() {
                   into work. Both stay visible — hiding them behind a toggle would
                   only add a step. */}
               <div className="mt-4">
-                <ConvertEnquiry
-                  enquiry={selected}
-                  onConverted={() =>
-                    setSelected((s) => (s ? { ...s, status: "converted" } : s))
-                  }
-                />
+                <ConvertEnquiry enquiry={selected} />
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
