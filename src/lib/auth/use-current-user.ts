@@ -1,5 +1,9 @@
 import { useSyncExternalStore } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import {
+  personaKeyFromCookieHeader,
+  previewPersona,
+} from "@/lib/preview-personas";
 
 /**
  * Normalized user shape used across the app.
@@ -19,21 +23,42 @@ export type AppUser = {
 };
 
 /**
- * Stable fallback user, used ONLY when Supabase is not configured. Its id is
- * `"dev-user"` — the SAME id `verify.server.ts` returns server-side — so
- * per-user rows written in that mode belong to one consistent owner.
+ * The preview seat, used ONLY when Supabase is not configured.
+ *
+ * Resolved from the same cookie the server reads (`getSessionUser`), so both
+ * sides agree on who you are — the id every per-user row is scoped by comes
+ * from the persona, not from a module-level constant, because the four seats
+ * are four different owners. No cookie falls back to the env override (or the
+ * boss seat's address), matching the server's default.
+ *
+ * Browser-only by construction: `start()` never runs on the server, so
+ * touching `document.cookie` here can never leak into SSR.
+ *
+ * Built ONCE per page load. The unconfigured `start()` re-runs on every
+ * render, and a fresh object each time would hand `useSyncExternalStore` a
+ * new snapshot on every pass — setState during render, which React reports
+ * as error #520 and then loops on. The switcher reloads to change seats, so
+ * the cookie cannot move underneath this cache.
  */
 const previewEmail =
   (import.meta.env.VITE_PREVIEW_AUTH_EMAIL as string | undefined)?.trim() || "hello@atro.ke";
 
-export const DEV_USER: AppUser = {
-  id: "dev-user",
-  displayName: "Preview mode",
-  primaryEmail: previewEmail,
-  primaryPhone: null,
-  profileImageUrl: null,
-  isDevFallback: true,
-};
+let previewUser: AppUser | null = null;
+
+function previewAppUser(): AppUser {
+  if (previewUser) return previewUser;
+  const key = personaKeyFromCookieHeader(document.cookie);
+  const persona = previewPersona(key);
+  previewUser = {
+    id: persona.userId,
+    displayName: persona.name,
+    primaryEmail: key ? persona.email : previewEmail,
+    primaryPhone: null,
+    profileImageUrl: null,
+    isDevFallback: true,
+  };
+  return previewUser;
+}
 
 /** `useCurrentUserState()` result: the user plus the session-loading flag. */
 export type CurrentUserState = {
@@ -69,8 +94,15 @@ function start() {
   if (started || typeof window === "undefined") return;
   const supabase = supabaseBrowser();
   if (!supabase) {
-    // Unconfigured: behave as the dev fallback, never pending.
-    set({ user: DEV_USER, isPending: false });
+    // Unconfigured: behave as whoever the persona cookie says, never pending.
+    // The flag matters here too — without it every render re-entered this
+    // branch and re-emitted, and the store listener of a component mid-render
+    // would schedule a setState on the component being rendered (React's
+    // "cannot update while rendering" warning, which in a concurrent prod
+    // build escalates to a #520 recovery loop on /portal). The persona cannot
+    // change without a full reload, so one settle per load is correct.
+    started = true;
+    set({ user: previewAppUser(), isPending: false });
     return;
   }
   started = true;

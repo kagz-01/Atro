@@ -1,6 +1,10 @@
 import { getRequest } from "@tanstack/react-start/server";
 import { configured, previewIdentity, ACCESS_TOKEN_COOKIE } from "@/lib/supabase/config";
 import { verifyAccessToken } from "@/lib/supabase/server";
+import {
+  personaKeyFromCookieHeader,
+  previewPersona,
+} from "@/lib/preview-personas";
 
 /**
  * Server-side session resolution (server-only).
@@ -48,10 +52,19 @@ export type VerifiedUser = { id: string; email: string | null; phone?: string | 
 export async function getSessionUser(
   bearerToken?: string,
 ): Promise<VerifiedUser | null> {
-  // No Supabase means no way to sign in, so preview as the seeded studio admin
-  // rather than pretending nobody is signed in.
-  const preview = previewIdentity();
-  if (!configured) return preview;
+  // No Supabase means no way to sign in, so preview — as whoever the
+  // persona cookie says, or as the seeded studio admin when it says nothing.
+  if (!configured) {
+    const request = getRequest();
+    const key = personaKeyFromCookieHeader(
+      request?.headers.get("cookie") ?? null,
+    );
+    if (key) {
+      const persona = previewPersona(key);
+      return { id: persona.userId, email: persona.email };
+    }
+    return previewIdentity();
+  }
 
   const request = getRequest();
   if (!request) return null;
@@ -85,8 +98,8 @@ export async function getSessionUser(
  *   when signed out.
  * - Not configured + `DATABASE_URL` set -> throw (fail closed): one shared dev
  *   user on a real database would let every visitor read/write everyone's rows.
- * - Not configured + no database -> the preview identity (`dev-user`, and the
- *   studio address it signs in as).
+ * - Not configured + no database -> the preview persona (the cookie's seat,
+ *   or the seeded studio admin when the cookie says nothing).
  */
 export type SessionIdentity = {
   userId: string;

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { previewIdentity } from "@/lib/supabase/config";
+import { personaKeyFromCookieHeader, previewPersona } from "@/lib/preview-personas";
 
 /**
  * "You are not signed in" banner for local preview.
@@ -12,16 +13,21 @@ import { previewIdentity } from "@/lib/supabase/config";
  * It re-derives from `previewIdentity()` on every render, which returns `null`
  * the moment Supabase is configured — the same switch that disables the bypass
  * also removes this notice, so it cannot linger on a real deployment.
+ *
+ * Which seat the copy names comes from the persona cookie, read in the same
+ * post-mount effect for the same hydration reason.
  */
 const DISMISS_KEY = "atro.preview-banner-dismissed";
 
 export function PreviewBanner() {
   const [visible, setVisible] = useState(false);
+  const [personaKey, setPersonaKey] = useState<string | null>(null);
   const identity = previewIdentity();
   const bar = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!identity) return;
+    setPersonaKey(personaKeyFromCookieHeader(document.cookie));
     try {
       setVisible(window.sessionStorage.getItem(DISMISS_KEY) !== "1");
     } catch {
@@ -54,6 +60,9 @@ export function PreviewBanner() {
 
   if (!identity || !visible) return null;
 
+  const seat = previewPersona(personaKey);
+  const email = personaKey ? seat.email : identity.email;
+
   return (
     <div
       ref={bar}
@@ -63,8 +72,9 @@ export function PreviewBanner() {
       <p className="flex-1">
         <strong className="font-semibold">Preview mode.</strong> Sign-in is not
         connected yet, so you are browsing as{" "}
-        <code className="font-mono">{identity.email}</code> — the studio owner,
-        which is why the admin console opens. Nothing here is a real session.
+        <code className="font-mono">{email}</code> — {seat.name},{" "}
+        {seat.blurb.toLowerCase()}. Change seats with the switcher at the
+        bottom left. Nothing here is a real session.
       </p>
       <button
         type="button"

@@ -24,8 +24,14 @@ insert into portal_projects (
   next_call_when, next_call_local, next_call_agenda, next_call_at, progress,
   last_viewed_at, created_at, updated_at
 )
+-- The three sample projects belong to the three preview seats that can own a
+-- project — the office persona owns none, because staff work through the
+-- console, not through a portal of their own. Client profiles are seeded
+-- alongside them so `isAbroad` (diaspora) actually flips for the London seat:
+-- without a profile every seat reads as a local individual and the Abroad
+-- track is unreachable in preview.
 select
-  'dev-user', v.reference, v.title, v.client_label, v.initials, v.city, v.tz,
+  v.uid, v.reference, v.title, v.client_label, v.initials, v.city, v.tz,
   v.plot, v.area, 'Design and build', v.started, v.target, v.stage, 'sample', v.track, v.zone,
   v.value, v.value, v.certified, v.paid, v.unreleased,
   round(v.value * 0.05), 5, round(v.value * 1.04),
@@ -36,21 +42,24 @@ select
   now() - (v.age_days || ' days')::interval,
   now() - (v.updated_days || ' days')::interval
 from (values
-  ('ATRO-2401', '4-bedroom maisonette, Karen', 'Wanjiku Njeri', 'WN', 'Nairobi',
+  ('dev-local',
+   'ATRO-2401', '4-bedroom maisonette, Karen', 'Wanjiku Njeri', 'WN', 'Nairobi',
    'Africa/Nairobi', 'Title No. LR 11842/201, Westlands', '312 m²', 'Mar 2024', 'Jun 2025',
    'Superstructure', 'construction', 'nairobi', 42000000::bigint, 21000000::bigint, 26250000::bigint, 5250000::bigint,
    380, 402, true, 0,
    'Frame on track. Slab deck poured last Thursday; roof covering awaiting the client decision.',
    'Friday 14 March, 15:00 EAT', 'Friday 14 March, 12:00 your time',
    '["Ring beam inspection","Roof covering decision","Payment position"]', '2025-03-14 15:00:00+03', 62, 2, 4, 14),
-  ('ATRO-2402', 'Office refurbishment, Westlands', 'Brian Otieno', 'BO', 'London',
+  ('dev-abroad',
+   'ATRO-2402', 'Office refurbishment, Westlands', 'Brian Otieno', 'BO', 'London',
    'Europe/London', 'Plot 5, Westlands business park', '640 m²', 'Sep 2024', 'Apr 2025',
    'Structure and envelope', 'renovation', 'nairobi', 28500000::bigint, 11400000::bigint, 11400000::bigint, 0::bigint,
    190, 210, false, 12,
    'Blocked: the client has not released the revised structural drawings.',
    'Tuesday 18 March, 11:00 EAT', 'Tuesday 18 March, 08:00 your time',
    '["Revised drawings","Temporary works"]', '2025-03-18 11:00:00+03', 34, 22, 9, 3),
-  ('ATRO-2403', 'Feasibility and cost plan', 'Amina Yusuf', 'AY', 'Dubai',
+  ('dev-user',
+   'ATRO-2403', 'Feasibility and cost plan', 'Amina Yusuf', 'AY', 'Dubai',
    'Asia/Dubai', 'Plot 12, Runda Gardens', '1,100 m²', 'Jan 2025', 'Jul 2025',
    'Concept and cost options', 'advisory', 'kiambu', 12000000::bigint, 3600000::bigint, 7200000::bigint, 3600000::bigint,
    95, 120, true, 0,
@@ -58,10 +67,31 @@ from (values
    'Wednesday 19 March, 09:00 EAT', 'Wednesday 19 March, 10:00 your time',
    '["Which cost option"]', '2025-03-19 09:00:00+03', 18, 45, 5, 7)
 ) as v(
-  reference, title, client_label, initials, city, tz, plot, area, started, target, stage,
+  uid, reference, title, client_label, initials, city, tz, plot, area, started, target, stage,
   track, zone, value, paid, certified, unreleased, elapsed, total_days, on_track, variance,
   note, call_when, call_local, call_agenda, call_at, progress, age_days, updated_days, stale_days
 );
+
+-- ── client profiles: who each seat is, and which side of the border they sit ──
+--
+-- `client_type` is the whole reason this exists for the preview: the console's
+-- "From abroad" filter and the portal's Abroad tab both read it, and with no
+-- rows every seat defaulted to `individual`, which made diaspora behaviour
+-- unopenable. Juma's staff role lives here too — a migration would push a fake
+-- staff member onto a real deployment, and the local seed never leaves PGLite.
+insert into client_profile (
+  user_id, display_name, initials, phone, email, city, country, timezone, client_type
+)
+values
+  ('dev-local', 'Wanjiku Njeri', 'WN', '+254799034712', 'wanjiku@example.com',
+   'Nairobi', 'Kenya', 'Africa/Nairobi', 'individual'),
+  ('dev-abroad', 'Brian Otieno', 'BO', '+447700900123', 'b.otieno@example.com',
+   'London', 'United Kingdom', 'Europe/London', 'diaspora')
+on conflict (user_id) do nothing;
+
+insert into client_role (email, role, note) values
+  ('juma@atro.ke', 'staff', 'Office — preview seat')
+on conflict (email) do nothing;
 
 -- ── milestones: nine stages per project, worked to a believable point ──
 insert into portal_milestones (
@@ -312,7 +342,7 @@ select p.id, s.ord, s.title, s.category, s.stage, s.allowance::bigint,
        else to_char((now() + make_interval(days => s.in_days))::date, 'YYYY-MM-DD') end,
   s.status,
   case when s.chosen_label is null then null else now() - (s.chosen_days || ' days')::interval end,
-  'dev-user', s.note
+  p.user_id, s.note
 from portal_projects p
 cross join lateral (values
   (1, 'Roof covering', 'Roof', 'Superstructure', 6300000, '', 'open', null, null, 18,
@@ -625,7 +655,7 @@ where p.reference = 'ATRO-2401';
 insert into portal_presence
   (project_id, kind, status, requested_by, client_note, proposed_on,
    scheduled_at, delivery_url, staff_note, responded_by, created_at, updated_at)
-select p.id, v.kind, v.status, 'dev-user', v.client_note, v.proposed,
+select p.id, v.kind, v.status, p.user_id, v.client_note, v.proposed,
   case when v.scheduled_days is null then null
        else date_trunc('day', now()) + make_interval(days => v.scheduled_days, hours => 10)
        end,

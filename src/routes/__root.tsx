@@ -10,6 +10,7 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { SiteShell } from "@/components/site-shell";
 import appCss from "../styles.css?url";
 import { PreviewBanner } from "@/components/preview-banner";
+import { PreviewPersonaSwitcher } from "@/components/preview-persona-switcher";
 
 const APP_NAME = "ATRO Design & Construction";
 
@@ -62,6 +63,7 @@ function RootDocument() {
       <body className="bg-paper text-ink">
         <PreviewHostBridge />
         <PreviewBanner />
+        <PreviewPersonaSwitcher />
         <AuthProvider>
           {isApp ? (
             <Outlet />
