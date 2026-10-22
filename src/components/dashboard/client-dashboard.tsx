@@ -45,6 +45,7 @@ import { VariationsPanel } from "@/components/dashboard/variations-panel";
 import { listMyVariations } from "@/lib/variations-server";
 import { countAwaiting } from "@/lib/variations";
 import { AbroadPanel } from "@/components/dashboard/abroad-panel";
+import { AbroadHomeBand, LocalHomeBand } from "@/components/dashboard/home-band";
 import { HowToPayPanel } from "@/components/dashboard/how-to-pay-panel";
 import { VisitPanel } from "@/components/dashboard/presence-panel";
 import { isAbroad } from "@/lib/abroad";
@@ -328,6 +329,25 @@ export function ClientDashboard({
 
       {section === "overview" ? (
         <div className="space-y-5">
+          {/* Two homes, one dashboard: which band opens the page is the whole
+              point of Step 22 — the facts a distant client needs first are not
+              the facts a client ten minutes away needs first. */}
+          {abroad ? (
+            <AbroadHomeBand
+              project={p}
+              zone={zone}
+              away={{
+                activity: newActivity.length,
+                messages: unreadMessages,
+                decisions: openDecisions.length,
+              }}
+              onGo={(s) => setSection(s as Section)}
+              onGoMoney={() => setSection("money")}
+            />
+          ) : (
+            <LocalHomeBand project={p} onGoMoney={() => setSection("money")} />
+          )}
+
           {nudges.length > 0 ? (
             <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5">
               <p className="text-[14px] leading-relaxed text-amber-900">

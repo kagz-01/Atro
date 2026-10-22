@@ -714,6 +714,22 @@ Quote ATRO-2401 as the payment reference, and send the transfer advice to your p
 ) as v(kind, body)
 where p.reference = 'ATRO-2401';
 
+-- The abroad client's project gets both sheets too — Step 22's home screen
+-- shows each client the half they can actually use, and Brian's Money section
+-- was reading an empty table until this block existed.
+insert into portal_payment_instructions (project_id, kind, body)
+select p.id, v.kind, v.body
+from portal_projects p
+cross join lateral (values
+  ('local', 'M-Pesa Paybill 247247, Account ATRO-2402.
+KCB Karen Branch, Account 1234567890, Account name ATRO Studio Ltd.
+Quote the project reference ATRO-2402 on every payment so it lands on your statement.'),
+  ('international', 'KCB Kenya, Nairobi Karen Branch.
+SWIFT: KCBKENAXXX. Account 1234567890, Account name ATRO Studio Ltd.
+Quote ATRO-2402 as the payment reference, and send the transfer advice to your project manager so the payment is matched the day it lands.')
+) as v(kind, body)
+where p.reference = 'ATRO-2402';
+
 -- ── the studio's own notes ──
 --
 -- staff_note is written by postUpdateFor under the WRITER's user id, so the
