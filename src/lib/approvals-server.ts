@@ -21,7 +21,8 @@ import {
   type ApprovalStatus,
 } from "@/lib/approvals";
 
-const toApproval = (r: Record<string, unknown>): Approval => ({
+/** One snake_case row into the shape every approvals reader speaks. */
+export const toApproval = (r: Record<string, unknown>): Approval => ({
   id: String(r.id),
   ord: Number(r.ord ?? 0),
   kind: String(r.kind ?? "county") as ApprovalKind,

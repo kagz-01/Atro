@@ -323,7 +323,7 @@ from (values
   ('Brian Otieno', '+447700900123', 'b.otieno@example.com', 'Commercial', 'nairobi', 'Feasibility', 'Office refurbishment while our London office is leased.', 640, 'Standard', 24000000, 31000000, true, 'United Kingdom', 'Europe/London', 'Mr. Otieno (brother)', 'Planning a visit in June', 'converted', 'hello@atro.ke', 168),
   ('Amina Yusuf', '+971501234567', 'amina@example.com', 'Residential', 'kiambu', 'Cost options', 'Feasibility and cost plan before committing to build.', 1100, 'Premium', 10500000, 13500000, true, 'United Arab Emirates', 'Asia/Dubai', 'Mr. Yusuf (uncle)', 'May visit the plot', 'converted', 'hello@atro.ke', 74),
   ('Faith Chebet', '+254712345678', 'faith@example.com', 'Residential', 'kiambu', 'Enquiry', 'Three-bedroom house for my parents; I work in Nairobi.', 240, 'Standard', 18000000, 22000000, false, '', 'Africa/Nairobi', '', '', 'contacted', 'hello@atro.ke', 38),
-  ('Peter Mwangi', '+254722334455', 'p.mwangi@example.com', 'Institutional', 'nairobi', 'Enquiry', 'Day-care centre for 60 children; need approvals handled.', 480, 'Standard', 32000000, 38000000, false, '', 'Africa/Nairobi', '', '', 'quoted', 'hello@atro.ke', 21),
+  ('Peter Mwangi', '+254722334455', 'p.mwangi@example.com', 'Institutional', 'nairobi', 'Enquiry', 'Day-care centre for 60 children; need approvals handled.', 480, 'Standard', 32000000, 38000000, false, '', 'Africa/Nairobi', '', '', 'quoted', 'juma@atro.ke', 21),
   ('Grace Wambui', '+254733445566', 'grace@example.com', 'Residential', 'machakos', 'Enquiry', 'Rental yield check before I commit to a plot.', 200, 'Standard', 14000000, 17000000, false, '', 'Africa/Nairobi', '', '', 'new', '', 9),
   ('Samuel Adeyemi', '+2348030000000', 's.adeyemi@example.com', 'Commercial', 'coast', 'Enquiry', 'Warehouse conversion for a logistics client in Mombasa.', 1200, 'Standard', 41000000, 52000000, true, 'Nigeria', 'Africa/Lagos', 'Mr. Adeyemi (brother)', 'Visiting Mombasa in April', 'new', '', 4),
   ('Halima Noor', '+254744556677', 'halima@example.com', 'Residential', 'nairobi', 'Enquiry', 'Two-bedroom apartment for my sister; modest budget.', 95, 'Standard', 9500000, 11500000, false, '', 'Africa/Nairobi', '', '', 'new', '', 1)
@@ -713,3 +713,28 @@ SWIFT: KCBKENAXXX. Account 1234567890, Account name ATRO Studio Ltd.
 Quote ATRO-2401 as the payment reference, and send the transfer advice to your project manager so the payment is matched the day it lands.')
 ) as v(kind, body)
 where p.reference = 'ATRO-2401';
+
+-- ── the studio's own notes ──
+--
+-- staff_note is written by postUpdateFor under the WRITER's user id, so the
+-- seed authors rows the same way: juma (the office persona) owns his two,
+-- hello@atro.ke owns the roof decision, so "My notes" has real content for
+-- both seats on day one.
+insert into staff_note (project_id, author_id, author_label, body, created_at)
+select p.id, v.author_id, v.author_label, v.body, now() - (v.age_hours || ' hours')::interval
+from portal_projects p
+cross join lateral (values
+  ('dev-staff', 'juma@atro.ke', 'Slab deck poured Thursday — formwork striking Monday, roof covering still an open decision with the client.', 30),
+  ('dev-staff', 'juma@atro.ke', 'Surveyor booked for the water connection boundary walk on the 14th. NEMA contact promised a callback.', 54),
+  ('dev-user', 'hello@atro.ke', 'Client wants the roof options priced both ways before Friday''s call — clay tile against stone-coated steel.', 26)
+) as v(author_id, author_label, body, age_hours)
+where p.reference = 'ATRO-2401';
+
+insert into staff_note (project_id, author_id, author_label, body, created_at)
+select p.id, v.author_id, v.author_label, v.body, now() - (v.age_hours || ' hours')::interval
+from portal_projects p
+cross join lateral (values
+  ('dev-staff', 'juma@atro.ke', 'Change of use permit lodged with the county; file number expected within ten working days.', 72),
+  ('dev-user', 'hello@atro.ke', 'Half the deposit cleared — matched to ATRO-2402 and released to procurement.', 20)
+) as v(author_id, author_label, body, age_hours)
+where p.reference = 'ATRO-2402';

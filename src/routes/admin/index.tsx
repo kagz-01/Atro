@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Banknote,
   CheckCircle2,
+  ClipboardList,
   FolderKanban,
   Hourglass,
   Inbox,
@@ -29,6 +30,7 @@ import {
   type Slice,
 } from "@/components/dashboard/charts";
 import { EnquiriesInbox } from "@/components/admin/enquiries-inbox";
+import { MyWorkPanel } from "@/components/admin/my-work";
 import { SelectionsPanel } from "@/components/admin/selections-panel";
 import { ApprovalsPanel } from "@/components/admin/approvals-panel";
 import { EvidenceUploader } from "@/components/admin/evidence-uploader";
@@ -2085,6 +2087,7 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
 /* ── console ── */
 
 const TABS = [
+  { id: "work", label: "My work", title: "My work", body: "Claimed leads, chases and notes" },
   { id: "overview", label: "Overview", title: "Studio overview", body: "Every project, one page" },
   { id: "projects", label: "Projects", title: "Projects", body: "Everything the studio is running" },
   { id: "enquiries", label: "Enquiries", title: "Enquiries", body: "People who asked us to build" },
@@ -2110,7 +2113,7 @@ function AdminConsole() {
   const [filter, setFilter] = useState<"all" | "local" | "diaspora" | "attention" | "sample">(
     "all",
   );
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("overview");
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"] | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -2124,6 +2127,10 @@ function AdminConsole() {
   }, [roleNonce]);
 
   const isStaff = roleState?.role === "staff" || roleState?.role === "admin";
+  const isAdmin = roleState?.role === "admin";
+  // A staff member lands on their own queue; the owner lands on the studio.
+  // Explicit navigation always wins over this default.
+  const view = tab ?? (isAdmin ? "overview" : "work");
 
   const { data: projects, isLoading, refetch } = useQuery({
     queryKey: ["staff-projects"],
@@ -2134,7 +2141,7 @@ function AdminConsole() {
   const { data: overview } = useQuery({
     queryKey: ["ops-overview"],
     queryFn: () => getOpsOverview({ data: undefined }),
-    enabled: isStaff && tab === "overview",
+    enabled: isStaff && view === "overview",
   });
 
   if (!hydrated || roleState === null) {
@@ -2185,7 +2192,7 @@ function AdminConsole() {
     return matches(p);
   });
 
-  const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
+  const activeTab = TABS.find((t) => t.id === view) ?? TABS[0];
   const openProject = (id: string) => {
     setSelected(id);
     setTab("projects");
@@ -2197,6 +2204,7 @@ function AdminConsole() {
         {
           title: "Studio",
           items: [
+            { id: "work", label: "My work", icon: ClipboardList },
             { id: "overview", label: "Overview", icon: LayoutDashboard },
             {
               id: "projects",
@@ -2212,12 +2220,18 @@ function AdminConsole() {
             },
           ],
         },
-        {
-          title: "Administration",
-          items: [{ id: "access", label: "Access", icon: Users }],
-        },
+        // Seats decide what you see before you decide anything: Access is the
+        // owner's lever, so staff never meet it.
+        ...(isAdmin
+          ? [
+              {
+                title: "Administration",
+                items: [{ id: "access", label: "Access", icon: Users }],
+              },
+            ]
+          : []),
       ]}
-      active={tab}
+      active={view}
       onSelect={(id) => {
         setTab(id as (typeof TABS)[number]["id"]);
         setSelected(null);
@@ -2245,7 +2259,7 @@ function AdminConsole() {
             <p className="text-[12px] text-muted">{activeTab.body}</p>
           </div>
 
-          {tab === "projects" && !selected ? (
+          {view === "projects" && !selected ? (
             <div className="flex flex-wrap items-center gap-2">
               {([
                 ["all", "All"],
@@ -2276,29 +2290,31 @@ function AdminConsole() {
         </div>
       }
     >
-      {tab === "overview" ? (
+      {view === "work" ? (
+        <MyWorkPanel onGoEnquiries={() => setTab("enquiries")} onOpenProject={openProject} />
+      ) : null}
+
+      {view === "overview" ? (
         <Overview projects={all} onOpen={openProject} search={search} />
       ) : null}
 
-      {tab === "enquiries" ? <EnquiriesInbox /> : null}
+      {view === "enquiries" ? <EnquiriesInbox /> : null}
 
-      {tab === "access" ? (
-        <AccessPanel isAdmin={roleState?.role === "admin"} />
-      ) : null}
+      {view === "access" ? <AccessPanel isAdmin={isAdmin} /> : null}
 
-      {tab === "projects" && selected ? (
+      {view === "projects" && selected ? (
         <ProjectDetail
           projectId={selected}
           clientType={all.find((x) => x.id === selected)?.clientType}
-          isAdmin={roleState?.role === "admin"}
+          isAdmin={isAdmin}
           onBack={() => setSelected(null)}
           onChanged={() => void refetch()}
         />
-      ) : tab === "projects" && isLoading ? (
+      ) : view === "projects" && isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="size-6 animate-spin text-gold" />
         </div>
-      ) : tab === "projects" && rows.length === 0 ? (
+      ) : view === "projects" && rows.length === 0 ? (
         <div className="flex flex-col items-center rounded-2xl border border-dashed border-ink/15 py-16 text-center">
           <Inbox className="size-7 text-ink/30" />
           <p className="mt-4 font-display text-xl text-maroon">
@@ -2316,7 +2332,7 @@ function AdminConsole() {
                 : "Projects appear as soon as a client opens one in their portal, or you create one for them."}
           </p>
         </div>
-      ) : tab === "projects" ? (
+      ) : view === "projects" ? (
         <ProjectsTable projects={rows} onOpen={setSelected} />
       ) : null}
     </DashboardShell>
