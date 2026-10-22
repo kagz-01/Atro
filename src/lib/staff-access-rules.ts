@@ -43,3 +43,28 @@ export function grantDemotesAdmin(input: {
   const { currentRole, nextRole } = input;
   return currentRole === "admin" && nextRole !== "admin";
 }
+
+/**
+ * The refusal when inviting someone who can already walk in.
+ *
+ * An invitation is a promise of the `staff` role held until it is accepted.
+ * Someone already on the list needs no promise — and inviting them would set
+ * up an accept that silently re-grants what a revoke may have deliberately
+ * taken away.
+ */
+export function inviteRefusal(input: { alreadyStaff: boolean }): string | null {
+  if (!input.alreadyStaff) return null;
+  return "That address is already on the studio access list.";
+}
+
+/**
+ * The role an accepted invitation resolves to.
+ *
+ * Never lowers what is already held: the invitation only ever promises
+ * `staff`, so accepting is `staff` for a new person and a no-op for anyone
+ * the boss has already promoted — an accept must not demote an admin back to
+ * staff just because an invitation was still open when they were granted.
+ */
+export function roleAfterAccept(currentRole: StaffRole | null): StaffRole {
+  return currentRole ?? "staff";
+}

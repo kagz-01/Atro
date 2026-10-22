@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Loader2,
   Lock,
+  Mail,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,9 +42,12 @@ import { isOpen } from "@/lib/presence";
 import { getOpsOverview, type GroupRow } from "@/lib/ops";
 import {
   getMyAccess,
+  acceptMyInvite,
   grantStaff,
+  inviteStaff,
   listStaff,
   requestStaffAccess,
+  revokeInvite,
   revokeStaff,
 } from "@/lib/staff-access";
 import { issueStatementForProject, releaseRetention } from "@/lib/staff-ops";
@@ -1705,11 +1709,77 @@ function RequestAccessCard() {
   );
 }
 
+/**
+ * The card for a signed-in account the studio has already invited.
+ *
+ * It replaces the request form: asking would restart a conversation that is
+ * already half-had — the invitation names who sent it and why, and accepting
+ * is the whole remaining step. The parent re-reads the role after a
+ * successful accept, which is what swaps this card for the console itself.
+ */
+function AcceptInviteCard({
+  email,
+  invite,
+  onAccepted,
+}: {
+  email: string;
+  invite: { invitedBy: string; note: string; createdAt: string };
+  onAccepted: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <main className="min-h-[70vh] flex flex-col items-center justify-center bg-stone/30 px-4 py-24">
+      <div className="w-full max-w-xl rounded-3xl border border-line/50 bg-paper p-8 shadow-card">
+        <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-maroon/10 text-maroon">
+          <Mail className="size-6" />
+        </span>
+        <h1 className="mt-6 font-display text-2xl text-maroon">
+          You have been invited to the studio
+        </h1>
+        <p className="mt-3 text-[14px] leading-relaxed text-ink/65">
+          <strong>{invite.invitedBy}</strong> invited <strong>{email}</strong> to open the
+          studio console.
+          {invite.note ? <> — “{invite.note}”</> : null} Accept below and the console
+          opens now; the invitation closes with it.
+        </p>
+        <Button
+          className="mt-6"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void acceptMyInvite({ data: {} })
+              .then(() => {
+                toast.success("Access accepted. Welcome to the console.");
+                onAccepted();
+              })
+              .catch((e: unknown) =>
+                toast.error(e instanceof Error ? e.message : "Could not accept."),
+              )
+              .finally(() => setBusy(false));
+          }}
+        >
+          Accept studio access
+        </Button>
+        <Link
+          to="/portal"
+          className="mt-6 inline-block text-[13px] text-burgundy underline decoration-gold decoration-2 underline-offset-4"
+        >
+          Client portal instead
+        </Link>
+      </div>
+    </main>
+  );
+}
+
 function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"staff" | "admin">("staff");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteNote, setInviteNote] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
 
   const { data, refetch } = useQuery({
     queryKey: ["staff-list"],
@@ -1718,6 +1788,7 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
 
   const members = data?.members ?? [];
   const requests = data?.requests ?? [];
+  const invites = data?.invites ?? [];
 
   return (
     <Accordion>
@@ -1823,6 +1894,141 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
         ) : null}
       </AccordionItem>
 
+      {isAdmin || invites.length > 0 ? (
+        <AccordionItem
+          title="Invited, waiting to accept"
+          hint={`${invites.length}`}
+          defaultOpen={isAdmin || invites.length > 0}
+          className="border-gold/40 bg-gold/5"
+        >
+          <p className="text-[12px] leading-relaxed text-ink/55">
+            An invitation goes to an address and opens nothing on its own — the console
+            opens the first time that address signs in and accepts. Use Grant access
+            instead for someone who already has an account.
+          </p>
+
+          {isAdmin ? (
+            <div className="mt-4 grid gap-3 border-t border-ink/10 pt-5 sm:grid-cols-3">
+              <div className="sm:col-span-2">
+                <Label htmlFor="inv-email">Their address</Label>
+                <Input
+                  id="inv-email"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="name@atro.ke"
+                  className="mt-1"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="inv-note">Why the console</Label>
+                <Input
+                  id="inv-note"
+                  value={inviteNote}
+                  onChange={(e) => setInviteNote(e.target.value)}
+                  placeholder="Site management, Karen projects"
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  className="w-full"
+                  disabled={inviteBusy}
+                  onClick={() => {
+                    setInviteBusy(true);
+                    void inviteStaff({ data: { email: inviteEmail, note: inviteNote } })
+                      .then((r) => {
+                        toast.success(
+                          r.resent
+                            ? `Invitation to ${r.email} sent again.`
+                            : `Invitation sent to ${r.email}.`,
+                        );
+                        setInviteEmail("");
+                        setInviteNote("");
+                        void refetch();
+                      })
+                      .catch((e: unknown) =>
+                        toast.error(e instanceof Error ? e.message : "Could not invite."),
+                      )
+                      .finally(() => setInviteBusy(false));
+                  }}
+                >
+                  Send invite
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {invites.length > 0 ? (
+            <ul className="mt-4 space-y-2">
+              {invites.map((i) => (
+                <li
+                  key={i.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[13px] text-maroon">{i.email}</span>
+                    {i.note ? (
+                      <span className="mt-1 block text-[12px] text-ink/60">{i.note}</span>
+                    ) : null}
+                    <span className="text-[11px] text-muted">
+                      invited {new Date(i.createdAt).toLocaleDateString("en-KE")} by{" "}
+                      {i.invitedBy}
+                    </span>
+                  </span>
+                  {isAdmin ? (
+                    <span className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={inviteBusy}
+                        onClick={() => {
+                          setInviteBusy(true);
+                          void inviteStaff({ data: { email: i.email, note: i.note } })
+                            .then(() => {
+                              toast.success(`Invitation to ${i.email} sent again.`);
+                              void refetch();
+                            })
+                            .catch((e: unknown) =>
+                              toast.error(
+                                e instanceof Error ? e.message : "Could not send.",
+                              ),
+                            )
+                            .finally(() => setInviteBusy(false));
+                        }}
+                      >
+                        Resend
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={inviteBusy}
+                        onClick={() => {
+                          setInviteBusy(true);
+                          void revokeInvite({ data: { email: i.email } })
+                            .then(() => {
+                              toast.success(`Invitation to ${i.email} withdrawn.`);
+                              void refetch();
+                            })
+                            .catch((e: unknown) =>
+                              toast.error(
+                                e instanceof Error ? e.message : "Could not withdraw.",
+                              ),
+                            )
+                            .finally(() => setInviteBusy(false));
+                        }}
+                      >
+                        Withdraw
+                      </Button>
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </AccordionItem>
+      ) : null}
+
       {requests.length > 0 ? (
         <AccordionItem
           title="Waiting to be let in"
@@ -1885,13 +2091,21 @@ const TABS = [
   { id: "access", label: "Access", title: "Access", body: "Who can open the console" },
 ] as const;
 
+type RoleState = {
+  role: string | null;
+  userId: string | null;
+  email: string | null;
+  invite: { invitedBy: string; note: string; createdAt: string } | null;
+};
+
+const NO_ROLE: RoleState = { role: null, userId: null, email: null, invite: null };
+
 function AdminConsole() {
   const hydrated = useIsHydrated();
-  const [roleState, setRoleState] = useState<{
-    role: string | null;
-    userId: string | null;
-    email: string | null;
-  } | null>(null);
+  const [roleState, setRoleState] = useState<RoleState | null>(null);
+  // Bumped after an invitation is accepted, which re-runs the role fetch —
+  // the accept card's whole job is to make that fetch return staff.
+  const [roleNonce, setRoleNonce] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "local" | "diaspora" | "attention" | "sample">(
     "all",
@@ -1903,11 +2117,11 @@ function AdminConsole() {
     let live = true;
     getMyStaffRole({ data: undefined })
       .then((r) => live && setRoleState(r))
-      .catch(() => live && setRoleState({ role: null, userId: null, email: null }));
+      .catch(() => live && setRoleState(NO_ROLE));
     return () => {
       live = false;
     };
-  }, []);
+  }, [roleNonce]);
 
   const isStaff = roleState?.role === "staff" || roleState?.role === "admin";
 
@@ -1931,9 +2145,24 @@ function AdminConsole() {
     );
   }
 
-  // Signed out: ask them to sign in. Signed in but not on the allowlist: let
-  // them ask for access, which is otherwise a one-way door.
-  if (!isStaff) return roleState.email ? <RequestAccessCard /> : <StaffWall />;
+  // Signed out: ask them to sign in. Signed in but not on the allowlist: an
+  // invitation, if one is waiting, answers the question before it is asked —
+  // otherwise let them request access, which is otherwise a one-way door.
+  if (!isStaff) {
+    if (!roleState.email) return <StaffWall />;
+    return roleState.invite ? (
+      <AcceptInviteCard
+        email={roleState.email}
+        invite={roleState.invite}
+        onAccepted={() => {
+          setRoleState(null);
+          setRoleNonce((n) => n + 1);
+        }}
+      />
+    ) : (
+      <RequestAccessCard />
+    );
+  }
 
   const all = projects ?? [];
   const q = search.trim().toLowerCase();

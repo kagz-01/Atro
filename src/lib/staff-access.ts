@@ -11,7 +11,12 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/verify.server";
 import { requireAdmin } from "@/lib/staff-session.server";
-import { demotesLastAdmin, grantDemotesAdmin } from "@/lib/staff-access-rules";
+import {
+  demotesLastAdmin,
+  grantDemotesAdmin,
+  inviteRefusal,
+  roleAfterAccept,
+} from "@/lib/staff-access-rules";
 import { lookupRole, normaliseEmail, type StaffIdentity, type StaffRole } from "@/lib/staff";
 
 export type StaffMember = {
@@ -27,6 +32,14 @@ export type StaffRequest = {
   name: string;
   note: string;
   status: string;
+  createdAt: string;
+};
+
+export type StaffInvite = {
+  id: string;
+  email: string;
+  note: string;
+  invitedBy: string;
   createdAt: string;
 };
 
@@ -101,6 +114,16 @@ export const listStaff = createServerFn({ method: "GET" }).handler(async () => {
     select id, email, name, note, status, created_at
     from staff_request where status = 'pending' order by created_at
   `;
+  const invites = await sql<{
+    id: string;
+    email: string;
+    note: string;
+    invited_by: string;
+    created_at: unknown;
+  }>`
+    select id, email, note, invited_by, created_at
+    from staff_invite where status = 'pending' order by created_at
+  `;
 
   return {
     members: members.map((m) => ({
@@ -116,6 +139,13 @@ export const listStaff = createServerFn({ method: "GET" }).handler(async () => {
       note: r.note,
       status: r.status,
       createdAt: new Date(String(r.created_at)).toISOString(),
+    })),
+    invites: invites.map((i) => ({
+      id: i.id,
+      email: i.email,
+      note: i.note,
+      invitedBy: i.invited_by,
+      createdAt: new Date(String(i.created_at)).toISOString(),
     })),
   };
 });
@@ -170,6 +200,12 @@ export const grantStaff = createServerFn({ method: "POST" })
       update staff_request set status = 'approved', decided_by = ${admin.email}, decided_at = now()
       where email = ${email}
     `;
+    // A hand-granted access answers any invitation that was still open for the
+    // same address — granting IS the thing the invitation promised.
+    await sql`
+      update staff_invite set status = 'accepted', responded_at = now()
+      where lower(email) = ${email} and status = 'pending'
+    `;
     return { ok: true as const, email };
   });
 
@@ -193,5 +229,123 @@ export const revokeStaff = createServerFn({ method: "POST" })
       update staff_request set status = 'declined', decided_by = ${admin.email}, decided_at = now()
       where email = ${email} and status = 'pending'
     `;
+    // Revoking access also withdraws any invitation still open for that
+    // address — otherwise the door revoked here could be walked back through
+    // by accepting the invitation that is still waiting for them.
+    await sql`
+      update staff_invite set status = 'revoked', responded_at = now()
+      where lower(email) = ${email} and status = 'pending'
+    `;
     return { ok: true as const, email };
+  });
+
+/**
+ * Invite an address to the console. The promise resolves when they sign in
+ * and accept (see `acceptMyInvite`) — the invitation itself never grants.
+ *
+ * Sending to an address that already has an open invitation is the resend:
+ * the same row is refreshed rather than a second one stacked, so the Access
+ * screen shows one waiting entry per person however many times the boss
+ * pressed the button.
+ */
+export const inviteStaff = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      email: z.string().trim().email(),
+      note: z.string().trim().max(160).default(""),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const admin = await requireAdmin("grant-access");
+    const sql = await getSql();
+    const email = normaliseEmail(data.email);
+
+    const currentRole = await lookupRole(sql, email);
+    const refusal = inviteRefusal({ alreadyStaff: Boolean(currentRole) });
+    if (refusal) throw new Error(refusal);
+
+    const existing = await sql<{ id: string }>`
+      select id from staff_invite
+      where lower(email) = ${email} and status = 'pending'
+    `;
+    if (existing[0]) {
+      await sql`
+        update staff_invite
+        set note = ${data.note}, invited_by = ${admin.email}, created_at = now()
+        where id = ${existing[0].id}
+      `;
+      return { ok: true as const, email, resent: true };
+    }
+
+    await sql`
+      insert into staff_invite (email, invited_by, note)
+      values (${email}, ${admin.email}, ${data.note})
+    `;
+    return { ok: true as const, email, resent: false };
+  });
+
+/** Withdraw an invitation before it is accepted. */
+export const revokeInvite = createServerFn({ method: "POST" })
+  .validator(z.object({ email: z.string().trim().email() }))
+  .handler(async ({ data }) => {
+    await requireAdmin("revoke-access");
+    const sql = await getSql();
+    const email = normaliseEmail(data.email);
+    await sql`
+      update staff_invite set status = 'revoked', responded_at = now()
+      where lower(email) = ${email} and status = 'pending'
+    `;
+    return { ok: true as const, email };
+  });
+
+/**
+ * Walk through the door an invitation opened: the caller's session address
+ * holds a pending invitation, so the allowlist gains that address — as
+ * `staff`, or unchanged if a role was already granted by hand while the
+ * invitation waited (see `roleAfterAccept`).
+ *
+ * Takes no data of its own — the session's address decides everything — but
+ * carries an empty validator because a context-carrying POST needs one for
+ * the middleware's types to line up.
+ */
+export const acceptMyInvite = createServerFn({ method: "POST" })
+  .validator(z.object({}))
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const email = normaliseEmail(context.email ?? "");
+    if (!email) throw new Error("Your session has no email address.");
+
+    const sql = await getSql();
+    const invite = await sql<{
+      id: string;
+      invited_by: string;
+      note: string;
+    }>`
+      select id, invited_by, note from staff_invite
+      where lower(email) = ${email} and status = 'pending'
+    `;
+    if (!invite[0]) throw new Error("That invitation is no longer open.");
+
+    const role = roleAfterAccept(await lookupRole(sql, email));
+    await sql`
+      insert into client_role (email, role, note)
+      values (${email}, ${role}, ${invite[0].note || `Invited by ${invite[0].invited_by}`})
+      on conflict (email) do nothing
+    `;
+    await sql`
+      insert into studio_contact (email, label)
+      values (${email}, ${email})
+      on conflict (email) do update set active = true
+    `;
+    // An invitation that is accepted also answers a request that was still
+    // waiting on the same address: both wanted in, one door was enough.
+    await sql`
+      update staff_request set status = 'approved', decided_by = ${invite[0].invited_by}, decided_at = now()
+      where lower(email) = ${email} and status = 'pending'
+    `;
+    await sql`
+      update staff_invite set status = 'accepted', responded_at = now()
+      where id = ${invite[0].id}
+    `;
+    return { ok: true as const, email, role };
   });

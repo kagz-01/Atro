@@ -172,10 +172,33 @@ export const getMyStaffRole = createServerFn({ method: "GET" }).handler(async ()
   // The email matters: it is what tells the console apart between "not signed
   // in" and "signed in, not on the allowlist" — the second is the only state a
   // person can act on from there.
+  const email = staff?.email ?? identity?.email ?? null;
+
+  // A pending invitation is the only thing that changes what the console does
+  // with a signed-in non-staff account (the accept card replaces the request
+  // card), so it is fetched exactly there — staff never need it.
+  let invite: { invitedBy: string; note: string; createdAt: string } | null = null;
+  if (!staff && email) {
+    const sql = await getSql();
+    const rows = await sql<{ note: string; invited_by: string; created_at: unknown }>`
+      select note, invited_by, created_at from staff_invite
+      where lower(email) = ${email} and status = 'pending'
+      limit 1
+    `;
+    if (rows[0]) {
+      invite = {
+        invitedBy: rows[0].invited_by,
+        note: rows[0].note,
+        createdAt: new Date(String(rows[0].created_at)).toISOString(),
+      };
+    }
+  }
+
   return {
     userId: staff?.userId ?? identity?.userId ?? null,
-    email: staff?.email ?? identity?.email ?? null,
+    email,
     role: staff?.role ?? null,
+    invite,
   };
 });
 
