@@ -58,8 +58,11 @@ export const getMyAccess = createServerFn({ method: "GET" })
     const row = await sql<{ email: string; name: string }>`
       select email, name from "user" where id = ${context.userId} limit 1
     `;
-    const email = normaliseEmail(row[0]?.email);
-    const role = await lookupRole(sql, row[0]?.email);
+    // The session carries the address too: a preview persona (or any account
+    // whose user row has not been written yet) has no row to read, and the
+    // greeting must never render a blank.
+    const email = normaliseEmail(row[0]?.email) || normaliseEmail(context.email);
+    const role = await lookupRole(sql, email);
     const pending = await sql<{ n: number }>`
       select count(*) as n from staff_request
       where email = ${email} and status = 'pending'
@@ -82,7 +85,10 @@ export const requestStaffAccess = createServerFn({ method: "POST" })
     const row = await sql<{ email: string; name: string }>`
       select email, name from "user" where id = ${context.userId} limit 1
     `;
-    const email = normaliseEmail(row[0]?.email);
+    // Same fallback as getMyAccess: the session's own address when the user
+    // table has nothing for this id, so asking for access works for whoever
+    // can open the request card in the first place.
+    const email = normaliseEmail(row[0]?.email) || normaliseEmail(context.email);
     if (!email) throw new Error("Your account has no email address.");
 
     // Already staff? Then there is nothing to ask for.

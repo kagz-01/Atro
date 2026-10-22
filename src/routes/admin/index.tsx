@@ -1670,7 +1670,7 @@ function RequestAccessCard() {
         </span>
         <h1 className="mt-6 font-display text-2xl text-maroon">Request studio access</h1>
         <p className="mt-3 text-[14px] leading-relaxed text-ink/65">
-          You are signed in as <strong>{me?.email ?? "this account"}</strong>, which is not
+          You are signed in as <strong>{me?.email || "this account"}</strong>, which is not
           on the studio access list. Ask below and an existing admin approves it — usually the
           same day.
         </p>
