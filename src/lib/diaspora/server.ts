@@ -12,6 +12,7 @@ import { issueReceiptFor } from "@/lib/invoice-server";
 import { leadProfile } from "@/lib/enquiry-lead";
 import { notify } from "@/lib/notify";
 import { toE164 } from "@/lib/phone";
+import type { ProjectLifecycleState } from "@/lib/project-lifecycle";
 import {
   DecisionActionInput,
   MilestoneActionInput,
@@ -53,6 +54,7 @@ export type ProjectSummary = {
   title: string;
   stage: string;
   progress: number;
+  lifecycleState: ProjectLifecycleState;
   source: string;
   track: string;
   zone: string;
@@ -73,6 +75,7 @@ export type ProjectRecord = {
   startedLabel: string;
   targetLabel: string;
   stage: string;
+  defectPeriodEnd: string;
   isSample: boolean;
   track: string;
   zone: string;
@@ -105,6 +108,7 @@ export type ProjectRecord = {
     agenda: string[];
   };
   progress: number;
+  lifecycleState: ProjectLifecycleState;
   createdAt: string;
 };
 
@@ -237,6 +241,7 @@ type ProjectRow = {
   started_label: string;
   target_label: string;
   stage: string;
+  defect_period_ends: string;
   source: string;
   track: string;
   zone: string;
@@ -259,6 +264,7 @@ type ProjectRow = {
   next_call_agenda: unknown;
   next_call_at: unknown;
   progress: number;
+  lifecycle_state: ProjectLifecycleState;
   last_viewed_at: unknown;
   created_at: unknown;
 };
@@ -270,6 +276,7 @@ function toSummary(row: ProjectRow): ProjectSummary {
     title: row.title,
     stage: row.stage,
     progress: num(row.progress),
+    lifecycleState: row.lifecycle_state,
     source: row.source,
     track: row.track,
     zone: row.zone,
@@ -292,6 +299,7 @@ function toRecord(row: ProjectRow): ProjectRecord {
     startedLabel: row.started_label,
     targetLabel: row.target_label,
     stage: row.stage,
+    defectPeriodEnd: row.defect_period_ends,
     isSample: row.source === "sample",
     track: row.track,
     zone: row.zone,
@@ -320,6 +328,7 @@ function toRecord(row: ProjectRow): ProjectRecord {
       agenda: arr(row.next_call_agenda),
     },
     progress: num(row.progress),
+    lifecycleState: row.lifecycle_state,
     createdAt: iso(row.created_at) ?? "",
   };
 }
@@ -523,7 +532,7 @@ export async function generateProject(
       user_id, reference, title, client_label, client_initials, plot, area,
       contract_type, started_label, target_label, stage, source, track,
       service_slug, zone, client_city, client_tz, client_phone, claimed_email,
-      contract_value, days_elapsed, days_total, days_remaining, programme_note,
+      lifecycle_state, contract_value, days_elapsed, days_total, days_remaining, programme_note,
       next_call_when, next_call_local, next_call_agenda, progress, last_viewed_at
     ) values (
       ${userId}, ${reference}, ${input.title}, ${clientLabel}, ${clientLabel.slice(0, 2).toUpperCase()},
@@ -534,7 +543,7 @@ export async function generateProject(
       ${input.serviceSlug}, ${input.zone}, ${input.clientCity},
       ${input.clientTz || null},
       ${input.clientPhone ? (toE164(input.clientPhone) ?? input.clientPhone) : ""},
-      ${claimedEmail}, ${input.contractValue},
+      ${claimedEmail}, 'pre_construction', ${input.contractValue},
       ${daysElapsed}, ${totalDays},
       ${Math.max(0, totalDays - daysElapsed)},
       'Programme issued at contract signing. Milestone dates are planned, not promised — each one moves only when you approve it.',
@@ -618,12 +627,13 @@ export async function generateProject(
 
 const PROJECT_SELECT = `
   id, reference, title, client_label, client_initials, client_city, client_tz, plot, area,
-  contract_type, started_label, target_label, stage, source, track, zone,
+  contract_type, started_label, target_label, stage, defect_period_ends, source, track, zone,
   contract_value,
   boq_value, certified_to_date, paid_to_date, currently_certified,
   retention_held, retention_pct, projected_at_completion, days_elapsed,
   days_total, days_remaining, on_track, variance_days, programme_note,
   next_call_when, next_call_local, next_call_agenda, next_call_at, progress,
+  lifecycle_state,
   last_viewed_at, created_at`;
 
 /**

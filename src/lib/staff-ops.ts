@@ -20,6 +20,11 @@ import { loadProjectById, logActivity, type PortalPayload } from "@/lib/diaspora
 import { leadLocality } from "@/lib/enquiry-lead";
 import { channelStatus, drainDue, notificationLog, notify, releaseHeld, retryPending } from "@/lib/notify";
 import { issueCertificateFor, issueStatementFor } from "@/lib/invoice-server";
+import {
+  lifecycleTransitionError,
+  PROJECT_LIFECYCLE_STATES,
+  type ProjectLifecycleState,
+} from "@/lib/project-lifecycle";
 
 /* ── input ── */
 
@@ -86,7 +91,7 @@ async function requireStaff(): Promise<StaffIdentity> {
 
 /** The money moves: certify, release retention, issue a statement. */
 async function requireAdmin(
-  op: "certify-payment" | "release-retention" | "issue-statement",
+  op: "certify-payment" | "release-retention" | "issue-statement" | "close-project" | "archive-project",
 ): Promise<StaffIdentity> {
   const { requireAdmin: guard } = await import("@/lib/staff-session.server");
   return guard(op);
@@ -103,6 +108,8 @@ export type StaffProjectSummary = {
   clientType: string;
   stage: string;
   progress: number;
+  buildComplete: boolean;
+  lifecycleState: ProjectLifecycleState;
   source: string;
   daysRemaining: number;
   onTrack: boolean;
@@ -214,8 +221,10 @@ export const listStaffProjects = createServerFn({ method: "GET" }).handler(async
   const sql = await getSql();
   const rows = await sql<Record<string, unknown>>`
     select p.id, p.user_id, p.reference, p.title, p.client_label, p.client_city,
-      p.stage, p.progress, p.source, p.days_remaining, p.on_track, p.contract_value,
+      p.stage, p.progress, p.lifecycle_state, p.source, p.days_remaining, p.on_track, p.contract_value,
       p.paid_to_date, p.currently_certified, p.last_viewed_at, p.created_at,
+      (select count(*) > 0 and count(*) filter (where m.status = 'complete') = count(*)
+        from portal_milestones m where m.project_id = p.id) as build_complete,
       coalesce(nullif(c.client_type, ''), '') as client_type,
       coalesce((select count(*) from portal_decisions d
         where d.project_id = p.id and d.state <> 'decided'), 0) as open_decisions,
@@ -240,6 +249,8 @@ export const listStaffProjects = createServerFn({ method: "GET" }).handler(async
     clientType: String(row.client_type ?? ""),
     stage: String(row.stage ?? ""),
     progress: Number(row.progress ?? 0),
+    buildComplete: row.build_complete === true,
+    lifecycleState: row.lifecycle_state as ProjectLifecycleState,
     source: String(row.source ?? ""),
     daysRemaining: Number(row.days_remaining ?? 0),
     onTrack: row.on_track !== false,
@@ -551,6 +562,150 @@ export const addDocument = createServerFn({ method: "POST" })
 export const postUpdate = createServerFn({ method: "POST" })
   .validator(PostUpdate)
   .handler(async ({ data }) => postUpdateFor(await getSql(), await requireStaff(), data));
+
+const ChangeProjectLifecycle = z.object({
+  projectId: z.string().min(1),
+  to: z.enum(PROJECT_LIFECYCLE_STATES),
+  reason: z.string().trim().min(5).max(500),
+});
+
+export const changeProjectLifecycle = createServerFn({ method: "POST" })
+  .validator(ChangeProjectLifecycle)
+  .handler(async ({ data }) => {
+    const staff =
+      data.to === "closed"
+        ? await requireAdmin("close-project")
+        : data.to === "archived"
+          ? await requireAdmin("archive-project")
+          : await requireStaff();
+    const sql = await getSql();
+    const projects = await sql<{
+      lifecycle_state: ProjectLifecycleState;
+      source: string;
+      defect_period_ends: string;
+      retention_held: number;
+    }>`
+      select lifecycle_state, source, defect_period_ends, retention_held
+      from portal_projects
+      where id = ${data.projectId} and deleted_at is null
+      limit 1
+    `;
+    const project = projects[0];
+    if (!project) throw new Error("Project not found.");
+    if (project.source === "sample") throw new Error("Sample projects cannot change lifecycle.");
+
+    const milestones = await sql<{ total: number; complete: number }>`
+      select count(*) as total,
+        count(*) filter (where status = 'complete') as complete
+      from portal_milestones
+      where project_id = ${data.projectId}
+    `;
+    const defects = await sql<{ open: number }>`
+      select count(*) as open
+      from portal_defect
+      where project_id = ${data.projectId}
+        and status not in ('verified', 'rejected')
+    `;
+    const defectPeriodEnd = project.defect_period_ends ?? "";
+    const transitionError = lifecycleTransitionError({
+      from: project.lifecycle_state,
+      to: data.to,
+      allMilestonesComplete:
+        Number(milestones[0]?.total ?? 0) > 0 &&
+        Number(milestones[0]?.complete ?? 0) === Number(milestones[0]?.total ?? 0),
+      defectPeriodEnd,
+      defectPeriodExpired:
+        Boolean(defectPeriodEnd) && defectPeriodEnd <= new Date().toISOString().slice(0, 10),
+      openDefects: Number(defects[0]?.open ?? 0),
+      retentionHeld: Number(project.retention_held ?? 0),
+    });
+    if (transitionError) throw new Error(transitionError);
+
+    const changed = await sql<{ project_id: string }>`
+      with changed as (
+        update portal_projects
+        set lifecycle_state = ${data.to}, updated_at = now()
+        where id = ${data.projectId}
+          and lifecycle_state = ${project.lifecycle_state}
+          and source <> 'sample'
+          and deleted_at is null
+          and (
+            ${data.to} <> 'handover'
+            or (
+              exists (select 1 from portal_milestones where project_id = portal_projects.id)
+              and not exists (
+                select 1 from portal_milestones
+                where project_id = portal_projects.id and status <> 'complete'
+              )
+            )
+          )
+          and (
+            ${data.to} <> 'defects_period'
+            or defect_period_ends > to_char(current_date, 'YYYY-MM-DD')
+          )
+          and (
+            ${data.to} <> 'closed'
+            or (
+              defect_period_ends <> ''
+              and defect_period_ends <= to_char(current_date, 'YYYY-MM-DD')
+              and retention_held <= 0
+              and not exists (
+                select 1 from portal_defect
+                where project_id = portal_projects.id
+                  and status not in ('verified', 'rejected')
+              )
+            )
+          )
+        returning id
+      )
+      insert into portal_project_lifecycle_history (
+        project_id, from_state, to_state, reason, changed_by
+      )
+      select id, ${project.lifecycle_state}, ${data.to}, ${data.reason}, ${staff.email}
+      from changed
+      returning project_id
+    `;
+    if (!changed[0]) throw new Error("Project lifecycle changed elsewhere. Refresh and try again.");
+
+    return { ok: true as const };
+  });
+
+export type ProjectLifecycleHistoryEntry = {
+  id: string;
+  fromState: ProjectLifecycleState;
+  toState: ProjectLifecycleState;
+  reason: string;
+  changedBy: string;
+  changedAt: string;
+};
+
+export const listProjectLifecycleHistory = createServerFn({ method: "GET" })
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(async ({ data }): Promise<ProjectLifecycleHistoryEntry[]> => {
+    await requireStaff();
+    const rows = await (await getSql())<{
+      id: string;
+      from_state: ProjectLifecycleState;
+      to_state: ProjectLifecycleState;
+      reason: string;
+      changed_by: string;
+      changed_at: unknown;
+    }>`
+      select id, from_state, to_state, reason, changed_by, changed_at
+      from portal_project_lifecycle_history
+      where project_id = ${data.projectId}
+      order by changed_at desc
+      limit 20
+    `;
+    return rows.map((row) => ({
+      id: row.id,
+      fromState: row.from_state,
+      toState: row.to_state,
+      reason: row.reason,
+      changedBy: row.changed_by,
+      changedAt: new Date(String(row.changed_at)).toISOString(),
+    }));
+  });
 
 /* ── turning an enquiry into real work ── */
 

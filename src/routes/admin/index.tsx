@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowLeft,
   Banknote,
+  CalendarClock,
   CheckCircle2,
   ClipboardList,
   FolderKanban,
@@ -13,6 +15,7 @@ import {
   Loader2,
   Lock,
   Mail,
+  MessageSquare,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -60,11 +63,13 @@ import {
   addDocument,
   addMilestoneEvidence,
   certifyPayment,
+  changeProjectLifecycle,
   getDeliveryLog,
   getMyStaffRole,
   getStaffClientProfile,
   getStaffProject,
   listStaffProjects,
+  listProjectLifecycleHistory,
   postUpdate,
   raiseDecision,
   releaseHeldDeliveries,
@@ -80,6 +85,11 @@ import {
 import { stampIn } from "@/lib/tz";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { cn } from "@/lib/utils";
+import {
+  nextProjectLifecycleState,
+  portfolioLifecycleLabel,
+  PROJECT_LIFECYCLE_LABEL,
+} from "@/lib/project-lifecycle";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminConsole,
@@ -445,6 +455,10 @@ function ProjectDetail({
     queryKey: ["staff-messages", projectId],
     queryFn: () => readMessagesForStaff({ data: { projectId } }),
   });
+  const { data: lifecycleHistory = [] } = useQuery({
+    queryKey: ["project-lifecycle-history", projectId],
+    queryFn: () => listProjectLifecycleHistory({ data: { projectId } }),
+  });
   const waitingToReply = (thread ?? []).filter(
     (m) => m.authorRole === "client" && !m.readAt,
   ).length;
@@ -477,6 +491,8 @@ function ProjectDetail({
   );
   const [docRef, setDocRef] = useState("");
   const [docState, setDocState] = useState<(typeof DOC_STATES)[number]["value"]>("awaiting");
+  const [lifecycleReason, setLifecycleReason] = useState("");
+  const [lifecycleReview, setLifecycleReview] = useState(false);
 
   const [pending, setPending] = useState("");
 
@@ -491,6 +507,9 @@ function ProjectDetail({
          existed a moment ago. */
       void queryClient.invalidateQueries({ queryKey: ["delivery-log", projectId] });
       void queryClient.invalidateQueries({ queryKey: ["project-documents", projectId] });
+      if (key === "lifecycle") {
+        void queryClient.invalidateQueries({ queryKey: ["project-lifecycle-history", projectId] });
+      }
       onChanged();
       toast.success(done);
     } catch (err) {
@@ -523,44 +542,400 @@ function ProjectDetail({
   }
 
   const p = data.project;
+  const defectPeriodEndIsFuture =
+    Boolean(p.defectPeriodEnd) && p.defectPeriodEnd > new Date().toISOString().slice(0, 10);
+  const allTrackedMilestonesComplete =
+    data.milestones.length > 0 && data.milestones.every((milestone) => milestone.status === "complete");
+  const nextLifecycle = nextProjectLifecycleState(p.lifecycleState);
+  const lifecycleNeedsAdmin = nextLifecycle === "closed" || nextLifecycle === "archived";
+  const canChangeLifecycle = !p.isSample && !!nextLifecycle && (!lifecycleNeedsAdmin || isAdmin);
   // Decisions the client has not answered yet. (This was inverted before: it
   // counted the *decided* ones, so the "everything recorded" reassurance showed
   // up precisely when nothing had been recorded.)
   const stillOpen = data.decisions.filter((d) => d.state !== "decided").length;
   const uncertified = data.payments.filter((x) => x.status === "due" || x.status === "scheduled");
+  const blockedMilestones = data.milestones.filter((m) => m.status === "blocked").length;
+  const readyForClient = data.milestones.filter((m) => m.approvalReady).length;
+  const certifiedPayments = data.payments.filter((payment) => payment.status === "certified");
+  const certifiedTotal = certifiedPayments.reduce((total, payment) => total + payment.amount, 0);
+  const ownerActions = [
+    ...(blockedMilestones > 0
+      ? [{
+          label: "Blocked work",
+          detail: `${blockedMilestones} milestone${blockedMilestones === 1 ? "" : "s"} marked blocked`,
+          count: blockedMilestones,
+        }]
+      : []),
+    ...(stillOpen > 0
+      ? [{
+          label: "Client decisions",
+          detail: `${stillOpen} decision${stillOpen === 1 ? "" : "s"} not yet recorded`,
+          count: stillOpen,
+        }]
+      : []),
+    ...(certifiedPayments.length > 0
+      ? [{
+          label: "Certified payments",
+          detail: `${kes(certifiedTotal)} awaiting client release`,
+          count: certifiedPayments.length,
+        }]
+      : []),
+    ...(waitingToReply > 0
+      ? [{
+          label: "Client messages",
+          detail: `${waitingToReply} message${waitingToReply === 1 ? "" : "s"} waiting for a reply`,
+          count: waitingToReply,
+        }]
+      : []),
+    ...(presenceOpen > 0
+      ? [{
+          label: "Site visit requests",
+          detail: `${presenceOpen} request${presenceOpen === 1 ? "" : "s"} awaiting a response`,
+          count: presenceOpen,
+        }]
+      : []),
+    ...(readyForClient > 0
+      ? [{
+          label: "Milestones ready for sign-off",
+          detail: `${readyForClient} milestone${readyForClient === 1 ? "" : "s"} marked ready for the client`,
+          count: readyForClient,
+        }]
+      : []),
+  ];
 
   return (
     <div className="space-y-6">
-      <Accordion className="space-y-4">
-        <AccordionItem title="Project info" defaultOpen>
-          <div className="flex flex-wrap items-start justify-between gap-4">
+      {isAdmin ? (
+      <section className="space-y-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              <ArrowLeft className="size-4" />
+              All projects
+            </Button>
+            <h2 className="mt-3 font-display text-2xl text-maroon">{p.title}</h2>
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
+              <span className="font-mono">{p.reference}</span>
+              <span>{p.clientLabel}</span>
+              {p.clientCity ? <span>{p.clientCity}</span> : null}
+              {clientType === "diaspora" ? (
+                <Badge tone="gold" className="h-5 text-[9px]">From abroad</Badge>
+              ) : null}
+              <span>{p.startedLabel} → {p.targetLabel}</span>
+              {p.isSample ? <Badge tone="gold" className="h-5 text-[9px]">Sample</Badge> : null}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-display text-3xl text-maroon">{p.progress}%</p>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Build progress"
+            value={`${p.progress}%`}
+            sub={`${data.milestones.filter((m) => m.status === "complete").length} of ${data.milestones.length} tracked milestones complete`}
+            icon={CheckCircle2}
+            tone={p.progress >= 100 ? "good" : "default"}
+          />
+          <StatCard
+            label="Programme"
+            value={p.schedule.onTrack ? "On track" : "Needs review"}
+            sub={
+              p.schedule.note ||
+              (p.schedule.varianceDays !== 0
+                ? `Recorded variance: ${Math.abs(p.schedule.varianceDays)} days`
+                : p.schedule.daysRemaining > 0
+                  ? `${p.schedule.daysRemaining} days remaining`
+                  : "Based on the programme status recorded for this project")
+            }
+            icon={CalendarClock}
+            tone={p.schedule.onTrack ? "good" : "warn"}
+          />
+          <StatCard
+            label="Contract value"
+            value={kesShort(p.contractValue)}
+            exact={kes(p.contractValue)}
+            sub={`${kes(p.budget.paidToDate)} paid to date`}
+            icon={Banknote}
+          />
+          <StatCard
+            label="Certified, awaiting release"
+            value={kesShort(p.budget.currentlyCertified)}
+            exact={kes(p.budget.currentlyCertified)}
+            sub={`${kes(p.budget.retentionHeld)} held in retention`}
+            icon={Hourglass}
+            tone={p.budget.currentlyCertified > 0 ? "warn" : "default"}
+          />
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+          <Panel
+            title="Needs attention"
+            subtitle="Open items from the project record—not a substitute for a site inspection."
+          >
+            {ownerActions.length === 0 ? (
+              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
+                No tracked decisions, blocked milestones, certified payments, messages, visit requests, or client sign-offs are waiting.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {ownerActions.map((action) => (
+                  <li
+                    key={action.label}
+                    className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3"
+                  >
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-800" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-medium text-maroon">{action.label}</span>
+                      <span className="mt-0.5 block text-[12px] text-ink/60">{action.detail}</span>
+                    </span>
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[12px] text-amber-900">
+                      {action.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          <Panel
+            title="Financial position"
+            subtitle="Current recorded totals; open Financial summary below for the ledger and payment instructions."
+          >
+            <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {[
+                ["Contract", kes(p.contractValue)],
+                ["Paid", kes(p.budget.paidToDate)],
+                ["Certified to date", kes(p.budget.certifiedToDate)],
+                ["Awaiting release", kes(p.budget.currentlyCertified)],
+                [`Retention · ${p.budget.retentionPct}%`, kes(p.budget.retentionHeld)],
+                ["Projected at completion", kes(p.budget.projectedAtCompletion)],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-ink/8 bg-cream/50 p-3">
+                  <dt className="text-[11px] text-muted">{label}</dt>
+                  <dd className="mt-1 text-[13px] font-medium text-maroon">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </Panel>
+        </div>
+
+        {data.activity.length > 0 ? (
+          <Panel title="Latest project activity" subtitle="Most recent recorded updates">
+            <ol className="space-y-3">
+              {data.activity.slice(0, 3).map((item) => {
+                const at = item.at ? new Date(item.at) : null;
+                return (
+                  <li key={item.id} className="flex gap-3 border-l-2 border-gold/60 pl-3">
+                    <MessageSquare className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="text-[13px] text-maroon">{item.title}</p>
+                      {item.body ? (
+                        <p className="mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-ink/55">
+                          {item.body}
+                        </p>
+                      ) : null}
+                      {at && !Number.isNaN(at.getTime()) ? (
+                        <time className="mt-1 block text-[10px] text-muted" dateTime={item.at}>
+                          {at.toLocaleString("en-KE", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </time>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </Panel>
+        ) : null}
+      </section>
+      ) : (
+        <section className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              <ArrowLeft className="size-4" />
+              All projects
+            </Button>
+            <h2 className="mt-3 font-display text-2xl text-maroon">{p.title}</h2>
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
+              <span className="font-mono">{p.reference}</span>
+              <span>{p.clientLabel}</span>
+              {p.clientCity ? <span>{p.clientCity}</span> : null}
+              {clientType === "diaspora" ? (
+                <Badge tone="gold" className="h-5 text-[9px]">From abroad</Badge>
+              ) : null}
+              <span>{p.startedLabel} → {p.targetLabel}</span>
+              {p.isSample ? <Badge tone="gold" className="h-5 text-[9px]">Sample</Badge> : null}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-display text-3xl text-maroon">{p.progress}%</p>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
+          </div>
+        </section>
+      )}
+
+      <Panel
+        title="Project lifecycle"
+        subtitle="Delivery progress and project close-out are tracked separately."
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge tone={p.lifecycleState === "closed" || p.lifecycleState === "archived" ? "maroon" : "gold"}>
+            {portfolioLifecycleLabel(p.lifecycleState, allTrackedMilestonesComplete)}
+          </Badge>
+          {p.lifecycleState === "active_build" && allTrackedMilestonesComplete ? (
+            <p className="text-[12px] text-ink/60">
+              All tracked milestones are complete; handover and close-out are not yet recorded.
+            </p>
+          ) : null}
+        </div>
+
+        {p.isSample ? (
+          <p className="mt-4 text-[12px] text-muted">Sample projects are read-only.</p>
+        ) : canChangeLifecycle && nextLifecycle ? (
+          <div className="mt-4 grid gap-3 sm:max-w-2xl">
             <div>
-              <Button variant="ghost" size="sm" onClick={onBack}>
-                <ArrowLeft className="size-4" />
-                All projects
-              </Button>
-              <h2 className="mt-3 font-display text-2xl text-maroon">{p.title}</h2>
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
-                <span className="font-mono">{p.reference}</span>
-                <span>{p.clientLabel}</span>
-                {p.clientCity ? <span>{p.clientCity}</span> : null}
-                {clientType === "diaspora" ? (
-                  <Badge tone="gold" className="h-5 text-[9px]">
-                    From abroad
-                  </Badge>
-                ) : null}
-                <span>
-                  {p.startedLabel} → {p.targetLabel}
-                </span>
-                {p.isSample ? <Badge tone="gold" className="h-5 text-[9px]">Sample</Badge> : null}
+              <p className="text-[11px] font-medium text-muted">Next lifecycle step</p>
+              <p className="mt-1 text-[14px] font-medium text-maroon">
+                {PROJECT_LIFECYCLE_LABEL[nextLifecycle]}
               </p>
             </div>
-            <div className="text-right">
-              <p className="font-display text-3xl text-maroon">{p.progress}%</p>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
+            {nextLifecycle === "handover" ? (
+              <p className="text-[12px] leading-relaxed text-ink/60">
+                {allTrackedMilestonesComplete
+                  ? "Every tracked milestone is complete. Handover does not close the project."
+                  : "Complete every tracked milestone before moving the project to handover."}
+              </p>
+            ) : null}
+            {nextLifecycle === "defects_period" ? (
+              <p className="text-[12px] leading-relaxed text-ink/60">
+                {defectPeriodEndIsFuture
+                  ? `Defect-period end date: ${p.defectPeriodEnd}.`
+                  : p.defectPeriodEnd
+                    ? `The defect-period end date (${p.defectPeriodEnd}) is not in the future. Update it in After handover.`
+                  : "Set the defect-period end date in After handover before starting this period."}
+              </p>
+            ) : null}
+            {nextLifecycle === "closed" ? (
+              <p className="text-[12px] leading-relaxed text-ink/60">
+                Admin close-out requires the defect period to have ended, all defects to be verified or declined, and retention to be released.
+              </p>
+            ) : null}
+            {nextLifecycle === "archived" ? (
+              <p className="text-[12px] leading-relaxed text-ink/60">
+                Archiving removes this project from the live portfolio. Its history remains available.
+              </p>
+            ) : null}
+            <div>
+              <Label htmlFor="lifecycle-reason">Reason for this change</Label>
+              <Textarea
+                id="lifecycle-reason"
+                value={lifecycleReason}
+                onChange={(event) => {
+                  setLifecycleReason(event.target.value);
+                  setLifecycleReview(false);
+                }}
+                maxLength={500}
+                placeholder="Record the handover, defects-period, close-out, or archive basis."
+                className="min-h-20"
+                disabled={pending === "lifecycle"}
+              />
             </div>
+            {!lifecycleReview ? (
+              <Button
+                className="w-fit"
+                disabled={
+                  pending === "lifecycle" ||
+                  lifecycleReason.trim().length < 5 ||
+                  (nextLifecycle === "handover" && !allTrackedMilestonesComplete) ||
+                  (nextLifecycle === "defects_period" && !defectPeriodEndIsFuture)
+                }
+                onClick={() => setLifecycleReview(true)}
+              >
+                Review transition
+              </Button>
+            ) : (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4" aria-live="polite">
+                <p className="text-[13px] font-medium text-amber-950">
+                  Move this project to {PROJECT_LIFECYCLE_LABEL[nextLifecycle]}?
+                </p>
+                <p className="mt-1 text-[12px] leading-relaxed text-amber-900">
+                  This change will be recorded with your name, the date, and the reason above.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    disabled={pending === "lifecycle"}
+                    onClick={() =>
+                      void run(
+                        "lifecycle",
+                        async () => {
+                          await changeProjectLifecycle({
+                            data: {
+                              projectId,
+                              to: nextLifecycle,
+                              reason: lifecycleReason.trim(),
+                            },
+                          });
+                          setLifecycleReview(false);
+                          setLifecycleReason("");
+                        },
+                        `Project moved to ${PROJECT_LIFECYCLE_LABEL[nextLifecycle]}.`,
+                      )
+                    }
+                  >
+                    {pending === "lifecycle" ? "Saving…" : "Confirm transition"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={pending === "lifecycle"}
+                    onClick={() => setLifecycleReview(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-        </AccordionItem>
+        ) : nextLifecycle && lifecycleNeedsAdmin ? (
+          <p className="mt-4 flex items-center gap-2 text-[12px] text-ink/60">
+            <Lock className="size-4" aria-hidden />
+            Ready for admin approval to {PROJECT_LIFECYCLE_LABEL[nextLifecycle].toLowerCase()}.
+          </p>
+        ) : (
+          <p className="mt-4 text-[12px] text-muted">This project is archived.</p>
+        )}
+        <div className="mt-5 border-t border-ink/8 pt-4">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
+            Transition record
+          </h3>
+          {lifecycleHistory.length === 0 ? (
+            <p className="mt-2 text-[12px] text-ink/55">No lifecycle transitions recorded yet.</p>
+          ) : (
+            <ol className="mt-3 space-y-3">
+              {lifecycleHistory.map((entry) => (
+                <li key={entry.id} className="border-l-2 border-gold/60 pl-3">
+                  <p className="text-[12px] font-medium text-maroon">
+                    {PROJECT_LIFECYCLE_LABEL[entry.fromState]} → {PROJECT_LIFECYCLE_LABEL[entry.toState]}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-ink/60">
+                    {entry.changedBy} · {new Date(entry.changedAt).toLocaleString("en-KE", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-ink/65">{entry.reason}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </Panel>
+
+      <Accordion className="space-y-4">
         <AccordionItem title="Client & consent">
           <ClientCard projectId={projectId} />
         </AccordionItem>
@@ -1058,6 +1433,7 @@ const ATTENTION_COPY: Record<string, { label: string; cls: string }> = {
 };
 
 type SortKey = "newest" | "attention" | "largest";
+type PortfolioView = "active" | "completed" | "closed" | "archived" | "all" | "sample";
 
 function ProjectsTable({
   projects,
@@ -1067,8 +1443,37 @@ function ProjectsTable({
   onOpen: (id: string) => void;
 }) {
   const [sort, setSort] = useState<SortKey>("attention");
+  const [portfolioView, setPortfolioView] = useState<PortfolioView>("active");
 
-  const sorted = [...projects].sort((a, b) => {
+  const liveProjects = projects.filter(
+    (project) =>
+      project.source !== "sample" &&
+      project.lifecycleState !== "closed" &&
+      project.lifecycleState !== "archived",
+  );
+  const activeProjects = liveProjects.filter((project) => !project.buildComplete);
+  const completedProjects = liveProjects.filter((project) => project.buildComplete);
+  const closedProjects = projects.filter(
+    (project) => project.source !== "sample" && project.lifecycleState === "closed",
+  );
+  const archivedProjects = projects.filter(
+    (project) => project.source !== "sample" && project.lifecycleState === "archived",
+  );
+  const sampleProjects = projects.filter((project) => project.source === "sample");
+  const visibleProjects =
+    portfolioView === "active"
+      ? activeProjects
+      : portfolioView === "completed"
+        ? completedProjects
+        : portfolioView === "closed"
+          ? closedProjects
+          : portfolioView === "archived"
+            ? archivedProjects
+            : portfolioView === "sample"
+              ? sampleProjects
+              : liveProjects;
+
+  const sorted = [...visibleProjects].sort((a, b) => {
     if (sort === "newest") return b.createdAt.localeCompare(a.createdAt);
     if (sort === "largest") return b.contractValue - a.contractValue;
     const score = (p: StaffProjectSummary) =>
@@ -1078,26 +1483,19 @@ function ProjectsTable({
     return score(b) - score(a);
   });
 
-  const select = (
-    <label className="flex items-center gap-2 text-[12px] text-muted">
-      <span className="hidden sm:inline">Sort by</span>
-      <select
-        value={sort}
-        onChange={(e) => setSort(e.target.value as SortKey)}
-        className="h-9 rounded-lg border border-ink/10 bg-white px-2.5 text-[12px] text-maroon outline-none focus:border-gold"
-      >
-        <option value="attention">Needs attention</option>
-        <option value="newest">Newest</option>
-        <option value="largest">Largest contract</option>
-      </select>
-    </label>
-  );
+  const views: { id: PortfolioView; label: string; count: number }[] = [
+    { id: "active", label: "Active", count: activeProjects.length },
+    { id: "completed", label: "Build complete", count: completedProjects.length },
+    { id: "closed", label: "Closed", count: closedProjects.length },
+    { id: "archived", label: "Archived", count: archivedProjects.length },
+    { id: "all", label: "All live", count: liveProjects.length },
+    { id: "sample", label: "Samples", count: sampleProjects.length },
+  ];
 
   return (
     <Panel
-      title="Projects"
-      subtitle={`${projects.length} in the studio`}
-      actions={select}
+      title="Project portfolio"
+      subtitle="Build complete means every tracked milestone is complete. Closed and archived projects have separate views."
       className="min-w-0"
       bodyClassName="p-0"
     >
@@ -1106,94 +1504,161 @@ function ProjectsTable({
           Projects appear as soon as a client opens one in their portal.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
-                <th scope="col" className="px-5 py-3 font-bold">Project</th>
-                <th scope="col" className="px-3 py-3 font-bold">Client</th>
-                <th scope="col" className="px-3 py-3 font-bold">Stage</th>
-                <th scope="col" className="px-3 py-3 font-bold">Progress</th>
-                <th scope="col" className="px-3 py-3 font-bold">Paid</th>
-                <th scope="col" className="px-5 py-3 font-bold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((p) => (
-                <tr
-                  key={p.id}
-                  onClick={() => onOpen(p.id)}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onOpen(p.id);
-                    }
-                  }}
-                  className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/8 px-5 py-3">
+            <div className="flex flex-wrap gap-2" aria-label="Filter project portfolio">
+              {views.map((view) => (
+                <button
+                  key={view.id}
+                  type="button"
+                  aria-pressed={portfolioView === view.id}
+                  onClick={() => setPortfolioView(view.id)}
+                  className={cn(
+                    "cursor-pointer rounded-full border px-3 py-1.5 text-[11px] transition-colors",
+                    portfolioView === view.id
+                      ? "border-maroon bg-maroon text-paper"
+                      : "border-ink/12 text-ink/55 hover:border-burgundy hover:text-burgundy",
+                  )}
                 >
-                  <td className="px-5 py-3">
-                    <span className="block text-[13px] font-medium text-maroon">{p.title}</span>
-                    <span className="font-mono text-[11px] text-muted">{p.reference}</span>
-                  </td>
-                  <td className="px-3 py-3 text-[13px] text-ink/70">
-                    {p.clientLabel || "—"}
-                    {p.clientType === "diaspora" ? (
-                      <span className="mt-1 block">
-                        <Badge tone="gold" className="h-4 text-[8px]">
-                          From abroad
-                        </Badge>
-                      </span>
-                    ) : null}
-                    {p.clientCity ? (
-                      <span className="block text-[11px] text-muted">{p.clientCity}</span>
-                    ) : null}
-                  </td>
-                  <td className="px-3 py-3 text-[13px] text-ink/70">{p.stage || "—"}</td>
-                  <td className="px-3 py-3">
-                    <span className="flex items-center gap-2">
-                      <span className="h-1.5 w-16 overflow-hidden rounded-full bg-ink/10">
-                        <span
-                          className="block h-full rounded-full bg-gradient-to-r from-gold to-gold-light"
-                          style={{ width: `${p.progress}%` }}
-                        />
-                      </span>
-                      <span className="text-[12px] text-ink/60">{p.progress}%</span>
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-[13px] text-ink/70">
-                    {kes(p.paidToDate)}
-                    <span className="block whitespace-nowrap text-[11px] text-muted">
-                      of {kes(p.contractValue)}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={cn(
-                        "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
-                        p.blockedStages > 0
-                          ? "border-red-200 bg-red-50 text-red-800"
-                          : p.openDecisions > 0
-                            ? "border-amber-300 bg-amber-50 text-amber-900"
-                            : p.onTrack
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                              : "border-stone-300 bg-stone/100 text-stone-700",
-                      )}
-                    >
-                      {p.blockedStages > 0
-                        ? "Blocked"
-                        : p.openDecisions > 0
-                          ? "Awaiting client"
-                          : p.onTrack
-                            ? "On track"
-                            : "Watch"}
-                    </span>
-                  </td>
-                </tr>
+                  {view.label} <span className="ml-1 opacity-75">{view.count}</span>
+                </button>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+            <label className="flex items-center gap-2 text-[12px] text-muted">
+              <span>Sort</span>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                className="h-9 rounded-lg border border-ink/10 bg-white px-2.5 text-[12px] text-maroon outline-none focus:border-gold"
+              >
+                <option value="attention">Needs attention</option>
+                <option value="newest">Newest</option>
+                <option value="largest">Largest contract</option>
+              </select>
+            </label>
+          </div>
+          {sorted.length === 0 ? (
+            <p className="p-6 text-center text-[13px] text-ink/55">
+              {portfolioView === "active"
+                ? "No active projects."
+                : portfolioView === "completed"
+                  ? "No projects have completed all tracked milestones yet."
+                  : portfolioView === "closed"
+                    ? "No projects have been formally closed."
+                    : portfolioView === "archived"
+                      ? "No archived projects."
+                      : portfolioView === "sample"
+                        ? "No sample projects."
+                        : "No live projects yet."}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                    <th scope="col" className="px-5 py-3 font-bold">Project</th>
+                    <th scope="col" className="px-3 py-3 font-bold">Client</th>
+                    <th scope="col" className="px-3 py-3 font-bold">Stage</th>
+                    <th scope="col" className="px-3 py-3 font-bold">Lifecycle</th>
+                    <th scope="col" className="px-3 py-3 font-bold">Progress</th>
+                    <th scope="col" className="px-3 py-3 font-bold">Paid</th>
+                    <th scope="col" className="px-5 py-3 font-bold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((p) => (
+                    <tr
+                      key={p.id}
+                      onClick={() => onOpen(p.id)}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onOpen(p.id);
+                        }
+                      }}
+                      className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
+                    >
+                      <td className="px-5 py-3">
+                        <span className="block text-[13px] font-medium text-maroon">{p.title}</span>
+                        <span className="font-mono text-[11px] text-muted">{p.reference}</span>
+                      </td>
+                      <td className="px-3 py-3 text-[13px] text-ink/70">
+                        {p.clientLabel || "—"}
+                        {p.clientType === "diaspora" ? (
+                          <span className="mt-1 block">
+                            <Badge tone="gold" className="h-4 text-[8px]">
+                              From abroad
+                            </Badge>
+                          </span>
+                        ) : null}
+                        {p.clientCity ? (
+                          <span className="block text-[11px] text-muted">{p.clientCity}</span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3 text-[13px] text-ink/70">{p.stage || "—"}</td>
+                      <td className="px-3 py-3">
+                        <Badge
+                          tone={p.lifecycleState === "closed" || p.lifecycleState === "archived" ? "maroon" : "gold"}
+                          className="h-6 tracking-[0.08em]"
+                        >
+                          {portfolioLifecycleLabel(p.lifecycleState, p.buildComplete)}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className="flex items-center gap-2">
+                          <span className="h-1.5 w-16 overflow-hidden rounded-full bg-ink/10">
+                            <span
+                              className="block h-full bg-gradient-to-r from-gold to-gold-light"
+                              style={{ width: `${p.progress}%` }}
+                            />
+                          </span>
+                          <span className="text-[12px] text-ink/60">{p.progress}%</span>
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-[13px] text-ink/70">
+                        {kes(p.paidToDate)}
+                        <span className="block whitespace-nowrap text-[11px] text-muted">
+                          of {kes(p.contractValue)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
+                            p.progress >= 100
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                              : p.blockedStages > 0
+                                ? "border-red-200 bg-red-50 text-red-800"
+                                : p.openDecisions > 0
+                                  ? "border-amber-300 bg-amber-50 text-amber-900"
+                                  : p.onTrack
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                    : "border-stone-300 bg-stone/100 text-stone-700",
+                          )}
+                        >
+                          {p.lifecycleState === "closed"
+                            ? "Closed"
+                            : p.lifecycleState === "archived"
+                              ? "Archived"
+                              : p.buildComplete
+                            ? "Build complete"
+                            : p.blockedStages > 0
+                              ? "Blocked"
+                              : p.openDecisions > 0
+                                ? "Awaiting client"
+                                : p.onTrack
+                                  ? "On track"
+                                  : "Watch"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </Panel>
   );
@@ -2205,7 +2670,11 @@ function AdminConsole() {
           title: "Studio",
           items: [
             { id: "work", label: "My work", icon: ClipboardList },
-            { id: "overview", label: "Overview", icon: LayoutDashboard },
+            {
+              id: "overview",
+              label: isAdmin ? "Portfolio" : "Overview",
+              icon: LayoutDashboard,
+            },
             {
               id: "projects",
               label: "Projects",
@@ -2254,9 +2723,13 @@ function AdminConsole() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="font-display text-lg leading-tight text-maroon">
-              {activeTab.title}
+              {view === "overview" && isAdmin ? "Owner portfolio" : activeTab.title}
             </h1>
-            <p className="text-[12px] text-muted">{activeTab.body}</p>
+            <p className="text-[12px] text-muted">
+              {view === "overview" && isAdmin
+                ? "Business health, active delivery, and completed builds"
+                : activeTab.body}
+            </p>
           </div>
 
           {view === "projects" && !selected ? (

@@ -249,3 +249,280 @@ POST /api/enquiry           — Form submission
 2. **Next week:** Interactive Zone Map + Trust counters (Phase 1.3, 1.4)
 3. **Week 3:** Tools Hub page + Material Price Tracker (Phase 2.1, 2.3)
 4. **Ongoing:** Add content (projects, articles) to populate the platform
+
+---
+
+## Dashboard Role Redesign
+
+### Purpose and current baseline
+
+The dashboard work is a role redesign of the existing `/admin` studio console and
+`/portal` client portal—not four new applications. The current code has:
+
+- One studio console with `staff` and `admin` roles (`/admin`).
+- One client portal with local and diaspora presentation variants (`/portal`).
+- A shared dashboard shell, client project sections, staff project tools, and
+  server-side ownership/staff checks already in place.
+
+The current role split does not yet represent the real office/second-in-command
+job, and the project portfolio has no explicit operational lifecycle beyond
+milestone progress. This plan separates the four experiences while reusing the
+existing project records and workflows. It does not imply a new auth system or
+four separate data models.
+
+### HCI principles for all four dashboards
+
+1. **Match the user's real work.** Use language and navigation that reflect the
+   person's job: portfolio oversight, office coordination, or managing one's
+   own build.
+2. **Keep status and next actions visible.** Put the most consequential current
+   state and pending work on the first screen. Counts must open the records they
+   describe; otherwise they create a dead end rather than reducing memory load.
+3. **Prefer recognition over recall.** Keep project reference, client, stage,
+   progress, money state, and responsible person visible where work is reviewed.
+   Do not make users remember values from another page.
+4. **Use progressive disclosure and chunking.** Show a concise summary first,
+   then reveal detailed ledgers, evidence, forms, and administration when needed.
+   Group related work into understandable sections rather than presenting a
+   long undifferentiated menu (Miller's Law).
+5. **Limit top-level choices.** Hick's Law in `.agent/skills/frontend-design/ux-psychology.md`
+   recommends roughly 5–7 main navigation choices. The client feature inventory
+   below is not a commitment to nine or more top-level sidebar items: group it
+   into a small set of destinations such as Overview, Build, Decisions & changes,
+   Money, Records & messages, After handover, and Profile. Keep diaspora guidance
+   contextual within the same portal rather than adding another permanent tab.
+   Validate labels and grouping with clients before locking navigation.
+6. **Prevent high-impact errors.** Separate review from irreversible or
+   privileged actions; explain consequences and require confirmation for
+   financial, access, and lifecycle transitions. Client actions must be
+   attributable and scoped to their own projects.
+7. **Support user control and recovery.** Make the current project and role
+   obvious, use familiar interaction patterns (Jakob's Law), provide clear back
+   paths, and give prompt, visible feedback after writes or failures.
+8. **Design for real use conditions.** Critical tasks must work on mobile,
+   keyboard and assistive technology. Use adequately sized touch targets (the
+   frontend-design guidance recommends 44px minimum for mobile), visible focus,
+   readable contrast, and status text/icons in addition to color.
+9. **Do not imply evidence the system does not have.** A milestone percentage is
+   not proof of physical completion; a recorded payment is not a bank
+   reconciliation; a portfolio warning is not a professional inspection.
+
+### Role 1 — Owner / Director ("the boss")
+
+**Primary job:** oversee the whole business, spot exceptions, make reserved
+decisions, and understand the status of every project without doing every
+operational task.
+
+**Landing view:** portfolio summary with active projects, build-complete
+projects, open exceptions, and headline financial exposure. Samples are
+visibly separate from live business records.
+
+**Proposed navigation**
+
+| Tab | Purpose | Why it belongs |
+|-----|---------|----------------|
+| **Portfolio** | All live projects, with Active, Build complete, and All live filters; open a project from any list | The owner's core task is oversight across projects, not performing a single project workflow |
+| **Needs attention** | Blocked stages, delayed/on-watch work, client decisions, unread client messages, visit requests, certified payments awaiting release, and client sign-offs | Exception-focused triage reduces the effort of scanning every project |
+| **Enquiries** | Studio-wide lead funnel and unresolved follow-up | Shows whether future work is entering and where it needs a decision |
+| **Business** | Contracted, certified, paid, retention, projected completion, and enquiry trends | Gives the owner a business-level view while preserving project-level drill-down |
+| **Access** | Staff access and invitations; owner-only permission changes | Limits security administration to the accountable role |
+
+**When a project is opened**, present a project command centre before the existing
+operational accordions:
+
+- Identity: project title/reference, client, location, project lead, and lifecycle
+  state.
+- Delivery: stage, progress, programme position, blocked milestones, and recent
+  activity.
+- Decisions: items waiting on the client or studio, with ownership and age.
+- Financial position: contract, certified-to-date, paid, certified-unreleased,
+  retention, and projected-at-completion values.
+- Client relationship: messages waiting, unread status, visit requests, and
+  last client activity/view where available.
+- Records: links to milestones/evidence, approvals, selections, variations,
+  documents, defects, delivery log, and full payment ledger.
+
+The owner may review business-wide information, assign responsibility when
+assignment support exists, decide exceptional matters, and perform explicitly
+admin-only financial/access actions. The interface must not portray the owner as
+the certifying quantity surveyor or a substitute for a qualified site
+professional. Professional certification and site verification remain recorded
+as their own accountable actions.
+
+### Role 2 — Operations / Office Manager ("second in command")
+
+**Primary job:** coordinate office work and ensure that enquiries, communication,
+appointments, records, and follow-ups do not fall through the cracks.
+
+This is a proposed distinct role. The current database only distinguishes
+`staff` and `admin`; implementation must introduce an explicit role/capability
+model before claiming the office manager has a safe, distinct permission set.
+
+**Proposed navigation**
+
+| Tab | Purpose | Why it belongs |
+|-----|---------|----------------|
+| **Today** | Assigned follow-ups, late or due tasks, incoming messages, visit requests, and scheduled meetings | Starts with the next action rather than business-wide analytics |
+| **Enquiries** | Intake, contact details, status, owner/assignee, next follow-up, and notes | Matches the recurring office lead-management workflow |
+| **Projects** | Searchable project directory with stage, client, next date, and attention indicators | Lets the office locate records quickly without making them the business owner |
+| **Calendar** | Calls, visits, reminders, and coordination appointments | Gives scheduling a clear home instead of burying it in project detail |
+| **Communications** | Client threads, unread/reply queue, delivery status, and routine update sending | Makes communication ownership and waiting states explicit |
+| **Records** | Project documents and administrative completeness/checklists | Supports reliable records and follow-through |
+| **Team** (optional, confirm scope) | Staff directory, onboarding/access requests, availability, and HR tasks that ATRO actually wants to digitise | Avoids adding sensitive HR functions by assumption |
+
+**Project access:** view project status and client context; coordinate visits and
+calls; send routine communications; maintain administrative records; flag
+exceptions for the owner. The default office role must not certify payments,
+release retention, issue or void financial records, change owner-level access,
+or mark physical work complete unless ATRO explicitly delegates a narrowly
+defined capability. Private employee/HR records require separate authorization
+and should not be bundled into project access.
+
+### Role 3 — Kenyan client
+
+**Primary job:** understand what is happening on their project, review evidence,
+make required decisions, and coordinate locally with ATRO.
+
+**Proposed navigation** (retain one secure client portal and existing features):
+
+| Tab | Purpose | Why it belongs |
+|-----|---------|----------------|
+| **Overview** | Current stage, progress, next call, local site context, and items needing the client's action | Answers "where is my build and what do I need to do?" immediately |
+| **Milestones** | Planned/active/completed stages, evidence, and client sign-off where the studio marked it ready | Puts progress and proof together |
+| **Decisions** | Options, cost impact, response state, and recorded choice | Makes client decisions explicit and auditable |
+| **Money** | Contract and payment ledger, certified amounts, receipts, retention, and local payment instructions | Supports informed review without presenting an uncertified amount as payable |
+| **Documents** | Contract, drawings, approvals, certificates, reports, and receipts | Provides a predictable record location |
+| **Messages** | Project-specific conversation and response status | Keeps communication attached to the relevant build |
+| **Selections & changes** | Finish/material selections and proposed variations | Separates choices and changes from routine progress |
+| **After handover** | Defect reporting, inspection/rectification status, and care plan | Preserves a route back to ATRO after practical completion |
+| **Profile** | Client details and communication preferences | Allows clients to maintain their own contact information |
+
+Local emphasis: site/county context, visit requests, local-time scheduling, and
+locally applicable payment instructions. Client visibility and write permissions
+stay limited to the client's own projects.
+
+### Role 4 — Diaspora client
+
+**Primary job:** do the same client work remotely and asynchronously, with less
+dependence on being awake during Kenya business hours or physically visiting
+site.
+
+Use the same underlying client tabs, records, and ownership checks as the Kenyan
+client; do not fork a separate dashboard or reduce access to project evidence.
+Adapt the presentation and priority:
+
+| Tab | Diaspora emphasis |
+|-----|-------------------|
+| **Overview** | Kenya and client-local clocks; updates since last visit; decisions/messages waiting; next call in the client's time |
+| **Milestones** | Dated, photo-rich evidence and clear site-team context |
+| **Decisions** | Clear options, cost impact, response deadline/context, and confirmation of the recorded choice |
+| **Money** | International transfer instructions, reference to quote, certification state, receipts, and retention |
+| **Documents** | Downloadable, consistently named records suitable for sharing with a bank or adviser |
+| **Messages** | Asynchronous project thread with visible reply expectations |
+| **Selections & changes** | Remote review/approval, alternatives, cost and schedule implications |
+| **After handover** | Report defects remotely and track the studio's response |
+| **Abroad** (contextual/help) | Time-zone-aware meeting preparation, remote visit/walkthrough guidance, and the existing abroad checklist |
+
+Diaspora status changes time, communication, and payment context—not the
+client's ownership scope or the evidence required for a decision.
+
+### Shared project lifecycle (planned; do not infer closure from progress alone)
+
+The current record has milestone progress, `on_track`, and deleted state, but no
+formal project lifecycle. Add explicit, owner-governed lifecycle states only
+after their meanings and transitions are agreed:
+
+1. **Pre-construction** — preparation, approvals, and registration underway.
+2. **Active build** — construction work is in progress.
+3. **Handover** — completion inspection and handover records are underway.
+4. **Defects period** — handed over, with post-handover obligations still open.
+5. **Closed** — close-out criteria met and no active obligations remain.
+6. **Archived** — retained for records, not part of current operational queues.
+
+“Build complete” is derived only when at least one tracked milestone exists and
+every tracked milestone is marked complete. It is not a lifecycle state and
+does not automatically mean Handover, Closed, or Archived. Samples remain a
+separate source classification and cannot be transitioned.
+Existing projects start from the conservative Active build baseline; new
+projects begin in Pre-construction. No historical handover or close-out is
+inferred from milestone percentage or legacy stage text.
+
+Routine staff may move a project through Pre-construction, Active build,
+Handover, and Defects period. Handover requires every tracked milestone to be
+complete; starting the defects period requires a future end date. Closing and
+archiving are admin-only. Close-out requires an ended defects period, no open
+defect reports, and no held retention. Each transition requires a reason and is
+atomically recorded with the prior/new state, actor, and timestamp.
+
+### Delivery sequence — build the boss experience step by step
+
+| Step | Deliverable | Status / exit condition |
+|------|-------------|-------------------------|
+| 1 | Owner portfolio: separate active, build-complete, live, and sample views; open any project | **Implemented in `/admin`**; build-complete requires all tracked milestones complete |
+| 2 | Owner project command centre: delivery, programme, financial position, attention, and recent activity before detailed tools | **Implemented for admins**; existing operational accordions remain available |
+| 3 | Replace progress-only completion with agreed lifecycle definitions and safe transition rules | **Implemented in `/admin`**; separate Closed and Archived views, guarded transitions, admin-only close/archive, and an auditable transition record |
+| 4 | Make owner exception items actionable and link each to its source record | **Next**; each item should open the exact relevant section, not merely the project |
+| 5 | Add explicit project responsibility/assignment, if ATRO confirms who owns delivery follow-up | Requires role and assignment model; no assumed assignments |
+| 6 | Separate owner-only and office-manager navigation and permissions | Requires explicit office role/capability design and server-side guards |
+| 7 | Refine the office manager Today/Enquiry/Calendar/Communications workflow | Build after shadowing/validating actual office tasks |
+| 8 | Review local and diaspora client tasks against the shared portal tabs | Retain shared ownership boundaries; test mobile and time-zone scenarios |
+| 9 | Validate with representative users and operational scenarios | Test comprehension, task completion, errors, and permission refusals before rollout |
+
+### HCI acceptance checks
+
+- In a short first-use test, each role can explain their main responsibility and
+  identify their next action without training.
+- An owner can find an active, completed, blocked, or sample project using the
+  labels that describe it; active and completed records are never conflated.
+- Selecting any portfolio item opens that project's identity, current status,
+  financial summary, and attention signals before detailed maintenance forms.
+- Every warning/count links to the record producing it and reflects the same
+  server-side state as its detail panel.
+- Local and diaspora clients can complete the same core tasks on mobile; time
+  zone and payment presentation do not alter project ownership or rights.
+- Unauthorized actions are blocked by server checks even if a user calls a
+  server function directly; hiding a button is not authorization.
+- Financial and lifecycle transitions state the consequence and are auditable.
+- No UI labels generated milestone progress as an independent inspection,
+  payment instructions as a confirmed bank transfer, or sample data as live work.
+
+### Agent guidance and design workflow
+
+Workspace guidance exists in `.agent/`. Use it as a practical aid, while
+checking each recommendation against ATRO's actual workflows and technology:
+
+- `.agent/agents/product-owner.md` and `.agent/agents/product-manager.md` call
+  for explicit personas, acceptance criteria, scope boundaries, and
+  stakeholder validation.
+- `.agent/skills/frontend-design/ux-psychology.md` informs choice reduction,
+  chunking, touch targets, familiar conventions, and feedback. For this design,
+  the most relevant references include Hick's Law, Miller's Law, Fitts' Law,
+  Jakob's Law, and the psychology checklist. Apply these as heuristics to
+  validate—not rigid laws or substitutes for user testing.
+- `.agent/skills/frontend-design/SKILL.md` requires constraint analysis and
+  warns against assuming style or interaction decisions. In particular, it
+  says to ask before assuming a vague design choice; validate major role,
+  navigation, or permission ambiguities before committing to them.
+- `.agent/workflows/ui-ux-pro-max.md` provides the design-system and React-stack
+  workflow for future substantial visual implementation: analyze requirements,
+  run its design-system search, supplement with relevant UX and React-stack
+  guidance, and check generated suggestions against ATRO's existing visual
+  system before adopting them.
+- `.agent/skills/plan-writing/SKILL.md` emphasizes small, verifiable tasks and
+  updating completion status. The dashboard delivery sequence above is the
+  feature backlog; update its status as work is verified.
+
+The role and tab model in this plan is a product hypothesis, not validated user
+research. Before finalizing the office manager's scope or lifecycle transitions,
+confirm real responsibilities and decision authority with the boss and the
+person who runs the office. This follows the `.agent` brainstorming guidance:
+ask focused questions when alternative answers materially change the product,
+and do not decide high-impact policy by assumption. Test navigation names and
+top tasks with local and diaspora clients. Until decisions are validated,
+preserve existing server-side ownership and staff/admin checks; never grant
+authority based only on a hidden button.
+
+For each implementation step, state the user need, scope, relevant existing
+files/data, and observable acceptance checks. Keep a small task focused; verify
+the actual behavior before marking it done. Use the UI/UX workflow for substantial
+design changes and include keyboard, mobile, feedback, and error-state checks.

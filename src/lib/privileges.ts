@@ -1,10 +1,8 @@
 // ATRO privilege matrix — which studio writes need more than "staff".
 //
 // The allowlist (client_role) answers "is this person in the studio". This
-// answers the next question: once in, some writes move money, cancel money or
-// change who holds the keys, and those are an admin's alone. A site foreman on
-// the allowlist can log a defect and post an update; they cannot certify a
-// payment or release retention.
+// answers the next question: once in, high-impact writes that move money,
+// change access, or finalize a project are an admin's alone.
 //
 // Kept free of imports so the whole matrix is readable in one screen and
 // testable without a session. The server guard (`requireAdmin` in
@@ -24,6 +22,8 @@ export type PrivilegedOp =
   | "issue-statement"
   | "void-document"
   | "set-retainer"
+  | "close-project"
+  | "archive-project"
   | "grant-access"
   | "revoke-access";
 
@@ -34,6 +34,8 @@ const REFUSAL: Record<PrivilegedOp, string> = {
   "issue-statement": "Only an admin can issue a statement.",
   "void-document": "Only an admin can void a document.",
   "set-retainer": "Only an admin can set the annual care fee.",
+  "close-project": "Only an admin can close a project.",
+  "archive-project": "Only an admin can archive a project.",
   "grant-access": "Only an admin can change studio access.",
   "revoke-access": "Only an admin can change studio access.",
 };
