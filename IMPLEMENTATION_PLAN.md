@@ -342,21 +342,24 @@ operational accordions:
 - Records: links to milestones/evidence, approvals, selections, variations,
   documents, defects, delivery log, and full payment ledger.
 
-The owner may review business-wide information, assign responsibility when
-assignment support exists, decide exceptional matters, and perform explicitly
-admin-only financial/access actions. The interface must not portray the owner as
-the certifying quantity surveyor or a substitute for a qualified site
-professional. Professional certification and site verification remain recorded
-as their own accountable actions.
+The owner may review business-wide information, decide exceptional matters, and
+perform explicitly admin-only financial/access actions. Follow-up responsibility
+remains admin-owned unless ATRO later introduces a distinct, authorized delivery
+coordination model. The interface must not portray the owner as the certifying
+quantity surveyor or a substitute for a qualified site professional.
+Professional certification and site verification remain recorded as their own
+accountable actions.
 
 ### Role 2 — Operations / Office Manager ("second in command")
 
 **Primary job:** coordinate office work and ensure that enquiries, communication,
 appointments, records, and follow-ups do not fall through the cracks.
 
-This is a proposed distinct role. The current database only distinguishes
-`staff` and `admin`; implementation must introduce an explicit role/capability
-model before claiming the office manager has a safe, distinct permission set.
+This is a proposed distinct role, but the current product decision is to keep
+project follow-up responsibility at the admin level rather than assign a
+per-project coordinator. The current database only distinguishes `staff` and
+`admin`; implementation must introduce an explicit role/capability model before
+claiming the office manager has a safe, distinct permission set.
 
 **Proposed navigation**
 
@@ -461,10 +464,10 @@ atomically recorded with the prior/new state, actor, and timestamp.
 | 1 | Owner portfolio: separate active, build-complete, live, and sample views; open any project | **Implemented in `/admin`**; build-complete requires all tracked milestones complete |
 | 2 | Owner project command centre: delivery, programme, financial position, attention, and recent activity before detailed tools | **Implemented for admins**; existing operational accordions remain available |
 | 3 | Replace progress-only completion with agreed lifecycle definitions and safe transition rules | **Implemented in `/admin`**; separate Closed and Archived views, guarded transitions, admin-only close/archive, and an auditable transition record |
-| 4 | Make owner exception items actionable and link each to its source record | **Next**; each item should open the exact relevant section, not merely the project |
-| 5 | Add explicit project responsibility/assignment, if ATRO confirms who owns delivery follow-up | Requires role and assignment model; no assumed assignments |
-| 6 | Separate owner-only and office-manager navigation and permissions | Requires explicit office role/capability design and server-side guards |
-| 7 | Refine the office manager Today/Enquiry/Calendar/Communications workflow | Build after shadowing/validating actual office tasks |
+| 4 | Make owner exception items actionable and link each to its source record | **Implemented in `/admin`**; attention items open, scroll to, and focus their relevant project sections; blocked-work review preselects the blocked milestone, and certified payments link to their recorded ledger entries |
+| 5 | Confirm the operating model for delivery follow-up and keep it explicit | **Implemented as admin-owned responsibility**; no per-project coordinator is assigned and the admin remains accountable for cross-project follow-up |
+| 6 | Separate owner-only and staff navigation while preserving role guards | **Implemented in `/admin`**: staff land on Today and cannot see Portfolio or Access; the business overview endpoint requires admin and staff receive only operational queue data. A distinct office-manager capability model is still unimplemented |
+| 7 | Build the staff Today/Enquiry/Projects workflow | **Production-oriented first pass implemented in `/admin`**: Today combines studio follow-up, new enquiry status, project navigation, and personal claimed enquiries/chases/notes; Projects has a searchable coordination directory with a needs-follow-up filter and no owner portfolio money columns; Enquiries supports server-side search/filtering across the full inbox, filtered pagination, and explicit load errors. Validate task order and terminology with the office user before adding calendar or HR workflows |
 | 8 | Review local and diaspora client tasks against the shared portal tabs | Retain shared ownership boundaries; test mobile and time-zone scenarios |
 | 9 | Validate with representative users and operational scenarios | Test comprehension, task completion, errors, and permission refusals before rollout |
 

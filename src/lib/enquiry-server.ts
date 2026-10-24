@@ -82,6 +82,9 @@ type EnquiryRow = {
   diaspora_timezone: string;
   diaspora_kenya_contact: string;
   diaspora_visit_plans: string;
+  status: string;
+  assigned_to: string;
+  project_id: string | null;
   created_at: string;
 };
 
@@ -94,8 +97,76 @@ type EnquiryRow = {
  */
 export const listEnquiriesFromDb = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(async () => {
-    await requireStaff();
+  .validator(
+    z.object({
+      offset: z.number().int().nonnegative().default(0),
+      search: z.string().trim().max(120).default(""),
+      projectType: z.enum(["all", "Residential", "Commercial", "Institutional"]).default("all"),
+      clientType: z.enum(["all", "diaspora", "local"]).default("all"),
+      status: z.enum(["all", "open", "new", "contacted", "quoted", "won", "lost", "converted"])
+        .default("open"),
+      owner: z.enum(["all", "unclaimed", "mine", "other"]).default("all"),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const staff = await requireStaff();
     const sql = await getSql();
-    return sql<EnquiryRow>`select * from enquiries order by created_at desc limit 50`;
+    const filters = [
+      data.projectType,
+      data.clientType,
+      data.status,
+      data.owner,
+      staff.email,
+      data.search,
+    ];
+    const where = `
+      ($1 = 'all' or project_type = $1)
+      and (
+        $2 = 'all'
+        or ($2 = 'diaspora' and diaspora = true)
+        or ($2 = 'local' and diaspora = false)
+      )
+      and (
+        $3 = 'all'
+        or ($3 = 'open' and status not in ('lost', 'converted'))
+        or status = $3
+      )
+      and (
+        $4 = 'all'
+        or ($4 = 'unclaimed' and coalesce(btrim(assigned_to), '') = '')
+        or ($4 = 'mine' and lower(coalesce(btrim(assigned_to), '')) = $5)
+        or (
+          $4 = 'other'
+          and coalesce(btrim(assigned_to), '') <> ''
+          and lower(btrim(assigned_to)) <> $5
+        )
+      )
+      and (
+        $6 = ''
+        or position(
+          lower($6) in lower(concat_ws(
+            ' ', name, email, phone, zone, description, project_type, assigned_to
+          ))
+        ) > 0
+      )
+    `;
+    const [rows, count] = await Promise.all([
+      sql.query<EnquiryRow>(
+        `select * from enquiries where ${where}
+         order by created_at desc, id desc
+         limit 50 offset $7`,
+        [...filters, data.offset],
+      ),
+      sql.query<{ total: number }>(
+        `select count(*) as total from enquiries where ${where}`,
+        filters,
+      ),
+    ]);
+    const total = Number(count[0]?.total ?? 0);
+    return {
+      rows,
+      offset: data.offset,
+      total,
+      hasMore: data.offset + rows.length < total,
+    };
   });

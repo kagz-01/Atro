@@ -5,8 +5,8 @@
 // client-side gate standing in for it.
 
 import { Link } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Search,
@@ -23,8 +23,10 @@ import {
   FileText,
   X,
   MessageCircle,
+  RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem } from "@/components/ui/accordion";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
@@ -137,6 +139,8 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
     // would otherwise leave the rest of the page showing yesterday's shape.
     void queryClient.invalidateQueries({ queryKey: ["staff-projects"] });
     void queryClient.invalidateQueries({ queryKey: ["ops-overview"] });
+    void queryClient.invalidateQueries({ queryKey: ["staff-today"] });
+    void queryClient.invalidateQueries({ queryKey: ["my-work"] });
   };
 
   const convert = useMutation({
@@ -330,25 +334,67 @@ export function EnquiriesInbox() {
   const { user, isPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState<string>("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [filterType, setFilterType] = useState<
+    "all" | "Residential" | "Commercial" | "Institutional"
+  >("all");
   const [filterDiaspora, setFilterDiaspora] = useState<"all" | "diaspora" | "local">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "open" | "new" | "contacted" | "quoted" | "won" | "lost" | "converted"
+  >("open");
+  const [filterOwner, setFilterOwner] = useState<"all" | "unclaimed" | "mine" | "other">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
 
   // Enquiries carry real names, emails and phone numbers, so the read is
   // account-gated server-side. No client-side password stands in for that.
-  const { data: enquiries, isLoading } = useQuery({
-    queryKey: ["admin-enquiries"],
-    queryFn: async () => {
-      const result = await listEnquiriesFromDb({ data: undefined });
-      return (result ?? []) as Enquiry[];
+  const {
+    data: enquiryPages,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: [
+      "admin-enquiries",
+      {
+        search: debouncedSearch,
+        projectType: filterType,
+        clientType: filterDiaspora,
+        status: filterStatus,
+        owner: filterOwner,
+      },
+    ],
+    queryFn: ({ pageParam }) => {
+      return listEnquiriesFromDb({
+        data: {
+          offset: pageParam,
+          search: debouncedSearch,
+          projectType: filterType,
+          clientType: filterDiaspora,
+          status: filterStatus,
+          owner: filterOwner,
+        },
+      });
     },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? lastPage.offset + lastPage.rows.length : undefined,
     enabled: Boolean(user),
   });
+  const enquiries = enquiryPages?.pages.flatMap((page) => page.rows) ?? [];
 
   // The modal reads the enquiry from the list rather than a snapshot, so a
   // claim or a status move shows up the moment the query refetches — otherwise
   // the detail panel keeps showing the stage it had when it was opened.
-  const selected = (enquiries ?? []).find((e) => e.id === selectedId) ?? null;
+  const selected = enquiries.find((e) => e.id === selectedId) ?? null;
 
   // The server always renders "pending", so the first client paint must match it.
   if (isPending || !hydrated) return null;
@@ -372,31 +418,18 @@ export function EnquiriesInbox() {
     );
   }
 
-  const filtered = (enquiries ?? []).filter((e) => {
-    if (filterType !== "all" && e.project_type !== filterType) return false;
-    if (filterDiaspora === "diaspora" && !e.diaspora) return false;
-    if (filterDiaspora === "local" && e.diaspora) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        e.name.toLowerCase().includes(q) ||
-        e.email.toLowerCase().includes(q) ||
-        e.phone.includes(q) ||
-        e.zone.toLowerCase().includes(q) ||
-        (e.description && e.description.toLowerCase().includes(q))
-      );
-    }
-    return true;
-  });
+  const filtered = enquiries;
 
+  const now = Date.now();
   const stats = {
-    total: enquiries?.length ?? 0,
-    diaspora: enquiries?.filter((e) => e.diaspora).length ?? 0,
-    thisWeek: enquiries?.filter((e) => {
+    total: enquiryPages?.pages[0]?.total ?? 0,
+    loaded: enquiries.length,
+    diaspora: enquiries.filter((e) => e.diaspora).length,
+    thisWeek: enquiries.filter((e) => {
       const d = new Date(e.created_at);
-      const now = new Date();
-      return now.getTime() - d.getTime() < 7 * 24 * 60 * 60 * 1000;
-    }).length ?? 0,
+      const age = now - d.getTime();
+      return !Number.isNaN(d.getTime()) && age >= 0 && age < 7 * 24 * 60 * 60 * 1000;
+    }).length,
   };
 
   return (
@@ -414,12 +447,22 @@ export function EnquiriesInbox() {
             </Link>
             <h1 className="font-display text-xl text-maroon">Enquiries</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
-            <span>{stats.total} total</span>
+          <div className="flex flex-wrap items-center gap-3 text-[13px] text-muted">
+            <span>{stats.loaded} of {stats.total} matching enquiries loaded</span>
             <span className="hidden text-gold sm:inline">·</span>
-            <span>{stats.diaspora} diaspora</span>
+            <span>{stats.diaspora} diaspora shown</span>
             <span className="hidden text-gold sm:inline">·</span>
-            <span>{stats.thisWeek} this week</span>
+            <span>{stats.thisWeek} this week shown</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+              aria-label="Refresh enquiries"
+            >
+              <RefreshCw className={cn("size-3.5", isFetching && "animate-spin")} />
+              Refresh
+            </Button>
           </div>
         </div>
       </div>
@@ -433,12 +476,14 @@ export function EnquiriesInbox() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name, email, phone, zone..."
+              aria-label="Search all enquiries"
+              maxLength={120}
               className="w-full h-10 pl-10 pr-4 border border-line bg-paper rounded-xl text-sm outline-none focus:border-burgundy"
             />
           </div>
           <select
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+            onChange={(e) => setFilterType(e.target.value as typeof filterType)}
             className="h-10 px-3 border border-line bg-paper rounded-xl text-sm outline-none focus:border-burgundy"
           >
             <option value="all">All types</option>
@@ -455,14 +500,98 @@ export function EnquiriesInbox() {
             <option value="diaspora">Diaspora only</option>
             <option value="local">Local only</option>
           </select>
+          <label className="sr-only" htmlFor="enquiry-status-filter">Filter by status</label>
+          <select
+            id="enquiry-status-filter"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
+            className="h-10 px-3 border border-line bg-paper rounded-xl text-sm outline-none focus:border-burgundy"
+          >
+            <option value="open">Open follow-up</option>
+            <option value="all">All statuses</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="quoted">Quoted</option>
+            <option value="won">Won</option>
+            <option value="lost">Lost</option>
+            <option value="converted">Converted</option>
+          </select>
+          <label className="sr-only" htmlFor="enquiry-owner-filter">Filter by owner</label>
+          <select
+            id="enquiry-owner-filter"
+            value={filterOwner}
+            onChange={(e) => setFilterOwner(e.target.value as typeof filterOwner)}
+            className="h-10 px-3 border border-line bg-paper rounded-xl text-sm outline-none focus:border-burgundy"
+          >
+            <option value="all">All owners</option>
+            <option value="unclaimed">Unclaimed</option>
+            <option value="mine">Claimed by me</option>
+            <option value="other">Claimed by staff</option>
+          </select>
         </div>
 
         {/* Enquiry list */}
-        {isLoading ? (
+        {error ? (
+          <div
+            role="alert"
+            className="rounded-2xl border border-red-200 bg-red-50 px-5 py-6 text-center"
+          >
+            <p className="text-[13px] leading-relaxed text-red-800">
+              {error instanceof Error
+                ? `Could not load enquiries: ${error.message}`
+                : "Could not load enquiries."}
+            </p>
+            <Button
+              className="mt-4"
+              size="sm"
+              variant="outline"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : isLoading ? (
           <div className="text-center py-20 text-muted">Loading...</div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-muted">No enquiries found.</p>
+            <p className="font-display text-lg text-maroon">
+              {stats.total === 0 &&
+              !search.trim() &&
+              filterType === "all" &&
+              filterDiaspora === "all" &&
+              filterStatus === "all" &&
+              filterOwner === "all"
+                ? "No enquiries have arrived yet"
+                : "No enquiries match this view"}
+            </p>
+            <p className="mt-2 text-[13px] text-muted">
+              {stats.total === 0 &&
+              !search.trim() &&
+              filterType === "all" &&
+              filterDiaspora === "all" &&
+              filterStatus === "all" &&
+              filterOwner === "all"
+                ? "New project requests will appear here."
+                : "Try a different status, owner, client type, or search term."}
+            </p>
+            {(search || filterType !== "all" || filterDiaspora !== "all" ||
+              filterStatus !== "open" || filterOwner !== "all") ? (
+              <Button
+                className="mt-4"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSearch("");
+                  setFilterType("all");
+                  setFilterDiaspora("all");
+                  setFilterStatus("open");
+                  setFilterOwner("all");
+                }}
+              >
+                Reset filters
+              </Button>
+            ) : null}
           </div>
         ) : (
           <div className="space-y-3">
@@ -531,6 +660,20 @@ export function EnquiriesInbox() {
                 </button>
               );
             })}
+            {hasNextPage ? (
+              <div className="flex justify-center pt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage
+                    ? "Loading older enquiries…"
+                    : `Load older enquiries (${stats.loaded} of ${stats.total})`}
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
       </div>
