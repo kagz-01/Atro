@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Loader2, MapPin, Video } from "lucide-react";
+import { CalendarDays, ExternalLink, Loader2, MapPin, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/field";
@@ -70,7 +70,8 @@ export function VisitPanel({
       : null;
 
   const ask = useMutation({
-    mutationFn: () => requestVisit({ data: { projectId, proposedOn: day, note: note.trim() || undefined } }),
+    mutationFn: () =>
+      requestVisit({ data: { projectId, proposedOn: day, note: note.trim() || undefined } }),
     onSuccess: () => {
       setDay("");
       setNote("");
@@ -103,8 +104,7 @@ export function VisitPanel({
       {confirmed ? (
         <div>
           <p className="text-[15px] text-maroon">
-            {formatInstant(confirmed.scheduledAt, SITE_ZONE) ??
-              "A time the studio will confirm."}
+            {formatInstant(confirmed.scheduledAt, SITE_ZONE) ?? "A time the studio will confirm."}
           </p>
           {yourClock ? (
             <p className="mt-1 text-[13px] text-ink/55">
@@ -124,8 +124,8 @@ export function VisitPanel({
       {waiting ? (
         <div>
           <p className="text-[14px] leading-relaxed text-ink/75">
-            Asked {formatDay(waiting.createdAt) ?? ""} — the studio answers with a confirmed
-            time, Monday–Saturday, 08:30–17:30 EAT.
+            Asked {formatDay(waiting.createdAt) ?? ""} — the studio answers with a confirmed time,
+            Monday–Saturday, 08:30–17:30 EAT.
           </p>
           <p className="mt-2 text-[13px] text-ink/55">
             You asked for {formatDay(waiting.proposedOn) ?? "a day"}
@@ -176,7 +176,11 @@ export function VisitPanel({
               />
             </div>
             <Button type="submit" disabled={ask.isPending || !day} className="h-10">
-              {ask.isPending ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />}
+              {ask.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <MapPin className="size-4" />
+              )}
               Request a visit
             </Button>
           </div>
@@ -198,9 +202,7 @@ export function WalkthroughPanel({ projectId }: { projectId: string }) {
   const { query, invalidate } = usePresence(projectId);
   const [note, setNote] = useState("");
 
-  const walkthroughs = sortNewest(
-    (query.data ?? []).filter((p) => p.kind === "walkthrough"),
-  );
+  const walkthroughs = sortNewest((query.data ?? []).filter((p) => p.kind === "walkthrough"));
   const waiting = walkthroughs.find(isOpen) ?? null;
 
   const ask = useMutation({
@@ -214,9 +216,9 @@ export function WalkthroughPanel({ projectId }: { projectId: string }) {
   return (
     <Panel title="Walkthroughs" subtitle="The building walked on camera">
       <p className="text-[14px] leading-relaxed text-ink/75">
-        Photographs show what was finished. A walkthrough shows what changed — the studio
-        walks the building stage by stage and sends the recording here, to watch on your
-        clock as often as you like.
+        Photographs show what was finished. A walkthrough shows what changed — the studio walks the
+        building stage by stage and sends the recording here, to watch on your clock as often as you
+        like.
       </p>
 
       {walkthroughs.length > 0 ? (
@@ -254,8 +256,8 @@ export function WalkthroughPanel({ projectId }: { projectId: string }) {
         </ul>
       ) : (
         <p className="mt-4 text-[13px] leading-relaxed text-ink/55">
-          Nothing recorded yet. Ask for one below — the studio films what the week changed
-          and the recording appears here.
+          Nothing recorded yet. Ask for one below — the studio films what the week changed and the
+          recording appears here.
         </p>
       )}
 
@@ -300,6 +302,114 @@ export function WalkthroughPanel({ projectId }: { projectId: string }) {
         <p className="mt-4 text-[13px] text-ink/45">
           One at a time — while this waits, another cannot be asked.
         </p>
+      )}
+    </Panel>
+  );
+}
+
+/** The client's own appointment list: project call plus their presence requests. */
+export function ClientCalendarPanel({
+  projectId,
+  nextCall,
+  zone,
+}: {
+  projectId: string;
+  nextCall: { when: string; at: string | null; agenda: string[] };
+  zone: string;
+}) {
+  const { query } = usePresence(projectId);
+  const entries = (query.data ?? []).filter(
+    (item) =>
+      item.status === "requested" ||
+      (item.status === "scheduled" &&
+        item.scheduledAt &&
+        Date.parse(item.scheduledAt) >= Date.now()),
+  );
+  const homeCallTime =
+    nextCall.at && zone && !isHomeZone(zone) ? zonedClock(nextCall.at, zone) : null;
+
+  return (
+    <Panel
+      title="Your calendar"
+      subtitle="Project calls and site-presence requests for this project"
+    >
+      {query.isLoading ? (
+        <div className="flex min-h-20 items-center justify-center" aria-busy="true">
+          <Loader2 className="size-5 animate-spin text-gold" />
+        </div>
+      ) : query.error ? (
+        <p role="alert" className="text-[13px] text-red-700">
+          {query.error instanceof Error
+            ? query.error.message
+            : "Could not load your project calendar."}
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {nextCall.at ? (
+            <li className="rounded-xl border border-ink/10 bg-cream p-4">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="size-4 text-maroon" aria-hidden />
+                <p className="text-[13px] font-medium text-maroon">Project call</p>
+              </div>
+              <p className="mt-2 text-[13px] text-ink/70">{nextCall.when}</p>
+              {homeCallTime ? (
+                <p className="mt-1 text-[12px] text-ink/55">
+                  Your time: {homeCallTime.clock} {homeCallTime.zone}
+                </p>
+              ) : null}
+              {nextCall.agenda.length > 0 ? (
+                <ul className="mt-3 space-y-1 border-t border-ink/10 pt-3">
+                  {nextCall.agenda.map((item) => (
+                    <li key={item} className="text-[12px] text-ink/60">
+                      · {item}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          ) : null}
+          {entries.map((item) => {
+            const localTime =
+              item.scheduledAt && zone && !isHomeZone(zone)
+                ? zonedClock(item.scheduledAt, zone)
+                : null;
+            return (
+              <li key={item.id} className="rounded-xl border border-ink/10 bg-cream p-4">
+                <div className="flex items-center gap-2">
+                  {item.kind === "visit" ? (
+                    <MapPin className="size-4 text-maroon" aria-hidden />
+                  ) : (
+                    <Video className="size-4 text-maroon" aria-hidden />
+                  )}
+                  <p className="text-[13px] font-medium text-maroon">
+                    {item.kind === "visit" ? "Site visit" : "Walkthrough"}
+                  </p>
+                  <Badge tone={statusTone(item.status)}>{statusLabel(item)}</Badge>
+                </div>
+                <p className="mt-2 text-[13px] text-ink/70">
+                  {item.scheduledAt
+                    ? (formatInstant(item.scheduledAt, SITE_ZONE) ?? "Confirmed")
+                    : item.proposedOn
+                      ? `Requested for ${formatDay(item.proposedOn) ?? item.proposedOn}`
+                      : "Waiting for the studio to respond"}
+                </p>
+                {localTime ? (
+                  <p className="mt-1 text-[12px] text-ink/55">
+                    Your time: {localTime.clock} {localTime.zone}
+                  </p>
+                ) : null}
+                {item.clientNote ? (
+                  <p className="mt-1 text-[12px] text-ink/55">{item.clientNote}</p>
+                ) : null}
+              </li>
+            );
+          })}
+          {!nextCall.at && entries.length === 0 ? (
+            <li className="rounded-xl border border-dashed border-ink/15 px-4 py-5 text-center text-[13px] text-ink/55">
+              No upcoming appointments. Request a site visit or walkthrough from Overview.
+            </li>
+          ) : null}
+        </ul>
       )}
     </Panel>
   );

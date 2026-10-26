@@ -27,12 +27,7 @@ export type Milestone = {
   /** True once the studio has marked the stage ready for the client to approve. */
   approvalReady?: boolean;
 };
-export type PaymentStatus =
-  | "paid"
-  | "certified"
-  | "due"
-  | "scheduled"
-  | "retained";
+export type PaymentStatus = "paid" | "certified" | "due" | "scheduled" | "retained";
 
 export type Payment = {
   id: string;
@@ -50,13 +45,7 @@ export type Payment = {
 export type VaultDoc = {
   id: string;
   name: string;
-  category:
-    | "Contract"
-    | "Approval"
-    | "Certificate"
-    | "Payment"
-    | "Drawing"
-    | "Report";
+  category: "Contract" | "Approval" | "Certificate" | "Payment" | "Drawing" | "Report";
   issued: string;
   reference: string;
   size: string;
@@ -72,6 +61,7 @@ export type Decision = {
   chosen?: string;
   costImpact: number;
   state: "open" | "awaiting-client" | "decided";
+  dueDate?: string;
 };
 
 export type Professional = {

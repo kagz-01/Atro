@@ -1,8 +1,15 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { demotesLastAdmin, grantDemotesAdmin } from "./staff-access-rules.ts";
+import { demotesLastAdmin, grantDemotesAdmin, isStaffRole } from "./staff-access-rules.ts";
 
 describe("staff access allowlist", () => {
+  it("recognizes only explicitly supported studio roles", () => {
+    assert.equal(isStaffRole("staff"), true);
+    assert.equal(isStaffRole("office_manager"), true);
+    assert.equal(isStaffRole("admin"), true);
+    assert.equal(isStaffRole("owner"), false);
+  });
+
   describe("demotesLastAdmin", () => {
     it("blocks demoting the only admin", () => {
       assert.equal(

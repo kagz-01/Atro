@@ -1,6 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { canPerform, refusalFor, requiresAdmin, type PrivilegedOp } from "./privileges.ts";
+import {
+  canScheduleProjectCalls,
+  canPerform,
+  refusalFor,
+  requiresAdmin,
+  type PrivilegedOp,
+} from "./privileges.ts";
 
 // The matrix itself: these are the writes that move money, cancel money, or
 // change who holds the keys. If a new privileged operation is added to the
@@ -34,9 +40,24 @@ describe("privilege matrix", () => {
       }
     });
 
+    describe("canScheduleProjectCalls", () => {
+      it("limits call scheduling to office managers and admins", () => {
+        assert.equal(canScheduleProjectCalls("office_manager"), true);
+        assert.equal(canScheduleProjectCalls("admin"), true);
+        assert.equal(canScheduleProjectCalls("staff"), false);
+        assert.equal(canScheduleProjectCalls(null), false);
+      });
+    });
+
     it("refuses a staff account every privileged write", () => {
       for (const op of ADMIN_ONLY) {
         assert.equal(canPerform("staff", op), false, `staff should not do ${op}`);
+      }
+    });
+
+    it("refuses an office manager every admin-only write", () => {
+      for (const op of ADMIN_ONLY) {
+        assert.equal(canPerform("office_manager", op), false, `office manager should not do ${op}`);
       }
     });
 
@@ -49,36 +70,15 @@ describe("privilege matrix", () => {
 
   describe("refusalFor", () => {
     it("names the operation in the refusal, so the error teaches the matrix", () => {
-      assert.equal(
-        refusalFor("certify-payment"),
-        "Only an admin can certify a payment.",
-      );
-      assert.equal(
-        refusalFor("release-retention"),
-        "Only an admin can release retention.",
-      );
-      assert.equal(
-        refusalFor("void-document"),
-        "Only an admin can void a document.",
-      );
-      assert.equal(
-        refusalFor("set-retainer"),
-        "Only an admin can set the annual care fee.",
-      );
+      assert.equal(refusalFor("certify-payment"), "Only an admin can certify a payment.");
+      assert.equal(refusalFor("release-retention"), "Only an admin can release retention.");
+      assert.equal(refusalFor("void-document"), "Only an admin can void a document.");
+      assert.equal(refusalFor("set-retainer"), "Only an admin can set the annual care fee.");
       assert.equal(refusalFor("close-project"), "Only an admin can close a project.");
       assert.equal(refusalFor("archive-project"), "Only an admin can archive a project.");
-      assert.equal(
-        refusalFor("grant-access"),
-        "Only an admin can change studio access.",
-      );
-      assert.equal(
-        refusalFor("revoke-access"),
-        "Only an admin can change studio access.",
-      );
-      assert.equal(
-        refusalFor("issue-statement"),
-        "Only an admin can issue a statement.",
-      );
+      assert.equal(refusalFor("grant-access"), "Only an admin can change studio access.");
+      assert.equal(refusalFor("revoke-access"), "Only an admin can change studio access.");
+      assert.equal(refusalFor("issue-statement"), "Only an admin can issue a statement.");
     });
   });
 });

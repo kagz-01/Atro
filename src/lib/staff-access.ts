@@ -9,15 +9,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/verify.server";
 import { requireAdmin } from "@/lib/staff-session.server";
 import {
   demotesLastAdmin,
   grantDemotesAdmin,
   inviteRefusal,
+  isStaffRole,
   roleAfterAccept,
 } from "@/lib/staff-access-rules";
-import { lookupRole, normaliseEmail, type StaffIdentity, type StaffRole } from "@/lib/staff";
+import { lookupRole, normaliseEmail, type StaffRole } from "@/lib/staff";
 
 export type StaffMember = {
   email: string;
@@ -42,14 +42,6 @@ export type StaffInvite = {
   invitedBy: string;
   createdAt: string;
 };
-
-async function requireStaffIdentity(): Promise<StaffIdentity> {
-  const user = await getSessionUser();
-  if (!user) throw new Error("Sign in to continue.");
-  const role = await lookupRole(await getSql(), user.email);
-  if (!role) throw new Error("This area is for ATRO staff.");
-  return { userId: user.id, email: normaliseEmail(user.email), role };
-}
 
 export const getMyAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -104,7 +96,7 @@ export const requestStaffAccess = createServerFn({ method: "POST" })
   });
 
 export const listStaff = createServerFn({ method: "GET" }).handler(async () => {
-  await requireStaffIdentity();
+  await requireAdmin("grant-access");
   const sql = await getSql();
   const members = await sql<{ email: string; role: string; note: string; created_at: unknown }>`
     select email, role, note, created_at from client_role order by created_at
@@ -131,13 +123,20 @@ export const listStaff = createServerFn({ method: "GET" }).handler(async () => {
     from staff_invite where status = 'pending' order by created_at
   `;
 
+  const listedMembers = members.map((member) => {
+    if (!isStaffRole(member.role)) {
+      throw new Error(`Unknown studio role "${member.role}" for ${member.email}.`);
+    }
+    return {
+      email: member.email,
+      role: member.role,
+      note: member.note,
+      since: new Date(String(member.created_at)).toISOString().slice(0, 10),
+    };
+  });
+
   return {
-    members: members.map((m) => ({
-      email: m.email,
-      role: m.role === "admin" ? ("admin" as const) : ("staff" as const),
-      note: m.note,
-      since: new Date(String(m.created_at)).toISOString().slice(0, 10),
-    })),
+    members: listedMembers,
     requests: requests.map((r) => ({
       id: r.id,
       email: r.email,
@@ -160,7 +159,7 @@ export const grantStaff = createServerFn({ method: "POST" })
   .validator(
     z.object({
       email: z.string().trim().email(),
-      role: z.enum(["staff", "admin"]).default("staff"),
+      role: z.enum(["staff", "office_manager", "admin"]).default("staff"),
       note: z.string().trim().max(160).default(""),
     }),
   )

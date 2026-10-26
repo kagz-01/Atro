@@ -355,11 +355,12 @@ accountable actions.
 **Primary job:** coordinate office work and ensure that enquiries, communication,
 appointments, records, and follow-ups do not fall through the cracks.
 
-This is a proposed distinct role, but the current product decision is to keep
-project follow-up responsibility at the admin level rather than assign a
-per-project coordinator. The current database only distinguishes `staff` and
-`admin`; implementation must introduce an explicit role/capability model before
-claiming the office manager has a safe, distinct permission set.
+The office manager is a distinct allowlisted role. Project follow-up
+responsibility remains admin-owned rather than assigned to a per-project
+coordinator. The office manager can coordinate calls, visits, messages, and
+enquiries, but cannot release money, change lifecycle, or administer staff
+access. Staff retain project-level operational access without the consolidated
+calendar; admins retain all roles' views and reserved decisions.
 
 **Proposed navigation**
 
@@ -466,10 +467,38 @@ atomically recorded with the prior/new state, actor, and timestamp.
 | 3 | Replace progress-only completion with agreed lifecycle definitions and safe transition rules | **Implemented in `/admin`**; separate Closed and Archived views, guarded transitions, admin-only close/archive, and an auditable transition record |
 | 4 | Make owner exception items actionable and link each to its source record | **Implemented in `/admin`**; attention items open, scroll to, and focus their relevant project sections; blocked-work review preselects the blocked milestone, and certified payments link to their recorded ledger entries |
 | 5 | Confirm the operating model for delivery follow-up and keep it explicit | **Implemented as admin-owned responsibility**; no per-project coordinator is assigned and the admin remains accountable for cross-project follow-up |
-| 6 | Separate owner-only and staff navigation while preserving role guards | **Implemented in `/admin`**: staff land on Today and cannot see Portfolio or Access; the business overview endpoint requires admin and staff receive only operational queue data. A distinct office-manager capability model is still unimplemented |
-| 7 | Build the staff Today/Enquiry/Projects workflow | **Production-oriented first pass implemented in `/admin`**: Today combines studio follow-up, new enquiry status, actionable summary shortcuts, project navigation, and personal claimed enquiries/chases/notes; My Work claimed-enquiry cards open the exact enquiry record; Projects has a searchable coordination directory with a needs-follow-up filter and no owner portfolio money columns; Enquiries supports server-side search/filtering across the full inbox, filtered pagination, and explicit load errors. Validate task order and terminology with the office user before adding calendar or HR workflows |
-| 8 | Review local and diaspora client tasks against the shared portal tabs | Retain shared ownership boundaries; test mobile and time-zone scenarios |
+| 6 | Separate owner-only, office-manager, and staff capabilities while preserving server guards | **Implemented in `/admin`**: office managers have a distinct allowlisted role and coordination calendar; financial, lifecycle, business overview, and access administration remain admin-only |
+| 7 | Build the staff Today/Enquiry/Projects workflow | **Implemented as an operational first pass in `/admin`**: Today combines studio follow-up, new-enquiry status, actionable summary shortcuts, project navigation, and personal claimed enquiries/chases/notes; My Work opens the exact claimed enquiry; Projects is searchable; Enquiries supports server-side search/filter/pagination. All staff can view the coordination calendar and manage their own due-date follow-ups; only office managers/admins can schedule calls. Validate task order and terminology with office users before expanding into HR |
+| 8 | Review local and diaspora client tasks against the shared portal tabs | **Implemented in the shared portal**: balanced Overview, direct client actions, local site visits, diaspora walkthroughs, time-zone context, a project-scoped client calendar, and a decision/payment dates-to-watch list; representative mobile and time-zone validation remains in Step 9 |
 | 9 | Validate with representative users and operational scenarios | Test comprehension, task completion, errors, and permission refusals before rollout |
+
+Client portal interaction follow-through:
+- Both client home bands now provide a direct Messages action when no call is
+  scheduled, instead of only telling the client to contact the studio.
+- The diaspora Overview's "new updates" indicator scrolls and moves keyboard
+  focus to Recent activity, where all updates since the last visit are shown;
+  message and decision indicators open their sections.
+- "Needs you" lists all pending client decisions, certified releases, and
+  milestone approvals together, with each item opening or completing its own
+  action rather than hiding other categories behind a single priority.
+- The Overview puts that action list before summary cards and offers the local
+  site-visit or diaspora walkthrough request in the same view; project data and
+  client permissions remain shared.
+- Local visit and diaspora walkthrough coordination sit directly after the
+  pending-action list. The Abroad section points back to Overview rather than
+  rendering a second copy of the walkthrough request and history.
+- Each client has a project-scoped, read-only Calendar showing the next call,
+  agenda, and their own pending or upcoming visit/walkthrough requests. Diaspora
+  clients also see their local clock for confirmed appointments.
+- The staff Calendar includes due-date follow-up reminders assigned to the
+  signed-in staff member. These are in-app reminders; no email, push, or
+  background scheduler is configured.
+- Project detail has a per-week progress/evidence/client-update checklist and
+  a live summary of recorded documents and blocking approvals. The completeness
+  summary reflects entered records; it is not a project-specific statutory
+  requirements matrix.
+- Staff can set an optional reply-by date when raising a client decision.
+  Clients see dated decisions and scheduled/due payment lines in Overview.
 
 ### HCI acceptance checks
 
@@ -488,11 +517,23 @@ atomically recorded with the prior/new state, actor, and timestamp.
   the staff console.
 - A claimed enquiry in My Work opens that exact record in the staff inbox,
   including when it is outside the first page of results.
+- Staff can view calls, visits, walkthroughs, and unanswered presence requests;
+  each staff member can create and complete only their own follow-up reminders.
+  Office managers and admins can additionally schedule or update calls in
+  Nairobi time. The server rejects call scheduling by regular staff, and
+  schedule changes are recorded in project activity and shown to the client.
+- Weekly update checklist state persists per project and week; completion
+  indicators for documents and blocking approvals match the records shown in
+  the project's vault and approval workflows.
+- A decision reply-by date is visible to both staff and the client, while
+  payment due dates continue to come from the existing payment schedule.
 - Local and diaspora clients can complete the same core tasks on mobile; time
   zone and payment presentation do not alter project ownership or rights.
 - Unauthorized actions are blocked by server checks even if a user calls a
   server function directly; hiding a button is not authorization.
 - Financial and lifecycle transitions state the consequence and are auditable.
+- Office-manager role assignment is admin-only; office managers cannot read the
+  staff access list or perform admin-only financial and lifecycle writes.
 - No UI labels generated milestone progress as an independent inspection,
   payment instructions as a confirmed bank transfer, or sample data as live work.
 

@@ -590,8 +590,18 @@ export async function generateProject(
   const openingDocs: { name: string; category: string; state: string; reference: string }[] = [
     { name: "Client agreement — draft", category: "Contract", state: "awaiting", reference },
     track.id === "construction" || track.id === "design"
-      ? { name: "Measured BOQ — priced", category: "Payment", state: "awaiting", reference: `${reference}-BOQ` }
-      : { name: "Scope of works — draft", category: "Contract", state: "awaiting", reference: `${reference}-SOW` },
+      ? {
+          name: "Measured BOQ — priced",
+          category: "Payment",
+          state: "awaiting",
+          reference: `${reference}-BOQ`,
+        }
+      : {
+          name: "Scope of works — draft",
+          category: "Contract",
+          state: "awaiting",
+          reference: `${reference}-SOW`,
+        },
   ];
   for (let i = 0; i < openingDocs.length; i += 1) {
     const doc = openingDocs[i];
@@ -670,7 +680,6 @@ async function buildProjectPayload(
   /** Owner of the project, used to fall back to their profile. */
   userId: string,
 ): Promise<PortalPayload> {
-
   const projectId = row.id;
 
   const previousVisit = iso(row.last_viewed_at);
@@ -731,9 +740,10 @@ async function buildProjectPayload(
     chosen: string | null;
     cost_impact: number;
     state: string;
+    due_date: string | null;
   }>`select 
     id, ord, date, title, detail, options, chosen,
-      cost_impact, state from portal_decisions where project_id = ${projectId} order by ord`;
+      cost_impact, state, due_date from portal_decisions where project_id = ${projectId} order by ord`;
   const activityRows = await sql<{
     id: string;
     kind: string;
@@ -802,6 +812,7 @@ async function buildProjectPayload(
     chosen: d.chosen ?? undefined,
     costImpact: num(d.cost_impact),
     state: d.state as Decision["state"],
+    dueDate: d.due_date ? String(d.due_date).slice(0, 10) : undefined,
   }));
 
   const activity: ActivityItem[] = activityRows.map((a) => ({
@@ -822,9 +833,7 @@ async function buildProjectPayload(
           "Your first written report is issued the Friday after site work begins — what was done, what is planned, what needs your decision, with photographs.",
         completed: [],
         planned: ["Site establishment and setting out", "Statutory registrations in progress"],
-        decisionsNeeded: decisions
-          .filter((d) => d.state === "awaiting-client")
-          .map((d) => d.title),
+        decisionsNeeded: decisions.filter((d) => d.state === "awaiting-client").map((d) => d.title),
         risks: [],
         spend: {
           period: 0,
@@ -886,7 +895,13 @@ async function buildProjectPayload(
 
 /* ── validators re-exported so the RPC layer and the tests share one source ── */
 
-export { ProjectInput, MilestoneActionInput, PaymentActionInput, DecisionActionInput, ProjectRefInput };
+export {
+  ProjectInput,
+  MilestoneActionInput,
+  PaymentActionInput,
+  DecisionActionInput,
+  ProjectRefInput,
+};
 export type { ProjectBrief };
 
 /** Normalise an email for comparison; providers differ on case and nothing else. */
@@ -1269,9 +1284,7 @@ export const createPortalProject = createServerFn({ method: "POST" })
 export const approveMilestone = createServerFn({ method: "POST" })
   .validator(MilestoneActionInput)
   .middleware([authMiddleware])
-  .handler(async ({ context, data }) =>
-    approveMilestoneFor(await getSql(), context.userId, data),
-  );
+  .handler(async ({ context, data }) => approveMilestoneFor(await getSql(), context.userId, data));
 
 export const releasePayment = createServerFn({ method: "POST" })
   .validator(PaymentActionInput)

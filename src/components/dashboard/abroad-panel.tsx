@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { channelsFor, journeyStageFor, reachLine } from "@/lib/abroad";
-import { WalkthroughPanel } from "@/components/dashboard/presence-panel";
 import { formatPhone } from "@/lib/phone";
 import { getMyProfile } from "@/lib/profile-server";
 import { clientZone, isHomeZone, zonedClock } from "@/lib/tz";
@@ -19,9 +18,8 @@ import type { PortalPayload } from "@/lib/diaspora/server";
  * that is what this panel carries: the journey stage written for checking from
  * a distance, the next call quoted on their clock as well as EAT, and an honest
  * line about which channels can actually reach them, since their consent
- * switches — not the studio's convenience — decide that. It also carries the
- * track's half of presence: walkthroughs the studio filmed, which is the
- * attendance this section exists to replace.
+ * switches — not the studio's convenience — decide that. Walkthrough requests
+ * are available on Overview.
  *
  * A card is omitted rather than fudged when its answer is unknown: no journey
  * match means no "here is where you are", and no zone means an invitation to
@@ -31,10 +29,12 @@ export function AbroadPanel({
   project,
   milestones,
   onOpenProfile,
+  onOpenOverview,
 }: {
   project: PortalPayload["project"];
   milestones: PortalPayload["milestones"];
   onOpenProfile: () => void;
+  onOpenOverview: () => void;
 }) {
   const { data: profile } = useQuery({
     queryKey: ["my-profile"],
@@ -67,13 +67,18 @@ export function AbroadPanel({
           softened for distance. What this page adds is the part that normally depends on
           being there: the stage you are at written for checking from a distance, calls
           quoted on your clock as well as the site's, and the channels that can actually
-          reach you. Every switch here is yours, in your profile.
+          reach you. You can request a recorded walkthrough from Overview. Every switch
+          here is yours, in your profile.
         </p>
+        <Button
+          className="mt-4"
+          size="sm"
+          variant="outline"
+          onClick={onOpenOverview}
+        >
+          Go to Overview
+        </Button>
       </Panel>
-
-      {/* The abroad track's half of the presence split: the building walked
-          on camera, delivered to the same record. */}
-      <WalkthroughPanel projectId={project.id} />
 
       {stage ? (
         <Panel

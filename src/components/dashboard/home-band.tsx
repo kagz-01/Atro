@@ -51,9 +51,11 @@ function usePayLine(projectId: string, abroad: boolean): string {
 export function LocalHomeBand({
   project,
   onGoMoney,
+  onGoMessages,
 }: {
   project: ProjectRecord;
   onGoMoney: () => void;
+  onGoMessages: () => void;
 }) {
   const call = nextCallLine(project.nextCall, false);
   const payLine = usePayLine(project.id, false);
@@ -68,8 +70,18 @@ export function LocalHomeBand({
         <p className="mt-2 text-[13px] leading-relaxed text-ink/65">
           {call
             ? `Next call — ${call}`
-            : "No call scheduled yet — send the studio a message and it lands on this screen."}
+            : "No call scheduled yet. Message the studio to arrange one."}
         </p>
+        {!call ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="mt-2"
+            onClick={onGoMessages}
+          >
+            Message the studio <ArrowRight className="size-3.5" />
+          </Button>
+        ) : null}
         <p className="mt-2 text-[12px] text-muted">
           {project.stage} · {project.area || project.plot}
         </p>
@@ -96,12 +108,14 @@ export function AbroadHomeBand({
   zone,
   away: { activity, messages, decisions },
   onGo,
+  onGoActivity,
   onGoMoney,
 }: {
   project: ProjectRecord;
   zone: string;
   away: { activity: number; messages: number; decisions: number };
   onGo: (section: HomeSection) => void;
+  onGoActivity: () => void;
   onGoMoney: () => void;
 }) {
   const call = nextCallLine(project.nextCall, true);
@@ -110,11 +124,12 @@ export function AbroadHomeBand({
   const now = new Date().toISOString();
   const siteClock = zonedClock(now, SITE_ZONE);
   const yourClock = zone && !isHomeZone(zone) ? zonedClock(now, zone) : null;
-  const chips = [
-    { key: "activity", count: activity, label: "new updates", section: null as HomeSection | null },
-    { key: "messages", count: messages, label: "unread messages", section: "messages" as HomeSection },
-    { key: "decisions", count: decisions, label: "decisions open", section: "decisions" as HomeSection },
-  ].filter((c) => c.count > 0);
+  const allChips: { key: "activity" | "messages" | "decisions"; count: number; label: string }[] = [
+    { key: "activity", count: activity, label: "new updates" },
+    { key: "messages", count: messages, label: "unread messages" },
+    { key: "decisions", count: decisions, label: "decisions open" },
+  ];
+  const chips = allChips.filter((chip) => chip.count > 0);
 
   return (
     <section className="grid gap-5 rounded-2xl border border-gold/40 bg-gold/10 p-5 xl:grid-cols-[1.2fr_1fr_1fr]">
@@ -137,8 +152,18 @@ export function AbroadHomeBand({
         <p className="mt-3 text-[13px] leading-relaxed text-ink/65">
           {call
             ? `Next call — ${call}`
-            : "No call scheduled yet — message the studio and it lands here, in your time."}
+            : "No call scheduled yet. Message the studio to arrange one in your time."}
         </p>
+        {!call ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="mt-2"
+            onClick={() => onGo("messages")}
+          >
+            Message the studio <ArrowRight className="size-3.5" />
+          </Button>
+        ) : null}
       </div>
 
       <div className="min-w-0">
@@ -151,12 +176,11 @@ export function AbroadHomeBand({
               <button
                 key={chip.key}
                 type="button"
-                onClick={() => (chip.section ? onGo(chip.section) : undefined)}
-                className={
-                  chip.section
-                    ? "flex items-center gap-1.5 rounded-full border border-gold/50 bg-white px-3 py-1.5 text-[12px] text-maroon transition-colors hover:border-burgundy/40"
-                    : "flex items-center gap-1.5 rounded-full border border-ink/15 bg-white/70 px-3 py-1.5 text-[12px] text-ink/70"
-                }
+                onClick={() => {
+                  if (chip.key === "activity") onGoActivity();
+                  else onGo(chip.key);
+                }}
+                className="flex items-center gap-1.5 rounded-full border border-gold/50 bg-white px-3 py-1.5 text-[12px] text-maroon transition-colors hover:border-burgundy/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
               >
                 <MessageSquare className="size-3.5" aria-hidden />
                 <strong className="font-semibold">{chip.count}</strong> {chip.label}

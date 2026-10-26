@@ -11,9 +11,9 @@
 // static `*.server.*` import from a module the browser can see.
 
 import { getSql, type Sql } from "@/lib/db";
+import { isStaffRole, type StaffRole } from "@/lib/staff-access-rules";
 export { demotesLastAdmin } from "@/lib/staff-access-rules";
-
-export type StaffRole = "staff" | "admin";
+export type { StaffRole } from "@/lib/staff-access-rules";
 
 export type StaffIdentity = {
   userId: string;
@@ -34,11 +34,10 @@ export async function lookupRole(sql: Sql, email: string | null): Promise<StaffR
     select role from client_role where lower(email) = ${key} limit 1
   `;
   const role = rows[0]?.role;
-  return role === "admin" || role === "staff" ? role : null;
+  return isStaffRole(role) ? role : null;
 }
 
 /** Convenience for callers that already hold the SQL client. */
 export async function isStaffEmail(email: string | null): Promise<boolean> {
   return (await lookupRole(await getSql(), email)) !== null;
 }
-

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Banknote,
+  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   CreditCard,
@@ -47,25 +48,25 @@ import { countAwaiting } from "@/lib/variations";
 import { AbroadPanel } from "@/components/dashboard/abroad-panel";
 import { AbroadHomeBand, LocalHomeBand } from "@/components/dashboard/home-band";
 import { HowToPayPanel } from "@/components/dashboard/how-to-pay-panel";
-import { VisitPanel } from "@/components/dashboard/presence-panel";
+import {
+  ClientCalendarPanel,
+  VisitPanel,
+  WalkthroughPanel,
+} from "@/components/dashboard/presence-panel";
+import { formatDay } from "@/lib/presence";
 import { isAbroad } from "@/lib/abroad";
 import { clientZone, isHomeZone, zonedClock } from "@/lib/tz";
 import { getMyProfile } from "@/lib/profile-server";
-import type {
-  ActivityItem,
-  PortalPayload,
-  ProjectSummary,
-} from "@/lib/diaspora/server";
+import type { ActivityItem, PortalPayload, ProjectSummary } from "@/lib/diaspora/server";
 import type { DocumentSummary } from "@/lib/invoice-server";
 import { cn } from "@/lib/utils";
 
 /**
  * The client's side of the same dashboard.
  *
- * A client does not need a funnel or a studio's exposure — they need to know what
- * stage their build is at, what they owe, what has been certified, and what is
- * waiting on them. That is what the four headline numbers are, and everything
- * else hangs off a section in the sidebar.
+ * The Overview surfaces progress, money, evidence, and the client's next action.
+ * Local and diaspora clients share project access while getting different
+ * coordination tools.
  */
 
 const KES = new Intl.NumberFormat("en-KE", { maximumFractionDigits: 0 });
@@ -98,6 +99,7 @@ const DOC_TONE: Record<string, string> = {
 
 type Section =
   | "overview"
+  | "calendar"
   | "approvals"
   | "selections"
   | "milestones"
@@ -137,6 +139,7 @@ export function ClientDashboard({
   children?: React.ReactNode;
 }) {
   const [section, setSection] = useState<Section>("overview");
+  const activityRef = useRef<HTMLDivElement>(null);
   const p = data.project;
 
   // Shared with ProfilePanel under the same key: flipping "I live abroad" or
@@ -185,15 +188,19 @@ export function ClientDashboard({
   const b = p.budget;
 
   const openDecisions = data.decisions.filter((d) => d.state !== "decided");
+  const datedDecisions = openDecisions.filter((decision) => decision.dueDate);
+  const datedPayments = data.payments.filter(
+    (payment) =>
+      (payment.status === "due" || payment.status === "scheduled") &&
+      payment.dueDate.trim().length > 0,
+  );
   const releasable = data.payments.filter((x) => x.status === "certified");
   // Only stages the studio has marked ready can be approved from the overview.
   const awaitingApproval = data.milestones.filter(
-    (m) =>
-      m.approvalReady === true && (m.status === "active" || m.status === "blocked"),
+    (m) => m.approvalReady === true && (m.status === "active" || m.status === "blocked"),
   );
-  const newActivity = data.activity.filter(
-    (a) => firstVisit && a.at > firstVisit,
-  );
+  const newActivity = data.activity.filter((a) => firstVisit && a.at > firstVisit);
+  const activityToShow = abroad && newActivity.length > 0 ? newActivity : data.activity.slice(0, 8);
 
   const moneySlices: Slice[] = [
     { name: "Paid to you", value: b.paidToDate, color: "var(--color-maroon)" },
@@ -205,10 +212,7 @@ export function ClientDashboard({
     { name: "Held in retention", value: b.retentionHeld, color: "var(--color-burgundy)" },
     {
       name: "Not yet due",
-      value: Math.max(
-        0,
-        p.contractValue - b.paidToDate - b.currentlyCertified - b.retentionHeld,
-      ),
+      value: Math.max(0, p.contractValue - b.paidToDate - b.currentlyCertified - b.retentionHeld),
       color: "rgba(60,5,8,0.10)",
     },
   ];
@@ -223,6 +227,7 @@ export function ClientDashboard({
           title: "Your project",
           items: [
             { id: "overview", label: "Overview", icon: LayoutDashboard },
+            { id: "calendar", label: "Calendar", icon: CalendarDays },
             {
               id: "approvals",
               label: "Approvals",
@@ -272,9 +277,7 @@ export function ClientDashboard({
               icon: Wrench,
               badge: awaitingFixCheck || undefined,
             },
-            ...(abroad
-              ? [{ id: "abroad", label: "Abroad", icon: Globe }]
-              : []),
+            ...(abroad ? [{ id: "abroad", label: "Abroad", icon: Globe }] : []),
           ],
         },
         {
@@ -311,8 +314,8 @@ export function ClientDashboard({
               {p.isSample ? <Badge tone="gold">Demonstration</Badge> : null}
             </h1>
             <p className="text-[12px] text-muted">
-              <span className="font-mono">{p.reference}</span> · {p.stage} ·{" "}
-              {p.targetLabel} handover
+              <span className="font-mono">{p.reference}</span> · {p.stage} · {p.targetLabel}{" "}
+              handover
             </p>
           </div>
           {children}
@@ -321,9 +324,9 @@ export function ClientDashboard({
     >
       {p.isSample ? (
         <div className="mb-5 rounded-2xl border border-gold/30 bg-gold/10 p-4 text-[12px] leading-relaxed text-maroon">
-          This is the demonstration project — a sample client and sample figures, so you
-          can look through a complete record. Open a project of your own and the portal
-          works to your dates, your contract value and your approvals.
+          This is the demonstration project — a sample client and sample figures, so you can look
+          through a complete record. Open a project of your own and the portal works to your dates,
+          your contract value and your approvals.
         </div>
       ) : null}
 
@@ -342,38 +345,164 @@ export function ClientDashboard({
                 decisions: openDecisions.length,
               }}
               onGo={(s) => setSection(s as Section)}
+              onGoActivity={() => {
+                activityRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                activityRef.current?.focus({ preventScroll: true });
+              }}
               onGoMoney={() => setSection("money")}
             />
           ) : (
-            <LocalHomeBand project={p} onGoMoney={() => setSection("money")} />
+            <LocalHomeBand
+              project={p}
+              onGoMoney={() => setSection("money")}
+              onGoMessages={() => setSection("messages")}
+            />
           )}
 
-          {nudges.length > 0 ? (
-            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5">
-              <p className="text-[14px] leading-relaxed text-amber-900">
-                <strong className="font-semibold">
-                  {nudges.length} decision{nudges.length === 1 ? "" : "s"} still open on your
-                  project
-                </strong>
+          <Panel
+            title="Needs you"
+            subtitle="Decisions, certified payments and stages waiting for your action"
+          >
+            {nudges.length > 0 ? (
+              <p className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-900">
+                {nudges.length} decision{nudges.length === 1 ? "" : "s"} still open.
                 {oldestNudge(nudges) > 0
-                  ? ` — the oldest has been waiting ${oldestNudge(nudges)} days.`
-                  : "."}{" "}
+                  ? ` The oldest has been waiting ${oldestNudge(nudges)} days.`
+                  : ""}{" "}
                 A stage cannot move until you answer, and the site keeps running either way.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {nudges.map((n) => (
+            ) : null}
+            <ul className="space-y-2">
+              {openDecisions.length === 0 &&
+              releasable.length === 0 &&
+              awaitingApproval.length === 0 ? (
+                <li className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
+                  Nothing is waiting on you. The site keeps running either way.
+                </li>
+              ) : null}
+
+              {openDecisions.map((d) => (
+                <li key={d.id}>
                   <button
-                    key={n.decisionId}
                     type="button"
                     onClick={() => setSection("decisions")}
-                    className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[12px] text-amber-900 transition-colors hover:border-amber-500"
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-left transition-colors hover:border-amber-500"
                   >
-                    {n.title} · {n.ageDays}d
+                    <span className="min-w-0">
+                      <span className="block text-[13px] text-maroon">{d.title}</span>
+                      <span className="mt-0.5 block text-[11px] text-ink/55">
+                        A decision is waiting on you
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[11px] uppercase tracking-[0.1em] text-amber-900">
+                      Decide
+                    </span>
                   </button>
+                </li>
+              ))}
+
+              {releasable.map((pay) => (
+                <li
+                  key={pay.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 p-3"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[13px] text-maroon">{pay.label}</span>
+                    <span className="mt-0.5 block text-[11px] text-ink/55">
+                      Certified and waiting for your release
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-[13px] text-maroon">{kes(pay.amount)}</span>
+                    <Button
+                      size="sm"
+                      disabled={pending === `rel-${pay.id}`}
+                      onClick={() => onRelease(pay.id)}
+                    >
+                      Release
+                    </Button>
+                  </span>
+                </li>
+              ))}
+
+              {awaitingApproval.map((m) => (
+                <li
+                  key={m.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 p-3"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[13px] text-maroon">{m.name}</span>
+                    <span className="mt-0.5 block text-[11px] text-ink/55">
+                      {m.status === "blocked"
+                        ? "Blocked — check the evidence before approving"
+                        : "Ready for your approval"}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-[12px] text-ink/55">{m.progress}%</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pending === `ms-${m.id}`}
+                      onClick={() => onApprove(m.id)}
+                    >
+                      Approve
+                    </Button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+
+          <Panel title="Dates to watch" subtitle="Decision reply dates and scheduled payment dates">
+            {datedDecisions.length === 0 && datedPayments.length === 0 ? (
+              <p className="text-[13px] text-ink/55">
+                No explicit decision or payment dates are recorded. The studio will update this list
+                when a date is set.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {datedDecisions.map((decision) => (
+                  <li key={`decision-${decision.id}`}>
+                    <button
+                      type="button"
+                      onClick={() => setSection("decisions")}
+                      className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-ink/10 p-3 text-left hover:border-gold"
+                    >
+                      <span className="text-[13px] text-maroon">{decision.title}</span>
+                      <span className="text-[12px] text-ink/55">
+                        Reply by {formatDay(decision.dueDate ?? null) ?? decision.dueDate}
+                      </span>
+                    </button>
+                  </li>
                 ))}
-              </div>
-            </div>
-          ) : null}
+                {datedPayments.map((payment) => (
+                  <li key={`payment-${payment.id}`}>
+                    <button
+                      type="button"
+                      onClick={() => setSection("money")}
+                      className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-ink/10 p-3 text-left hover:border-gold"
+                    >
+                      <span className="text-[13px] text-maroon">{payment.label}</span>
+                      <span className="text-[12px] text-ink/55">
+                        {payment.status === "due" ? "Due" : "Scheduled"} {payment.dueDate}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          {abroad ? (
+            <WalkthroughPanel projectId={p.id} />
+          ) : (
+            <VisitPanel
+              projectId={p.id}
+              zone={zone}
+              activeMilestoneName={data.milestones.find((m) => m.status === "active")?.name ?? null}
+            />
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
@@ -419,19 +548,6 @@ export function ClientDashboard({
             />
           </div>
 
-          {/* The local track's half of the presence split: ask to walk the
-              building. The abroad track gets the walkthrough card in its own
-              section instead — one table, two doors. */}
-          {abroad ? null : (
-            <VisitPanel
-              projectId={p.id}
-              zone={zone}
-              activeMilestoneName={
-                data.milestones.find((m) => m.status === "active")?.name ?? null
-              }
-            />
-          )}
-
           <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
             <Panel title="Where your money stands" subtitle="Against the priced contract">
               <div className="grid gap-4 sm:grid-cols-[minmax(0,190px)_1fr] sm:items-center">
@@ -451,105 +567,12 @@ export function ClientDashboard({
                         <span className="truncate text-ink/70">{slice.name}</span>
                       </span>
                       <span className="shrink-0 text-ink/60">
-                        {moneyTotal > 0
-                          ? ((slice.value / moneyTotal) * 100).toFixed(1)
-                          : "0.0"}
-                        %
+                        {moneyTotal > 0 ? ((slice.value / moneyTotal) * 100).toFixed(1) : "0.0"}%
                       </span>
                     </li>
                   ))}
                 </ul>
               </div>
-            </Panel>
-
-            <Panel
-              title="Needs you"
-              subtitle="A stage cannot move until these are answered"
-              actions={
-                <Button size="sm" variant="outline" onClick={() => setSection("milestones")}>
-                  Review
-                </Button>
-              }
-            >
-              <ul className="space-y-2">
-                {openDecisions.length === 0 && releasable.length === 0 &&
-                awaitingApproval.length === 0 ? (
-                  <li className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
-                    Nothing is waiting on you. The site keeps running either way.
-                  </li>
-                ) : null}
-
-                {openDecisions.map((d) => (
-                  <li key={d.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSection("decisions")}
-                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-left transition-colors hover:border-amber-500"
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-[13px] text-maroon">{d.title}</span>
-                        <span className="mt-0.5 block text-[11px] text-ink/55">
-                          A decision is waiting on you
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-[11px] uppercase tracking-[0.1em] text-amber-900">
-                        Decide
-                      </span>
-                    </button>
-                  </li>
-                ))}
-
-                {releasable.map((pay) => (
-                  <li
-                    key={pay.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 p-3"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-[13px] text-maroon">{pay.label}</span>
-                      <span className="mt-0.5 block text-[11px] text-ink/55">
-                        Certified and waiting for your release
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-3">
-                      <span className="text-[13px] text-maroon">{kes(pay.amount)}</span>
-                      <Button
-                        size="sm"
-                        disabled={pending === `rel-${pay.id}`}
-                        onClick={() => onRelease(pay.id)}
-                      >
-                        Release
-                      </Button>
-                    </span>
-                  </li>
-                ))}
-
-                {awaitingApproval.map((m) => (
-                  <li
-                    key={m.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 p-3"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-[13px] text-maroon">{m.name}</span>
-                      <span className="mt-0.5 block text-[11px] text-ink/55">
-                        {m.status === "blocked"
-                          ? "Blocked — check the evidence before approving"
-                          : "Ready for your approval"}
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-3">
-                      <span className="text-[12px] text-ink/55">{m.progress}%</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={pending === `ms-${m.id}`}
-                        onClick={() => onApprove(m.id)}
-                      >
-                        Approve
-                      </Button>
-                    </span>
-                  </li>
-                ))}
-              </ul>
             </Panel>
           </div>
 
@@ -565,9 +588,7 @@ export function ClientDashboard({
               title="Who is responsible"
               subtitle="Named, with the registration number that governs their work"
             >
-              <p className="text-[13px] leading-relaxed text-ink/65">
-                {CONTRACTOR.note}
-              </p>
+              <p className="text-[13px] leading-relaxed text-ink/65">{CONTRACTOR.note}</p>
               <ul className="mt-4 grid gap-3 sm:grid-cols-2">
                 {PROFESSIONALS.map((pro) => (
                   <li key={pro.regNo} className="rounded-xl border border-ink/10 p-4">
@@ -587,18 +608,31 @@ export function ClientDashboard({
               </ul>
             </Panel>
 
-            <Panel
-              title="Recent activity"
-              subtitle={newActivity.length > 0 ? `${newActivity.length} since your last visit` : undefined}
-              bodyClassName="p-0"
+            <div
+              ref={activityRef}
+              tabIndex={-1}
+              className="scroll-mt-6 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
             >
-              <ActivityFeed items={data.activity.slice(0, 8)} />
-            </Panel>
+              <Panel
+                title="Recent activity"
+                subtitle={
+                  abroad && newActivity.length > 0
+                    ? `All ${newActivity.length} updates since your last visit`
+                    : undefined
+                }
+                bodyClassName="p-0"
+              >
+                <ActivityFeed items={activityToShow} />
+              </Panel>
+            </div>
           </div>
         </div>
       ) : null}
 
       {section === "approvals" ? <ApprovalsPanel projectId={p.id} /> : null}
+      {section === "calendar" ? (
+        <ClientCalendarPanel projectId={p.id} nextCall={p.nextCall} zone={zone} />
+      ) : null}
 
       {section === "selections" ? (
         <SelectionsPanel projectId={p.id} onChanged={() => void onReloaded?.()} />
@@ -607,11 +641,7 @@ export function ClientDashboard({
       {section === "milestones" ? (
         <div className="space-y-5">
           <ProgrammePanel project={p} zone={zone} />
-          <MilestonePanel
-            milestones={data.milestones}
-            onApprove={onApprove}
-            pending={pending}
-          />
+          <MilestonePanel milestones={data.milestones} onApprove={onApprove} pending={pending} />
           <EvidencePanel projectId={p.id} />
         </div>
       ) : null}
@@ -648,8 +678,8 @@ export function ClientDashboard({
                   <p className="mt-2 text-[13px] leading-relaxed text-paper/70">
                     A projected{" "}
                     {(((b.projectedAtCompletion - p.boqValue) / p.boqValue) * 100).toFixed(1)}%
-                    above contract. Every variation behind that figure is itemised in the
-                    decision log — there are no unapproved variations on this project.
+                    above contract. Every variation behind that figure is itemised in the decision
+                    log — there are no unapproved variations on this project.
                   </p>
                 </div>
               ) : null}
@@ -661,11 +691,7 @@ export function ClientDashboard({
               className="min-w-0"
               bodyClassName="p-0"
             >
-              <PaymentTable
-                payments={data.payments}
-                onRelease={onRelease}
-                pending={pending}
-              />
+              <PaymentTable payments={data.payments} onRelease={onRelease} pending={pending} />
             </Panel>
           </div>
 
@@ -674,20 +700,14 @@ export function ClientDashboard({
       ) : null}
 
       {section === "decisions" ? (
-        <DecisionsPanel
-          decisions={data.decisions}
-          onDecide={onDecide}
-          pending={pending}
-        />
+        <DecisionsPanel decisions={data.decisions} onDecide={onDecide} pending={pending} />
       ) : null}
 
       {section === "documents" ? (
         <VaultPanel documents={documents} projects={data.projects} />
       ) : null}
 
-      {section === "changes" ? (
-        <VariationsPanel project={p} onChanged={onReloaded} />
-      ) : null}
+      {section === "changes" ? <VariationsPanel project={p} onChanged={onReloaded} /> : null}
 
       {section === "after-handover" ? (
         <AfterHandoverPanel projectId={p.id} onChanged={onReloaded} />
@@ -708,22 +728,16 @@ export function ClientDashboard({
           project={p}
           milestones={data.milestones}
           onOpenProfile={() => setSection("profile")}
+          onOpenOverview={() => setSection("overview")}
         />
       ) : null}
     </DashboardShell>
   );
 }
 
-const oldestNudge = (nudges: { ageDays: number }[]) =>
-  Math.max(0, ...nudges.map((n) => n.ageDays));
+const oldestNudge = (nudges: { ageDays: number }[]) => Math.max(0, ...nudges.map((n) => n.ageDays));
 
-function ProgrammePanel({
-  project,
-  zone,
-}: {
-  project: PortalPayload["project"];
-  zone: string;
-}) {
+function ProgrammePanel({ project, zone }: { project: PortalPayload["project"]; zone: string }) {
   const items: [string, string][] = [
     ["Client", project.clientLabel],
     ["Engagement", project.contractType],
@@ -740,9 +754,7 @@ function ProgrammePanel({
   // line would only repeat the site's), and only falling back to the old
   // hand-typed text for projects that predate the instant being stored.
   const clock =
-    project.nextCall.at && zone && !isHomeZone(zone)
-      ? zonedClock(project.nextCall.at, zone)
-      : null;
+    project.nextCall.at && zone && !isHomeZone(zone) ? zonedClock(project.nextCall.at, zone) : null;
   const yourTime = clock
     ? `${clock.clock} ${clock.zone}`
     : !project.nextCall.at &&
@@ -752,7 +764,10 @@ function ProgrammePanel({
       : "";
 
   return (
-    <Panel title="Programme" subtitle={`Day ${project.schedule.daysElapsed} of ${project.schedule.daysTotal}`}>
+    <Panel
+      title="Programme"
+      subtitle={`Day ${project.schedule.daysElapsed} of ${project.schedule.daysTotal}`}
+    >
       <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {items.map(([k, v]) => (
           <div key={k}>
@@ -788,9 +803,7 @@ function ProgrammePanel({
       </div>
 
       <div className="mt-4 rounded-2xl border border-ink/10 bg-cream p-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-          Next call
-        </p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">Next call</p>
         <p className="mt-1.5 text-[15px] text-maroon">{project.nextCall.when}</p>
         {yourTime ? (
           <p className="text-[12px] text-ink/50">
@@ -920,9 +933,15 @@ function PaymentTable({
       <table className="w-full min-w-[520px] border-collapse text-left">
         <thead>
           <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
-            <th scope="col" className="px-5 py-3 font-bold">Stage</th>
-            <th scope="col" className="px-3 py-3 font-bold">Amount</th>
-            <th scope="col" className="px-3 py-3 font-bold">Status</th>
+            <th scope="col" className="px-5 py-3 font-bold">
+              Stage
+            </th>
+            <th scope="col" className="px-3 py-3 font-bold">
+              Amount
+            </th>
+            <th scope="col" className="px-3 py-3 font-bold">
+              Status
+            </th>
             <th scope="col" className="px-5 py-3 font-bold" />
           </tr>
         </thead>
@@ -984,8 +1003,8 @@ function DecisionsPanel({
     return (
       <Panel title="Decisions" subtitle="Nothing raised on this project yet">
         <p className="text-[13px] text-ink/55">
-          When ATRO needs a choice from you it appears here, with the options and the cost
-          impact, and your answer is written into the record with the date.
+          When ATRO needs a choice from you it appears here, with the options and the cost impact,
+          and your answer is written into the record with the date.
         </p>
       </Panel>
     );
@@ -1000,7 +1019,13 @@ function DecisionsPanel({
           <Panel
             key={d.id}
             title={d.title}
-            subtitle={decided ? `Answered ${d.date}` : `Raised ${d.date}`}
+            subtitle={
+              decided
+                ? `Answered ${d.date}`
+                : `Raised ${d.date}${
+                    d.dueDate ? ` · Reply by ${formatDay(d.dueDate) ?? d.dueDate}` : ""
+                  }`
+            }
             actions={
               decided ? (
                 <Badge tone="gold">Chose: {d.chosen}</Badge>
@@ -1034,7 +1059,9 @@ function DecisionsPanel({
                       )}
                     >
                       <span>{option}</span>
-                      {isChosen ? <span className="text-[11px] uppercase tracking-[0.1em]">Chosen</span> : null}
+                      {isChosen ? (
+                        <span className="text-[11px] uppercase tracking-[0.1em]">Chosen</span>
+                      ) : null}
                     </button>
                   </li>
                 );
@@ -1070,9 +1097,7 @@ function ActivityFeed({ items }: { items: ActivityItem[] }) {
             <FileText className="size-3.5 shrink-0 text-gold" aria-hidden />
             {a.title}
           </p>
-          {a.body ? (
-            <p className="mt-1 text-[12px] leading-relaxed text-ink/60">{a.body}</p>
-          ) : null}
+          {a.body ? <p className="mt-1 text-[12px] leading-relaxed text-ink/60">{a.body}</p> : null}
           <p className="mt-1 text-[11px] text-muted">
             {new Date(a.at).toLocaleDateString("en-KE", {
               day: "numeric",
@@ -1106,8 +1131,8 @@ function VaultPanel({
             <FileText className="mx-auto size-6 text-ink/30" />
             <p className="mt-3 font-display text-lg text-maroon">No documents yet</p>
             <p className="mx-auto mt-2 max-w-md text-[13px] text-ink/55">
-              Your first certificate appears here as soon as ATRO certifies work on your
-              project. You can print it or save it as a PDF from there.
+              Your first certificate appears here as soon as ATRO certifies work on your project.
+              You can print it or save it as a PDF from there.
             </p>
           </div>
         ) : (
@@ -1115,9 +1140,15 @@ function VaultPanel({
             <table className="w-full min-w-[520px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
-                  <th scope="col" className="px-5 py-3 font-bold">Document</th>
-                  <th scope="col" className="px-3 py-3 font-bold">Issued</th>
-                  <th scope="col" className="px-3 py-3 font-bold">Amount</th>
+                  <th scope="col" className="px-5 py-3 font-bold">
+                    Document
+                  </th>
+                  <th scope="col" className="px-3 py-3 font-bold">
+                    Issued
+                  </th>
+                  <th scope="col" className="px-3 py-3 font-bold">
+                    Amount
+                  </th>
                   <th scope="col" className="px-5 py-3 font-bold" />
                 </tr>
               </thead>
@@ -1130,7 +1161,9 @@ function VaultPanel({
                         <span
                           className={cn(
                             "rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
-                            doc.status === "void" ? "border-red-200 bg-red-50 text-red-800" : DOC_TONE[doc.kind],
+                            doc.status === "void"
+                              ? "border-red-200 bg-red-50 text-red-800"
+                              : DOC_TONE[doc.kind],
                           )}
                         >
                           {doc.status === "void" ? "Void" : "Issued"}

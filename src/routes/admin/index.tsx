@@ -28,17 +28,11 @@ import { Panel } from "@/components/ui/panel";
 import { StatCard } from "@/components/ui/stat-card";
 import { Accordion, AccordionItem } from "@/components/ui/accordion";
 import { DashboardShell } from "@/components/dashboard/shell";
-import {
-  Donut,
-  GroupedBars,
-  MonthlyColumns,
-  type Slice,
-} from "@/components/dashboard/charts";
-import {
-  EnquiriesInbox,
-  type EnquiryFilterStatus,
-} from "@/components/admin/enquiries-inbox";
+import { Donut, GroupedBars, MonthlyColumns, type Slice } from "@/components/dashboard/charts";
+import { EnquiriesInbox, type EnquiryFilterStatus } from "@/components/admin/enquiries-inbox";
 import { MyWorkPanel } from "@/components/admin/my-work";
+import { CoordinationCalendar } from "@/components/admin/coordination-calendar";
+import { ProjectWorkflowChecklist } from "@/components/admin/project-workflow-checklist";
 import { SelectionsPanel } from "@/components/admin/selections-panel";
 import { ApprovalsPanel } from "@/components/admin/approvals-panel";
 import { EvidenceUploader } from "@/components/admin/evidence-uploader";
@@ -49,12 +43,7 @@ import { PresencePanel } from "@/components/admin/presence-panel";
 import { readMessagesForStaff } from "@/lib/messages-server";
 import { listPresenceForStaff } from "@/lib/presence-server";
 import { isOpen } from "@/lib/presence";
-import {
-  getOpsOverview,
-  getStaffToday,
-  type GroupRow,
-  type StaffTodayOverview,
-} from "@/lib/ops";
+import { getOpsOverview, getStaffToday, type GroupRow, type StaffTodayOverview } from "@/lib/ops";
 import {
   getMyAccess,
   acceptMyInvite,
@@ -88,13 +77,12 @@ import {
   type StaffProjectSummary,
 } from "@/lib/staff-ops";
 import type { ActivityItem } from "@/lib/diaspora/server";
-import {
-  getPaymentInstructions,
-  savePaymentInstructions,
-} from "@/lib/how-to-pay-server";
+import { getPaymentInstructions, savePaymentInstructions } from "@/lib/how-to-pay-server";
 import { stampIn } from "@/lib/tz";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { cn } from "@/lib/utils";
+import type { StaffRole } from "@/lib/staff";
+import { canScheduleProjectCalls } from "@/lib/privileges";
 import {
   nextProjectLifecycleState,
   portfolioLifecycleLabel,
@@ -127,7 +115,6 @@ const kesShort = (n: number) => {
   return `KES ${KES.format(n)}`;
 };
 
-
 /* ── gate ── */
 
 function StaffWall() {
@@ -139,8 +126,8 @@ function StaffWall() {
         </span>
         <h1 className="mt-6 font-display text-2xl text-maroon">Studio console</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          This area is for ATRO staff. Sign in with the account ATRO has listed, or
-          ask the studio to add your address.
+          This area is for ATRO staff. Sign in with the account ATRO has listed, or ask the studio
+          to add your address.
         </p>
         <Button asChild className="mt-6 w-full">
           <Link to="/login">Sign in</Link>
@@ -172,8 +159,9 @@ function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: (
   });
   const [retrying, setRetrying] = useState(false);
   const [releasing, setReleasing] = useState(false);
-  const heldCount = (data?.log ?? []).filter((n) => n.status === "pending" && n.deliverAfter)
-    .length;
+  const heldCount = (data?.log ?? []).filter(
+    (n) => n.status === "pending" && n.deliverAfter,
+  ).length;
   /* onChanged refetches the project's headline, not this query key — so a
      release or retry redraws its own rows too, else the held button keeps
      counting rows that have already gone. */
@@ -190,10 +178,10 @@ function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: (
         <div>
           <h3 className="font-display text-lg text-maroon">Delivery log</h3>
           <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
-            Every post records what it tried to send and who it was for — the client,
-            or the studio's own contacts. A channel with no credentials is marked
-            skipped rather than quietly dropped, and one aimed at a client whose zone
-            is asleep waits for their morning instead of their three a.m.
+            Every post records what it tried to send and who it was for — the client, or the
+            studio's own contacts. A channel with no credentials is marked skipped rather than
+            quietly dropped, and one aimed at a client whose zone is asleep waits for their morning
+            instead of their three a.m.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -206,7 +194,9 @@ function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: (
                 void releaseHeldDeliveries({ data: { projectId } })
                   .then((r) => {
                     toast.success(
-                      r.sent === 1 ? "1 held row sent on its way." : `${r.sent} held rows sent on their way.`,
+                      r.sent === 1
+                        ? "1 held row sent on its way."
+                        : `${r.sent} held rows sent on their way.`,
                     );
                     refresh();
                   })
@@ -271,7 +261,12 @@ function DeliveryLog({ projectId, onChanged }: { projectId: string; onChanged: (
               <span className="min-w-0">
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="text-[13px] text-maroon">{n.title}</span>
-                  <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]", DELIVERY_STATUS[n.status] ?? DELIVERY_STATUS.pending)}>
+                  <span
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                      DELIVERY_STATUS[n.status] ?? DELIVERY_STATUS.pending,
+                    )}
+                  >
                     {n.audience === "studio" ? "studio" : "client"} · {n.channel} · {n.status}
                   </span>
                 </span>
@@ -492,13 +487,13 @@ function ProjectDetail({
   const [evidenceCaption, setEvidenceCaption] = useState("");
   const [evidenceDetail, setEvidenceDetail] = useState("");
   const [decisionTitle, setDecisionTitle] = useState("");
+  const [decisionDueDate, setDecisionDueDate] = useState("");
   const [decisionOptions, setDecisionOptions] = useState("");
   const [updateTitle, setUpdateTitle] = useState("");
   const [updateBody, setUpdateBody] = useState("");
   const [docName, setDocName] = useState("");
-  const [docCategory, setDocCategory] = useState<(typeof DOC_CATEGORIES)[number]["value"]>(
-    "Contract",
-  );
+  const [docCategory, setDocCategory] =
+    useState<(typeof DOC_CATEGORIES)[number]["value"]>("Contract");
   const [docRef, setDocRef] = useState("");
   const [docState, setDocState] = useState<(typeof DOC_STATES)[number]["value"]>("awaiting");
   const [lifecycleReason, setLifecycleReason] = useState("");
@@ -556,7 +551,8 @@ function ProjectDetail({
   const defectPeriodEndIsFuture =
     Boolean(p.defectPeriodEnd) && p.defectPeriodEnd > new Date().toISOString().slice(0, 10);
   const allTrackedMilestonesComplete =
-    data.milestones.length > 0 && data.milestones.every((milestone) => milestone.status === "complete");
+    data.milestones.length > 0 &&
+    data.milestones.every((milestone) => milestone.status === "complete");
   const nextLifecycle = nextProjectLifecycleState(p.lifecycleState);
   const lifecycleNeedsAdmin = nextLifecycle === "closed" || nextLifecycle === "archived";
   const canChangeLifecycle = !p.isSample && !!nextLifecycle && (!lifecycleNeedsAdmin || isAdmin);
@@ -578,217 +574,247 @@ function ProjectDetail({
     milestoneId?: string;
   }[] = [
     ...(blockedMilestones > 0
-      ? [{
-          label: "Blocked work",
-          detail: `${blockedMilestones} milestone${blockedMilestones === 1 ? "" : "s"} marked blocked`,
-          count: blockedMilestones,
-          section: "milestone-evidence",
-          milestoneId: firstBlockedMilestone?.id,
-        }]
+      ? [
+          {
+            label: "Blocked work",
+            detail: `${blockedMilestones} milestone${blockedMilestones === 1 ? "" : "s"} marked blocked`,
+            count: blockedMilestones,
+            section: "milestone-evidence",
+            milestoneId: firstBlockedMilestone?.id,
+          },
+        ]
       : []),
     ...(stillOpen > 0
-      ? [{
-          label: "Client decisions",
-          detail: `${stillOpen} decision${stillOpen === 1 ? "" : "s"} not yet recorded`,
-          count: stillOpen,
-          section: "client-decisions",
-        }]
+      ? [
+          {
+            label: "Client decisions",
+            detail: `${stillOpen} decision${stillOpen === 1 ? "" : "s"} not yet recorded`,
+            count: stillOpen,
+            section: "client-decisions",
+          },
+        ]
       : []),
     ...(certifiedPayments.length > 0
-      ? [{
-          label: "Certified payments",
-          detail: `${kes(certifiedTotal)} awaiting client release`,
-          count: certifiedPayments.length,
-          section: "financial-summary",
-        }]
+      ? [
+          {
+            label: "Certified payments",
+            detail: `${kes(certifiedTotal)} awaiting client release`,
+            count: certifiedPayments.length,
+            section: "financial-summary",
+          },
+        ]
       : []),
     ...(waitingToReply > 0
-      ? [{
-          label: "Client messages",
-          detail: `${waitingToReply} message${waitingToReply === 1 ? "" : "s"} waiting for a reply`,
-          count: waitingToReply,
-          section: "message-thread",
-        }]
+      ? [
+          {
+            label: "Client messages",
+            detail: `${waitingToReply} message${waitingToReply === 1 ? "" : "s"} waiting for a reply`,
+            count: waitingToReply,
+            section: "message-thread",
+          },
+        ]
       : []),
     ...(presenceOpen > 0
-      ? [{
-          label: "Site visit requests",
-          detail: `${presenceOpen} request${presenceOpen === 1 ? "" : "s"} awaiting a response`,
-          count: presenceOpen,
-          section: "site-presence",
-        }]
+      ? [
+          {
+            label: "Site visit requests",
+            detail: `${presenceOpen} request${presenceOpen === 1 ? "" : "s"} awaiting a response`,
+            count: presenceOpen,
+            section: "site-presence",
+          },
+        ]
       : []),
     ...(readyForClient > 0
-      ? [{
-          label: "Milestones ready for sign-off",
-          detail: `${readyForClient} milestone${readyForClient === 1 ? "" : "s"} marked ready for the client`,
-          count: readyForClient,
-          section: "approvals",
-        }]
+      ? [
+          {
+            label: "Milestones ready for sign-off",
+            detail: `${readyForClient} milestone${readyForClient === 1 ? "" : "s"} marked ready for the client`,
+            count: readyForClient,
+            section: "approvals",
+          },
+        ]
       : []),
   ];
 
   return (
     <div className="space-y-6">
       {isAdmin ? (
-      <section className="space-y-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="size-4" />
-              All projects
-            </Button>
-            <h2 className="mt-3 font-display text-2xl text-maroon">{p.title}</h2>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
-              <span className="font-mono">{p.reference}</span>
-              <span>{p.clientLabel}</span>
-              {p.clientCity ? <span>{p.clientCity}</span> : null}
-              {clientType === "diaspora" ? (
-                <Badge tone="gold" className="h-5 text-[9px]">From abroad</Badge>
-              ) : null}
-              <span>{p.startedLabel} → {p.targetLabel}</span>
-              {p.isSample ? <Badge tone="gold" className="h-5 text-[9px]">Sample</Badge> : null}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="font-display text-3xl text-maroon">{p.progress}%</p>
-            <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Build progress"
-            value={`${p.progress}%`}
-            sub={`${data.milestones.filter((m) => m.status === "complete").length} of ${data.milestones.length} tracked milestones complete`}
-            icon={CheckCircle2}
-            tone={p.progress >= 100 ? "good" : "default"}
-          />
-          <StatCard
-            label="Programme"
-            value={p.schedule.onTrack ? "On track" : "Needs review"}
-            sub={
-              p.schedule.note ||
-              (p.schedule.varianceDays !== 0
-                ? `Recorded variance: ${Math.abs(p.schedule.varianceDays)} days`
-                : p.schedule.daysRemaining > 0
-                  ? `${p.schedule.daysRemaining} days remaining`
-                  : "Based on the programme status recorded for this project")
-            }
-            icon={CalendarClock}
-            tone={p.schedule.onTrack ? "good" : "warn"}
-          />
-          <StatCard
-            label="Contract value"
-            value={kesShort(p.contractValue)}
-            exact={kes(p.contractValue)}
-            sub={`${kes(p.budget.paidToDate)} paid to date`}
-            icon={Banknote}
-          />
-          <StatCard
-            label="Certified, awaiting release"
-            value={kesShort(p.budget.currentlyCertified)}
-            exact={kes(p.budget.currentlyCertified)}
-            sub={`${kes(p.budget.retentionHeld)} held in retention`}
-            icon={Hourglass}
-            tone={p.budget.currentlyCertified > 0 ? "warn" : "default"}
-          />
-        </div>
-
-        <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-          <Panel
-            title="Needs attention"
-            subtitle="Open items from the project record—not a substitute for a site inspection."
-          >
-            {ownerActions.length === 0 ? (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
-                No tracked decisions, blocked milestones, certified payments, messages, visit requests, or client sign-offs are waiting.
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <Button variant="ghost" size="sm" onClick={onBack}>
+                <ArrowLeft className="size-4" />
+                All projects
+              </Button>
+              <h2 className="mt-3 font-display text-2xl text-maroon">{p.title}</h2>
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
+                <span className="font-mono">{p.reference}</span>
+                <span>{p.clientLabel}</span>
+                {p.clientCity ? <span>{p.clientCity}</span> : null}
+                {clientType === "diaspora" ? (
+                  <Badge tone="gold" className="h-5 text-[9px]">
+                    From abroad
+                  </Badge>
+                ) : null}
+                <span>
+                  {p.startedLabel} → {p.targetLabel}
+                </span>
+                {p.isSample ? (
+                  <Badge tone="gold" className="h-5 text-[9px]">
+                    Sample
+                  </Badge>
+                ) : null}
               </p>
-            ) : (
-              <ul className="space-y-2">
-                {ownerActions.map((action) => (
-                  <li key={action.label}>
-                    <button
-                      type="button"
-                      aria-label={`Review ${action.label}: ${action.detail}`}
-                      onClick={() => {
-                        if (action.milestoneId) setMilestoneId(action.milestoneId);
-                        setSectionRequest((current) => ({
-                          target: action.section,
-                          nonce: current.nonce + 1,
-                        }));
-                      }}
-                      className="flex w-full items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-left transition-colors hover:border-amber-400 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
-                    >
-                      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-800" aria-hidden />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[13px] font-medium text-maroon">{action.label}</span>
-                        <span className="mt-0.5 block text-[12px] text-ink/60">{action.detail}</span>
-                        <span className="mt-1 block text-[11px] font-medium text-burgundy">Review this item</span>
-                      </span>
-                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[12px] text-amber-900">
-                        {action.count}
-                      </span>
-                    </button>
-                  </li>
+            </div>
+            <div className="text-right">
+              <p className="font-display text-3xl text-maroon">{p.progress}%</p>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Build progress"
+              value={`${p.progress}%`}
+              sub={`${data.milestones.filter((m) => m.status === "complete").length} of ${data.milestones.length} tracked milestones complete`}
+              icon={CheckCircle2}
+              tone={p.progress >= 100 ? "good" : "default"}
+            />
+            <StatCard
+              label="Programme"
+              value={p.schedule.onTrack ? "On track" : "Needs review"}
+              sub={
+                p.schedule.note ||
+                (p.schedule.varianceDays !== 0
+                  ? `Recorded variance: ${Math.abs(p.schedule.varianceDays)} days`
+                  : p.schedule.daysRemaining > 0
+                    ? `${p.schedule.daysRemaining} days remaining`
+                    : "Based on the programme status recorded for this project")
+              }
+              icon={CalendarClock}
+              tone={p.schedule.onTrack ? "good" : "warn"}
+            />
+            <StatCard
+              label="Contract value"
+              value={kesShort(p.contractValue)}
+              exact={kes(p.contractValue)}
+              sub={`${kes(p.budget.paidToDate)} paid to date`}
+              icon={Banknote}
+            />
+            <StatCard
+              label="Certified, awaiting release"
+              value={kesShort(p.budget.currentlyCertified)}
+              exact={kes(p.budget.currentlyCertified)}
+              sub={`${kes(p.budget.retentionHeld)} held in retention`}
+              icon={Hourglass}
+              tone={p.budget.currentlyCertified > 0 ? "warn" : "default"}
+            />
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+            <Panel
+              title="Needs attention"
+              subtitle="Open items from the project record—not a substitute for a site inspection."
+            >
+              {ownerActions.length === 0 ? (
+                <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
+                  No tracked decisions, blocked milestones, certified payments, messages, visit
+                  requests, or client sign-offs are waiting.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {ownerActions.map((action) => (
+                    <li key={action.label}>
+                      <button
+                        type="button"
+                        aria-label={`Review ${action.label}: ${action.detail}`}
+                        onClick={() => {
+                          if (action.milestoneId) setMilestoneId(action.milestoneId);
+                          setSectionRequest((current) => ({
+                            target: action.section,
+                            nonce: current.nonce + 1,
+                          }));
+                        }}
+                        className="flex w-full items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-left transition-colors hover:border-amber-400 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
+                      >
+                        <AlertTriangle
+                          className="mt-0.5 size-4 shrink-0 text-amber-800"
+                          aria-hidden
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[13px] font-medium text-maroon">
+                            {action.label}
+                          </span>
+                          <span className="mt-0.5 block text-[12px] text-ink/60">
+                            {action.detail}
+                          </span>
+                          <span className="mt-1 block text-[11px] font-medium text-burgundy">
+                            Review this item
+                          </span>
+                        </span>
+                        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[12px] text-amber-900">
+                          {action.count}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+
+            <Panel
+              title="Financial position"
+              subtitle="Current recorded totals; open Financial summary below for the ledger and payment instructions."
+            >
+              <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {[
+                  ["Contract", kes(p.contractValue)],
+                  ["Paid", kes(p.budget.paidToDate)],
+                  ["Certified to date", kes(p.budget.certifiedToDate)],
+                  ["Awaiting release", kes(p.budget.currentlyCertified)],
+                  [`Retention · ${p.budget.retentionPct}%`, kes(p.budget.retentionHeld)],
+                  ["Projected at completion", kes(p.budget.projectedAtCompletion)],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-xl border border-ink/8 bg-cream/50 p-3">
+                    <dt className="text-[11px] text-muted">{label}</dt>
+                    <dd className="mt-1 text-[13px] font-medium text-maroon">{value}</dd>
+                  </div>
                 ))}
-              </ul>
-            )}
-          </Panel>
+              </dl>
+            </Panel>
+          </div>
 
-          <Panel
-            title="Financial position"
-            subtitle="Current recorded totals; open Financial summary below for the ledger and payment instructions."
-          >
-            <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              {[
-                ["Contract", kes(p.contractValue)],
-                ["Paid", kes(p.budget.paidToDate)],
-                ["Certified to date", kes(p.budget.certifiedToDate)],
-                ["Awaiting release", kes(p.budget.currentlyCertified)],
-                [`Retention · ${p.budget.retentionPct}%`, kes(p.budget.retentionHeld)],
-                ["Projected at completion", kes(p.budget.projectedAtCompletion)],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-xl border border-ink/8 bg-cream/50 p-3">
-                  <dt className="text-[11px] text-muted">{label}</dt>
-                  <dd className="mt-1 text-[13px] font-medium text-maroon">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </Panel>
-        </div>
-
-        {data.activity.length > 0 ? (
-          <Panel title="Latest project activity" subtitle="Most recent recorded updates">
-            <ol className="space-y-3">
-              {data.activity.slice(0, 3).map((item) => {
-                const at = item.at ? new Date(item.at) : null;
-                return (
-                  <li key={item.id} className="flex gap-3 border-l-2 border-gold/60 pl-3">
-                    <MessageSquare className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
-                    <div className="min-w-0">
-                      <p className="text-[13px] text-maroon">{item.title}</p>
-                      {item.body ? (
-                        <p className="mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-ink/55">
-                          {item.body}
-                        </p>
-                      ) : null}
-                      {at && !Number.isNaN(at.getTime()) ? (
-                        <time className="mt-1 block text-[10px] text-muted" dateTime={item.at}>
-                          {at.toLocaleString("en-KE", {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })}
-                        </time>
-                      ) : null}
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </Panel>
-        ) : null}
-      </section>
+          {data.activity.length > 0 ? (
+            <Panel title="Latest project activity" subtitle="Most recent recorded updates">
+              <ol className="space-y-3">
+                {data.activity.slice(0, 3).map((item) => {
+                  const at = item.at ? new Date(item.at) : null;
+                  return (
+                    <li key={item.id} className="flex gap-3 border-l-2 border-gold/60 pl-3">
+                      <MessageSquare className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
+                      <div className="min-w-0">
+                        <p className="text-[13px] text-maroon">{item.title}</p>
+                        {item.body ? (
+                          <p className="mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-ink/55">
+                            {item.body}
+                          </p>
+                        ) : null}
+                        {at && !Number.isNaN(at.getTime()) ? (
+                          <time className="mt-1 block text-[10px] text-muted" dateTime={item.at}>
+                            {at.toLocaleString("en-KE", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </time>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </Panel>
+          ) : null}
+        </section>
       ) : (
         <section className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -802,10 +828,18 @@ function ProjectDetail({
               <span>{p.clientLabel}</span>
               {p.clientCity ? <span>{p.clientCity}</span> : null}
               {clientType === "diaspora" ? (
-                <Badge tone="gold" className="h-5 text-[9px]">From abroad</Badge>
+                <Badge tone="gold" className="h-5 text-[9px]">
+                  From abroad
+                </Badge>
               ) : null}
-              <span>{p.startedLabel} → {p.targetLabel}</span>
-              {p.isSample ? <Badge tone="gold" className="h-5 text-[9px]">Sample</Badge> : null}
+              <span>
+                {p.startedLabel} → {p.targetLabel}
+              </span>
+              {p.isSample ? (
+                <Badge tone="gold" className="h-5 text-[9px]">
+                  Sample
+                </Badge>
+              ) : null}
             </p>
           </div>
           <div className="text-right">
@@ -820,7 +854,11 @@ function ProjectDetail({
         subtitle="Delivery progress and project close-out are tracked separately."
       >
         <div className="flex flex-wrap items-center gap-3">
-          <Badge tone={p.lifecycleState === "closed" || p.lifecycleState === "archived" ? "maroon" : "gold"}>
+          <Badge
+            tone={
+              p.lifecycleState === "closed" || p.lifecycleState === "archived" ? "maroon" : "gold"
+            }
+          >
             {portfolioLifecycleLabel(p.lifecycleState, allTrackedMilestonesComplete)}
           </Badge>
           {p.lifecycleState === "active_build" && allTrackedMilestonesComplete ? (
@@ -853,17 +891,19 @@ function ProjectDetail({
                   ? `Defect-period end date: ${p.defectPeriodEnd}.`
                   : p.defectPeriodEnd
                     ? `The defect-period end date (${p.defectPeriodEnd}) is not in the future. Update it in After handover.`
-                  : "Set the defect-period end date in After handover before starting this period."}
+                    : "Set the defect-period end date in After handover before starting this period."}
               </p>
             ) : null}
             {nextLifecycle === "closed" ? (
               <p className="text-[12px] leading-relaxed text-ink/60">
-                Admin close-out requires the defect period to have ended, all defects to be verified or declined, and retention to be released.
+                Admin close-out requires the defect period to have ended, all defects to be verified
+                or declined, and retention to be released.
               </p>
             ) : null}
             {nextLifecycle === "archived" ? (
               <p className="text-[12px] leading-relaxed text-ink/60">
-                Archiving removes this project from the live portfolio. Its history remains available.
+                Archiving removes this project from the live portfolio. Its history remains
+                available.
               </p>
             ) : null}
             <div>
@@ -895,7 +935,10 @@ function ProjectDetail({
                 Review transition
               </Button>
             ) : (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4" aria-live="polite">
+              <div
+                className="rounded-xl border border-amber-300 bg-amber-50 p-4"
+                aria-live="polite"
+              >
                 <p className="text-[13px] font-medium text-amber-950">
                   Move this project to {PROJECT_LIFECYCLE_LABEL[nextLifecycle]}?
                 </p>
@@ -955,10 +998,12 @@ function ProjectDetail({
               {lifecycleHistory.map((entry) => (
                 <li key={entry.id} className="border-l-2 border-gold/60 pl-3">
                   <p className="text-[12px] font-medium text-maroon">
-                    {PROJECT_LIFECYCLE_LABEL[entry.fromState]} → {PROJECT_LIFECYCLE_LABEL[entry.toState]}
+                    {PROJECT_LIFECYCLE_LABEL[entry.fromState]} →{" "}
+                    {PROJECT_LIFECYCLE_LABEL[entry.toState]}
                   </p>
                   <p className="mt-0.5 text-[11px] text-ink/60">
-                    {entry.changedBy} · {new Date(entry.changedAt).toLocaleString("en-KE", {
+                    {entry.changedBy} ·{" "}
+                    {new Date(entry.changedAt).toLocaleString("en-KE", {
                       dateStyle: "medium",
                       timeStyle: "short",
                     })}
@@ -970,6 +1015,10 @@ function ProjectDetail({
           )}
         </div>
       </Panel>
+
+      {!p.isSample ? (
+        <ProjectWorkflowChecklist projectId={projectId} documents={data.documents} />
+      ) : null}
 
       <Accordion className="space-y-4">
         <AccordionItem title="Client & consent">
@@ -1033,7 +1082,9 @@ function ProjectDetail({
                     className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3"
                   >
                     <span className="text-[13px] text-maroon">{payment.label}</span>
-                    <span className="text-[13px] font-medium text-maroon">{kes(payment.amount)}</span>
+                    <span className="text-[13px] font-medium text-maroon">
+                      {kes(payment.amount)}
+                    </span>
                     {payment.certificate ? (
                       <span className="w-full font-mono text-[11px] text-muted">
                         Certificate {payment.certificate}
@@ -1059,24 +1110,32 @@ function ProjectDetail({
               hint="Set the stage status the client sees. Completing one opens the next automatically."
               hideHeading
               onRun={() =>
-                run("write", async () => {
-                  if (!milestoneId) throw new Error("Pick a milestone first.");
-                  await updateMilestone({
-                    data: {
-                      projectId,
-                      milestoneId,
-                      status: status as "active" | "complete" | "blocked" | "pending",
-                      note: milestoneNote.trim() || undefined,
-                      approvalReady: readyToApprove,
-                    },
-                  });
-                  setMilestoneNote("");
-                }, "Milestone updated.")
+                run(
+                  "write",
+                  async () => {
+                    if (!milestoneId) throw new Error("Pick a milestone first.");
+                    await updateMilestone({
+                      data: {
+                        projectId,
+                        milestoneId,
+                        status: status as "active" | "complete" | "blocked" | "pending",
+                        note: milestoneNote.trim() || undefined,
+                        approvalReady: readyToApprove,
+                      },
+                    });
+                    setMilestoneNote("");
+                  },
+                  "Milestone updated.",
+                )
               }
             >
               <div>
                 <Label htmlFor="st-ms">Milestone</Label>
-                <Select id="st-ms" value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
+                <Select
+                  id="st-ms"
+                  value={milestoneId}
+                  onChange={(e) => setMilestoneId(e.target.value)}
+                >
                   <option value="">Choose a stage…</option>
                   {data.milestones.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -1128,20 +1187,25 @@ function ProjectDetail({
               hint="A site photograph or inspection note against a stage. The client sees this in the milestone record."
               hideHeading
               onRun={() =>
-                run("write", async () => {
-                  if (!milestoneId) throw new Error("Pick a milestone first.");
-                  if (evidenceCaption.trim().length < 3) throw new Error("Give the evidence a caption.");
-                  await addMilestoneEvidence({
-                    data: {
-                      projectId,
-                      milestoneId,
-                      caption: evidenceCaption.trim(),
-                      detail: evidenceDetail.trim(),
-                    },
-                  });
-                  setEvidenceCaption("");
-                  setEvidenceDetail("");
-                }, "Evidence added.")
+                run(
+                  "write",
+                  async () => {
+                    if (!milestoneId) throw new Error("Pick a milestone first.");
+                    if (evidenceCaption.trim().length < 3)
+                      throw new Error("Give the evidence a caption.");
+                    await addMilestoneEvidence({
+                      data: {
+                        projectId,
+                        milestoneId,
+                        caption: evidenceCaption.trim(),
+                        detail: evidenceDetail.trim(),
+                      },
+                    });
+                    setEvidenceCaption("");
+                    setEvidenceDetail("");
+                  },
+                  "Evidence added.",
+                )
               }
             >
               <div>
@@ -1173,7 +1237,11 @@ function ProjectDetail({
             >
               <EvidenceUploader
                 projectId={projectId}
-                milestones={data.milestones.map((m) => ({ id: m.id, order: m.order, name: m.name }))}
+                milestones={data.milestones.map((m) => ({
+                  id: m.id,
+                  order: m.order,
+                  name: m.name,
+                }))}
                 onUploaded={() => void refetch()}
               />
             </WriteBlock>
@@ -1183,25 +1251,33 @@ function ProjectDetail({
               hint="Puts a choice to the client. One option per line. They record it in the decision log."
               hideHeading
               onRun={() =>
-                run("write", async () => {
-                  const options = decisionOptions
-                    .split("\n")
-                    .map((o) => o.trim())
-                    .filter(Boolean);
-                  if (decisionTitle.trim().length < 3) throw new Error("Give the decision a title.");
-                  if (options.length < 2) throw new Error("List at least two options, one per line.");
-                  await raiseDecision({
-                    data: {
-                      projectId,
-                      title: decisionTitle.trim(),
-                      detail: "",
-                      options,
-                      costImpact: 0,
-                    },
-                  });
-                  setDecisionTitle("");
-                  setDecisionOptions("");
-                }, "Decision raised.")
+                run(
+                  "write",
+                  async () => {
+                    const options = decisionOptions
+                      .split("\n")
+                      .map((o) => o.trim())
+                      .filter(Boolean);
+                    if (decisionTitle.trim().length < 3)
+                      throw new Error("Give the decision a title.");
+                    if (options.length < 2)
+                      throw new Error("List at least two options, one per line.");
+                    await raiseDecision({
+                      data: {
+                        projectId,
+                        title: decisionTitle.trim(),
+                        detail: "",
+                        options,
+                        costImpact: 0,
+                        dueDate: decisionDueDate || null,
+                      },
+                    });
+                    setDecisionTitle("");
+                    setDecisionDueDate("");
+                    setDecisionOptions("");
+                  },
+                  "Decision raised.",
+                )
               }
             >
               <div>
@@ -1223,6 +1299,15 @@ function ProjectDetail({
                   placeholder={"Stone-coated tile\nConcrete roof tile\nMetal sheet"}
                 />
               </div>
+              <div>
+                <Label htmlFor="st-ddue">Reply by (optional)</Label>
+                <Input
+                  id="st-ddue"
+                  type="date"
+                  value={decisionDueDate}
+                  onChange={(e) => setDecisionDueDate(e.target.value)}
+                />
+              </div>
             </WriteBlock>
 
             <WriteBlock
@@ -1230,14 +1315,23 @@ function ProjectDetail({
               hint="Appears in the client's activity feed and counts as new since their last visit."
               hideHeading
               onRun={() =>
-                run("write", async () => {
-                  if (updateTitle.trim().length < 3) throw new Error("Give the update a title.");
-                  await postUpdate({
-                    data: { projectId, title: updateTitle.trim(), body: updateBody.trim(), kind: "note" },
-                  });
-                  setUpdateTitle("");
-                  setUpdateBody("");
-                }, "Update posted.")
+                run(
+                  "write",
+                  async () => {
+                    if (updateTitle.trim().length < 3) throw new Error("Give the update a title.");
+                    await postUpdate({
+                      data: {
+                        projectId,
+                        title: updateTitle.trim(),
+                        body: updateBody.trim(),
+                        kind: "note",
+                      },
+                    });
+                    setUpdateTitle("");
+                    setUpdateBody("");
+                  },
+                  "Update posted.",
+                )
               }
             >
               <div>
@@ -1282,22 +1376,26 @@ function ProjectDetail({
           <WriteBlock
             title="Add to the document vault"
             hint="Contracts, approvals, drawings and certificates the client can see. They keep the record."
-              hideHeading
+            hideHeading
             onRun={() =>
-              run("vault", async () => {
-                if (docName.trim().length < 3) throw new Error("Name the document.");
-                await addDocument({
-                  data: {
-                    projectId,
-                    name: docName.trim(),
-                    category: docCategory,
-                    reference: docRef.trim(),
-                    state: docState,
-                  },
-                });
-                setDocName("");
-                setDocRef("");
-              }, "Document added to the vault.")
+              run(
+                "vault",
+                async () => {
+                  if (docName.trim().length < 3) throw new Error("Name the document.");
+                  await addDocument({
+                    data: {
+                      projectId,
+                      name: docName.trim(),
+                      category: docCategory,
+                      reference: docRef.trim(),
+                      state: docState,
+                    },
+                  });
+                  setDocName("");
+                  setDocRef("");
+                },
+                "Document added to the vault.",
+              )
             }
           >
             <div>
@@ -1316,7 +1414,8 @@ function ProjectDetail({
                   id="st-doccat"
                   value={docCategory}
                   onChange={(e) =>
-                    setDocCategory(e.target.value as (typeof DOC_CATEGORIES)[number]["value"])}
+                    setDocCategory(e.target.value as (typeof DOC_CATEGORIES)[number]["value"])
+                  }
                 >
                   {DOC_CATEGORIES.map((c) => (
                     <option key={c.value} value={c.value}>
@@ -1340,7 +1439,8 @@ function ProjectDetail({
                   id="st-docstate"
                   value={docState}
                   onChange={(e) =>
-                    setDocState(e.target.value as (typeof DOC_STATES)[number]["value"])}
+                    setDocState(e.target.value as (typeof DOC_STATES)[number]["value"])
+                  }
                 >
                   {DOC_STATES.map((s) => (
                     <option key={s.value} value={s.value}>
@@ -1398,8 +1498,8 @@ function ProjectDetail({
         ) : null}
         <AccordionItem title="Statement of account">
           <p className="text-[12px] leading-relaxed text-ink/55">
-            A record of where the money stands — not a demand. The client sees it in
-            their documents.
+            A record of where the money stands — not a demand. The client sees it in their
+            documents.
           </p>
           {isAdmin ? (
             <Button
@@ -1417,32 +1517,31 @@ function ProjectDetail({
               Issue a statement
             </Button>
           ) : (
-            <p className="mt-4 text-[12px] text-muted">
-              Issuing a statement is an admin action.
-            </p>
+            <p className="mt-4 text-[12px] text-muted">Issuing a statement is an admin action.</p>
           )}
         </AccordionItem>
         <AccordionItem title="Retention">
           <p className="text-[12px] leading-relaxed text-ink/55">
-            Held against defects. Releasing it records that the defects liability
-            period has closed and pays the money out.
+            Held against defects. Releasing it records that the defects liability period has closed
+            and pays the money out.
           </p>
           {isAdmin ? (
             <Button
               className="mt-4 w-full"
               variant="outline"
               onClick={() =>
-                void run("retention", () => releaseRetention({ data: { projectId } }),
-                  "Retention released.")
+                void run(
+                  "retention",
+                  () => releaseRetention({ data: { projectId } }),
+                  "Retention released.",
+                )
               }
               disabled={pending === "retention"}
             >
               Release retention
             </Button>
           ) : (
-            <p className="mt-4 text-[12px] text-muted">
-              Releasing retention is an admin action.
-            </p>
+            <p className="mt-4 text-[12px] text-muted">Releasing retention is an admin action.</p>
           )}
         </AccordionItem>
         <AccordionItem
@@ -1461,6 +1560,7 @@ function ProjectDetail({
                   <p className="mt-1 text-[12px] text-ink/55">
                     {d.state === "decided" ? `Chose: ${d.chosen}` : "Awaiting the client"} ·{" "}
                     {d.date}
+                    {d.state !== "decided" && d.dueDate ? ` · Reply by ${d.dueDate}` : ""}
                   </p>
                 </li>
               ))}
@@ -1515,7 +1615,10 @@ const ATTENTION_COPY: Record<string, { label: string; cls: string }> = {
   stalled: { label: "Gone quiet", cls: "bg-stone/100 text-stone-700 border-stone-300" },
   unviewed: { label: "Client not looking", cls: "bg-sky-50 text-sky-900 border-sky-300" },
   message: { label: "Reply needed", cls: "bg-amber-50 text-amber-900 border-amber-300" },
-  variation: { label: "Change awaiting client", cls: "bg-stone/100 text-stone-700 border-stone-300" },
+  variation: {
+    label: "Change awaiting client",
+    cls: "bg-stone/100 text-stone-700 border-stone-300",
+  },
 };
 
 type SortKey = "newest" | "attention" | "largest";
@@ -1565,9 +1668,7 @@ function ProjectsTable({
     if (sort === "newest") return b.createdAt.localeCompare(a.createdAt);
     if (sort === "largest") return b.contractValue - a.contractValue;
     const score = (p: StaffProjectSummary) =>
-      (p.blockedStages > 0 ? 1000 : 0) +
-      (p.openDecisions > 0 ? 500 : 0) +
-      (p.onTrack ? 0 : 250);
+      (p.blockedStages > 0 ? 1000 : 0) + (p.openDecisions > 0 ? 500 : 0) + (p.onTrack ? 0 : 250);
     return score(b) - score(a);
   });
 
@@ -1675,13 +1776,27 @@ function ProjectsTable({
               <table className="w-full min-w-[900px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
-                    <th scope="col" className="px-5 py-3 font-bold">Project</th>
-                    <th scope="col" className="px-3 py-3 font-bold">Client</th>
-                    <th scope="col" className="px-3 py-3 font-bold">Stage</th>
-                    <th scope="col" className="px-3 py-3 font-bold">Lifecycle</th>
-                    <th scope="col" className="px-3 py-3 font-bold">Progress</th>
-                    <th scope="col" className="px-3 py-3 font-bold">Paid</th>
-                    <th scope="col" className="px-5 py-3 font-bold">Status</th>
+                    <th scope="col" className="px-5 py-3 font-bold">
+                      Project
+                    </th>
+                    <th scope="col" className="px-3 py-3 font-bold">
+                      Client
+                    </th>
+                    <th scope="col" className="px-3 py-3 font-bold">
+                      Stage
+                    </th>
+                    <th scope="col" className="px-3 py-3 font-bold">
+                      Lifecycle
+                    </th>
+                    <th scope="col" className="px-3 py-3 font-bold">
+                      Progress
+                    </th>
+                    <th scope="col" className="px-3 py-3 font-bold">
+                      Paid
+                    </th>
+                    <th scope="col" className="px-5 py-3 font-bold">
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1718,7 +1833,11 @@ function ProjectsTable({
                       <td className="px-3 py-3 text-[13px] text-ink/70">{p.stage || "—"}</td>
                       <td className="px-3 py-3">
                         <Badge
-                          tone={p.lifecycleState === "closed" || p.lifecycleState === "archived" ? "maroon" : "gold"}
+                          tone={
+                            p.lifecycleState === "closed" || p.lifecycleState === "archived"
+                              ? "maroon"
+                              : "gold"
+                          }
                           className="h-6 tracking-[0.08em]"
                         >
                           {portfolioLifecycleLabel(p.lifecycleState, p.buildComplete)}
@@ -1761,14 +1880,14 @@ function ProjectsTable({
                             : p.lifecycleState === "archived"
                               ? "Archived"
                               : p.buildComplete
-                            ? "Build complete"
-                            : p.blockedStages > 0
-                              ? "Blocked"
-                              : p.openDecisions > 0
-                                ? "Awaiting client"
-                                : p.onTrack
-                                  ? "On track"
-                                  : "Watch"}
+                                ? "Build complete"
+                                : p.blockedStages > 0
+                                  ? "Blocked"
+                                  : p.openDecisions > 0
+                                    ? "Awaiting client"
+                                    : p.onTrack
+                                      ? "On track"
+                                      : "Watch"}
                         </span>
                       </td>
                     </tr>
@@ -1805,13 +1924,7 @@ function StaffProjectsDirectory({
     }
     return (
       !query ||
-      [
-        project.title,
-        project.reference,
-        project.clientLabel,
-        project.clientCity,
-        project.stage,
-      ]
+      [project.title, project.reference, project.clientLabel, project.clientCity, project.stage]
         .join(" ")
         .toLowerCase()
         .includes(query)
@@ -1890,97 +2003,127 @@ function StaffProjectsDirectory({
           <table className="w-full min-w-[760px] border-collapse text-left">
             <thead>
               <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
-                <th scope="col" className="px-5 py-3 font-bold">Project</th>
-                <th scope="col" className="px-3 py-3 font-bold">Client</th>
-                <th scope="col" className="px-3 py-3 font-bold">Current stage</th>
-                <th scope="col" className="px-3 py-3 font-bold">Lifecycle</th>
-                <th scope="col" className="px-3 py-3 font-bold">Programme</th>
-                <th scope="col" className="px-5 py-3 font-bold">Follow-up</th>
+                <th scope="col" className="px-5 py-3 font-bold">
+                  Project
+                </th>
+                <th scope="col" className="px-3 py-3 font-bold">
+                  Client
+                </th>
+                <th scope="col" className="px-3 py-3 font-bold">
+                  Current stage
+                </th>
+                <th scope="col" className="px-3 py-3 font-bold">
+                  Lifecycle
+                </th>
+                <th scope="col" className="px-3 py-3 font-bold">
+                  Programme
+                </th>
+                <th scope="col" className="px-5 py-3 font-bold">
+                  Follow-up
+                </th>
               </tr>
             </thead>
             <tbody>
               {visibleProjects.map((project) => {
-              const followUp = project.blockedStages > 0
-                ? { label: "Blocked", cls: "border-red-200 bg-red-50 text-red-800" }
-                : project.openDecisions > 0
-                  ? { label: "Awaiting client", cls: "border-amber-300 bg-amber-50 text-amber-900" }
-                  : !project.onTrack
-                    ? { label: "Needs review", cls: "border-stone-300 bg-stone/100 text-stone-700" }
-                    : project.buildComplete
-                      ? { label: "Build complete", cls: "border-emerald-200 bg-emerald-50 text-emerald-800" }
-                      : { label: "No open issue", cls: "border-ink/10 bg-ink/2 text-ink/60" };
-              const lifecycleTone =
-                project.lifecycleState === "closed" || project.lifecycleState === "archived"
-                  ? "maroon"
-                  : "gold";
-              const programme =
-                project.daysRemaining > 0
-                  ? `${project.daysRemaining} days remaining`
-                  : project.daysRemaining < 0
-                    ? `${Math.abs(project.daysRemaining)} days past recorded target`
-                    : project.onTrack
-                      ? "No target-date detail"
-                      : "Programme needs review";
+                const followUp =
+                  project.blockedStages > 0
+                    ? { label: "Blocked", cls: "border-red-200 bg-red-50 text-red-800" }
+                    : project.openDecisions > 0
+                      ? {
+                          label: "Awaiting client",
+                          cls: "border-amber-300 bg-amber-50 text-amber-900",
+                        }
+                      : !project.onTrack
+                        ? {
+                            label: "Needs review",
+                            cls: "border-stone-300 bg-stone/100 text-stone-700",
+                          }
+                        : project.buildComplete
+                          ? {
+                              label: "Build complete",
+                              cls: "border-emerald-200 bg-emerald-50 text-emerald-800",
+                            }
+                          : { label: "No open issue", cls: "border-ink/10 bg-ink/2 text-ink/60" };
+                const lifecycleTone =
+                  project.lifecycleState === "closed" || project.lifecycleState === "archived"
+                    ? "maroon"
+                    : "gold";
+                const programme =
+                  project.daysRemaining > 0
+                    ? `${project.daysRemaining} days remaining`
+                    : project.daysRemaining < 0
+                      ? `${Math.abs(project.daysRemaining)} days past recorded target`
+                      : project.onTrack
+                        ? "No target-date detail"
+                        : "Programme needs review";
 
-              return (
-                <tr
-                  key={project.id}
-                  onClick={() => onOpen(project.id)}
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      onOpen(project.id);
-                    }
-                  }}
-                  className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
-                >
-                  <td className="px-5 py-3">
-                    <span className="block text-[13px] font-medium text-maroon">{project.title}</span>
-                    <span className="font-mono text-[11px] text-muted">{project.reference}</span>
-                    {project.source === "sample" ? (
-                      <span className="mt-1 block">
-                        <Badge tone="gold" className="h-4 text-[8px]">Sample</Badge>
+                return (
+                  <tr
+                    key={project.id}
+                    onClick={() => onOpen(project.id)}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onOpen(project.id);
+                      }
+                    }}
+                    className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
+                  >
+                    <td className="px-5 py-3">
+                      <span className="block text-[13px] font-medium text-maroon">
+                        {project.title}
                       </span>
-                    ) : null}
-                  </td>
-                  <td className="px-3 py-3 text-[13px] text-ink/70">
-                    {project.clientLabel || "Client not named"}
-                    {project.clientType === "diaspora" ? (
-                      <span className="mt-1 block">
-                        <Badge tone="gold" className="h-4 text-[8px]">From abroad</Badge>
+                      <span className="font-mono text-[11px] text-muted">{project.reference}</span>
+                      {project.source === "sample" ? (
+                        <span className="mt-1 block">
+                          <Badge tone="gold" className="h-4 text-[8px]">
+                            Sample
+                          </Badge>
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-3 text-[13px] text-ink/70">
+                      {project.clientLabel || "Client not named"}
+                      {project.clientType === "diaspora" ? (
+                        <span className="mt-1 block">
+                          <Badge tone="gold" className="h-4 text-[8px]">
+                            From abroad
+                          </Badge>
+                        </span>
+                      ) : null}
+                      {project.clientCity ? (
+                        <span className="block text-[11px] text-muted">{project.clientCity}</span>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-3 text-[13px] text-ink/70">
+                      {project.stage || "Not set"}
+                    </td>
+                    <td className="px-3 py-3">
+                      <Badge tone={lifecycleTone}>
+                        {portfolioLifecycleLabel(project.lifecycleState, project.buildComplete)}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-3 text-[12px] text-ink/65">{programme}</td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold",
+                          followUp.cls,
+                        )}
+                      >
+                        {followUp.label}
                       </span>
-                    ) : null}
-                    {project.clientCity ? (
-                      <span className="block text-[11px] text-muted">{project.clientCity}</span>
-                    ) : null}
-                  </td>
-                  <td className="px-3 py-3 text-[13px] text-ink/70">{project.stage || "Not set"}</td>
-                  <td className="px-3 py-3">
-                    <Badge tone={lifecycleTone}>
-                      {portfolioLifecycleLabel(project.lifecycleState, project.buildComplete)}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-3 text-[12px] text-ink/65">{programme}</td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={cn(
-                        "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold",
-                        followUp.cls,
-                      )}
-                    >
-                      {followUp.label}
-                    </span>
-                    {project.blockedStages > 1 || project.openDecisions > 1 ? (
-                      <span className="mt-1 block text-[10px] text-muted">
-                        {project.blockedStages > 0
-                          ? `${project.blockedStages} blocked stage${project.blockedStages === 1 ? "" : "s"}`
-                          : `${project.openDecisions} open decisions`}
-                      </span>
-                    ) : null}
-                  </td>
-                </tr>
-              );
+                      {project.blockedStages > 1 || project.openDecisions > 1 ? (
+                        <span className="mt-1 block text-[10px] text-muted">
+                          {project.blockedStages > 0
+                            ? `${project.blockedStages} blocked stage${project.blockedStages === 1 ? "" : "s"}`
+                            : `${project.openDecisions} open decisions`}
+                        </span>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
               })}
             </tbody>
           </table>
@@ -2111,17 +2254,9 @@ function StaffToday({
           <StatCard
             label="New enquiries"
             value={
-              todayLoading
-                ? "…"
-                : todayError && !today
-                  ? "—"
-                  : String(today?.newEnquiries ?? 0)
+              todayLoading ? "…" : todayError && !today ? "—" : String(today?.newEnquiries ?? 0)
             }
-            sub={
-              todayError && !today
-                ? "Enquiry count unavailable"
-                : "Not yet marked as contacted"
-            }
+            sub={todayError && !today ? "Enquiry count unavailable" : "Not yet marked as contacted"}
             icon={Inbox}
             tone={(today?.newEnquiries ?? 0) > 0 ? "warn" : "default"}
             className="h-full transition-colors hover:border-burgundy/30"
@@ -2159,8 +2294,8 @@ function StaffToday({
             </p>
           ) : projectsError && projects.length === 0 ? (
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-[13px] leading-relaxed text-amber-900">
-              Project records could not be loaded, so this queue cannot verify which follow-ups
-              are for live projects. Retry the project directory above.
+              Project records could not be loaded, so this queue cannot verify which follow-ups are
+              for live projects. Retry the project directory above.
             </p>
           ) : attentionItems.length === 0 ? (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-5 text-center">
@@ -2229,8 +2364,7 @@ function StaffToday({
             ) : today.newEnquiries > 0 ? (
               <p className="text-[13px] leading-relaxed text-ink/70">
                 <strong className="text-maroon">{today.newEnquiries}</strong>{" "}
-                {today.newEnquiries === 1 ? "enquiry is" : "enquiries are"} waiting to be
-                contacted.
+                {today.newEnquiries === 1 ? "enquiry is" : "enquiries are"} waiting to be contacted.
               </p>
             ) : (
               <p className="text-[13px] leading-relaxed text-ink/55">
@@ -2249,8 +2383,8 @@ function StaffToday({
             }
           >
             <p className="text-[13px] leading-relaxed text-ink/60">
-              Follow-up is coordinated by the studio admin. This queue helps the team see what
-              needs attention; it does not assign project ownership or approval authority.
+              Follow-up is coordinated by the studio admin. This queue helps the team see what needs
+              attention; it does not assign project ownership or approval authority.
             </p>
           </Panel>
         </div>
@@ -2312,8 +2446,7 @@ function Overview({
 
   const { funnel, money } = data;
   const exposure = money.certifiedUnreleased + money.retentionHeld;
-  const collectionRate =
-    money.contractValue > 0 ? (money.paid / money.contractValue) * 100 : 0;
+  const collectionRate = money.contractValue > 0 ? (money.paid / money.contractValue) * 100 : 0;
   const months = data.byMonth;
 
   const moneySlices: Slice[] = [
@@ -2405,7 +2538,10 @@ function Overview({
             />
             <ul className="space-y-2.5">
               {moneySlices.map((slice) => (
-                <li key={slice.name} className="flex items-center justify-between gap-3 text-[13px]">
+                <li
+                  key={slice.name}
+                  className="flex items-center justify-between gap-3 text-[13px]"
+                >
                   <span className="flex min-w-0 items-center gap-2">
                     <span
                       className="size-2.5 shrink-0 rounded-full"
@@ -2456,12 +2592,14 @@ function Overview({
 
         <Panel
           title="Needs a human"
-          subtitle={data.attention.length > 0 ? "Sorted by how long it has waited" : "Nothing stuck"}
+          subtitle={
+            data.attention.length > 0 ? "Sorted by how long it has waited" : "Nothing stuck"
+          }
         >
           {data.attention.length === 0 ? (
             <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
-              Nothing is stuck, nothing is waiting on a client, and everyone has looked at
-              their project recently.
+              Nothing is stuck, nothing is waiting on a client, and everyone has looked at their
+              project recently.
             </p>
           ) : (
             <ul className="space-y-2">
@@ -2532,9 +2670,7 @@ function ClientCard({ projectId }: { projectId: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-display text-lg text-maroon">
-            {data.displayName || "Not named yet"}
-          </p>
+          <p className="font-display text-lg text-maroon">{data.displayName || "Not named yet"}</p>
           <div className="mt-1 space-y-0.5 text-[13px] text-ink/65">
             {data.email ? <p>{data.email}</p> : null}
             {data.phone ? <p>{data.phone}</p> : null}
@@ -2551,8 +2687,8 @@ function ClientCard({ projectId }: { projectId: string }) {
       </div>
       {!data.hasProfile ? (
         <p className="rounded-xl border border-ink/10 bg-ink/2 px-4 py-3 text-[12px] leading-relaxed text-ink/55">
-          This project is waiting for its client to sign in and fill in their
-          profile. Contact details here come from the enquiry it was opened from.
+          This project is waiting for its client to sign in and fill in their profile. Contact
+          details here come from the enquiry it was opened from.
         </p>
       ) : null}
       <div>
@@ -2574,8 +2710,8 @@ function ClientCard({ projectId }: { projectId: string }) {
           ))}
         </ul>
         <p className="mt-2 text-[11px] leading-snug text-ink/45">
-          Set by the client in their portal. A channel switched off is never contacted —
-          the outbox records it as suppressed rather than dropping it.
+          Set by the client in their portal. A channel switched off is never contacted — the outbox
+          records it as suppressed rather than dropping it.
         </p>
       </div>
     </div>
@@ -2595,7 +2731,9 @@ function StudioActivityFeed({ items }: { items: ActivityItem[] }) {
       {items.map((a) => (
         <li key={a.id} className="py-3 first:pt-0 last:pb-0">
           <p className="text-[13px] text-maroon">{a.title}</p>
-          {a.body ? <p className="mt-0.5 text-[12px] leading-relaxed text-ink/60">{a.body}</p> : null}
+          {a.body ? (
+            <p className="mt-0.5 text-[12px] leading-relaxed text-ink/60">{a.body}</p>
+          ) : null}
           <p className="mt-0.5 text-[11px] text-muted">
             {new Date(a.at).toLocaleString("en-KE", {
               day: "numeric",
@@ -2748,9 +2886,8 @@ function RequestAccessCard() {
         </span>
         <h1 className="mt-6 font-display text-2xl text-maroon">Request studio access</h1>
         <p className="mt-3 text-[14px] leading-relaxed text-ink/65">
-          You are signed in as <strong>{me?.email || "this account"}</strong>, which is not
-          on the studio access list. Ask below and an existing admin approves it — usually the
-          same day.
+          You are signed in as <strong>{me?.email || "this account"}</strong>, which is not on the
+          studio access list. Ask below and an existing admin approves it — usually the same day.
         </p>
         {me?.requested ? (
           <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
@@ -2818,10 +2955,10 @@ function AcceptInviteCard({
           You have been invited to the studio
         </h1>
         <p className="mt-3 text-[14px] leading-relaxed text-ink/65">
-          <strong>{invite.invitedBy}</strong> invited <strong>{email}</strong> to open the
-          studio console.
-          {invite.note ? <> — “{invite.note}”</> : null} Accept below and the console
-          opens now; the invitation closes with it.
+          <strong>{invite.invitedBy}</strong> invited <strong>{email}</strong> to open the studio
+          console.
+          {invite.note ? <> — “{invite.note}”</> : null} Accept below and the console opens now; the
+          invitation closes with it.
         </p>
         <Button
           className="mt-6"
@@ -2854,7 +2991,7 @@ function AcceptInviteCard({
 
 function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"staff" | "admin">("staff");
+  const [role, setRole] = useState<StaffRole>("staff");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -2874,8 +3011,9 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
     <Accordion>
       <AccordionItem title="Who can open the console" hint={`${members.length}`} defaultOpen>
         <p className="text-[12px] leading-relaxed text-ink/55">
-          Access is an allowlist keyed on the address a person signs in with. You cannot
-          grant it to yourself.
+          Access is an allowlist keyed on the address a person signs in with. Office Managers
+          coordinate calls, visits, messages, and enquiries; money release, lifecycle changes, and
+          access administration remain admin-only.
         </p>
 
         <ul className="mt-4 space-y-2">
@@ -2887,7 +3025,7 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
               <span className="min-w-0">
                 <span className="block text-[13px] text-maroon">{m.email}</span>
                 <span className="text-[11px] text-ink/50">
-                  {m.role} · since {m.since}
+                  {m.role === "office_manager" ? "Office Manager" : m.role} · since {m.since}
                   {m.note ? ` · ${m.note}` : ""}
                 </span>
               </span>
@@ -2931,10 +3069,11 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
               <Select
                 id="st-role"
                 value={role}
-                onChange={(e) => setRole(e.target.value as "staff" | "admin")}
+                onChange={(e) => setRole(e.target.value as StaffRole)}
                 className="mt-1"
               >
                 <option value="staff">Staff</option>
+                <option value="office_manager">Office Manager</option>
                 <option value="admin">Admin</option>
               </Select>
             </div>
@@ -2982,9 +3121,9 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
           className="border-gold/40 bg-gold/5"
         >
           <p className="text-[12px] leading-relaxed text-ink/55">
-            An invitation goes to an address and opens nothing on its own — the console
-            opens the first time that address signs in and accepts. Use Grant access
-            instead for someone who already has an account.
+            An invitation goes to an address and opens nothing on its own — the console opens the
+            first time that address signs in and accepts. Use Grant access instead for someone who
+            already has an account.
           </p>
 
           {isAdmin ? (
@@ -3052,8 +3191,7 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
                       <span className="mt-1 block text-[12px] text-ink/60">{i.note}</span>
                     ) : null}
                     <span className="text-[11px] text-muted">
-                      invited {new Date(i.createdAt).toLocaleDateString("en-KE")} by{" "}
-                      {i.invitedBy}
+                      invited {new Date(i.createdAt).toLocaleDateString("en-KE")} by {i.invitedBy}
                     </span>
                   </span>
                   {isAdmin ? (
@@ -3070,9 +3208,7 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
                               void refetch();
                             })
                             .catch((e: unknown) =>
-                              toast.error(
-                                e instanceof Error ? e.message : "Could not send.",
-                              ),
+                              toast.error(e instanceof Error ? e.message : "Could not send."),
                             )
                             .finally(() => setInviteBusy(false));
                         }}
@@ -3091,9 +3227,7 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
                               void refetch();
                             })
                             .catch((e: unknown) =>
-                              toast.error(
-                                e instanceof Error ? e.message : "Could not withdraw.",
-                              ),
+                              toast.error(e instanceof Error ? e.message : "Could not withdraw."),
                             )
                             .finally(() => setInviteBusy(false));
                         }}
@@ -3139,7 +3273,9 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
                     disabled={busy}
                     onClick={() => {
                       setBusy(true);
-                      void grantStaff({ data: { email: r.email, role: "staff", note: "Approved from request" } })
+                      void grantStaff({
+                        data: { email: r.email, role: "staff", note: "Approved from request" },
+                      })
                         .then(() => {
                           toast.success(`${r.email} approved.`);
                           void refetch();
@@ -3167,13 +3303,24 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
 const TABS = [
   { id: "work", label: "My work", title: "My work", body: "Claimed leads, chases and notes" },
   { id: "overview", label: "Today", title: "Today", body: "Studio follow-up and your work" },
-  { id: "projects", label: "Projects", title: "Projects", body: "Everything the studio is running" },
+  {
+    id: "calendar",
+    label: "Calendar",
+    title: "Calendar",
+    body: "Calls, site visits, and walkthroughs",
+  },
+  {
+    id: "projects",
+    label: "Projects",
+    title: "Projects",
+    body: "Everything the studio is running",
+  },
   { id: "enquiries", label: "Enquiries", title: "Enquiries", body: "People who asked us to build" },
   { id: "access", label: "Access", title: "Access", body: "Who can open the console" },
 ] as const;
 
 type RoleState = {
-  role: string | null;
+  role: StaffRole | null;
   userId: string | null;
   email: string | null;
   invite: { invitedBy: string; note: string; createdAt: string } | null;
@@ -3193,8 +3340,7 @@ function AdminConsole() {
   );
   const [tab, setTab] = useState<(typeof TABS)[number]["id"] | null>(null);
   const [search, setSearch] = useState("");
-  const [enquiryStatusFilter, setEnquiryStatusFilter] =
-    useState<EnquiryFilterStatus>("open");
+  const [enquiryStatusFilter, setEnquiryStatusFilter] = useState<EnquiryFilterStatus>("open");
   const [focusedEnquiryId, setFocusedEnquiryId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -3207,13 +3353,22 @@ function AdminConsole() {
     };
   }, [roleNonce]);
 
-  const isStaff = roleState?.role === "staff" || roleState?.role === "admin";
+  const isStaff =
+    roleState?.role === "staff" ||
+    roleState?.role === "office_manager" ||
+    roleState?.role === "admin";
   const isAdmin = roleState?.role === "admin";
+  const canViewCalendar = isStaff;
   // Staff land on the operational queue; admins land on the portfolio.
   // Explicit navigation always wins over this default.
   const view = tab ?? "overview";
 
-  const { data: projects, isLoading, error: projectsError, refetch } = useQuery({
+  const {
+    data: projects,
+    isLoading,
+    error: projectsError,
+    refetch,
+  } = useQuery({
     queryKey: ["staff-projects"],
     queryFn: () => listStaffProjects({ data: undefined }),
     enabled: isStaff,
@@ -3279,9 +3434,7 @@ function AdminConsole() {
     if (filter === "local" && p.clientType === "diaspora") return false;
     if (filter === "attention") {
       const isLive =
-        p.source !== "sample" &&
-        p.lifecycleState !== "closed" &&
-        p.lifecycleState !== "archived";
+        p.source !== "sample" && p.lifecycleState !== "closed" && p.lifecycleState !== "archived";
       if (!isLive || !(p.blockedStages > 0 || p.openDecisions > 0 || !p.onTrack)) {
         return false;
       }
@@ -3290,7 +3443,7 @@ function AdminConsole() {
     return matches(p);
   });
   const shellAttention = isAdmin
-    ? overview?.attention ?? []
+    ? (overview?.attention ?? [])
     : (staffToday?.attention ?? []).filter((item) =>
         all.some(
           (project) =>
@@ -3325,14 +3478,15 @@ function AdminConsole() {
               icon: FolderKanban,
               badge: all.length || undefined,
             },
+            ...(canViewCalendar
+              ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }]
+              : []),
             {
               id: "enquiries",
               label: "Enquiries",
               icon: Inbox,
               badge:
-                (isAdmin
-                  ? overview?.funnel.enquiriesNew
-                  : staffToday?.newEnquiries) || undefined,
+                (isAdmin ? overview?.funnel.enquiriesNew : staffToday?.newEnquiries) || undefined,
             },
           ],
         },
@@ -3360,7 +3514,8 @@ function AdminConsole() {
       }))}
       user={{
         name: roleState?.email ?? "Studio",
-        role: roleState?.role ?? undefined,
+        role:
+          roleState?.role === "office_manager" ? "Office Manager" : (roleState?.role ?? undefined),
         email: roleState?.email ?? undefined,
       }}
       search={search}
@@ -3370,11 +3525,7 @@ function AdminConsole() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="font-display text-lg leading-tight text-maroon">
-              {view === "overview"
-                ? isAdmin
-                  ? "Owner portfolio"
-                  : "Today"
-                : activeTab.title}
+              {view === "overview" ? (isAdmin ? "Owner portfolio" : "Today") : activeTab.title}
             </h1>
             <p className="text-[12px] text-muted">
               {view === "overview" && isAdmin
@@ -3387,13 +3538,15 @@ function AdminConsole() {
 
           {view === "projects" && !selected ? (
             <div className="flex flex-wrap items-center gap-2">
-              {([
-                ["all", "All"],
-                ["local", "At home"],
-                ["diaspora", "From abroad"],
-                ["attention", "Needs attention"],
-                ["sample", "Sample"],
-              ] as const).map(([id, label]) => (
+              {(
+                [
+                  ["all", "All"],
+                  ["local", "At home"],
+                  ["diaspora", "From abroad"],
+                  ["attention", "Needs attention"],
+                  ["sample", "Sample"],
+                ] as const
+              ).map(([id, label]) => (
                 <button
                   key={id}
                   type="button"
@@ -3424,6 +3577,13 @@ function AdminConsole() {
             setFocusedEnquiryId(id);
             setTab("enquiries");
           }}
+          onOpenProject={openProject}
+        />
+      ) : null}
+
+      {view === "calendar" && canViewCalendar ? (
+        <CoordinationCalendar
+          canSchedule={canScheduleProjectCalls(roleState?.role ?? null)}
           onOpenProject={openProject}
         />
       ) : null}

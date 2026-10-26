@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,8 @@ export function AccordionItem({
   headerClassName,
   contentClassName,
   defaultOpen = false,
+  openRequest = 0,
+  sectionId,
 }: {
   title: string;
   /** Optional count or status shown on the right of the header. */
@@ -33,9 +35,15 @@ export function AccordionItem({
   headerClassName?: string;
   contentClassName?: string;
   defaultOpen?: boolean;
+  /** Increment to open, scroll to, and focus this section from a related action. */
+  openRequest?: number;
+  sectionId?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
+  const headingId = useId();
+  const sectionRef = useRef<HTMLElement>(null);
+  const previousOpenRequest = useRef(openRequest);
 
   /**
    * React to `defaultOpen` arriving late.
@@ -50,15 +58,33 @@ export function AccordionItem({
     if (defaultOpen) setOpen(true);
   }, [defaultOpen]);
 
+  useEffect(() => {
+    if (openRequest === previousOpenRequest.current) return;
+    previousOpenRequest.current = openRequest;
+    if (openRequest === 0) return;
+
+    setOpen(true);
+    requestAnimationFrame(() => {
+      const section = sectionRef.current;
+      if (!section) return;
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+      section.focus({ preventScroll: true });
+    });
+  }, [openRequest]);
+
   return (
     <section
+      id={sectionId}
+      ref={sectionRef}
+      tabIndex={-1}
+      aria-labelledby={headingId}
       className={cn(
-        "overflow-hidden rounded-2xl border border-ink/10 bg-white",
+        "scroll-mt-4 overflow-hidden rounded-2xl border border-ink/10 bg-white",
         open && "border-burgundy/25",
         className,
       )}
     >
-      <h3>
+      <h3 id={headingId}>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}

@@ -31,6 +31,14 @@ describe("demotesLastAdmin", () => {
       demotesLastAdmin({ currentRole: null, nextRole: "staff", otherAdminCount: 0 }),
       false,
     );
+    assert.equal(
+      demotesLastAdmin({
+        currentRole: "admin",
+        nextRole: "office_manager",
+        otherAdminCount: 1,
+      }),
+      false,
+    );
   });
 });
 
@@ -45,6 +53,13 @@ describe("grantDemotesAdmin", () => {
 
   it("is unbothered by ordinary grants", () => {
     assert.equal(grantDemotesAdmin({ currentRole: "staff", nextRole: "staff" }), false);
+    assert.equal(
+      grantDemotesAdmin({
+        currentRole: "staff",
+        nextRole: "office_manager",
+      }),
+      false,
+    );
     assert.equal(grantDemotesAdmin({ currentRole: null, nextRole: "staff" }), false);
   });
 });
@@ -69,6 +84,7 @@ describe("roleAfterAccept", () => {
 
   it("never lowers a role already held", () => {
     assert.equal(roleAfterAccept("staff"), "staff");
+    assert.equal(roleAfterAccept("office_manager"), "office_manager");
     assert.equal(roleAfterAccept("admin"), "admin");
   });
 });

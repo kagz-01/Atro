@@ -4,12 +4,12 @@
 // answers the next question: once in, high-impact writes that move money,
 // change access, or finalize a project are an admin's alone.
 //
-// Kept free of imports so the whole matrix is readable in one screen and
-// testable without a session. The server guard (`requireAdmin` in
+// Kept free of runtime imports so the whole matrix is readable in one screen
+// and testable without a session. The server guard (`requireAdmin` in
 // staff-session.server) and the console's button state both read from here, so
 // a refused write and a hidden button can never disagree.
 
-export type StaffRole = "staff" | "admin";
+import type { StaffRole } from "@/lib/staff-access-rules";
 
 /**
  * The writes that need an admin. Every entry is admin-only by definition —
@@ -55,6 +55,11 @@ export function canPerform(role: StaffRole | null, op: PrivilegedOp): boolean {
   if (!role) return false;
   if (role === "admin") return true;
   return !requiresAdmin(op);
+}
+
+/** Only the office manager and owner may schedule project calls. */
+export function canScheduleProjectCalls(role: StaffRole | null): boolean {
+  return role === "office_manager" || role === "admin";
 }
 
 /** The refusal sentence for an operation, for server-side guards. */

@@ -2,7 +2,11 @@
 // Kept free of imports so they can be tested directly, and so the reasoning
 // behind a lockout guard is readable without reading the SQL around it.
 
-export type StaffRole = "staff" | "admin";
+export type StaffRole = "staff" | "office_manager" | "admin";
+
+export function isStaffRole(role: string): role is StaffRole {
+  return role === "staff" || role === "office_manager" || role === "admin";
+}
 
 /**
  * Whether moving one person from `currentRole` to `nextRole` would leave the

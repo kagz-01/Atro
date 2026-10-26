@@ -10,15 +10,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSql, type Sql } from "@/lib/db";
 import { normaliseEmail, type StaffIdentity } from "@/lib/staff";
-import {
-  trackById,
-  TRACK_IDS,
-  type ProjectBrief,
-} from "@/lib/diaspora/portal-schema";
+import { canScheduleProjectCalls } from "@/lib/privileges";
+import { trackById, TRACK_IDS, type ProjectBrief } from "@/lib/diaspora/portal-schema";
 import { generateProject } from "@/lib/diaspora/server";
 import { loadProjectById, logActivity, type PortalPayload } from "@/lib/diaspora/server";
 import { leadLocality } from "@/lib/enquiry-lead";
-import { channelStatus, drainDue, notificationLog, notify, releaseHeld, retryPending } from "@/lib/notify";
+import {
+  channelStatus,
+  drainDue,
+  notificationLog,
+  notify,
+  releaseHeld,
+  retryPending,
+} from "@/lib/notify";
 import { issueCertificateFor, issueStatementFor } from "@/lib/invoice-server";
 import {
   lifecycleTransitionError,
@@ -50,12 +54,19 @@ const AddEvidence = z.object({
   detail: z.string().trim().max(600).default(""),
 });
 
+function isValidDateOnly(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
 const RaiseDecision = z.object({
   projectId: z.string().min(1),
   title: z.string().trim().min(3).max(160),
   detail: z.string().trim().max(1200).default(""),
   options: z.array(z.string().trim().min(1).max(120)).min(2).max(6),
   costImpact: z.number().int().default(0),
+  dueDate: z.string().refine(isValidDateOnly, "Enter a valid reply date.").nullable().optional(),
 });
 
 const CertifyPayment = z.object({
@@ -91,7 +102,12 @@ async function requireStaff(): Promise<StaffIdentity> {
 
 /** The money moves: certify, release retention, issue a statement. */
 async function requireAdmin(
-  op: "certify-payment" | "release-retention" | "issue-statement" | "close-project" | "archive-project",
+  op:
+    | "certify-payment"
+    | "release-retention"
+    | "issue-statement"
+    | "close-project"
+    | "archive-project",
 ): Promise<StaffIdentity> {
   const { requireAdmin: guard } = await import("@/lib/staff-session.server");
   return guard(op);
@@ -265,6 +281,351 @@ export const listStaffProjects = createServerFn({ method: "GET" }).handler(async
   }));
 });
 
+export type StaffCalendarData = {
+  calls: {
+    projectId: string;
+    reference: string;
+    title: string;
+    clientLabel: string;
+    scheduledAt: string | null;
+    agenda: string[];
+  }[];
+  presence: {
+    id: string;
+    projectId: string;
+    reference: string;
+    title: string;
+    clientLabel: string;
+    kind: "visit" | "walkthrough";
+    status: "requested" | "scheduled";
+    proposedOn: string | null;
+    scheduledAt: string | null;
+    clientNote: string;
+  }[];
+};
+
+/** Upcoming calls and visit/walkthrough coordination for office scheduling. */
+export const getStaffCalendar = createServerFn({ method: "GET" }).handler(
+  async (): Promise<StaffCalendarData> => {
+    await requireStaff();
+    const sql = await getSql();
+    const calls = await sql<Record<string, unknown>>`
+      select p.id, p.reference, p.title, p.client_label,
+        case when p.next_call_at >= now() then p.next_call_at else null end as next_call_at,
+        p.next_call_agenda
+      from portal_projects p
+      where p.deleted_at is null and p.source <> 'sample'
+        and p.lifecycle_state not in ('closed', 'archived')
+      order by
+        (p.next_call_at is not null and p.next_call_at >= now()) desc,
+        case when p.next_call_at >= now() then p.next_call_at else null end asc nulls last,
+        p.title asc
+    `;
+    const presence = await sql<Record<string, unknown>>`
+      select r.id, r.project_id, p.reference, p.title, p.client_label,
+        r.kind, r.status, r.proposed_on, r.scheduled_at, r.client_note
+      from portal_presence r
+      join portal_projects p on p.id = r.project_id
+      where p.deleted_at is null and p.source <> 'sample'
+        and p.lifecycle_state not in ('closed', 'archived')
+        and (r.status = 'requested'
+          or (r.status = 'scheduled' and r.scheduled_at >= now()))
+      order by case when r.status = 'requested' then 0 else 1 end,
+        r.scheduled_at asc nulls last, r.proposed_on asc nulls last
+    `;
+
+    return {
+      calls: calls.map((row) => ({
+        projectId: String(row.id),
+        reference: String(row.reference),
+        title: String(row.title),
+        clientLabel: String(row.client_label ?? ""),
+        scheduledAt: iso(row.next_call_at),
+        agenda: Array.isArray(row.next_call_agenda) ? row.next_call_agenda.map(String) : [],
+      })),
+      presence: presence.map((row) => ({
+        id: String(row.id),
+        projectId: String(row.project_id),
+        reference: String(row.reference),
+        title: String(row.title),
+        clientLabel: String(row.client_label ?? ""),
+        kind: row.kind === "walkthrough" ? "walkthrough" : "visit",
+        status: row.status === "scheduled" ? "scheduled" : "requested",
+        proposedOn: row.proposed_on ? String(row.proposed_on).slice(0, 10) : null,
+        scheduledAt: iso(row.scheduled_at),
+        clientNote: String(row.client_note ?? ""),
+      })),
+    };
+  },
+);
+
+export type StaffFollowUp = {
+  id: string;
+  title: string;
+  dueDate: string;
+  projectId: string | null;
+  projectTitle: string;
+  reference: string;
+};
+
+export const getMyFollowUps = createServerFn({ method: "GET" }).handler(
+  async (): Promise<StaffFollowUp[]> => {
+    const staff = await requireStaff();
+    const sql = await getSql();
+    const rows = await sql<Record<string, unknown>>`
+      select f.id, f.title, f.due_date, f.project_id, p.title as project_title,
+        p.reference
+      from staff_follow_up f
+      left join portal_projects p on p.id = f.project_id
+      where lower(f.assigned_to) = lower(${staff.email}) and f.completed_at is null
+      order by f.due_date asc, f.created_at asc
+      limit 100
+    `;
+    return rows.map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      dueDate: String(row.due_date).slice(0, 10),
+      projectId: row.project_id ? String(row.project_id) : null,
+      projectTitle: String(row.project_title ?? ""),
+      reference: String(row.reference ?? ""),
+    }));
+  },
+);
+
+export const createMyFollowUp = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      title: z.string().trim().min(3).max(160),
+      dueDate: z.string().refine(isValidDateOnly, "Enter a valid follow-up date."),
+      projectId: z.string().min(1).nullable().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const staff = await requireStaff();
+    const sql = await getSql();
+    if (data.projectId) {
+      const [project] = await sql<{ id: string }>`
+        select id from portal_projects
+        where id = ${data.projectId} and deleted_at is null
+          and source <> 'sample' and lifecycle_state not in ('closed', 'archived')
+        limit 1
+      `;
+      if (!project) throw new Error("That project no longer exists.");
+    }
+    const rows = await sql<{ id: string }>`
+      insert into staff_follow_up
+        (assigned_to, created_by, project_id, title, due_date)
+      values
+        (${staff.email}, ${staff.email}, ${data.projectId ?? null}, ${data.title.trim()}, ${data.dueDate})
+      returning id
+    `;
+    if (!rows[0]) throw new Error("Could not save the follow-up.");
+    return { ok: true as const, id: String(rows[0].id) };
+  });
+
+export const completeMyFollowUp = createServerFn({ method: "POST" })
+  .validator(z.object({ followUpId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    const staff = await requireStaff();
+    const rows = await (await getSql())<{ id: string }>`
+      update staff_follow_up
+      set completed_at = now()
+      where id = ${data.followUpId}
+        and lower(assigned_to) = lower(${staff.email})
+        and completed_at is null
+      returning id
+    `;
+    if (!rows[0]) throw new Error("That follow-up is already complete or is not yours.");
+    return { ok: true as const };
+  });
+
+function currentWeekStart(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Nairobi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const monday = new Date(
+    Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)),
+  );
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  return monday.toISOString().slice(0, 10);
+}
+
+export type WeeklyUpdateChecklist = {
+  weekStart: string;
+  progressReviewed: boolean;
+  evidenceReviewed: boolean;
+  clientUpdated: boolean;
+};
+
+export const getWeeklyUpdateChecklist = createServerFn({ method: "GET" })
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(async ({ data }): Promise<WeeklyUpdateChecklist> => {
+    await requireStaff();
+    const weekStart = currentWeekStart();
+    const rows = await (await getSql())<Record<string, unknown>>`
+      select progress_reviewed, evidence_reviewed, client_updated
+      from portal_weekly_update_checklist
+      where project_id = ${data.projectId} and week_start = ${weekStart}
+      limit 1
+    `;
+    const row = rows[0];
+    return {
+      weekStart,
+      progressReviewed: row?.progress_reviewed === true,
+      evidenceReviewed: row?.evidence_reviewed === true,
+      clientUpdated: row?.client_updated === true,
+    };
+  });
+
+export const setWeeklyUpdateChecklistItem = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      projectId: z.string().min(1),
+      item: z.enum(["progress_reviewed", "evidence_reviewed", "client_updated"]),
+      checked: z.boolean(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const staff = await requireStaff();
+    const sql = await getSql();
+    const weekStart = currentWeekStart();
+    const [project] = await sql<{ id: string }>`
+      select id from portal_projects
+      where id = ${data.projectId} and source <> 'sample' and deleted_at is null
+      limit 1
+    `;
+    if (!project) throw new Error("Project not found.");
+    await sql`
+      insert into portal_weekly_update_checklist (
+        project_id, week_start, progress_reviewed, evidence_reviewed, client_updated, updated_by
+      ) values (
+        ${data.projectId}, ${weekStart},
+        ${data.item === "progress_reviewed" && data.checked},
+        ${data.item === "evidence_reviewed" && data.checked},
+        ${data.item === "client_updated" && data.checked},
+        ${staff.email}
+      )
+      on conflict (project_id, week_start) do update set
+        progress_reviewed = case when ${data.item} = 'progress_reviewed'
+          then excluded.progress_reviewed else portal_weekly_update_checklist.progress_reviewed end,
+        evidence_reviewed = case when ${data.item} = 'evidence_reviewed'
+          then excluded.evidence_reviewed else portal_weekly_update_checklist.evidence_reviewed end,
+        client_updated = case when ${data.item} = 'client_updated'
+          then excluded.client_updated else portal_weekly_update_checklist.client_updated end,
+        updated_by = excluded.updated_by,
+        updated_at = now()
+    `;
+    return { ok: true as const, weekStart };
+  });
+
+export const scheduleProjectCall = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      projectId: z.string().min(1),
+      scheduledAt: z.string().datetime(),
+      expectedScheduledAt: z.string().datetime().nullable(),
+      agenda: z.array(z.string().trim().min(1).max(120)).max(8).default([]),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const identity = await requireStaff();
+    if (!canScheduleProjectCalls(identity.role)) {
+      throw new Error("Only the office manager or an admin can schedule project calls.");
+    }
+    const scheduledAt = new Date(data.scheduledAt);
+    if (scheduledAt.getTime() <= Date.now()) {
+      throw new Error("Choose a future call time.");
+    }
+
+    const sql = await getSql();
+    const [project] = await sql<{
+      id: string;
+      scheduled_at: unknown;
+      agenda: unknown;
+    }>`
+      select id, title,
+        case when next_call_at >= now() then next_call_at else null end as scheduled_at,
+        next_call_agenda as agenda
+      from portal_projects
+      where id = ${data.projectId} and deleted_at is null
+        and source <> 'sample' and lifecycle_state not in ('closed', 'archived')
+      limit 1
+    `;
+    if (!project) throw new Error("Project not found.");
+    const previousAt = iso(project.scheduled_at);
+    if (previousAt !== data.expectedScheduledAt) {
+      throw new Error("This call changed since you opened the calendar. Refresh and try again.");
+    }
+    const previousAgenda = Array.isArray(project.agenda) ? project.agenda.map(String) : [];
+    if (
+      previousAt === scheduledAt.toISOString() &&
+      previousAgenda.join("\n") === data.agenda.join("\n")
+    ) {
+      return { ok: true as const, unchanged: true as const };
+    }
+
+    const displayWhen = new Intl.DateTimeFormat("en-KE", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+      timeZone: "Africa/Nairobi",
+    }).format(scheduledAt);
+    const previousDisplayWhen = previousAt
+      ? new Intl.DateTimeFormat("en-KE", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hourCycle: "h23",
+          timeZone: "Africa/Nairobi",
+        }).format(new Date(previousAt))
+      : null;
+    const title = previousDisplayWhen ? "Project call updated" : "Project call scheduled";
+    const body = `${previousDisplayWhen ? `Updated by ${identity.email} from ${previousDisplayWhen} EAT to ${displayWhen} EAT` : `Scheduled by ${identity.email} for ${displayWhen} EAT`}${data.agenda.length ? `. Agenda: ${data.agenda.join("; ")}.` : "."}`;
+    const recorded = await sql<{ project_id: string }>`
+      with changed as (
+        update portal_projects
+        set next_call_at = ${scheduledAt.toISOString()},
+          next_call_when = ${`${displayWhen} EAT`},
+          next_call_agenda = ${JSON.stringify(data.agenda)}::jsonb,
+          next_call_local = '',
+          updated_at = now()
+        where id = ${data.projectId} and deleted_at is null
+          and source <> 'sample' and lifecycle_state not in ('closed', 'archived')
+          and (case when next_call_at >= now() then next_call_at else null end)
+            is not distinct from ${data.expectedScheduledAt}::timestamptz
+        returning id
+      )
+      insert into portal_activity (project_id, kind, title, body, at)
+      select id, 'note', ${title}, ${body}, now() from changed
+      returning project_id
+    `;
+    if (!recorded[0]) {
+      throw new Error(
+        "This project or call changed since you opened the calendar. Refresh and try again.",
+      );
+    }
+    await notify({
+      projectId: data.projectId,
+      kind: "update",
+      title,
+      body: previousDisplayWhen
+        ? `Your next call has changed from ${previousDisplayWhen} EAT to ${displayWhen} EAT.`
+        : `Your next call is scheduled for ${displayWhen} EAT.`,
+    });
+    return { ok: true as const, unchanged: false as const };
+  });
+
 function iso(value: unknown): string | null {
   if (value === null || value === undefined || value === "") return null;
   const d = value instanceof Date ? value : new Date(String(value));
@@ -303,7 +664,12 @@ export async function updateMilestoneFor(
   staff: { email: string; userId: string },
   data: z.infer<typeof UpdateMilestone>,
 ) {
-  const current = await sql<{ name: string; status: string; progress: number; approval_ready: boolean }>`
+  const current = await sql<{
+    name: string;
+    status: string;
+    progress: number;
+    approval_ready: boolean;
+  }>`
       select name, status, progress, approval_ready from portal_milestones
       where id = ${data.milestoneId} and project_id = ${data.projectId} limit 1
     `;
@@ -314,7 +680,8 @@ export async function updateMilestoneFor(
   const progress = status === "complete" ? 100 : (data.progress ?? milestone.progress ?? 0);
   // Completing a stage clears the flag: it is already approved, so there is
   // nothing left for the client to approve.
-  const approvalReady = status === "complete" ? false : (data.approvalReady ?? milestone.approval_ready);
+  const approvalReady =
+    status === "complete" ? false : (data.approvalReady ?? milestone.approval_ready);
 
   await sql`
       update portal_milestones
@@ -396,7 +763,13 @@ export async function addMilestoneEvidenceFor(
       where id = ${data.milestoneId} and project_id = ${data.projectId}
     `;
 
-  await logActivity(sql, data.projectId, "milestone", `Evidence added to ${milestone.name}`, data.caption);
+  await logActivity(
+    sql,
+    data.projectId,
+    "milestone",
+    `Evidence added to ${milestone.name}`,
+    data.caption,
+  );
   await notify({
     projectId: data.projectId,
     kind: "milestone",
@@ -418,18 +791,31 @@ export async function raiseDecisionFor(
   const ord = Number(next[0]?.n ?? 1);
 
   await sql`
-      insert into portal_decisions (project_id, ord, date, title, detail, options, cost_impact, state)
+      insert into portal_decisions
+        (project_id, ord, date, title, detail, options, cost_impact, state, due_date)
       values (${data.projectId}, ${ord}, ${todayLabel()}, ${data.title}, ${data.detail},
-              ${JSON.stringify(data.options)}, ${data.costImpact}, 'awaiting-client')
+              ${JSON.stringify(data.options)}, ${data.costImpact}, 'awaiting-client', ${data.dueDate ?? null})
     `;
 
   const choices = data.options.map((o) => `• ${o}`).join(" ");
-  await logActivity(sql, data.projectId, "decision", `Your decision needed: ${data.title}`, choices);
+  await logActivity(
+    sql,
+    data.projectId,
+    "decision",
+    `Your decision needed: ${data.title}`,
+    choices,
+  );
   await notify({
     projectId: data.projectId,
     kind: "decision",
     title: `Your decision needed: ${data.title}`,
-    body: data.detail ? `${data.detail}\n\nOptions:\n${choices}` : `Options:\n${choices}`,
+    body: [
+      data.detail,
+      data.dueDate ? `Please respond by ${data.dueDate}.` : "",
+      `Options:\n${choices}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
   });
 
   return { ok: true as const, raisedBy: staff.email };
@@ -440,7 +826,6 @@ export async function certifyPaymentFor(
   staff: { email: string; userId: string },
   data: z.infer<typeof CertifyPayment>,
 ) {
-
   const rows = await sql<{ label: string; amount: number; status: string }>`
       select label, amount, status from portal_payments
       where id = ${data.paymentId} and project_id = ${data.projectId} limit 1
