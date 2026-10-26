@@ -29,6 +29,7 @@ import {
   PROJECT_LIFECYCLE_STATES,
   type ProjectLifecycleState,
 } from "@/lib/project-lifecycle";
+import { isValidTimeZone } from "@/lib/tz";
 
 /* ── input ── */
 
@@ -112,6 +113,79 @@ async function requireAdmin(
   const { requireAdmin: guard } = await import("@/lib/staff-session.server");
   return guard(op);
 }
+
+export type MyStaffProfile = {
+  email: string;
+  role: StaffIdentity["role"];
+  displayName: string;
+  workFocus: string;
+  timezone: string;
+  updatedAt: string | null;
+};
+
+export const getMyStaffProfile = createServerFn({ method: "GET" }).handler(
+  async (): Promise<MyStaffProfile> => {
+    const staff = await requireStaff();
+    const sql = await getSql();
+    const [profile] = await sql<{
+      display_name: string;
+      work_focus: string;
+      timezone: string;
+      updated_at: unknown;
+    }>`
+      select display_name, work_focus, timezone, updated_at
+      from staff_profile where user_id = ${staff.userId} limit 1
+    `;
+    return {
+      email: staff.email,
+      role: staff.role,
+      displayName: profile?.display_name ?? "",
+      workFocus: profile?.work_focus ?? "",
+      timezone: profile?.timezone ?? "Africa/Nairobi",
+      updatedAt: profile?.updated_at ? new Date(String(profile.updated_at)).toISOString() : null,
+    };
+  },
+);
+
+const SaveMyStaffProfile = z.object({
+  displayName: z.string().trim().max(80),
+  workFocus: z.string().trim().max(120),
+  timezone: z
+    .string()
+    .trim()
+    .min(1, "Choose a timezone.")
+    .max(60)
+    .refine(isValidTimeZone, "Choose a valid timezone."),
+});
+
+export const saveMyStaffProfile = createServerFn({ method: "POST" })
+  .validator(SaveMyStaffProfile)
+  .handler(async ({ data }): Promise<MyStaffProfile> => {
+    const staff = await requireStaff();
+    const sql = await getSql();
+    await sql`
+      insert into staff_profile (user_id, display_name, work_focus, timezone)
+      values (${staff.userId}, ${data.displayName}, ${data.workFocus}, ${data.timezone})
+      on conflict (user_id) do update set
+        display_name = excluded.display_name,
+        work_focus = excluded.work_focus,
+        timezone = excluded.timezone,
+        updated_at = now()
+    `;
+    const [profile] = await sql<{ display_name: string; work_focus: string; timezone: string; updated_at: unknown }>`
+      select display_name, work_focus, timezone, updated_at
+      from staff_profile where user_id = ${staff.userId} limit 1
+    `;
+    if (!profile) throw new Error("Could not load your saved profile.");
+    return {
+      email: staff.email,
+      role: staff.role,
+      displayName: profile.display_name,
+      workFocus: profile.work_focus,
+      timezone: profile.timezone,
+      updatedAt: new Date(String(profile.updated_at)).toISOString(),
+    };
+  });
 
 export type StaffProjectSummary = {
   id: string;

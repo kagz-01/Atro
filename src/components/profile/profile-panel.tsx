@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, LogOut, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -6,13 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/field";
 import { Panel } from "@/components/ui/panel";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
-import {
-  getMyProfile,
-  saveMyProfile,
-  type ClientProfile,
-} from "@/lib/profile-server";
-import { CLIENT_TYPES } from "@/lib/profile";
+import { getMyProfile, saveMyProfile, type ClientProfile } from "@/lib/profile-server";
+import { CLIENT_TYPES, PROFILE_TIME_ZONES } from "@/lib/profile";
 import { formatPhone } from "@/lib/phone";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { listMyDeliveries } from "@/lib/notify";
 import { CHANNEL_NAMES, clientStatusLine, type Channel } from "@/lib/delivery";
 import { stampIn } from "@/lib/tz";
@@ -28,7 +25,12 @@ import { stampIn } from "@/lib/tz";
  */
 export function ProfilePanel() {
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const account = useCurrentUser();
+  const {
+    data,
+    isLoading,
+    error: profileError,
+  } = useQuery({
     queryKey: ["my-profile"],
     queryFn: () => getMyProfile({ data: undefined }),
   });
@@ -45,6 +47,18 @@ export function ProfilePanel() {
     },
   });
 
+  if (profileError) {
+    return (
+      <Panel title="Your profile">
+        <p role="alert" className="text-[13px] text-red-700">
+          {profileError instanceof Error
+            ? profileError.message
+            : "Could not load your profile. Try again."}
+        </p>
+      </Panel>
+    );
+  }
+
   if (isLoading || !data) {
     return (
       <Panel title="Your profile">
@@ -56,6 +70,7 @@ export function ProfilePanel() {
   return (
     <ProfileForm
       profile={data}
+      account={account}
       busy={save.isPending}
       error={save.error instanceof Error ? save.error.message : null}
       savedAt={savedAt}
@@ -103,6 +118,7 @@ const toDraft = (p: ClientProfile): Draft => ({
 
 function ProfileForm({
   profile,
+  account,
   busy,
   error,
   savedAt,
@@ -110,6 +126,7 @@ function ProfileForm({
   onAvatarChanged,
 }: {
   profile: ClientProfile;
+  account: ReturnType<typeof useCurrentUser>;
   busy: boolean;
   error: string | null;
   /** Changes only when a save actually lands. */
@@ -119,12 +136,27 @@ function ProfileForm({
 }) {
   const [draft, setDraft] = useState<Draft>(() => toDraft(profile));
   const [saved, setSaved] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
   const [editing, setEditing] = useState(!profile.displayName);
+  const priorSavedAt = useRef(savedAt);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(toDraft(profile));
 
-  // The profile can change under us after a save elsewhere; adopt it then.
+  // Avoid losing a draft if another profile refresh arrives while editing.
   useEffect(() => {
-    setDraft(toDraft(profile));
-  }, [profile]);
+    const justSaved = priorSavedAt.current !== savedAt;
+    priorSavedAt.current = savedAt;
+    if (justSaved || !dirty) setDraft(toDraft(profile));
+  }, [profile, savedAt, dirty]);
+
+  useEffect(() => {
+    if (!editing || !dirty) return;
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
+  }, [editing, dirty]);
 
   // Confirm the save, then stop claiming it: a "Saved" badge that never clears
   // stops meaning anything.
@@ -145,6 +177,7 @@ function ProfileForm({
   if (!editing) {
     return (
       <div className="space-y-5">
+        <AccountIdentity account={account} />
         <Panel
           title="Your profile"
           subtitle="How the studio reaches you"
@@ -157,12 +190,9 @@ function ProfileForm({
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               ["Name", profile.displayName || "—"],
-              ["Mobile", profile.phone ? formatPhone(profile.phone) : "Not added"],
-              ["Email", profile.email || "Not added"],
-              [
-                "Where you are",
-                [profile.city, profile.country].filter(Boolean).join(", ") || "—",
-              ],
+              ["Update phone", profile.phone ? formatPhone(profile.phone) : "Not added"],
+              ["Update email", profile.email || "Not added"],
+              ["Where you are", [profile.city, profile.country].filter(Boolean).join(", ") || "—"],
               ["Your timezone", profile.timezone || "Not set"],
               [
                 "You are",
@@ -170,13 +200,9 @@ function ProfileForm({
                   profile.clientType,
               ],
               ["Company", profile.company || "—"],
-              ["Language", profile.language || "en"],
-              ["How you found us", profile.referralSource || "—"],
             ].map(([k, v]) => (
               <div key={k}>
-                <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-                  {k}
-                </dt>
+                <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">{k}</dt>
                 <dd className="mt-1.5 text-[13px] leading-snug text-ink/75">{v}</dd>
               </div>
             ))}
@@ -189,7 +215,10 @@ function ProfileForm({
           ) : null}
         </Panel>
 
-        <Panel title="How we may contact you" subtitle="We only use what is switched on">
+        <Panel
+          title="How we may contact you"
+          subtitle="Choose the channels and destinations for project updates"
+        >
           <ul className="grid gap-3 sm:grid-cols-3">
             <Channel
               on={profile.notifyEmail}
@@ -211,8 +240,8 @@ function ProfileForm({
             <Badge tone="gold">{profile.sitePhotoConsent ? "Agreed" : "Not agreed"}</Badge>
             <span>
               {profile.sitePhotoConsent
-                ? "You are happy for your project to be photographed for the record."
-                : "You have asked us not to publish photographs of your project."}
+                ? "Your photo preference is on. This does not change the private evidence ATRO shares with you in your project."
+                : "Your photo preference is off. This does not hide private project evidence from you."}
             </span>
           </p>
         </Panel>
@@ -224,7 +253,11 @@ function ProfileForm({
 
   return (
     <div className="space-y-5">
-      <Panel title="Your profile" subtitle="The studio calls you by this name">
+      <AccountIdentity account={account} />
+      <Panel
+        title="Your profile"
+        subtitle="Contact details here are for project updates; they do not change how you sign in."
+      >
         <AvatarUploader displayName={draft.displayName} onChanged={onAvatarChanged} />
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -241,7 +274,7 @@ function ProfileForm({
           </div>
 
           <div>
-            <Label htmlFor="pf-phone">Mobile number</Label>
+            <Label htmlFor="pf-phone">Project update phone</Label>
             <Input
               id="pf-phone"
               type="tel"
@@ -262,7 +295,7 @@ function ProfileForm({
           </div>
 
           <div>
-            <Label htmlFor="pf-email">Email</Label>
+            <Label htmlFor="pf-email">Project update email</Label>
             <Input
               id="pf-email"
               type="email"
@@ -300,31 +333,20 @@ function ProfileForm({
 
           <div>
             <Label htmlFor="pf-tz">Your timezone</Label>
-            <Select
+            <Input
               id="pf-tz"
+              list="client-profile-timezones"
               value={draft.timezone}
               onChange={(e) => set("timezone", e.target.value)}
+              placeholder="Africa/Nairobi"
+              maxLength={60}
               className="mt-1"
-            >
-              <option value="">Not set</option>
-              {[
-                "Africa/Nairobi",
-                "Africa/Lagos",
-                "Africa/Johannesburg",
-                "Europe/London",
-                "Europe/Stockholm",
-                "Asia/Dubai",
-                "Asia/Qatar",
-                "America/New_York",
-                "America/Chicago",
-                "America/Los_Angeles",
-                "Australia/Sydney",
-              ].map((tz) => (
-                <option key={tz} value={tz}>
-                  {tz.replace(/_/g, " ")}
-                </option>
+            />
+            <datalist id="client-profile-timezones">
+              {PROFILE_TIME_ZONES.map((timezone) => (
+                <option key={timezone} value={timezone} />
               ))}
-            </Select>
+            </datalist>
             <p className="mt-1.5 text-[12px] text-muted">
               Every call is quoted in your time, not ours.
             </p>
@@ -359,15 +381,19 @@ function ProfileForm({
           </div>
 
           <div className="sm:col-span-2">
-            <Label htmlFor="pf-about">What you are building</Label>
+            <Label htmlFor="pf-about">A note for the studio</Label>
             <Textarea
               id="pf-about"
               value={draft.about}
               onChange={(e) => set("about", e.target.value)}
-              placeholder="Four bedrooms in Karen for my parents. I am in Dubai and will visit twice a year."
+              placeholder="Anything about you or how you would like us to work together"
               maxLength={1000}
               className="mt-1 min-h-24"
             />
+            <p className="mt-1.5 text-[12px] text-muted">
+              This note is shared across your projects. Put project scope and site instructions on
+              the relevant project.
+            </p>
           </div>
 
           <div className="sm:col-span-2">
@@ -384,29 +410,26 @@ function ProfileForm({
         </div>
       </Panel>
 
-      <Panel
-        title="How we may contact you"
-        subtitle="We only use the channels you switch on"
-      >
+      <Panel title="How we may contact you" subtitle="We only use the channels you switch on">
         <ul className="space-y-3">
           <Toggle
             id="pf-email-ok"
             label="Email"
-            detail="Statements, certificates and receipts"
+            detail={`Statements, certificates and receipts · ${draft.email || "No email destination set"}`}
             on={draft.notifyEmail}
             onChange={(v) => set("notifyEmail", v)}
           />
           <Toggle
             id="pf-wa-ok"
             label="WhatsApp"
-            detail="Quick updates and photographs from site"
+            detail={`Quick updates · ${phonePreview || "No phone destination set"}`}
             on={draft.notifyWhatsapp}
             onChange={(v) => set("notifyWhatsapp", v)}
           />
           <Toggle
             id="pf-sms-ok"
             label="SMS"
-            detail="Only for things that need you today — a decision, a payment due"
+            detail={`Urgent updates only · ${phonePreview || "No phone destination set"}`}
             on={draft.notifySms}
             onChange={(v) => set("notifySms", v)}
             disabled={!draft.phone.trim()}
@@ -414,8 +437,8 @@ function ProfileForm({
           />
           <Toggle
             id="pf-photo-ok"
-            label="Photographs of my project"
-            detail="Site photographs are the record, and they are what let you approve a stage"
+            label="Project photo preference"
+            detail="This does not control private evidence in your project; ATRO should ask separately before public marketing use."
             on={draft.sitePhotoConsent}
             onChange={(v) => set("sitePhotoConsent", v)}
           />
@@ -430,22 +453,102 @@ function ProfileForm({
 
       <div className="flex flex-wrap items-center gap-3">
         <Button
-          disabled={busy || draft.displayName.trim().length < 2}
+          disabled={busy || !dirty || draft.displayName.trim().length < 2}
           onClick={() => onSave(draft)}
         >
-          {busy ? <Loader2 className="size-4 animate-spin" /> : saved ? <Check className="size-4" /> : null}
+          {busy ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : saved ? (
+            <Check className="size-4" />
+          ) : null}
           {busy ? "Saving…" : saved ? "Saved" : "Save profile"}
         </Button>
-        <Button variant="ghost" onClick={() => setEditing(false)}>
-          Cancel
-        </Button>
-        {saved && !busy ? (
-          <p className="text-[13px] text-emerald-700">
-            Saved. We will use this when we call you.
+        {dirty && !discarding ? (
+          <Button variant="ghost" onClick={() => setDiscarding(true)}>
+            Cancel
+          </Button>
+        ) : null}
+        {discarding ? (
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="Discard profile changes"
+          >
+            <span className="text-[12px] text-ink/65">Discard your unsaved changes?</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setDraft(toDraft(profile));
+                setDiscarding(false);
+                setEditing(false);
+              }}
+            >
+              Discard changes
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setDiscarding(false)}>
+              Keep editing
+            </Button>
+          </div>
+        ) : null}
+        {!dirty ? (
+          <Button variant="ghost" onClick={() => setEditing(false)}>
+            Done
+          </Button>
+        ) : null}
+        {dirty ? (
+          <p className="text-[12px] text-amber-800" role="status">
+            You have unsaved profile changes.
           </p>
+        ) : null}
+        {saved && !busy ? (
+          <p className="text-[13px] text-emerald-700">Saved. We will use this when we call you.</p>
         ) : null}
       </div>
     </div>
+  );
+}
+
+function AccountIdentity({ account }: { account: ReturnType<typeof useCurrentUser> }) {
+  if (!account) return null;
+  const identities = [
+    account.primaryEmail ? ["Email", account.primaryEmail, account.primaryEmailVerified] : null,
+    account.primaryPhone
+      ? ["Phone", formatPhone(account.primaryPhone), account.primaryPhoneVerified]
+      : null,
+  ].filter((item): item is [string, string, boolean] => item !== null);
+
+  return (
+    <Panel
+      title={account.isDevFallback ? "Preview identity" : "Account identity"}
+      subtitle={
+        account.isDevFallback
+          ? "This is a local preview seat, not a real sign-in."
+          : "Used to sign in. Changing the project contact details below does not change this account."
+      }
+    >
+      {identities.length > 0 ? (
+        <dl className="grid gap-4 sm:grid-cols-2">
+          {identities.map(([label, value, verified]) => (
+            <div key={label}>
+              <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+                Sign-in {label.toLowerCase()}
+              </dt>
+              <dd className="mt-1.5 break-all text-[13px] leading-snug text-ink/75">{value}</dd>
+              {!account.isDevFallback ? (
+                <dd className="mt-1 text-[11px] text-ink/50">
+                  {verified ? "Verified by sign-in provider" : "Not verified by sign-in provider"}
+                </dd>
+              ) : null}
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="text-[13px] text-ink/60">
+          Your sign-in provider does not share an email address or phone number with ATRO.
+        </p>
+      )}
+    </Panel>
   );
 }
 

@@ -81,10 +81,7 @@ export const PREVIEW_PERSONAS: readonly PreviewPersona[] = [
 const DEFAULT_KEY: PreviewPersonaKey = "boss";
 
 export function isPreviewPersonaKey(value: unknown): value is PreviewPersonaKey {
-  return (
-    typeof value === "string" &&
-    PREVIEW_PERSONAS.some((p) => p.key === value)
-  );
+  return typeof value === "string" && PREVIEW_PERSONAS.some((p) => p.key === value);
 }
 
 /**
@@ -128,4 +125,9 @@ export function personaKeyFromCookieHeader(
  */
 export function personaCookieAssignment(key: PreviewPersonaKey): string {
   return `${PREVIEW_PERSONA_COOKIE}=${key}; path=/; max-age=31536000; samesite=lax`;
+}
+
+/** The workspace each preview seat should open. */
+export function previewPersonaWorkspace(key: PreviewPersonaKey): "/admin" | "/portal" {
+  return key === "boss" || key === "office" ? "/admin" : "/portal";
 }

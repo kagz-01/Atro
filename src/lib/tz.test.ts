@@ -1,4 +1,4 @@
-import { describe, it } from "node:test";
+import { describe, it, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   clientZone,
@@ -7,8 +7,16 @@ import {
   nextMorningAt,
   quietHoldUntil,
   stampIn,
+  isValidTimeZone,
   zonedClock,
 } from "./tz.ts";
+
+test("timezone validation accepts IANA zones and empty values, but rejects unknown zones", () => {
+  assert.equal(isValidTimeZone(""), true);
+  assert.equal(isValidTimeZone("Africa/Nairobi"), true);
+  assert.equal(isValidTimeZone("Europe/London"), true);
+  assert.equal(isValidTimeZone("Mars/Olympus"), false);
+});
 
 // 15:00 in Nairobi (EAT, UTC+3) on a Friday in March — the seed's own call time.
 const CALL = "2025-03-14T15:00:00+03:00";

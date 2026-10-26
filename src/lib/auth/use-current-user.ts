@@ -1,9 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import {
-  personaKeyFromCookieHeader,
-  previewPersona,
-} from "@/lib/preview-personas";
+import { personaKeyFromCookieHeader, previewPersona } from "@/lib/preview-personas";
 
 /**
  * Normalized user shape used across the app.
@@ -16,7 +13,9 @@ export type AppUser = {
   id: string;
   displayName: string | null;
   primaryEmail: string | null;
+  primaryEmailVerified: boolean;
   primaryPhone: string | null;
+  primaryPhoneVerified: boolean;
   profileImageUrl: string | null;
   /** True when Supabase is not configured and the app falls back to a dev user. */
   isDevFallback: boolean;
@@ -53,7 +52,9 @@ function previewAppUser(): AppUser {
     id: persona.userId,
     displayName: persona.name,
     primaryEmail: key ? persona.email : previewEmail,
+    primaryEmailVerified: false,
     primaryPhone: null,
+    primaryPhoneVerified: false,
     profileImageUrl: null,
     isDevFallback: true,
   };
@@ -124,7 +125,9 @@ function start() {
 function mapUser(user: {
   id: string;
   email?: string | null;
+  email_confirmed_at?: string | null;
   phone?: string | null;
+  phone_confirmed_at?: string | null;
   user_metadata?: Record<string, unknown> | null;
 }): AppUser {
   const metaName = user.user_metadata?.["full_name"];
@@ -135,7 +138,9 @@ function mapUser(user: {
       (typeof metaName === "string" && metaName.trim() ? metaName.trim() : null) ??
       (typeof metaAlt === "string" && metaAlt.trim() ? metaAlt.trim() : null),
     primaryEmail: user.email ?? null,
+    primaryEmailVerified: Boolean(user.email_confirmed_at),
     primaryPhone: user.phone ?? null,
+    primaryPhoneVerified: Boolean(user.phone_confirmed_at),
     profileImageUrl: null,
     isDevFallback: false,
   };

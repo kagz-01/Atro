@@ -15,6 +15,17 @@ export type ZonedClock = {
   zone: string;
 };
 
+/** Whether an IANA timezone is recognized by this runtime. */
+export function isValidTimeZone(timeZone: string): boolean {
+  if (!timeZone) return true;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The instant, shown as a wall clock in one IANA zone.
  * Returns null for a missing/unknown zone or an unparseable instant — a

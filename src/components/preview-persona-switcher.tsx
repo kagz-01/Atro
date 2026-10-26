@@ -5,6 +5,7 @@ import {
   personaKeyFromCookieHeader,
   PREVIEW_PERSONAS,
   previewPersona,
+  previewPersonaWorkspace,
   type PreviewPersonaKey,
 } from "@/lib/preview-personas";
 
@@ -21,9 +22,9 @@ import {
  * from `document.cookie`, which the server does not share with this component,
  * so deciding during SSR would guarantee a hydration mismatch.
  *
- * Writing the cookie and reloading (rather than updating state in place) is
- * the whole point — the persona is resolved per-request on the server, so a
- * seat change only takes effect on the next document.
+ * The cookie is resolved per-request on the server, so a seat change only
+ * takes effect after a document reload. Each seat also opens its own
+ * workspace: studio staff in the console and clients in the portal.
  */
 export function PreviewPersonaSwitcher() {
   const [active, setActive] = useState<PreviewPersonaKey | null>(null);
@@ -32,9 +33,7 @@ export function PreviewPersonaSwitcher() {
     // Configured Supabase means no preview identity at all — same switch
     // that removes the banner removes this, so it cannot linger in production.
     if (!previewIdentity()) return;
-    setActive(
-      personaKeyFromCookieHeader(document.cookie) ?? previewPersona().key,
-    );
+    setActive(personaKeyFromCookieHeader(document.cookie) ?? previewPersona().key);
   }, []);
 
   if (!active) return null;
@@ -47,21 +46,39 @@ export function PreviewPersonaSwitcher() {
     >
       {PREVIEW_PERSONAS.map((persona) => {
         const selected = persona.key === active;
+        const workspace = previewPersonaWorkspace(persona.key);
+        const alreadyInWorkspace =
+          workspace === "/admin"
+            ? window.location.pathname.startsWith("/admin")
+            : window.location.pathname.startsWith("/portal");
+        const needsWorkspaceNavigation = selected && !alreadyInWorkspace;
         return (
           <button
             key={persona.key}
             type="button"
-            aria-label={`Switch to ${persona.name}`}
+            aria-label={
+              needsWorkspaceNavigation
+                ? `Open ${persona.short} workspace`
+                : `Switch to ${persona.name}`
+            }
             aria-pressed={selected}
-            title={`${persona.name} — ${persona.blurb} · ${persona.email}`}
+            title={
+              needsWorkspaceNavigation
+                ? `${persona.name} is selected; open the ${workspace === "/admin" ? "studio" : "client"} workspace`
+                : `${persona.name} — ${persona.blurb} · ${persona.email}`
+            }
             onClick={() => {
-              if (selected) return;
               document.cookie = personaCookieAssignment(persona.key);
-              window.location.reload();
+              if (selected && alreadyInWorkspace) return;
+              if (alreadyInWorkspace) {
+                window.location.reload();
+              } else {
+                window.location.assign(workspace);
+              }
             }}
             className={
               selected
-                ? "cursor-default rounded-full bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white"
+                ? `rounded-full bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white ${needsWorkspaceNavigation ? "cursor-pointer ring-1 ring-amber-950/30" : "cursor-default"}`
                 : "cursor-pointer rounded-full px-2.5 py-1 text-[11px] font-medium text-amber-950 hover:bg-amber-200"
             }
           >

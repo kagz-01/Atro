@@ -24,7 +24,7 @@ import {
   PROFILE_LIMITS,
   type AvatarMime,
 } from "@/lib/profile";
-
+import { isValidTimeZone } from "@/lib/tz";
 
 export type ClientProfile = {
   displayName: string;
@@ -114,10 +114,22 @@ export const getMyProfile = createServerFn({ method: "GET" })
 const SaveProfileInput = z.object({
   displayName: z.string().max(PROFILE_LIMITS.displayName),
   phone: z.string().max(40).optional().default(""),
-  email: z.string().max(160).optional().default(""),
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address.")
+    .max(160)
+    .or(z.literal(""))
+    .optional()
+    .default(""),
   city: z.string().max(PROFILE_LIMITS.city).optional().default(""),
   country: z.string().max(PROFILE_LIMITS.country).optional().default(""),
-  timezone: z.string().max(60).optional().default(""),
+  timezone: z
+    .string()
+    .max(60)
+    .refine(isValidTimeZone, "Choose a valid timezone.")
+    .optional()
+    .default(""),
   clientType: z.string().optional().default("individual"),
   company: z.string().max(PROFILE_LIMITS.company).optional().default(""),
   about: z.string().max(PROFILE_LIMITS.about).optional().default(""),

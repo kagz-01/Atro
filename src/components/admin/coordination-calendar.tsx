@@ -1,11 +1,19 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Loader2 } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/field";
 import { Panel } from "@/components/ui/panel";
+import {
+  coordinationDateKey,
+  coordinationMonthGrid,
+  coordinationToday,
+  formatCoordinationDay,
+  formatCoordinationMonth,
+  moveCoordinationMonth,
+} from "@/lib/coordination-calendar";
 import {
   completeMyFollowUp,
   createMyFollowUp,
@@ -16,6 +24,18 @@ import {
   type StaffFollowUp,
 } from "@/lib/staff-ops";
 import { eatInstant, formatInstant } from "@/lib/presence";
+
+type CoordinationEvent = {
+  id: string;
+  projectId: string;
+  reference: string;
+  title: string;
+  clientLabel: string;
+  day: string;
+  kind: "call" | "visit" | "walkthrough";
+  time: string | null;
+  status: "scheduled" | "requested";
+};
 
 function nairobiInput(instant: string | null): string {
   if (!instant) return "";
@@ -50,6 +70,8 @@ export function CoordinationCalendar({
 }) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [selectedDay, setSelectedDay] = useState(() => coordinationToday());
+  const [editingCallId, setEditingCallId] = useState<string | null>(null);
   const [dateByProject, setDateByProject] = useState<Record<string, string>>({});
   const [agendaByProject, setAgendaByProject] = useState<Record<string, string>>({});
   const [followUpTitle, setFollowUpTitle] = useState("");
@@ -93,6 +115,7 @@ export function CoordinationCalendar({
         return;
       }
       toast.success("Call scheduled. The client can see the updated time in their portal.");
+      setEditingCallId(null);
       setDateByProject({});
       setAgendaByProject({});
       await Promise.all([
@@ -113,6 +136,59 @@ export function CoordinationCalendar({
     () => (data?.presence ?? []).filter((item) => matchesSearch(item, search)),
     [data?.presence, search],
   );
+  const calendarDays = useMemo(() => coordinationMonthGrid(selectedDay), [selectedDay]);
+  const calendarEvents = useMemo<CoordinationEvent[]>(() => {
+    const callEvents = calls.flatMap((call) => {
+      if (!call.scheduledAt) return [];
+      const day = coordinationDateKey(call.scheduledAt);
+      return day
+        ? [
+            {
+              id: `call-${call.projectId}`,
+              projectId: call.projectId,
+              reference: call.reference,
+              title: call.title,
+              clientLabel: call.clientLabel,
+              day,
+              kind: "call" as const,
+              time: call.scheduledAt,
+              status: "scheduled" as const,
+            },
+          ]
+        : [];
+    });
+    const presenceEvents = presence.flatMap((item) => {
+      if (item.status !== "scheduled" || !item.scheduledAt) return [];
+      const day = coordinationDateKey(item.scheduledAt);
+      return day
+        ? [
+            {
+              id: item.id,
+              projectId: item.projectId,
+              reference: item.reference,
+              title: item.title,
+              clientLabel: item.clientLabel,
+              day,
+              kind: item.kind,
+              time: item.scheduledAt,
+              status: item.status,
+            },
+          ]
+        : [];
+    });
+    return [...callEvents, ...presenceEvents];
+  }, [calls, presence]);
+  const eventsByDay = useMemo(
+    () =>
+      calendarEvents.reduce<Record<string, CoordinationEvent[]>>((grouped, event) => {
+        (grouped[event.day] ??= []).push(event);
+        return grouped;
+      }, {}),
+    [calendarEvents],
+  );
+  const selectedDayEvents = eventsByDay[selectedDay] ?? [];
+  const editingCall = calls.find((call) => call.projectId === editingCallId) ?? null;
+  const unscheduledCalls = calls.filter((call) => !call.scheduledAt);
 
   if (isLoading) {
     return (
@@ -136,7 +212,7 @@ export function CoordinationCalendar({
     <div className="space-y-5">
       <Panel
         title="Coordination calendar"
-        subtitle="Upcoming client calls, confirmed visits, and presence requests awaiting an answer"
+        subtitle="Scheduled calls and confirmed visits or walkthroughs by Nairobi date. Select a day to see its agenda."
       >
         <div className="max-w-md">
           <Label htmlFor="calendar-search">Find a project</Label>
@@ -147,6 +223,162 @@ export function CoordinationCalendar({
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Project, reference, or client"
           />
+        </div>
+        <div className="mt-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label="Previous month"
+                onClick={() => setSelectedDay((day) => moveCoordinationMonth(day, -1))}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <h2 className="min-w-40 text-center text-base font-semibold text-maroon">
+                {formatCoordinationMonth(selectedDay)}
+              </h2>
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label="Next month"
+                onClick={() => setSelectedDay((day) => moveCoordinationMonth(day, 1))}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedDay(coordinationToday())}>
+              <CalendarDays className="size-4" />
+              Today
+            </Button>
+          </div>
+          <div className="grid grid-cols-7 border-b border-ink/10 pb-2 text-center text-[11px] font-medium text-ink/55">
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((weekday) => (
+              <span key={weekday}>{weekday}</span>
+            ))}
+          </div>
+          <div className="grid grid-cols-7">
+            {calendarDays.map((day) => {
+              const dayEvents = eventsByDay[day] ?? [];
+              const inCurrentMonth = day.slice(0, 7) === selectedDay.slice(0, 7);
+              const isToday = day === coordinationToday();
+              const isSelected = day === selectedDay;
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  aria-pressed={isSelected}
+                  aria-label={`${formatCoordinationDay(day)}${dayEvents.length ? `, ${dayEvents.length} items` : ""}`}
+                  onClick={() => setSelectedDay(day)}
+                  className={`min-h-[76px] border-b border-r border-ink/10 p-1.5 text-left transition-colors sm:min-h-[96px] sm:p-2 ${
+                    isSelected
+                      ? "bg-maroon/5 ring-1 ring-inset ring-maroon/40"
+                      : "hover:bg-cream/70"
+                  } ${inCurrentMonth ? "text-ink" : "text-ink/35"}`}
+                >
+                  <span
+                    className={`inline-flex size-6 items-center justify-center rounded-full text-[12px] ${
+                      isToday ? "bg-gold font-semibold text-ink" : ""
+                    }`}
+                  >
+                    {Number(day.slice(-2))}
+                  </span>
+                  <span className="mt-1 block space-y-0.5">
+                    {dayEvents.slice(0, 2).map((item) => (
+                      <span
+                        key={item.id}
+                        className={`block truncate rounded px-1 py-0.5 text-[9px] sm:text-[10px] ${
+                          item.kind === "call"
+                            ? "bg-blue-50 text-blue-800"
+                            : item.status === "requested"
+                              ? "bg-amber-50 text-amber-800"
+                              : "bg-maroon/10 text-maroon"
+                        }`}
+                      >
+                        {item.kind === "call"
+                          ? "Call"
+                          : item.kind === "visit"
+                            ? "Visit"
+                            : "Walkthrough"}
+                        {item.time
+                          ? ` · ${formatInstant(item.time, "Africa/Nairobi")?.split(",").at(-1)?.trim() ?? ""}`
+                          : ""}
+                      </span>
+                    ))}
+                    {dayEvents.length > 2 ? (
+                      <span className="block px-1 text-[9px] text-ink/55">
+                        +{dayEvents.length - 2} more
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="mt-5 rounded-xl border border-ink/10 bg-cream/40 p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-[14px] font-semibold text-maroon">
+              {formatCoordinationDay(selectedDay)}
+            </h3>
+            <span className="text-[11px] text-ink/55">
+              {selectedDayEvents.length} scheduled item{selectedDayEvents.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          {selectedDayEvents.length === 0 ? (
+            <p className="text-[13px] text-ink/55">
+              Nothing scheduled on this date. Unscheduled calls and requests awaiting a response are
+              listed below.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {selectedDayEvents.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white p-3"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={item.status === "requested" ? "gold" : "maroon"}>
+                        {item.kind === "call"
+                          ? "Project call"
+                          : item.status === "requested"
+                            ? "Needs response"
+                            : item.kind === "visit"
+                              ? "Site visit"
+                              : "Walkthrough"}
+                      </Badge>
+                      {item.time ? (
+                        <span className="text-[11px] text-ink/55">
+                          {formatInstant(item.time, "Africa/Nairobi") ?? "Nairobi time"}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-[13px] font-medium text-maroon">
+                      {item.reference} · {item.title}
+                    </p>
+                    <p className="text-[11px] text-ink/55">{item.clientLabel}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {item.kind === "call" && canSchedule ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingCallId(item.projectId)}
+                      >
+                        Edit call
+                      </Button>
+                    ) : null}
+                    <Button size="sm" variant="ghost" onClick={() => onOpenProject(item.projectId)}>
+                      {item.kind !== "call" && item.status === "requested"
+                        ? "Respond in project"
+                        : "Open project"}
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </Panel>
 
@@ -222,7 +454,7 @@ export function CoordinationCalendar({
         ) : (
           <ul className="mt-4 space-y-2">
             {(followUpsQuery.data ?? []).map((item) => {
-              const today = new Date().toLocaleDateString("en-CA");
+              const today = coordinationToday();
               const overdue = item.dueDate < today;
               return (
                 <li
@@ -270,173 +502,178 @@ export function CoordinationCalendar({
       </Panel>
 
       <Panel
-        title="Calls"
-        subtitle={
-          canSchedule
-            ? "Schedule or update the next project call in Nairobi time"
-            : "Upcoming project calls and their agendas"
-        }
+        title={canSchedule ? "Calls to schedule" : "Calls without a time"}
+        subtitle="Search all live projects above to quickly find a call. Scheduled calls appear on the calendar."
       >
-        {calls.length === 0 ? (
-          <p className="text-[13px] text-ink/55">No matching live projects.</p>
+        {unscheduledCalls.length === 0 ? (
+          <p className="text-[13px] text-ink/55">
+            {calls.length === 0
+              ? "No matching live projects."
+              : "All matching calls are scheduled."}
+          </p>
         ) : (
-          <ul className="space-y-3">
-            {calls.map((call) => {
-              const value = dateByProject[call.projectId] ?? nairobiInput(call.scheduledAt);
-              const agenda = agendaByProject[call.projectId] ?? call.agenda.join(", ");
-              return (
-                <li key={call.projectId} className="rounded-xl border border-ink/10 bg-white p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-medium text-maroon">
-                        {call.reference} · {call.title}
-                      </p>
-                      <p className="mt-1 text-[12px] text-ink/55">{call.clientLabel}</p>
-                      <p className="mt-2 text-[12px] text-ink/65">
-                        {call.scheduledAt
-                          ? (formatInstant(call.scheduledAt, "Africa/Nairobi") ?? "Call scheduled")
-                          : "No next call scheduled"}
-                      </p>
-                      {call.agenda.length > 0 ? (
-                        <ul className="mt-2 space-y-1">
-                          {call.agenda.map((item) => (
-                            <li key={item} className="text-[11px] text-ink/55">
-                              · {item}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {unscheduledCalls.map((call) => (
+              <div
+                key={call.projectId}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-medium text-maroon">
+                    {call.reference} · {call.title}
+                  </p>
+                  <p className="truncate text-[11px] text-ink/55">{call.clientLabel}</p>
+                </div>
+                <div className="flex gap-2">
+                  {canSchedule ? (
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => onOpenProject(call.projectId)}
+                      onClick={() => setEditingCallId(call.projectId)}
                     >
-                      Open project
+                      <CalendarClock className="size-4" />
+                      Schedule
                     </Button>
-                  </div>
-                  {canSchedule ? (
-                    <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,220px)_1fr_auto] sm:items-end">
-                      <div>
-                        <Label htmlFor={`call-time-${call.projectId}`}>Call time (Nairobi)</Label>
-                        <Input
-                          id={`call-time-${call.projectId}`}
-                          className="mt-1"
-                          type="datetime-local"
-                          value={value}
-                          onChange={(event) =>
-                            setDateByProject((previous) => ({
-                              ...previous,
-                              [call.projectId]: event.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`call-agenda-${call.projectId}`}>Agenda (optional)</Label>
-                        <Input
-                          id={`call-agenda-${call.projectId}`}
-                          className="mt-1"
-                          value={agenda}
-                          onChange={(event) =>
-                            setAgendaByProject((previous) => ({
-                              ...previous,
-                              [call.projectId]: event.target.value,
-                            }))
-                          }
-                          placeholder="Progress, decisions, next steps"
-                          maxLength={960}
-                        />
-                      </div>
-                      <Button
-                        disabled={schedule.isPending || !value}
-                        onClick={() => {
-                          const scheduledAt = eatInstant(value);
-                          if (!scheduledAt) {
-                            toast.error("Enter a valid Nairobi date and time.");
-                            return;
-                          }
-                          const agendaItems = agenda
-                            .split(",")
-                            .map((item) => item.trim())
-                            .filter(Boolean);
-                          if (agendaItems.length > 8) {
-                            toast.error("Use no more than eight agenda items.");
-                            return;
-                          }
-                          schedule.mutate({
-                            data: {
-                              projectId: call.projectId,
-                              scheduledAt,
-                              expectedScheduledAt: call.scheduledAt,
-                              agenda: agendaItems,
-                            },
-                          });
-                        }}
-                      >
-                        {schedule.isPending ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <CalendarClock className="size-4" />
-                        )}
-                        {call.scheduledAt ? "Update call" : "Schedule call"}
-                      </Button>
-                    </div>
                   ) : null}
-                  {canSchedule ? (
-                    <p className="mt-2 text-[11px] text-ink/50">
-                      Times use Nairobi time. Scheduling or changing a call notifies the client and
-                      records the change in project activity.
-                    </p>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+                  <Button size="sm" variant="ghost" onClick={() => onOpenProject(call.projectId)}>
+                    Open
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </Panel>
 
+      {canSchedule && editingCall ? (
+        <Panel
+          title={`${editingCall.scheduledAt ? "Update" : "Schedule"} call · ${editingCall.reference}`}
+          subtitle={`${editingCall.title} · ${editingCall.clientLabel}`}
+        >
+          {(() => {
+            const call = editingCall;
+            const value = dateByProject[call.projectId] ?? nairobiInput(call.scheduledAt);
+            const agenda = agendaByProject[call.projectId] ?? call.agenda.join(", ");
+            return (
+              <>
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_1fr_auto] sm:items-end">
+                  <div>
+                    <Label htmlFor={`call-time-${call.projectId}`}>Call time (Nairobi)</Label>
+                    <Input
+                      id={`call-time-${call.projectId}`}
+                      className="mt-1"
+                      type="datetime-local"
+                      value={value}
+                      onChange={(event) =>
+                        setDateByProject((previous) => ({
+                          ...previous,
+                          [call.projectId]: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`call-agenda-${call.projectId}`}>Agenda (optional)</Label>
+                    <Input
+                      id={`call-agenda-${call.projectId}`}
+                      className="mt-1"
+                      value={agenda}
+                      onChange={(event) =>
+                        setAgendaByProject((previous) => ({
+                          ...previous,
+                          [call.projectId]: event.target.value,
+                        }))
+                      }
+                      placeholder="Progress, decisions, next steps"
+                      maxLength={960}
+                    />
+                  </div>
+                  <Button
+                    disabled={schedule.isPending || !value}
+                    onClick={() => {
+                      const scheduledAt = eatInstant(value);
+                      if (!scheduledAt) {
+                        toast.error("Enter a valid Nairobi date and time.");
+                        return;
+                      }
+                      const agendaItems = agenda
+                        .split(",")
+                        .map((item) => item.trim())
+                        .filter(Boolean);
+                      if (agendaItems.length > 8) {
+                        toast.error("Use no more than eight agenda items.");
+                        return;
+                      }
+                      schedule.mutate({
+                        data: {
+                          projectId: call.projectId,
+                          scheduledAt,
+                          expectedScheduledAt: call.scheduledAt,
+                          agenda: agendaItems,
+                        },
+                      });
+                    }}
+                  >
+                    {schedule.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <CalendarClock className="size-4" />
+                    )}
+                    {call.scheduledAt ? "Update call" : "Schedule call"}
+                  </Button>
+                </div>
+                <p className="mt-2 text-[11px] text-ink/50">
+                  Times use Nairobi time. Scheduling or changing a call notifies the client and
+                  records the change in project activity.
+                </p>
+                <div className="mt-3 flex justify-end">
+                  <Button size="sm" variant="ghost" onClick={() => setEditingCallId(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            );
+          })()}
+        </Panel>
+      ) : null}
+
       <Panel
-        title="Visits and walkthroughs"
-        subtitle="Open requests need a response; confirmed visits are listed by time"
+        title="Presence requests needing a response"
+        subtitle="Respond to client visit or walkthrough requests from the project, where the existing approval flow applies."
       >
-        {presence.length === 0 ? (
-          <p className="text-[13px] text-ink/55">No matching requests or upcoming visits.</p>
+        {presence.filter((item) => item.status === "requested").length === 0 ? (
+          <p className="text-[13px] text-ink/55">No matching requests need a response.</p>
         ) : (
           <ul className="space-y-3">
-            {presence.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone={item.status === "requested" ? "gold" : "maroon"}>
-                      {item.status === "requested" ? "Needs response" : "Confirmed"}
-                    </Badge>
-                    <span className="text-[12px] text-ink/55">
-                      {item.kind === "visit" ? "Site visit" : "Walkthrough"}
-                    </span>
+            {presence
+              .filter((item) => item.status === "requested")
+              .map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone="gold">Needs response</Badge>
+                      <span className="text-[12px] text-ink/55">
+                        {item.kind === "visit" ? "Site visit" : "Walkthrough"}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[13px] text-maroon">
+                      {item.reference} · {item.title} · {item.clientLabel}
+                    </p>
+                    <p className="mt-1 text-[12px] text-ink/60">
+                      {item.proposedOn ? `Client proposed ${item.proposedOn}` : "Client request"}
+                    </p>
+                    {item.clientNote ? (
+                      <p className="mt-1 text-[12px] text-ink/55">{item.clientNote}</p>
+                    ) : null}
                   </div>
-                  <p className="mt-2 text-[13px] text-maroon">
-                    {item.reference} · {item.title} · {item.clientLabel}
-                  </p>
-                  <p className="mt-1 text-[12px] text-ink/60">
-                    {item.scheduledAt
-                      ? (formatInstant(item.scheduledAt, "Africa/Nairobi") ?? "Confirmed")
-                      : item.proposedOn
-                        ? `Client proposed ${item.proposedOn}`
-                        : "Client request"}
-                  </p>
-                  {item.clientNote ? (
-                    <p className="mt-1 text-[12px] text-ink/55">{item.clientNote}</p>
-                  ) : null}
-                </div>
-                <Button size="sm" variant="outline" onClick={() => onOpenProject(item.projectId)}>
-                  Respond in project
-                </Button>
-              </li>
-            ))}
+                  <Button size="sm" variant="outline" onClick={() => onOpenProject(item.projectId)}>
+                    Respond in project
+                  </Button>
+                </li>
+              ))}
           </ul>
         )}
       </Panel>

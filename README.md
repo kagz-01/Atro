@@ -24,6 +24,10 @@ The `/admin` console is shared by studio staff but changes its available views
 and actions according to the signed-in staff member's role. It supports enquiry
 handling, project records, project updates and evidence, approvals, decisions,
 documents, client communication, calendars, and operational follow-up.
+The admin portfolio summarizes business health and prioritizes project
+exceptions; its project register can be searched, filtered by lifecycle, sorted,
+and paged. Selecting a project opens its command center for the detailed record
+and authorized changes.
 
 ### Private client portal
 
@@ -55,6 +59,18 @@ Staff roles are allowlisted. Admins manage staff access; office managers do not
 receive access to the staff-access administration. Server-side authorization
 protects reads and writes: hiding a button in the interface is not treated as
 permission enforcement.
+
+The shared staff calendar has a navigable month view and a selected-day agenda
+using Nairobi time. Scheduled calls and confirmed visits or walkthroughs appear
+on their dates; calls without a time and presence requests awaiting a response
+remain separate queues. Office managers and admins can schedule calls; presence
+requests are answered from the project workflow. Personal follow-ups remain
+reminders rather than calendar appointments.
+
+Clients can manage their project-update contact details separately from the
+verified sign-in identity. Staff can set a preferred console name and work
+focus; their studio role and permissions remain owner-controlled and are not
+profile settings.
 
 ## End-to-end project flow
 

@@ -23,6 +23,38 @@ export const CLIENT_TYPES = [
 
 export type ClientType = (typeof CLIENT_TYPES)[number]["value"];
 
+export const PROFILE_TIME_ZONES = [
+  "Africa/Nairobi",
+  "Africa/Accra",
+  "Africa/Cairo",
+  "Africa/Johannesburg",
+  "Africa/Lagos",
+  "America/Anchorage",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/New_York",
+  "America/Sao_Paulo",
+  "America/Toronto",
+  "Asia/Bangkok",
+  "Asia/Dubai",
+  "Asia/Hong_Kong",
+  "Asia/Kolkata",
+  "Asia/Qatar",
+  "Asia/Riyadh",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Australia/Perth",
+  "Australia/Sydney",
+  "Europe/Amsterdam",
+  "Europe/Berlin",
+  "Europe/Dublin",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Stockholm",
+  "Pacific/Auckland",
+] as const;
+
 export function isClientType(value: string): value is ClientType {
   return CLIENT_TYPES.some((t) => t.value === value);
 }
@@ -41,9 +73,7 @@ export type ParsedImage = { mime: AvatarMime; bytes: Uint8Array };
 export function parseImageDataUrl(
   value: string,
 ): { ok: true; image: ParsedImage } | { ok: false; reason: string } {
-  const match = /^data:([a-z]+\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$/i.exec(
-    value.trim(),
-  );
+  const match = /^data:([a-z]+\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$/i.exec(value.trim());
   if (!match) return { ok: false, reason: "That file could not be read as an image." };
 
   const mime = match[1].toLowerCase();
@@ -66,9 +96,7 @@ export function parseImageDataUrl(
   return { ok: true, image: { mime: mime as AvatarMime, bytes } };
 }
 
-export function checkAvatarSize(
-  byteLength: number,
-): { ok: true } | { ok: false; reason: string } {
+export function checkAvatarSize(byteLength: number): { ok: true } | { ok: false; reason: string } {
   if (byteLength === 0) return { ok: false, reason: "That picture was empty." };
   if (byteLength > AVATAR_MAX_BYTES) {
     return {

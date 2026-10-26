@@ -93,6 +93,12 @@ insert into client_role (email, role, note) values
   ('juma@atro.ke', 'staff', 'Office — preview seat')
 on conflict (email) do nothing;
 
+insert into staff_profile (user_id, display_name, work_focus, timezone)
+values
+  ('dev-user', 'Amina Yusuf', 'Studio owner', 'Africa/Nairobi'),
+  ('dev-staff', 'Juma', 'Office coordination', 'Africa/Nairobi')
+on conflict (user_id) do nothing;
+
 -- ── milestones: nine stages per project, worked to a believable point ──
 insert into portal_milestones (
   project_id, ord, stage, name, status, progress, planned_start, planned_end,

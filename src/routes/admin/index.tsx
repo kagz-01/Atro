@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Search,
   Users,
+  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ import { DashboardShell } from "@/components/dashboard/shell";
 import { Donut, GroupedBars, MonthlyColumns, type Slice } from "@/components/dashboard/charts";
 import { EnquiriesInbox, type EnquiryFilterStatus } from "@/components/admin/enquiries-inbox";
 import { MyWorkPanel } from "@/components/admin/my-work";
+import { StaffProfilePanel } from "@/components/admin/staff-profile-panel";
 import { CoordinationCalendar } from "@/components/admin/coordination-calendar";
 import { ProjectWorkflowChecklist } from "@/components/admin/project-workflow-checklist";
 import { SelectionsPanel } from "@/components/admin/selections-panel";
@@ -64,6 +66,7 @@ import {
   certifyPayment,
   changeProjectLifecycle,
   getDeliveryLog,
+  getMyStaffProfile,
   getMyStaffRole,
   getStaffClientProfile,
   getStaffProject,
@@ -1628,13 +1631,25 @@ function ProjectsTable({
   projects,
   onOpen,
   onGoEnquiries,
+  projectsLoading = false,
+  projectsError = null,
+  onRetryProjects,
+  search = "",
+  onClearSearch,
 }: {
   projects: StaffProjectSummary[];
   onOpen: (id: string) => void;
   onGoEnquiries?: () => void;
+  projectsLoading?: boolean;
+  projectsError?: Error | null;
+  onRetryProjects?: () => void;
+  search?: string;
+  onClearSearch?: () => void;
 }) {
+  const pageSize = 10;
   const [sort, setSort] = useState<SortKey>("attention");
   const [portfolioView, setPortfolioView] = useState<PortfolioView>("active");
+  const [pageIndex, setPageIndex] = useState(0);
 
   const liveProjects = projects.filter(
     (project) =>
@@ -1663,14 +1678,24 @@ function ProjectsTable({
             : portfolioView === "sample"
               ? sampleProjects
               : liveProjects;
+  const query = search.trim().toLowerCase();
 
-  const sorted = [...visibleProjects].sort((a, b) => {
-    if (sort === "newest") return b.createdAt.localeCompare(a.createdAt);
-    if (sort === "largest") return b.contractValue - a.contractValue;
-    const score = (p: StaffProjectSummary) =>
-      (p.blockedStages > 0 ? 1000 : 0) + (p.openDecisions > 0 ? 500 : 0) + (p.onTrack ? 0 : 250);
-    return score(b) - score(a);
-  });
+  const sorted = visibleProjects
+    .filter(
+      (project) =>
+        !query ||
+        [project.title, project.reference, project.clientLabel, project.clientCity, project.stage]
+          .join(" ")
+          .toLowerCase()
+          .includes(query),
+    )
+    .sort((a, b) => {
+      if (sort === "newest") return b.createdAt.localeCompare(a.createdAt);
+      if (sort === "largest") return b.contractValue - a.contractValue;
+      const score = (p: StaffProjectSummary) =>
+        (p.blockedStages > 0 ? 1000 : 0) + (p.openDecisions > 0 ? 500 : 0) + (p.onTrack ? 0 : 250);
+      return score(b) - score(a);
+    });
 
   const views: { id: PortfolioView; label: string; count: number }[] = [
     { id: "active", label: "Active", count: activeProjects.length },
@@ -1680,6 +1705,11 @@ function ProjectsTable({
     { id: "all", label: "All live", count: liveProjects.length },
     { id: "sample", label: "Samples", count: sampleProjects.length },
   ];
+  const pageCount = Math.ceil(sorted.length / pageSize);
+  const currentPage = Math.min(pageIndex, Math.max(0, pageCount - 1));
+  const pageProjects = sorted.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+  const firstVisible = sorted.length === 0 ? 0 : currentPage * pageSize + 1;
+  const lastVisible = Math.min((currentPage + 1) * pageSize, sorted.length);
 
   return (
     <Panel
@@ -1688,15 +1718,51 @@ function ProjectsTable({
       className="min-w-0"
       bodyClassName="p-0"
     >
-      {projects.length === 0 ? (
+      {projectsError && projects.length === 0 ? (
+        <div role="alert" className="px-6 py-10 text-center">
+          <AlertTriangle className="mx-auto size-7 text-red-700" aria-hidden />
+          <h3 className="mt-3 font-display text-lg text-red-900">Could not load the portfolio</h3>
+          <p className="mx-auto mt-1.5 max-w-md text-[12px] leading-relaxed text-red-800">
+            {projectsError.message}
+          </p>
+          {onRetryProjects ? (
+            <Button
+              className="mt-4"
+              size="sm"
+              variant="outline"
+              onClick={onRetryProjects}
+              disabled={projectsLoading}
+            >
+              Try again
+            </Button>
+          ) : null}
+        </div>
+      ) : projectsLoading && projects.length === 0 ? (
+        <div
+          className="space-y-3 px-5 py-6"
+          aria-busy="true"
+          aria-label="Loading project portfolio"
+        >
+          {[0, 1, 2, 3].map((row) => (
+            <div key={row} className="h-12 animate-pulse rounded-xl bg-ink/5" />
+          ))}
+        </div>
+      ) : projects.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-12 text-center">
           <FolderKanban className="size-8 text-ink/25" aria-hidden />
-          <h3 className="mt-4 font-display text-xl text-maroon">Your live portfolio is clear</h3>
+          <h3 className="mt-4 font-display text-xl text-maroon">
+            {query ? "No projects match your search" : "Your live portfolio is clear"}
+          </h3>
           <p className="mt-2 max-w-md text-[13px] leading-relaxed text-ink/55">
-            Projects appear here once a client opens a portal project or the studio creates one.
-            Review enquiries to see who may be ready to start.
+            {query
+              ? `No project, client, reference, or stage contains “${search.trim()}”.`
+              : "Projects appear here once a client opens a portal project or the studio creates one. Review enquiries to see who may be ready to start."}
           </p>
-          {onGoEnquiries ? (
+          {query && onClearSearch ? (
+            <Button className="mt-5" size="sm" variant="outline" onClick={onClearSearch}>
+              Clear search
+            </Button>
+          ) : onGoEnquiries ? (
             <Button className="mt-5" size="sm" variant="outline" onClick={onGoEnquiries}>
               Review enquiries
             </Button>
@@ -1704,6 +1770,26 @@ function ProjectsTable({
         </div>
       ) : (
         <>
+          {projectsError ? (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-5 py-3 text-[12px] text-amber-950"
+            >
+              <span>
+                Could not refresh the portfolio. Showing the project records already loaded.
+              </span>
+              {onRetryProjects ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onRetryProjects}
+                  disabled={projectsLoading}
+                >
+                  Retry
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/8 px-5 py-3">
             <div className="flex flex-wrap gap-2" aria-label="Filter project portfolio">
               {views.map((view) => (
@@ -1711,7 +1797,10 @@ function ProjectsTable({
                   key={view.id}
                   type="button"
                   aria-pressed={portfolioView === view.id}
-                  onClick={() => setPortfolioView(view.id)}
+                  onClick={() => {
+                    setPortfolioView(view.id);
+                    setPageIndex(0);
+                  }}
                   className={cn(
                     "cursor-pointer rounded-full border px-3 py-1.5 text-[11px] transition-colors",
                     portfolioView === view.id
@@ -1727,7 +1816,10 @@ function ProjectsTable({
               <span>Sort</span>
               <select
                 value={sort}
-                onChange={(e) => setSort(e.target.value as SortKey)}
+                onChange={(e) => {
+                  setSort(e.target.value as SortKey);
+                  setPageIndex(0);
+                }}
                 className="h-9 rounded-lg border border-ink/10 bg-white px-2.5 text-[12px] text-maroon outline-none focus:border-gold"
               >
                 <option value="attention">Needs attention</option>
@@ -1740,32 +1832,40 @@ function ProjectsTable({
             <div className="flex flex-col items-center px-6 py-10 text-center">
               <Inbox className="size-7 text-ink/25" aria-hidden />
               <h3 className="mt-3 font-display text-lg text-maroon">
-                {portfolioView === "active"
-                  ? "No active projects"
-                  : portfolioView === "completed"
-                    ? "No build-complete projects yet"
-                    : portfolioView === "closed"
-                      ? "No formally closed projects"
-                      : portfolioView === "archived"
-                        ? "No archived projects"
-                        : portfolioView === "sample"
-                          ? "No sample projects"
-                          : "No live projects"}
+                {query
+                  ? "No projects match your search"
+                  : portfolioView === "active"
+                    ? "No active projects"
+                    : portfolioView === "completed"
+                      ? "No build-complete projects yet"
+                      : portfolioView === "closed"
+                        ? "No formally closed projects"
+                        : portfolioView === "archived"
+                          ? "No archived projects"
+                          : portfolioView === "sample"
+                            ? "No sample projects"
+                            : "No live projects"}
               </h3>
               <p className="mt-1.5 max-w-md text-[12px] leading-relaxed text-ink/55">
-                {portfolioView === "active"
-                  ? "Build-complete, closed, and archived projects are available in their own views."
-                  : portfolioView === "completed"
-                    ? "Projects appear here after every tracked milestone is marked complete."
-                    : portfolioView === "closed"
-                      ? "Close-out is recorded only after handover obligations are complete."
-                      : portfolioView === "archived"
-                        ? "Archived records remain available here for reference."
-                        : portfolioView === "sample"
-                          ? "Demonstration records will appear here when sample data is enabled."
-                          : "New client projects will appear here as the studio opens them."}
+                {query
+                  ? `No projects in this view match “${search.trim()}”.`
+                  : portfolioView === "active"
+                    ? "Build-complete, closed, and archived projects are available in their own views."
+                    : portfolioView === "completed"
+                      ? "Projects appear here after every tracked milestone is marked complete."
+                      : portfolioView === "closed"
+                        ? "Close-out is recorded only after handover obligations are complete."
+                        : portfolioView === "archived"
+                          ? "Archived records remain available here for reference."
+                          : portfolioView === "sample"
+                            ? "Demonstration records will appear here when sample data is enabled."
+                            : "New client projects will appear here as the studio opens them."}
               </p>
-              {onGoEnquiries && (portfolioView === "active" || portfolioView === "all") ? (
+              {query && onClearSearch ? (
+                <Button className="mt-4" size="sm" variant="outline" onClick={onClearSearch}>
+                  Clear search
+                </Button>
+              ) : onGoEnquiries && (portfolioView === "active" || portfolioView === "all") ? (
                 <Button className="mt-4" size="sm" variant="outline" onClick={onGoEnquiries}>
                   Review enquiries
                 </Button>
@@ -1800,7 +1900,7 @@ function ProjectsTable({
                   </tr>
                 </thead>
                 <tbody>
-                  {sorted.map((p) => (
+                  {pageProjects.map((p) => (
                     <tr
                       key={p.id}
                       onClick={() => onOpen(p.id)}
@@ -1896,6 +1996,50 @@ function ProjectsTable({
               </table>
             </div>
           )}
+          {sorted.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 px-5 py-3">
+              <p className="text-[11px] text-muted" aria-live="polite">
+                Showing {firstVisible}–{lastVisible} of {sorted.length}{" "}
+                {portfolioView === "active"
+                  ? "active"
+                  : portfolioView === "completed"
+                    ? "build-complete"
+                    : portfolioView === "closed"
+                      ? "closed"
+                      : portfolioView === "archived"
+                        ? "archived"
+                        : portfolioView === "sample"
+                          ? "sample"
+                          : "live"}{" "}
+                projects
+              </p>
+              {pageCount > 1 ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPageIndex(currentPage - 1)}
+                    disabled={currentPage === 0}
+                    aria-label="Previous project page"
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-[11px] text-muted" aria-current="page">
+                    Page {currentPage + 1} of {pageCount}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPageIndex(currentPage + 1)}
+                    disabled={currentPage >= pageCount - 1}
+                    aria-label="Next project page"
+                  >
+                    Next
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </>
       )}
     </Panel>
@@ -2411,13 +2555,21 @@ function StaffToday({
 
 function Overview({
   projects,
+  projectsLoading,
+  projectsError,
   onOpen,
   onGoEnquiries,
+  onRetryProjects,
+  onClearSearch,
   search,
 }: {
   projects: StaffProjectSummary[];
+  projectsLoading: boolean;
+  projectsError: Error | null;
   onOpen: (id: string) => void;
   onGoEnquiries: () => void;
+  onRetryProjects: () => void;
+  onClearSearch: () => void;
   search: string;
 }) {
   const { data, isLoading } = useQuery({
@@ -2473,19 +2625,32 @@ function Overview({
     contracted: r.value,
     collected: r.paid,
   }));
-
-  const q = search.trim().toLowerCase();
-  const visible = q
-    ? projects.filter((p) =>
-        [p.title, p.reference, p.clientLabel, p.clientCity, p.stage]
-          .join(" ")
-          .toLowerCase()
-          .includes(q),
-      )
-    : projects;
+  const liveProjectCount = projects.filter(
+    (project) =>
+      project.source !== "sample" &&
+      project.lifecycleState !== "closed" &&
+      project.lifecycleState !== "archived",
+  ).length;
 
   return (
     <div className="space-y-5">
+      {!projectsLoading && !projectsError && liveProjectCount === 0 ? (
+        <Panel
+          title="No live projects yet"
+          subtitle="Your owner portfolio is ready. New client projects will appear here as the studio opens them."
+          actions={
+            <Button size="sm" variant="outline" onClick={onGoEnquiries}>
+              Review enquiries
+            </Button>
+          }
+        >
+          <p className="text-[13px] leading-relaxed text-ink/60">
+            The metrics below still show enquiry and financial activity. Sample, closed, and
+            archived records remain separate from the live portfolio.
+          </p>
+        </Panel>
+      ) : null}
+
       {/* headline numbers */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -2588,7 +2753,16 @@ function Overview({
 
       {/* the work itself */}
       <div className="grid min-w-0 gap-5 xl:grid-cols-[1.35fr_1fr]">
-        <ProjectsTable projects={visible} onOpen={onOpen} onGoEnquiries={onGoEnquiries} />
+        <ProjectsTable
+          projects={projects}
+          projectsLoading={projectsLoading}
+          projectsError={projectsError}
+          onRetryProjects={onRetryProjects}
+          search={search}
+          onClearSearch={onClearSearch}
+          onOpen={onOpen}
+          onGoEnquiries={onGoEnquiries}
+        />
 
         <Panel
           title="Needs a human"
@@ -3316,6 +3490,7 @@ const TABS = [
     body: "Everything the studio is running",
   },
   { id: "enquiries", label: "Enquiries", title: "Enquiries", body: "People who asked us to build" },
+  { id: "profile", label: "My profile", title: "My profile", body: "Your studio identity and work context" },
   { id: "access", label: "Access", title: "Access", body: "Who can open the console" },
 ] as const;
 
@@ -3359,6 +3534,11 @@ function AdminConsole() {
     roleState?.role === "admin";
   const isAdmin = roleState?.role === "admin";
   const canViewCalendar = isStaff;
+  const { data: myStaffProfile } = useQuery({
+    queryKey: ["my-staff-profile"],
+    queryFn: () => getMyStaffProfile({ data: undefined }),
+    enabled: isStaff,
+  });
   // Staff land on the operational queue; admins land on the portfolio.
   // Explicit navigation always wins over this default.
   const view = tab ?? "overview";
@@ -3481,6 +3661,7 @@ function AdminConsole() {
             ...(canViewCalendar
               ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }]
               : []),
+            ...(isStaff ? [{ id: "profile", label: "My profile", icon: UserRound }] : []),
             {
               id: "enquiries",
               label: "Enquiries",
@@ -3513,7 +3694,7 @@ function AdminConsole() {
         onSelect: () => openProject(item.projectId),
       }))}
       user={{
-        name: roleState?.email ?? "Studio",
+        name: myStaffProfile?.displayName || roleState?.email || "Studio",
         role:
           roleState?.role === "office_manager" ? "Office Manager" : (roleState?.role ?? undefined),
         email: roleState?.email ?? undefined,
@@ -3588,11 +3769,17 @@ function AdminConsole() {
         />
       ) : null}
 
+      {view === "profile" && isStaff ? <StaffProfilePanel /> : null}
+
       {view === "overview" && isAdmin ? (
         <Overview
           projects={all}
+          projectsLoading={isLoading}
+          projectsError={projectsError instanceof Error ? projectsError : null}
           onOpen={openProject}
           onGoEnquiries={() => setTab("enquiries")}
+          onRetryProjects={() => void refetch()}
+          onClearSearch={() => setSearch("")}
           search={search}
         />
       ) : null}

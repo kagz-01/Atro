@@ -7,6 +7,7 @@ import {
   PREVIEW_PERSONA_COOKIE,
   PREVIEW_PERSONAS,
   previewPersona,
+  previewPersonaWorkspace,
 } from "./preview-personas.ts";
 
 describe("preview personas", () => {
@@ -58,19 +59,10 @@ describe("preview personas", () => {
   });
 
   it("reads the persona key out of a raw cookie header", () => {
-    assert.equal(
-      personaKeyFromCookieHeader("token=abc; atro-preview-persona=local; a=1"),
-      "local",
-    );
-    assert.equal(
-      personaKeyFromCookieHeader("atro-preview-persona=abroad"),
-      "abroad",
-    );
+    assert.equal(personaKeyFromCookieHeader("token=abc; atro-preview-persona=local; a=1"), "local");
+    assert.equal(personaKeyFromCookieHeader("atro-preview-persona=abroad"), "abroad");
     assert.equal(personaKeyFromCookieHeader("session=xyz"), null);
-    assert.equal(
-      personaKeyFromCookieHeader("atro-preview-persona=stale"),
-      null,
-    );
+    assert.equal(personaKeyFromCookieHeader("atro-preview-persona=stale"), null);
     assert.equal(personaKeyFromCookieHeader("atro-preview-persona=boss"), "boss");
     assert.equal(personaKeyFromCookieHeader(null), null);
     assert.equal(personaKeyFromCookieHeader(""), null);
@@ -82,9 +74,13 @@ describe("preview personas", () => {
       personaCookieAssignment("office"),
       "atro-preview-persona=office; path=/; max-age=31536000; samesite=lax",
     );
-    assert.equal(
-      personaCookieAssignment("local").startsWith("atro-preview-persona="),
-      true,
-    );
+    assert.equal(personaCookieAssignment("local").startsWith("atro-preview-persona="), true);
+  });
+
+  it("routes studio seats to the console and client seats to the portal", () => {
+    assert.equal(previewPersonaWorkspace("boss"), "/admin");
+    assert.equal(previewPersonaWorkspace("office"), "/admin");
+    assert.equal(previewPersonaWorkspace("local"), "/portal");
+    assert.equal(previewPersonaWorkspace("abroad"), "/portal");
   });
 });
