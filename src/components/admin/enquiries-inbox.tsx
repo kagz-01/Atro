@@ -330,20 +330,55 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
   );
 }
 
-export function EnquiriesInbox() {
+export type EnquiryFilterStatus =
+  | "all"
+  | "open"
+  | "new"
+  | "contacted"
+  | "quoted"
+  | "won"
+  | "lost"
+  | "converted";
+
+export function EnquiriesInbox({
+  statusFilter,
+  onStatusFilterChange,
+  focusEnquiryId,
+  onFocusEnquiryHandled,
+}: {
+  statusFilter?: EnquiryFilterStatus;
+  onStatusFilterChange?: (status: EnquiryFilterStatus) => void;
+  focusEnquiryId?: string | null;
+  onFocusEnquiryHandled?: () => void;
+} = {}) {
   const { user, isPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [localStatusFilter, setLocalStatusFilter] = useState<EnquiryFilterStatus>("open");
   const [filterType, setFilterType] = useState<
     "all" | "Residential" | "Commercial" | "Institutional"
   >("all");
   const [filterDiaspora, setFilterDiaspora] = useState<"all" | "diaspora" | "local">("all");
-  const [filterStatus, setFilterStatus] = useState<
-    "all" | "open" | "new" | "contacted" | "quoted" | "won" | "lost" | "converted"
-  >("open");
   const [filterOwner, setFilterOwner] = useState<"all" | "unclaimed" | "mine" | "other">("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);
+  const filterStatus = statusFilter ?? localStatusFilter;
+  const setFilterStatus = onStatusFilterChange ?? setLocalStatusFilter;
+  const selectedId = focusEnquiryId ?? localSelectedId;
+
+  const closeSelected = () => {
+    setLocalSelectedId(null);
+    onFocusEnquiryHandled?.();
+  };
+
+  useEffect(() => {
+    if (!focusEnquiryId) return;
+    setSearch("");
+    setDebouncedSearch("");
+    setFilterType("all");
+    setFilterDiaspora("all");
+    setFilterOwner("all");
+  }, [focusEnquiryId]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
@@ -370,6 +405,7 @@ export function EnquiriesInbox() {
         clientType: filterDiaspora,
         status: filterStatus,
         owner: filterOwner,
+        enquiryId: focusEnquiryId ?? null,
       },
     ],
     queryFn: ({ pageParam }) => {
@@ -381,6 +417,7 @@ export function EnquiriesInbox() {
           clientType: filterDiaspora,
           status: filterStatus,
           owner: filterOwner,
+          ...(focusEnquiryId ? { enquiryId: focusEnquiryId } : {}),
         },
       });
     },
@@ -601,7 +638,7 @@ export function EnquiriesInbox() {
                 <button
                   key={e.id}
                   type="button"
-                  onClick={() => setSelectedId(e.id)}
+                  onClick={() => setLocalSelectedId(e.id)}
                   className={cn(
                     "w-full text-left p-5 bg-paper border rounded-2xl hover:border-burgundy/30 hover:shadow-card-hover transition-all duration-200",
                     e.diaspora ? "border-gold/30" : "border-line/50",
@@ -684,7 +721,7 @@ export function EnquiriesInbox() {
           <button
             type="button"
             className="absolute inset-0 bg-ink/50"
-            onClick={() => setSelectedId(null)}
+            onClick={closeSelected}
           />
           <div className="relative w-full sm:max-w-lg bg-paper rounded-t-2xl sm:rounded-2xl shadow-soft max-h-[85vh] overflow-y-auto">
             {/* Header */}
@@ -708,7 +745,7 @@ export function EnquiriesInbox() {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedId(null)}
+                onClick={closeSelected}
                 className="size-10 inline-flex items-center justify-center rounded-full hover:bg-stone transition-colors"
               >
                 <X className="size-5" />

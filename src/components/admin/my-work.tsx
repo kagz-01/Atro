@@ -47,13 +47,15 @@ function Empty({ children }: { children: ReactNode }) {
 
 export function MyWorkPanel({
   onGoEnquiries,
+  onOpenEnquiry,
   onOpenProject,
 }: {
   onGoEnquiries: () => void;
+  onOpenEnquiry: (enquiryId: string) => void;
   onOpenProject: (projectId: string) => void;
 }) {
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["my-work"],
     queryFn: () => getMyWork({ data: undefined }),
   });
@@ -74,8 +76,42 @@ export function MyWorkPanel({
   const chases = data?.chases ?? [];
   const notes = data?.notes ?? [];
 
+  if (error && !data) {
+    return (
+      <div
+        role="alert"
+        className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800"
+      >
+        <p>
+          {error instanceof Error
+            ? `Could not load your work: ${error.message}`
+            : "Could not load your work."}
+        </p>
+        <Button className="mt-3" size="sm" variant="outline" onClick={() => void refetch()}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-5 lg:grid-cols-3">
+    <>
+      {error ? (
+        <div
+          role="alert"
+          className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800"
+        >
+          <p>
+            {error instanceof Error
+              ? `Could not load your work: ${error.message}`
+              : "Could not load your work."}
+          </p>
+          <Button className="mt-3" size="sm" variant="outline" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </div>
+      ) : null}
+      <div className="grid gap-5 lg:grid-cols-3">
       <Panel
         title="My enquiries"
         subtitle="Claimed by you, still open"
@@ -94,26 +130,30 @@ export function MyWorkPanel({
         ) : (
           <ul className="space-y-2">
             {enquiries.map((e) => (
-              <li
-                key={e.id}
-                className="rounded-xl border border-ink/10 bg-cream/60 p-4"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[13px] font-medium text-maroon">{e.name}</p>
-                  <Badge tone={STATUS_TONES[e.status] ?? "stone"} className="text-[9px]">
-                    {statusLabel(e.status)}
-                  </Badge>
-                  <span className="text-[11px] text-muted">{timeAgo(e.createdAt)}</span>
-                </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[12px] text-ink/60">
-                  <span className="flex items-center gap-1">
-                    <Phone className="size-3.5" /> {formatPhone(e.phone ?? "")}
-                  </span>
-                  <span className="flex min-w-0 items-center gap-1">
-                    <Mail className="size-3.5" /> <span className="truncate">{e.email}</span>
-                  </span>
-                  <span>{e.projectType}</span>
-                </div>
+              <li key={e.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenEnquiry(e.id)}
+                  aria-label={`Open enquiry from ${e.name}`}
+                  className="w-full rounded-xl border border-ink/10 bg-cream/60 p-4 text-left transition-colors hover:border-burgundy/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[13px] font-medium text-maroon">{e.name}</p>
+                    <Badge tone={STATUS_TONES[e.status] ?? "stone"} className="text-[9px]">
+                      {statusLabel(e.status)}
+                    </Badge>
+                    <span className="text-[11px] text-muted">{timeAgo(e.createdAt)}</span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[12px] text-ink/60">
+                    <span className="flex items-center gap-1">
+                      <Phone className="size-3.5" /> {formatPhone(e.phone ?? "")}
+                    </span>
+                    <span className="flex min-w-0 items-center gap-1">
+                      <Mail className="size-3.5" /> <span className="truncate">{e.email}</span>
+                    </span>
+                    <span>{e.projectType}</span>
+                  </div>
+                </button>
               </li>
             ))}
           </ul>
@@ -191,6 +231,7 @@ export function MyWorkPanel({
           </ul>
         )}
       </Panel>
-    </div>
+      </div>
+    </>
   );
 }

@@ -467,7 +467,7 @@ atomically recorded with the prior/new state, actor, and timestamp.
 | 4 | Make owner exception items actionable and link each to its source record | **Implemented in `/admin`**; attention items open, scroll to, and focus their relevant project sections; blocked-work review preselects the blocked milestone, and certified payments link to their recorded ledger entries |
 | 5 | Confirm the operating model for delivery follow-up and keep it explicit | **Implemented as admin-owned responsibility**; no per-project coordinator is assigned and the admin remains accountable for cross-project follow-up |
 | 6 | Separate owner-only and staff navigation while preserving role guards | **Implemented in `/admin`**: staff land on Today and cannot see Portfolio or Access; the business overview endpoint requires admin and staff receive only operational queue data. A distinct office-manager capability model is still unimplemented |
-| 7 | Build the staff Today/Enquiry/Projects workflow | **Production-oriented first pass implemented in `/admin`**: Today combines studio follow-up, new enquiry status, project navigation, and personal claimed enquiries/chases/notes; Projects has a searchable coordination directory with a needs-follow-up filter and no owner portfolio money columns; Enquiries supports server-side search/filtering across the full inbox, filtered pagination, and explicit load errors. Validate task order and terminology with the office user before adding calendar or HR workflows |
+| 7 | Build the staff Today/Enquiry/Projects workflow | **Production-oriented first pass implemented in `/admin`**: Today combines studio follow-up, new enquiry status, actionable summary shortcuts, project navigation, and personal claimed enquiries/chases/notes; My Work claimed-enquiry cards open the exact enquiry record; Projects has a searchable coordination directory with a needs-follow-up filter and no owner portfolio money columns; Enquiries supports server-side search/filtering across the full inbox, filtered pagination, and explicit load errors. Validate task order and terminology with the office user before adding calendar or HR workflows |
 | 8 | Review local and diaspora client tasks against the shared portal tabs | Retain shared ownership boundaries; test mobile and time-zone scenarios |
 | 9 | Validate with representative users and operational scenarios | Test comprehension, task completion, errors, and permission refusals before rollout |
 
@@ -481,6 +481,13 @@ atomically recorded with the prior/new state, actor, and timestamp.
   financial summary, and attention signals before detailed maintenance forms.
 - Every warning/count links to the record producing it and reflects the same
   server-side state as its detail panel.
+- Staff can move from Today summary counts to the corresponding enquiry or
+  project list in one action, including a preselected needs-attention view.
+- The Today new-enquiry shortcut opens the inbox with the matching "New" status
+  filter; changing that filter in the inbox remains in effect while navigating
+  the staff console.
+- A claimed enquiry in My Work opens that exact record in the staff inbox,
+  including when it is outside the first page of results.
 - Local and diaspora clients can complete the same core tasks on mobile; time
   zone and payment presentation do not alter project ownership or rights.
 - Unauthorized actions are blocked by server checks even if a user calls a

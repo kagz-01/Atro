@@ -1,10 +1,10 @@
-// ATRO studio operations — the numbers a studio actually runs on.
+// ATRO studio operations — owner business reporting and the staff follow-up queue.
 //
-// All staff-gated. Deliberately aggregate rather than per-client: this is the
-// view that answers "how are we doing", not "what is happening to Wanjiku".
+// Business aggregates are admin-only. Staff receive a separate, minimal
+// operational response rather than financial or business-wide totals.
 
 import { createServerFn } from "@tanstack/react-start";
-import { getSql } from "@/lib/db";
+import { getSql, type Sql } from "@/lib/db";
 import { TRACKS, trackById, type TrackId } from "@/lib/diaspora/tracks";
 import { ZONES } from "@/lib/site";
 import { unreadClientMessages } from "@/lib/messages-server";
@@ -14,6 +14,14 @@ import { signedKes } from "@/lib/variations";
 async function staff() {
   const { requireStaff } = await import("@/lib/staff-session.server");
   return requireStaff();
+}
+
+async function admin() {
+  const identity = await staff();
+  if (identity.role !== "admin") {
+    throw new Error("Only an admin can view the business overview.");
+  }
+  return identity;
 }
 
 export type MoneyPosition = {
@@ -73,12 +81,148 @@ export type OpsOverview = {
   attention: AttentionItem[];
 };
 
+export type StaffTodayOverview = {
+  newEnquiries: number;
+  attention: AttentionItem[];
+};
+
 const STALLED_DAYS = 10;
 const UNVIEWED_DAYS = 14;
 
+async function getAttentionItems(sql: Sql): Promise<AttentionItem[]> {
+  const blocked = await sql<{
+    project_id: string;
+    reference: string;
+    title: string;
+    name: string;
+    age: number;
+  }>`
+    select m.project_id, p.reference, p.title, m.name,
+      floor(extract(epoch from (now() - coalesce(m.updated_at, p.created_at))) / 86400) as age
+    from portal_milestones m
+    join portal_projects p on p.id = m.project_id
+    where m.status = 'blocked'
+    order by age desc
+  `;
+
+  const waiting = await sql<{
+    project_id: string;
+    reference: string;
+    title: string;
+    decision_title: string;
+    age: number;
+  }>`
+    select d.project_id, p.reference, p.title, d.title as decision_title,
+      floor(extract(epoch from (now() - d.created_at)) / 86400) as age
+    from portal_decisions d
+    join portal_projects p on p.id = d.project_id
+    where d.state = 'awaiting-client'
+    order by age desc
+  `;
+
+  const stalled = await sql<{
+    id: string;
+    reference: string;
+    title: string;
+    age: number;
+  }>`
+    select id, reference, title,
+      floor(extract(epoch from (now() - created_at)) / 86400) as age
+    from portal_projects
+    where source <> 'sample'
+      and created_at < now() - make_interval(days => ${STALLED_DAYS})
+      and (last_viewed_at is null or last_viewed_at < now() - make_interval(days => ${STALLED_DAYS}))
+    order by age desc
+  `;
+
+  const unviewed = await sql<{
+    id: string;
+    reference: string;
+    title: string;
+    age: number;
+  }>`
+    select id, reference, title,
+      floor(extract(epoch from (now() - updated_at)) / 86400) as age
+    from portal_projects
+    where source <> 'sample'
+      and updated_at > now() - make_interval(days => 7)
+      and (last_viewed_at is null or last_viewed_at < now() - make_interval(days => ${UNVIEWED_DAYS}))
+    order by age desc
+  `;
+
+  const waitingOnUs = await unreadClientMessages(sql);
+  const waitingOnClient = await proposedVariations(sql);
+
+  return [
+    ...blocked.map((row) => ({
+      kind: "blocked" as const,
+      projectId: row.project_id,
+      reference: row.reference,
+      title: row.title,
+      detail: `Blocked at: ${row.name}`,
+      ageDays: Number(row.age ?? 0),
+    })),
+    ...waiting.map((row) => ({
+      kind: "decision" as const,
+      projectId: row.project_id,
+      reference: row.reference,
+      title: row.title,
+      detail: `Client has not answered: ${row.decision_title}`,
+      ageDays: Number(row.age ?? 0),
+    })),
+    ...stalled.map((row) => ({
+      kind: "stalled" as const,
+      projectId: row.id,
+      reference: row.reference,
+      title: row.title,
+      detail: "Nobody has opened this project in over a fortnight",
+      ageDays: Number(row.age ?? 0),
+    })),
+    ...unviewed.map((row) => ({
+      kind: "unviewed" as const,
+      projectId: row.id,
+      reference: row.reference,
+      title: row.title,
+      detail: "You have posted updates the client has not looked at",
+      ageDays: Number(row.age ?? 0),
+    })),
+    ...waitingOnUs.map((row) => ({
+      kind: "message" as const,
+      projectId: row.projectId,
+      reference: row.reference,
+      title: row.title,
+      detail: `${row.body.slice(0, 90)}${row.body.length > 90 ? "…" : ""}`,
+      ageDays: Number(row.age ?? 0),
+    })),
+    ...waitingOnClient.map((row) => ({
+      kind: "variation" as const,
+      projectId: row.projectId,
+      reference: row.reference,
+      title: row.title,
+      detail: `${signedKes(row.amount)} waiting for the client: ${row.variationTitle.slice(0, 60)}`,
+      ageDays: Number(row.age ?? 0),
+    })),
+  ].sort((a, b) => b.ageDays - a.ageDays);
+}
+
+export const getStaffToday = createServerFn({ method: "GET" }).handler(
+  async (): Promise<StaffTodayOverview> => {
+    await staff();
+    const sql = await getSql();
+    const [enquiries] = await sql<{ new_enquiries: number }>`
+      select count(*) filter (where status = 'new') as new_enquiries
+      from enquiries
+    `;
+    return {
+      newEnquiries: Number(enquiries?.new_enquiries ?? 0),
+      attention: await getAttentionItems(sql),
+    };
+  },
+);
+
 export const getOpsOverview = createServerFn({ method: "GET" }).handler(
   async (): Promise<OpsOverview> => {
-    await staff();
+    await admin();
     const sql = await getSql();
 
     const [projects] = await sql<Record<string, unknown>>`
@@ -141,131 +285,11 @@ export const getOpsOverview = createServerFn({ method: "GET" }).handler(
       from portal_projects group by 1
     `;
 
-    // ── the queue that needs a human ──
-    const blocked = await sql<{
-      project_id: string;
-      reference: string;
-      title: string;
-      name: string;
-      age: number;
-    }>`
-      select m.project_id, p.reference, p.title, m.name,
-        floor(extract(epoch from (now() - coalesce(m.updated_at, p.created_at))) / 86400) as age
-      from portal_milestones m
-      join portal_projects p on p.id = m.project_id
-      where m.status = 'blocked'
-      order by age desc
-    `;
-
-    const waiting = await sql<{
-      project_id: string;
-      reference: string;
-      title: string;
-      decision_title: string;
-      age: number;
-    }>`
-      select d.project_id, p.reference, p.title, d.title as decision_title,
-        floor(extract(epoch from (now() - d.created_at)) / 86400) as age
-      from portal_decisions d
-      join portal_projects p on p.id = d.project_id
-      where d.state = 'awaiting-client'
-      order by age desc
-    `;
-
-    const stalled = await sql<{
-      id: string;
-      reference: string;
-      title: string;
-      age: number;
-    }>`
-      select id, reference, title,
-        floor(extract(epoch from (now() - created_at)) / 86400) as age
-      from portal_projects
-      where source <> 'sample'
-        and created_at < now() - make_interval(days => ${STALLED_DAYS})
-        and (last_viewed_at is null or last_viewed_at < now() - make_interval(days => ${STALLED_DAYS}))
-      order by age desc
-    `;
-
-    const unviewed = await sql<{
-      id: string;
-      reference: string;
-      title: string;
-      age: number;
-    }>`
-      select id, reference, title,
-        floor(extract(epoch from (now() - updated_at)) / 86400) as age
-      from portal_projects
-      where source <> 'sample'
-        and updated_at > now() - make_interval(days => 7)
-        and (last_viewed_at is null or last_viewed_at < now() - make_interval(days => ${UNVIEWED_DAYS}))
-      order by age desc
-    `;
-
-    // A client who has written in and been left waiting is the failure this
-    // whole feature exists to prevent, so it sits with the other attention
-    // items rather than hiding in an inbox nobody opens.
-    const waitingOnUs = await unreadClientMessages(sql);
-
-    // A priced change with nobody chasing it is money the studio has already
-    // committed time to thinking about; it belongs next to the messages, not
-    // in a spreadsheet somebody checks on Fridays.
-    const waitingOnClient = await proposedVariations(sql);
-
     const trackLabel = (id: string) => trackById(id).label;
     const zoneLabel = (slug: string) =>
       ZONES.find((z) => z.slug === slug)?.name ?? (slug ? slug : "Unassigned");
 
-    const attention: AttentionItem[] = [
-      ...blocked.map((r) => ({
-        kind: "blocked" as const,
-        projectId: r.project_id,
-        reference: r.reference,
-        title: r.title,
-        detail: `Blocked at: ${r.name}`,
-        ageDays: Number(r.age ?? 0),
-      })),
-      ...waiting.map((r) => ({
-        kind: "decision" as const,
-        projectId: r.project_id,
-        reference: r.reference,
-        title: r.title,
-        detail: `Client has not answered: ${r.decision_title}`,
-        ageDays: Number(r.age ?? 0),
-      })),
-      ...stalled.map((r) => ({
-        kind: "stalled" as const,
-        projectId: r.id,
-        reference: r.reference,
-        title: r.title,
-        detail: "Nobody has opened this project in over a fortnight",
-        ageDays: Number(r.age ?? 0),
-      })),
-      ...unviewed.map((r) => ({
-        kind: "unviewed" as const,
-        projectId: r.id,
-        reference: r.reference,
-        title: r.title,
-        detail: "You have posted updates the client has not looked at",
-        ageDays: Number(r.age ?? 0),
-      })),
-      ...waitingOnUs.map((r) => ({
-        kind: "message" as const,
-        projectId: r.projectId,
-        reference: r.reference,
-        title: r.title,
-        detail: `${r.body.slice(0, 90)}${r.body.length > 90 ? "…" : ""}`,
-        ageDays: Number(r.age ?? 0),
-      })),
-      ...waitingOnClient.map((r) => ({
-        kind: "variation" as const,
-        projectId: r.projectId,
-        reference: r.reference,
-        title: r.title,
-        detail: `${signedKes(r.amount)} waiting for the client: ${r.variationTitle.slice(0, 60)}`,
-        ageDays: Number(r.age ?? 0),
-      })),
-    ].sort((a, b) => b.ageDays - a.ageDays);
+    const attention = await getAttentionItems(sql);
 
     const n = (v: unknown) => Number(v ?? 0);
 

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   Banknote,
   CalendarClock,
   CheckCircle2,
@@ -16,6 +17,7 @@ import {
   Lock,
   Mail,
   MessageSquare,
+  Search,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,7 +34,10 @@ import {
   MonthlyColumns,
   type Slice,
 } from "@/components/dashboard/charts";
-import { EnquiriesInbox } from "@/components/admin/enquiries-inbox";
+import {
+  EnquiriesInbox,
+  type EnquiryFilterStatus,
+} from "@/components/admin/enquiries-inbox";
 import { MyWorkPanel } from "@/components/admin/my-work";
 import { SelectionsPanel } from "@/components/admin/selections-panel";
 import { ApprovalsPanel } from "@/components/admin/approvals-panel";
@@ -44,7 +49,12 @@ import { PresencePanel } from "@/components/admin/presence-panel";
 import { readMessagesForStaff } from "@/lib/messages-server";
 import { listPresenceForStaff } from "@/lib/presence-server";
 import { isOpen } from "@/lib/presence";
-import { getOpsOverview, type GroupRow } from "@/lib/ops";
+import {
+  getOpsOverview,
+  getStaffToday,
+  type GroupRow,
+  type StaffTodayOverview,
+} from "@/lib/ops";
 import {
   getMyAccess,
   acceptMyInvite,
@@ -493,6 +503,7 @@ function ProjectDetail({
   const [docState, setDocState] = useState<(typeof DOC_STATES)[number]["value"]>("awaiting");
   const [lifecycleReason, setLifecycleReason] = useState("");
   const [lifecycleReview, setLifecycleReview] = useState(false);
+  const [sectionRequest, setSectionRequest] = useState({ target: "", nonce: 0 });
 
   const [pending, setPending] = useState("");
 
@@ -556,14 +567,23 @@ function ProjectDetail({
   const uncertified = data.payments.filter((x) => x.status === "due" || x.status === "scheduled");
   const blockedMilestones = data.milestones.filter((m) => m.status === "blocked").length;
   const readyForClient = data.milestones.filter((m) => m.approvalReady).length;
+  const firstBlockedMilestone = data.milestones.find((m) => m.status === "blocked");
   const certifiedPayments = data.payments.filter((payment) => payment.status === "certified");
   const certifiedTotal = certifiedPayments.reduce((total, payment) => total + payment.amount, 0);
-  const ownerActions = [
+  const ownerActions: {
+    label: string;
+    detail: string;
+    count: number;
+    section: string;
+    milestoneId?: string;
+  }[] = [
     ...(blockedMilestones > 0
       ? [{
           label: "Blocked work",
           detail: `${blockedMilestones} milestone${blockedMilestones === 1 ? "" : "s"} marked blocked`,
           count: blockedMilestones,
+          section: "milestone-evidence",
+          milestoneId: firstBlockedMilestone?.id,
         }]
       : []),
     ...(stillOpen > 0
@@ -571,6 +591,7 @@ function ProjectDetail({
           label: "Client decisions",
           detail: `${stillOpen} decision${stillOpen === 1 ? "" : "s"} not yet recorded`,
           count: stillOpen,
+          section: "client-decisions",
         }]
       : []),
     ...(certifiedPayments.length > 0
@@ -578,6 +599,7 @@ function ProjectDetail({
           label: "Certified payments",
           detail: `${kes(certifiedTotal)} awaiting client release`,
           count: certifiedPayments.length,
+          section: "financial-summary",
         }]
       : []),
     ...(waitingToReply > 0
@@ -585,6 +607,7 @@ function ProjectDetail({
           label: "Client messages",
           detail: `${waitingToReply} message${waitingToReply === 1 ? "" : "s"} waiting for a reply`,
           count: waitingToReply,
+          section: "message-thread",
         }]
       : []),
     ...(presenceOpen > 0
@@ -592,6 +615,7 @@ function ProjectDetail({
           label: "Site visit requests",
           detail: `${presenceOpen} request${presenceOpen === 1 ? "" : "s"} awaiting a response`,
           count: presenceOpen,
+          section: "site-presence",
         }]
       : []),
     ...(readyForClient > 0
@@ -599,6 +623,7 @@ function ProjectDetail({
           label: "Milestones ready for sign-off",
           detail: `${readyForClient} milestone${readyForClient === 1 ? "" : "s"} marked ready for the client`,
           count: readyForClient,
+          section: "approvals",
         }]
       : []),
   ];
@@ -682,18 +707,29 @@ function ProjectDetail({
             ) : (
               <ul className="space-y-2">
                 {ownerActions.map((action) => (
-                  <li
-                    key={action.label}
-                    className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3"
-                  >
-                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-800" aria-hidden />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[13px] font-medium text-maroon">{action.label}</span>
-                      <span className="mt-0.5 block text-[12px] text-ink/60">{action.detail}</span>
-                    </span>
-                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[12px] text-amber-900">
-                      {action.count}
-                    </span>
+                  <li key={action.label}>
+                    <button
+                      type="button"
+                      aria-label={`Review ${action.label}: ${action.detail}`}
+                      onClick={() => {
+                        if (action.milestoneId) setMilestoneId(action.milestoneId);
+                        setSectionRequest((current) => ({
+                          target: action.section,
+                          nonce: current.nonce + 1,
+                        }));
+                      }}
+                      className="flex w-full items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-left transition-colors hover:border-amber-400 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
+                    >
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-800" aria-hidden />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] font-medium text-maroon">{action.label}</span>
+                        <span className="mt-0.5 block text-[12px] text-ink/60">{action.detail}</span>
+                        <span className="mt-1 block text-[11px] font-medium text-burgundy">Review this item</span>
+                      </span>
+                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[12px] text-amber-900">
+                        {action.count}
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -949,6 +985,8 @@ function ProjectDetail({
           title="Message thread"
           hint={waitingToReply ? `${waitingToReply} waiting` : undefined}
           defaultOpen={waitingToReply > 0}
+          sectionId="project-message-thread"
+          openRequest={sectionRequest.target === "message-thread" ? sectionRequest.nonce : 0}
         >
           <StudioMessagesPanel projectId={projectId} />
         </AccordionItem>
@@ -956,10 +994,16 @@ function ProjectDetail({
           title="Site presence"
           hint={presenceOpen ? `${presenceOpen} waiting` : undefined}
           defaultOpen={presenceOpen > 0}
+          sectionId="project-site-presence"
+          openRequest={sectionRequest.target === "site-presence" ? sectionRequest.nonce : 0}
         >
           <PresencePanel projectId={projectId} onChanged={onChanged} />
         </AccordionItem>
-        <AccordionItem title="Financial summary">
+        <AccordionItem
+          title="Financial summary"
+          sectionId="project-financial-summary"
+          openRequest={sectionRequest.target === "financial-summary" ? sectionRequest.nonce : 0}
+        >
           <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-ink/8 pt-5 text-[12px] md:grid-cols-4">
             {[
               ["Contract", kes(p.contractValue)],
@@ -974,10 +1018,41 @@ function ProjectDetail({
             ))}
           </dl>
           <div className="mt-6">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
+              Certified payments awaiting client release
+            </h3>
+            {certifiedPayments.length === 0 ? (
+              <p className="mt-2 rounded-xl border border-ink/8 bg-white px-4 py-3 text-[12px] text-ink/55">
+                No certified payments are waiting for client release.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {certifiedPayments.map((payment) => (
+                  <li
+                    key={payment.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3"
+                  >
+                    <span className="text-[13px] text-maroon">{payment.label}</span>
+                    <span className="text-[13px] font-medium text-maroon">{kes(payment.amount)}</span>
+                    {payment.certificate ? (
+                      <span className="w-full font-mono text-[11px] text-muted">
+                        Certificate {payment.certificate}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="mt-6">
             <HowToPayBlock projectId={projectId} run={run} onChanged={onChanged} />
           </div>
         </AccordionItem>
-        <AccordionItem title="Milestone & evidence">
+        <AccordionItem
+          title="Milestone & evidence"
+          sectionId="project-milestone-evidence"
+          openRequest={sectionRequest.target === "milestone-evidence" ? sectionRequest.nonce : 0}
+        >
           <div className="grid gap-6 lg:grid-cols-2">
             <WriteBlock
               title="Update a milestone"
@@ -1187,7 +1262,11 @@ function ProjectDetail({
             </WriteBlock>
           </div>
         </AccordionItem>
-        <AccordionItem title="Approvals">
+        <AccordionItem
+          title="Approvals"
+          sectionId="project-approvals"
+          openRequest={sectionRequest.target === "approvals" ? sectionRequest.nonce : 0}
+        >
           <ApprovalsPanel projectId={projectId} onChanged={onChanged} />
         </AccordionItem>
         <AccordionItem title="Selections">
@@ -1366,7 +1445,12 @@ function ProjectDetail({
             </p>
           )}
         </AccordionItem>
-        <AccordionItem title="What the client has decided" hint={`${data.decisions.length}`}>
+        <AccordionItem
+          title="What the client has decided"
+          hint={`${stillOpen} awaiting · ${data.decisions.length} total`}
+          sectionId="project-client-decisions"
+          openRequest={sectionRequest.target === "client-decisions" ? sectionRequest.nonce : 0}
+        >
           {data.decisions.length === 0 ? (
             <p className="text-[13px] text-ink/55">No decisions on this project yet.</p>
           ) : (
@@ -1430,6 +1514,8 @@ const ATTENTION_COPY: Record<string, { label: string; cls: string }> = {
   decision: { label: "Awaiting client", cls: "bg-amber-50 text-amber-900 border-amber-300" },
   stalled: { label: "Gone quiet", cls: "bg-stone/100 text-stone-700 border-stone-300" },
   unviewed: { label: "Client not looking", cls: "bg-sky-50 text-sky-900 border-sky-300" },
+  message: { label: "Reply needed", cls: "bg-amber-50 text-amber-900 border-amber-300" },
+  variation: { label: "Change awaiting client", cls: "bg-stone/100 text-stone-700 border-stone-300" },
 };
 
 type SortKey = "newest" | "attention" | "largest";
@@ -1438,9 +1524,11 @@ type PortfolioView = "active" | "completed" | "closed" | "archived" | "all" | "s
 function ProjectsTable({
   projects,
   onOpen,
+  onGoEnquiries,
 }: {
   projects: StaffProjectSummary[];
   onOpen: (id: string) => void;
+  onGoEnquiries?: () => void;
 }) {
   const [sort, setSort] = useState<SortKey>("attention");
   const [portfolioView, setPortfolioView] = useState<PortfolioView>("active");
@@ -1495,14 +1583,24 @@ function ProjectsTable({
   return (
     <Panel
       title="Project portfolio"
-      subtitle="Build complete means every tracked milestone is complete. Closed and archived projects have separate views."
+      subtitle="Build complete means every tracked milestone is complete. Closed and archived projects have separate views. Follow-up stays admin-owned; no per-project coordinator is assigned."
       className="min-w-0"
       bodyClassName="p-0"
     >
       {projects.length === 0 ? (
-        <p className="p-6 text-center text-[13px] text-ink/55">
-          Projects appear as soon as a client opens one in their portal.
-        </p>
+        <div className="flex flex-col items-center px-6 py-12 text-center">
+          <FolderKanban className="size-8 text-ink/25" aria-hidden />
+          <h3 className="mt-4 font-display text-xl text-maroon">Your live portfolio is clear</h3>
+          <p className="mt-2 max-w-md text-[13px] leading-relaxed text-ink/55">
+            Projects appear here once a client opens a portal project or the studio creates one.
+            Review enquiries to see who may be ready to start.
+          </p>
+          {onGoEnquiries ? (
+            <Button className="mt-5" size="sm" variant="outline" onClick={onGoEnquiries}>
+              Review enquiries
+            </Button>
+          ) : null}
+        </div>
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/8 px-5 py-3">
@@ -1538,19 +1636,40 @@ function ProjectsTable({
             </label>
           </div>
           {sorted.length === 0 ? (
-            <p className="p-6 text-center text-[13px] text-ink/55">
-              {portfolioView === "active"
-                ? "No active projects."
-                : portfolioView === "completed"
-                  ? "No projects have completed all tracked milestones yet."
-                  : portfolioView === "closed"
-                    ? "No projects have been formally closed."
-                    : portfolioView === "archived"
-                      ? "No archived projects."
-                      : portfolioView === "sample"
-                        ? "No sample projects."
-                        : "No live projects yet."}
-            </p>
+            <div className="flex flex-col items-center px-6 py-10 text-center">
+              <Inbox className="size-7 text-ink/25" aria-hidden />
+              <h3 className="mt-3 font-display text-lg text-maroon">
+                {portfolioView === "active"
+                  ? "No active projects"
+                  : portfolioView === "completed"
+                    ? "No build-complete projects yet"
+                    : portfolioView === "closed"
+                      ? "No formally closed projects"
+                      : portfolioView === "archived"
+                        ? "No archived projects"
+                        : portfolioView === "sample"
+                          ? "No sample projects"
+                          : "No live projects"}
+              </h3>
+              <p className="mt-1.5 max-w-md text-[12px] leading-relaxed text-ink/55">
+                {portfolioView === "active"
+                  ? "Build-complete, closed, and archived projects are available in their own views."
+                  : portfolioView === "completed"
+                    ? "Projects appear here after every tracked milestone is marked complete."
+                    : portfolioView === "closed"
+                      ? "Close-out is recorded only after handover obligations are complete."
+                      : portfolioView === "archived"
+                        ? "Archived records remain available here for reference."
+                        : portfolioView === "sample"
+                          ? "Demonstration records will appear here when sample data is enabled."
+                          : "New client projects will appear here as the studio opens them."}
+              </p>
+              {onGoEnquiries && (portfolioView === "active" || portfolioView === "all") ? (
+                <Button className="mt-4" size="sm" variant="outline" onClick={onGoEnquiries}>
+                  Review enquiries
+                </Button>
+              ) : null}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] border-collapse text-left">
@@ -1664,13 +1783,507 @@ function ProjectsTable({
   );
 }
 
+function StaffProjectsDirectory({
+  projects,
+  onOpen,
+}: {
+  projects: StaffProjectSummary[];
+  onOpen: (id: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [followUpFilter, setFollowUpFilter] = useState<"all" | "needed">("all");
+  const query = search.trim().toLowerCase();
+  const visibleProjects = projects.filter((project) => {
+    if (
+      followUpFilter === "needed" &&
+      (project.source === "sample" ||
+        project.lifecycleState === "closed" ||
+        project.lifecycleState === "archived" ||
+        (project.blockedStages === 0 && project.openDecisions === 0 && project.onTrack))
+    ) {
+      return false;
+    }
+    return (
+      !query ||
+      [
+        project.title,
+        project.reference,
+        project.clientLabel,
+        project.clientCity,
+        project.stage,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+  });
+
+  return (
+    <Panel
+      title="Project directory"
+      subtitle="Find a project by client or reference, then open its record to coordinate the next step."
+      className="min-w-0"
+      bodyClassName="p-0"
+    >
+      <div className="flex flex-wrap items-center gap-3 border-b border-ink/8 px-5 py-3">
+        <label className="relative min-w-[200px] flex-1">
+          <span className="sr-only">Search projects by project, client, reference, or stage</span>
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
+            aria-hidden
+          />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Project, client, reference, or stage"
+            className="h-10 w-full rounded-xl border border-line bg-paper pl-10 pr-3 text-sm outline-none focus:border-burgundy"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-[12px] text-muted">
+          <span>Follow-up</span>
+          <select
+            value={followUpFilter}
+            onChange={(event) => setFollowUpFilter(event.target.value as typeof followUpFilter)}
+            className="h-10 rounded-lg border border-ink/10 bg-white px-2.5 text-[12px] text-maroon outline-none focus:border-gold"
+          >
+            <option value="all">All projects</option>
+            <option value="needed">Needs follow-up</option>
+          </select>
+        </label>
+        <span className="text-[12px] text-muted" aria-live="polite">
+          {visibleProjects.length} of {projects.length} projects
+        </span>
+      </div>
+      {visibleProjects.length === 0 ? (
+        <div className="px-6 py-10 text-center">
+          <FolderKanban className="mx-auto size-7 text-ink/25" aria-hidden />
+          <h3 className="mt-3 font-display text-lg text-maroon">
+            {projects.length === 0
+              ? "No projects to show yet"
+              : followUpFilter === "needed" && !query
+                ? "No projects need follow-up"
+                : "No projects match this search"}
+          </h3>
+          <p className="mx-auto mt-1.5 max-w-md text-[12px] leading-relaxed text-ink/55">
+            {projects.length === 0
+              ? "Projects appear here when a client opens a portal project or the studio creates one."
+              : followUpFilter === "needed" && !query
+                ? "Live projects with blocked work, open client decisions, or a programme review will appear here."
+                : "Try a different client, project, reference, or stage, or clear the follow-up filter."}
+          </p>
+          {query || followUpFilter !== "all" ? (
+            <Button
+              className="mt-4"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSearch("");
+                setFollowUpFilter("all");
+              }}
+            >
+              Show all projects
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                <th scope="col" className="px-5 py-3 font-bold">Project</th>
+                <th scope="col" className="px-3 py-3 font-bold">Client</th>
+                <th scope="col" className="px-3 py-3 font-bold">Current stage</th>
+                <th scope="col" className="px-3 py-3 font-bold">Lifecycle</th>
+                <th scope="col" className="px-3 py-3 font-bold">Programme</th>
+                <th scope="col" className="px-5 py-3 font-bold">Follow-up</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleProjects.map((project) => {
+              const followUp = project.blockedStages > 0
+                ? { label: "Blocked", cls: "border-red-200 bg-red-50 text-red-800" }
+                : project.openDecisions > 0
+                  ? { label: "Awaiting client", cls: "border-amber-300 bg-amber-50 text-amber-900" }
+                  : !project.onTrack
+                    ? { label: "Needs review", cls: "border-stone-300 bg-stone/100 text-stone-700" }
+                    : project.buildComplete
+                      ? { label: "Build complete", cls: "border-emerald-200 bg-emerald-50 text-emerald-800" }
+                      : { label: "No open issue", cls: "border-ink/10 bg-ink/2 text-ink/60" };
+              const lifecycleTone =
+                project.lifecycleState === "closed" || project.lifecycleState === "archived"
+                  ? "maroon"
+                  : "gold";
+              const programme =
+                project.daysRemaining > 0
+                  ? `${project.daysRemaining} days remaining`
+                  : project.daysRemaining < 0
+                    ? `${Math.abs(project.daysRemaining)} days past recorded target`
+                    : project.onTrack
+                      ? "No target-date detail"
+                      : "Programme needs review";
+
+              return (
+                <tr
+                  key={project.id}
+                  onClick={() => onOpen(project.id)}
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onOpen(project.id);
+                    }
+                  }}
+                  className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
+                >
+                  <td className="px-5 py-3">
+                    <span className="block text-[13px] font-medium text-maroon">{project.title}</span>
+                    <span className="font-mono text-[11px] text-muted">{project.reference}</span>
+                    {project.source === "sample" ? (
+                      <span className="mt-1 block">
+                        <Badge tone="gold" className="h-4 text-[8px]">Sample</Badge>
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-3 text-[13px] text-ink/70">
+                    {project.clientLabel || "Client not named"}
+                    {project.clientType === "diaspora" ? (
+                      <span className="mt-1 block">
+                        <Badge tone="gold" className="h-4 text-[8px]">From abroad</Badge>
+                      </span>
+                    ) : null}
+                    {project.clientCity ? (
+                      <span className="block text-[11px] text-muted">{project.clientCity}</span>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-3 text-[13px] text-ink/70">{project.stage || "Not set"}</td>
+                  <td className="px-3 py-3">
+                    <Badge tone={lifecycleTone}>
+                      {portfolioLifecycleLabel(project.lifecycleState, project.buildComplete)}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-3 text-[12px] text-ink/65">{programme}</td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold",
+                        followUp.cls,
+                      )}
+                    >
+                      {followUp.label}
+                    </span>
+                    {project.blockedStages > 1 || project.openDecisions > 1 ? (
+                      <span className="mt-1 block text-[10px] text-muted">
+                        {project.blockedStages > 0
+                          ? `${project.blockedStages} blocked stage${project.blockedStages === 1 ? "" : "s"}`
+                          : `${project.openDecisions} open decisions`}
+                      </span>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function StaffToday({
+  projects,
+  today,
+  todayLoading,
+  todayError,
+  projectsLoading,
+  projectsError,
+  onRetryToday,
+  onRetryProjects,
+  onOpen,
+  onOpenEnquiry,
+  onGoEnquiries,
+  onGoNewEnquiries,
+  onGoProjects,
+  onGoAttentionProjects,
+}: {
+  projects: StaffProjectSummary[];
+  today: StaffTodayOverview | undefined;
+  todayLoading: boolean;
+  todayError: Error | null;
+  projectsLoading: boolean;
+  projectsError: Error | null;
+  onRetryToday: () => void;
+  onRetryProjects: () => void;
+  onOpen: (id: string) => void;
+  onOpenEnquiry: (id: string) => void;
+  onGoEnquiries: () => void;
+  onGoNewEnquiries: () => void;
+  onGoProjects: () => void;
+  onGoAttentionProjects: () => void;
+}) {
+  const liveProjects = projects.filter(
+    (project) =>
+      project.source !== "sample" &&
+      project.lifecycleState !== "closed" &&
+      project.lifecycleState !== "archived",
+  );
+  const needsAttention = liveProjects.filter(
+    (project) => project.blockedStages > 0 || project.openDecisions > 0 || !project.onTrack,
+  ).length;
+  const liveProjectIds = new Set(liveProjects.map((project) => project.id));
+  const attentionItems = (today?.attention ?? []).filter((item) =>
+    liveProjectIds.has(item.projectId),
+  );
+
+  return (
+    <div className="space-y-5">
+      {projectsError ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800"
+        >
+          <p>
+            {projectsError instanceof Error
+              ? `Could not load the project directory: ${projectsError.message}`
+              : "Could not load the project directory."}
+          </p>
+          <Button className="mt-3" size="sm" variant="outline" onClick={onRetryProjects}>
+            Try again
+          </Button>
+        </div>
+      ) : null}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <button
+          type="button"
+          onClick={onGoProjects}
+          aria-label="Open the project directory"
+          className="block w-full rounded-2xl text-left transition-shadow hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
+        >
+          <StatCard
+            label="Live projects"
+            value={
+              projectsLoading
+                ? "…"
+                : projectsError && projects.length === 0
+                  ? "—"
+                  : String(liveProjects.length)
+            }
+            sub={
+              projectsError && projects.length === 0
+                ? "Project count unavailable"
+                : "Projects currently in the studio's live portfolio"
+            }
+            icon={FolderKanban}
+            className="h-full transition-colors hover:border-burgundy/30"
+          />
+        </button>
+        <button
+          type="button"
+          onClick={onGoAttentionProjects}
+          aria-label="Open projects that need attention"
+          className="block w-full rounded-2xl text-left transition-shadow hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
+        >
+          <StatCard
+            label="Projects to check"
+            value={
+              projectsLoading
+                ? "…"
+                : projectsError && projects.length === 0
+                  ? "—"
+                  : String(needsAttention)
+            }
+            sub={
+              projectsError && projects.length === 0
+                ? "Attention count unavailable"
+                : "Blocked, awaiting a decision, or off programme"
+            }
+            icon={AlertTriangle}
+            tone={needsAttention > 0 ? "warn" : "good"}
+            className="h-full transition-colors hover:border-burgundy/30"
+          />
+        </button>
+        <button
+          type="button"
+          onClick={onGoNewEnquiries}
+          aria-label="Open new enquiries"
+          className="block w-full rounded-2xl text-left transition-shadow hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
+        >
+          <StatCard
+            label="New enquiries"
+            value={
+              todayLoading
+                ? "…"
+                : todayError && !today
+                  ? "—"
+                  : String(today?.newEnquiries ?? 0)
+            }
+            sub={
+              todayError && !today
+                ? "Enquiry count unavailable"
+                : "Not yet marked as contacted"
+            }
+            icon={Inbox}
+            tone={(today?.newEnquiries ?? 0) > 0 ? "warn" : "default"}
+            className="h-full transition-colors hover:border-burgundy/30"
+          />
+        </button>
+      </div>
+
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[1.2fr_1fr]">
+        <Panel
+          title="Studio follow-up"
+          subtitle="Items needing a human response, sorted by how long they have waited."
+          actions={
+            <Button size="sm" variant="ghost" onClick={onGoProjects}>
+              All projects <ArrowRight className="size-3.5" />
+            </Button>
+          }
+        >
+          {todayError ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800"
+            >
+              <p>
+                {todayError instanceof Error
+                  ? `Could not load the studio follow-up queue: ${todayError.message}`
+                  : "Could not load the studio follow-up queue."}
+              </p>
+              <Button className="mt-3" size="sm" variant="outline" onClick={onRetryToday}>
+                Try again
+              </Button>
+            </div>
+          ) : todayLoading || !today ? (
+            <p className="rounded-xl border border-ink/10 bg-cream/60 px-4 py-5 text-center text-[13px] text-ink/55">
+              Loading the studio follow-up queue…
+            </p>
+          ) : projectsError && projects.length === 0 ? (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-[13px] leading-relaxed text-amber-900">
+              Project records could not be loaded, so this queue cannot verify which follow-ups
+              are for live projects. Retry the project directory above.
+            </p>
+          ) : attentionItems.length === 0 ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-5 text-center">
+              <CheckCircle2 className="mx-auto size-5 text-emerald-700" aria-hidden />
+              <p className="mt-2 text-[13px] font-medium text-emerald-900">
+                No project follow-up is waiting
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-emerald-800">
+                New client messages, blocked work, decisions, and quiet projects will appear here.
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {attentionItems.slice(0, 8).map((item, index) => (
+                <li key={`${item.projectId}-${item.kind}-${index}`}>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(item.projectId)}
+                    className="flex w-full items-start justify-between gap-3 rounded-xl border border-ink/10 p-3 text-left transition-colors hover:border-burgundy hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
+                  >
+                    <span className="min-w-0">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-[13px] font-medium text-maroon">{item.title}</span>
+                        <span
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+                            ATTENTION_COPY[item.kind]?.cls,
+                          )}
+                        >
+                          {ATTENTION_COPY[item.kind]?.label ?? item.kind}
+                        </span>
+                      </span>
+                      <span className="mt-1 block text-[11px] font-mono text-muted">
+                        {item.reference}
+                      </span>
+                      <span className="mt-1 block text-[12px] leading-snug text-ink/55">
+                        {item.detail}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[11px] text-muted">
+                      {item.ageDays === 0 ? "today" : `${item.ageDays}d waiting`}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <div className="space-y-5">
+          <Panel
+            title="Enquiry inbox"
+            subtitle="Respond to people who have asked ATRO about a project."
+            actions={
+              <Button size="sm" variant="outline" onClick={onGoNewEnquiries}>
+                Review new enquiries <ArrowRight className="size-3.5" />
+              </Button>
+            }
+          >
+            {todayError ? (
+              <p role="alert" className="text-[13px] text-red-800">
+                Enquiry count is unavailable. Open the inbox to check for new requests.
+              </p>
+            ) : todayLoading || !today ? (
+              <p className="text-[13px] text-ink/55">Checking for new enquiries…</p>
+            ) : today.newEnquiries > 0 ? (
+              <p className="text-[13px] leading-relaxed text-ink/70">
+                <strong className="text-maroon">{today.newEnquiries}</strong>{" "}
+                {today.newEnquiries === 1 ? "enquiry is" : "enquiries are"} waiting to be
+                contacted.
+              </p>
+            ) : (
+              <p className="text-[13px] leading-relaxed text-ink/55">
+                No new enquiries are waiting to be contacted.
+              </p>
+            )}
+          </Panel>
+
+          <Panel
+            title="Project directory"
+            subtitle="Find a project and review its current record."
+            actions={
+              <Button size="sm" variant="outline" onClick={onGoProjects}>
+                Browse projects <ArrowRight className="size-3.5" />
+              </Button>
+            }
+          >
+            <p className="text-[13px] leading-relaxed text-ink/60">
+              Follow-up is coordinated by the studio admin. This queue helps the team see what
+              needs attention; it does not assign project ownership or approval authority.
+            </p>
+          </Panel>
+        </div>
+      </div>
+
+      <section aria-labelledby="my-work-heading">
+        <div className="mb-3">
+          <h2 id="my-work-heading" className="font-display text-xl text-maroon">
+            My work
+          </h2>
+          <p className="mt-1 text-[12px] text-muted">
+            Enquiries you claimed, approval chases, and project notes you recorded.
+          </p>
+        </div>
+        <MyWorkPanel
+          onGoEnquiries={onGoEnquiries}
+          onOpenEnquiry={onOpenEnquiry}
+          onOpenProject={onOpen}
+        />
+      </section>
+    </div>
+  );
+}
+
 function Overview({
   projects,
   onOpen,
+  onGoEnquiries,
   search,
 }: {
   projects: StaffProjectSummary[];
   onOpen: (id: string) => void;
+  onGoEnquiries: () => void;
   search: string;
 }) {
   const { data, isLoading } = useQuery({
@@ -1839,7 +2452,7 @@ function Overview({
 
       {/* the work itself */}
       <div className="grid min-w-0 gap-5 xl:grid-cols-[1.35fr_1fr]">
-        <ProjectsTable projects={visible} onOpen={onOpen} />
+        <ProjectsTable projects={visible} onOpen={onOpen} onGoEnquiries={onGoEnquiries} />
 
         <Panel
           title="Needs a human"
@@ -2553,7 +3166,7 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
 
 const TABS = [
   { id: "work", label: "My work", title: "My work", body: "Claimed leads, chases and notes" },
-  { id: "overview", label: "Overview", title: "Studio overview", body: "Every project, one page" },
+  { id: "overview", label: "Today", title: "Today", body: "Studio follow-up and your work" },
   { id: "projects", label: "Projects", title: "Projects", body: "Everything the studio is running" },
   { id: "enquiries", label: "Enquiries", title: "Enquiries", body: "People who asked us to build" },
   { id: "access", label: "Access", title: "Access", body: "Who can open the console" },
@@ -2580,6 +3193,9 @@ function AdminConsole() {
   );
   const [tab, setTab] = useState<(typeof TABS)[number]["id"] | null>(null);
   const [search, setSearch] = useState("");
+  const [enquiryStatusFilter, setEnquiryStatusFilter] =
+    useState<EnquiryFilterStatus>("open");
+  const [focusedEnquiryId, setFocusedEnquiryId] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -2593,11 +3209,11 @@ function AdminConsole() {
 
   const isStaff = roleState?.role === "staff" || roleState?.role === "admin";
   const isAdmin = roleState?.role === "admin";
-  // A staff member lands on their own queue; the owner lands on the studio.
+  // Staff land on the operational queue; admins land on the portfolio.
   // Explicit navigation always wins over this default.
-  const view = tab ?? (isAdmin ? "overview" : "work");
+  const view = tab ?? "overview";
 
-  const { data: projects, isLoading, refetch } = useQuery({
+  const { data: projects, isLoading, error: projectsError, refetch } = useQuery({
     queryKey: ["staff-projects"],
     queryFn: () => listStaffProjects({ data: undefined }),
     enabled: isStaff,
@@ -2606,7 +3222,18 @@ function AdminConsole() {
   const { data: overview } = useQuery({
     queryKey: ["ops-overview"],
     queryFn: () => getOpsOverview({ data: undefined }),
-    enabled: isStaff && view === "overview",
+    enabled: isAdmin && view === "overview",
+  });
+
+  const {
+    data: staffToday,
+    isLoading: staffTodayLoading,
+    error: staffTodayError,
+    refetch: refetchStaffToday,
+  } = useQuery({
+    queryKey: ["staff-today"],
+    queryFn: () => getStaffToday({ data: undefined }),
+    enabled: isStaff && !isAdmin && view === "overview",
   });
 
   if (!hydrated || roleState === null) {
@@ -2650,12 +3277,29 @@ function AdminConsole() {
     // the client's own profile, and silence reads as local, not as unknown.
     if (filter === "diaspora" && p.clientType !== "diaspora") return false;
     if (filter === "local" && p.clientType === "diaspora") return false;
-    if (filter === "attention" && !(p.blockedStages > 0 || p.openDecisions > 0 || !p.onTrack)) {
-      return false;
+    if (filter === "attention") {
+      const isLive =
+        p.source !== "sample" &&
+        p.lifecycleState !== "closed" &&
+        p.lifecycleState !== "archived";
+      if (!isLive || !(p.blockedStages > 0 || p.openDecisions > 0 || !p.onTrack)) {
+        return false;
+      }
     }
     if (filter === "sample" && p.source !== "sample") return false;
     return matches(p);
   });
+  const shellAttention = isAdmin
+    ? overview?.attention ?? []
+    : (staffToday?.attention ?? []).filter((item) =>
+        all.some(
+          (project) =>
+            project.id === item.projectId &&
+            project.source !== "sample" &&
+            project.lifecycleState !== "closed" &&
+            project.lifecycleState !== "archived",
+        ),
+      );
 
   const activeTab = TABS.find((t) => t.id === view) ?? TABS[0];
   const openProject = (id: string) => {
@@ -2669,10 +3313,10 @@ function AdminConsole() {
         {
           title: "Studio",
           items: [
-            { id: "work", label: "My work", icon: ClipboardList },
+            ...(isAdmin ? [{ id: "work", label: "My work", icon: ClipboardList }] : []),
             {
               id: "overview",
-              label: isAdmin ? "Portfolio" : "Overview",
+              label: isAdmin ? "Portfolio" : "Today",
               icon: LayoutDashboard,
             },
             {
@@ -2685,7 +3329,10 @@ function AdminConsole() {
               id: "enquiries",
               label: "Enquiries",
               icon: Inbox,
-              badge: overview?.funnel.enquiriesNew || undefined,
+              badge:
+                (isAdmin
+                  ? overview?.funnel.enquiriesNew
+                  : staffToday?.newEnquiries) || undefined,
             },
           ],
         },
@@ -2705,7 +3352,7 @@ function AdminConsole() {
         setTab(id as (typeof TABS)[number]["id"]);
         setSelected(null);
       }}
-      alerts={(overview?.attention ?? []).slice(0, 8).map((item, i) => ({
+      alerts={shellAttention.slice(0, 8).map((item, i) => ({
         id: `${item.projectId}-${item.kind}-${i}`,
         title: item.title,
         detail: item.detail,
@@ -2723,12 +3370,18 @@ function AdminConsole() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="font-display text-lg leading-tight text-maroon">
-              {view === "overview" && isAdmin ? "Owner portfolio" : activeTab.title}
+              {view === "overview"
+                ? isAdmin
+                  ? "Owner portfolio"
+                  : "Today"
+                : activeTab.title}
             </h1>
             <p className="text-[12px] text-muted">
               {view === "overview" && isAdmin
                 ? "Business health, active delivery, and completed builds"
-                : activeTab.body}
+                : view === "overview"
+                  ? "Studio follow-up, new enquiries, and the work you own"
+                  : activeTab.body}
             </p>
           </div>
 
@@ -2763,17 +3416,68 @@ function AdminConsole() {
         </div>
       }
     >
-      {view === "work" ? (
-        <MyWorkPanel onGoEnquiries={() => setTab("enquiries")} onOpenProject={openProject} />
+      {view === "work" && isAdmin ? (
+        <MyWorkPanel
+          onGoEnquiries={() => setTab("enquiries")}
+          onOpenEnquiry={(id) => {
+            setEnquiryStatusFilter("open");
+            setFocusedEnquiryId(id);
+            setTab("enquiries");
+          }}
+          onOpenProject={openProject}
+        />
       ) : null}
 
-      {view === "overview" ? (
-        <Overview projects={all} onOpen={openProject} search={search} />
+      {view === "overview" && isAdmin ? (
+        <Overview
+          projects={all}
+          onOpen={openProject}
+          onGoEnquiries={() => setTab("enquiries")}
+          search={search}
+        />
+      ) : null}
+      {view === "overview" && !isAdmin ? (
+        <StaffToday
+          projects={all}
+          today={staffToday}
+          todayLoading={staffTodayLoading}
+          todayError={staffTodayError instanceof Error ? staffTodayError : null}
+          projectsLoading={isLoading}
+          projectsError={projectsError instanceof Error ? projectsError : null}
+          onRetryToday={() => void refetchStaffToday()}
+          onRetryProjects={() => void refetch()}
+          onOpen={openProject}
+          onOpenEnquiry={(id) => {
+            setEnquiryStatusFilter("open");
+            setFocusedEnquiryId(id);
+            setTab("enquiries");
+          }}
+          onGoEnquiries={() => setTab("enquiries")}
+          onGoNewEnquiries={() => {
+            setEnquiryStatusFilter("new");
+            setTab("enquiries");
+          }}
+          onGoProjects={() => {
+            setFilter("all");
+            setTab("projects");
+          }}
+          onGoAttentionProjects={() => {
+            setFilter("attention");
+            setTab("projects");
+          }}
+        />
       ) : null}
 
-      {view === "enquiries" ? <EnquiriesInbox /> : null}
+      {view === "enquiries" ? (
+        <EnquiriesInbox
+          statusFilter={enquiryStatusFilter}
+          onStatusFilterChange={setEnquiryStatusFilter}
+          focusEnquiryId={focusedEnquiryId}
+          onFocusEnquiryHandled={() => setFocusedEnquiryId(null)}
+        />
+      ) : null}
 
-      {view === "access" ? <AccessPanel isAdmin={isAdmin} /> : null}
+      {view === "access" && isAdmin ? <AccessPanel isAdmin={isAdmin} /> : null}
 
       {view === "projects" && selected ? (
         <ProjectDetail
@@ -2783,30 +3487,75 @@ function AdminConsole() {
           onBack={() => setSelected(null)}
           onChanged={() => void refetch()}
         />
+      ) : view === "projects" && projectsError ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-red-200 bg-red-50 px-6 py-10 text-center"
+        >
+          <AlertTriangle className="mx-auto size-7 text-red-700" aria-hidden />
+          <h2 className="mt-3 font-display text-xl text-red-900">Could not load projects</h2>
+          <p className="mx-auto mt-2 max-w-lg text-[13px] leading-relaxed text-red-800">
+            {projectsError instanceof Error
+              ? projectsError.message
+              : "The project directory is unavailable right now."}
+          </p>
+          <Button
+            className="mt-4"
+            size="sm"
+            variant="outline"
+            onClick={() => void refetch()}
+            disabled={isLoading}
+          >
+            Try again
+          </Button>
+        </div>
       ) : view === "projects" && isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="size-6 animate-spin text-gold" />
         </div>
       ) : view === "projects" && rows.length === 0 ? (
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-ink/15 py-16 text-center">
-          <Inbox className="size-7 text-ink/30" />
-          <p className="mt-4 font-display text-xl text-maroon">
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-ink/15 bg-white px-6 py-14 text-center">
+          <Inbox className="size-8 text-ink/25" aria-hidden />
+          <h2 className="mt-4 font-display text-xl text-maroon">
             {q
               ? "Nothing matches that search"
               : filter !== "all"
-                ? "Nothing matches that filter"
-                : "Nothing here yet"}
-          </p>
-          <p className="mt-2 max-w-md text-[13px] text-ink/55">
+                ? "No projects in this view"
+                : "Your project register is clear"}
+          </h2>
+          <p className="mt-2 max-w-md text-[13px] leading-relaxed text-ink/55">
             {q
               ? `No project, client or reference contains “${search.trim()}”.`
               : filter !== "all"
-                ? "Try another filter, or All to see every project."
-                : "Projects appear as soon as a client opens one in their portal, or you create one for them."}
+                ? `No projects currently match the ${filter === "local" ? "At home" : filter === "diaspora" ? "From abroad" : filter === "attention" ? "Needs attention" : "Sample"} filter. Try All to review the full register.`
+                : "New projects appear here when a client opens their portal or the studio creates a project from an enquiry."}
           </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {q ? (
+              <Button size="sm" variant="outline" onClick={() => setSearch("")}>
+                Clear search
+              </Button>
+            ) : filter !== "all" ? (
+              <Button size="sm" variant="outline" onClick={() => setFilter("all")}>
+                Show all projects
+              </Button>
+            ) : isAdmin ? (
+              <Button size="sm" variant="outline" onClick={() => setTab("enquiries")}>
+                Review enquiries
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : view === "projects" ? (
-        <ProjectsTable projects={rows} onOpen={setSelected} />
+        isAdmin ? (
+          <ProjectsTable
+            projects={rows}
+            onOpen={setSelected}
+            onGoEnquiries={() => setTab("enquiries")}
+          />
+        ) : (
+          <StaffProjectsDirectory projects={rows} onOpen={setSelected} />
+        )
       ) : null}
     </DashboardShell>
   );
