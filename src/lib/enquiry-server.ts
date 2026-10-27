@@ -23,12 +23,12 @@ const EnquiryInput = z.object({
       }
       return e164;
     }),
-  email: z.string().min(1),
-  projectType: z.string(),
+  email: z.string().trim().email().max(254),
+  projectType: z.string().trim().min(1).max(120),
   zone: z.string(),
   stage: z.string().default(""),
   startDate: z.string().default(""),
-  description: z.string().default(""),
+  description: z.string().max(5_000).default(""),
   sqm: z.number().optional(),
   finish: z.string().optional(),
   indicativeMin: z.number().optional(),
@@ -60,7 +60,11 @@ export const saveEnquiryToDb = createServerFn({ method: "POST" })
       )
       returning id, created_at
     `;
-    return { ok: true as const, id: String(rows[0]?.id ?? ""), createdAt: String(rows[0]?.created_at ?? "") };
+    return {
+      ok: true as const,
+      id: String(rows[0]?.id ?? ""),
+      createdAt: String(rows[0]?.created_at ?? ""),
+    };
   });
 
 type EnquiryRow = {
@@ -101,9 +105,21 @@ export const listEnquiriesFromDb = createServerFn({ method: "GET" })
     z.object({
       offset: z.number().int().nonnegative().default(0),
       search: z.string().trim().max(120).default(""),
-      projectType: z.enum(["all", "Residential", "Commercial", "Institutional"]).default("all"),
+      projectType: z
+        .enum([
+          "all",
+          "Residential",
+          "Commercial",
+          "Institutional",
+          "Church",
+          "School",
+          "Renovation",
+          "Other",
+        ])
+        .default("all"),
       clientType: z.enum(["all", "diaspora", "local"]).default("all"),
-      status: z.enum(["all", "open", "new", "contacted", "quoted", "won", "lost", "converted"])
+      status: z
+        .enum(["all", "open", "new", "contacted", "quoted", "won", "lost", "converted"])
         .default("open"),
       owner: z.enum(["all", "unclaimed", "mine", "other"]).default("all"),
       enquiryId: z.string().uuid().optional(),
@@ -126,7 +142,17 @@ export const listEnquiriesFromDb = createServerFn({ method: "GET" })
         ($7::uuid is not null and id = $7::uuid)
         or (
           $7::uuid is null
-          and ($1 = 'all' or project_type = $1)
+          and (
+            $1 = 'all'
+            or project_type = $1
+            or (
+              $1 = 'Other'
+              and project_type not in (
+                'Residential', 'Commercial', 'Institutional',
+                'Church', 'School', 'Renovation'
+              )
+            )
+          )
           and (
             $2 = 'all'
             or ($2 = 'diaspora' and diaspora = true)

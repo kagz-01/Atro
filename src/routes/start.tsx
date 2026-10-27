@@ -4,7 +4,8 @@ import { ArrowLeft, MessageCircle, Mail, MapPin, CheckCircle2 } from "lucide-rea
 import { EnquiryWizard } from "@/components/enquiry-wizard";
 import { Badge } from "@/components/ui/badge";
 import { useSiteStore } from "@/lib/store";
-import { COMPANY, ZONES } from "@/lib/site";
+import { COMPANY, serviceBySlug, ZONES } from "@/lib/site";
+import { countyBySlug } from "@/lib/counties";
 import { defaultWhatsappText, whatsappHref } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/start")({
@@ -12,11 +13,23 @@ export const Route = createFileRoute("/start")({
   // renders this route too and has no window, so /diaspora's links hydrated
   // "Five steps" over a server-rendered "Four steps" — a text mismatch React
   // refuses — and no server-rendered reader ever saw the diaspora variant.
-  validateSearch: (search: Record<string, unknown>): { from?: string; zone?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { from?: string; zone?: string; service?: string } => ({
     // `undefined` rather than "": an empty string would ride into the canonical
     // URL (`/start?zone=`) and bounce every visitor through a redirect.
     from: typeof search.from === "string" && search.from ? search.from : undefined,
-    zone: typeof search.zone === "string" && search.zone ? search.zone : undefined,
+    zone:
+      typeof search.zone === "string" &&
+      search.zone &&
+      (ZONES.some((zone) => zone.slug === search.zone && zone.slug !== "diaspora") ||
+        countyBySlug(search.zone))
+        ? search.zone
+        : undefined,
+    service:
+      typeof search.service === "string" && serviceBySlug(search.service)
+        ? search.service
+        : undefined,
   }),
   component: StartPage,
   head: () => ({
@@ -25,21 +38,22 @@ export const Route = createFileRoute("/start")({
       {
         name: "description",
         content:
-          "Guided enquiry for ATRO: project type, zone, scale and an indicative cost range — then a person.",
+          "Tell ATRO about your project, choose a county, and get an indicative range where the planning model fits or a manual review for custom scopes.",
       },
     ],
   }),
 });
 
 function StartPage() {
-  const { from, zone: zoneParam } = Route.useSearch();
+  const { from, zone: zoneParam, service: serviceParam } = Route.useSearch();
   const isDiaspora = from === "diaspora";
+  const selectedService = serviceParam ? serviceBySlug(serviceParam) : undefined;
   const setSelectedZone = useSiteStore((s) => s.setSelectedZone);
 
   // A link from a county page carries the county, so the enquiry opens with the
   // right place already chosen rather than making them pick it again.
   useEffect(() => {
-    if (zoneParam && ZONES.some((z) => z.slug === zoneParam)) setSelectedZone(zoneParam);
+    if (zoneParam) setSelectedZone(zoneParam);
   }, [zoneParam, setSelectedZone]);
 
   return (
@@ -66,17 +80,50 @@ function StartPage() {
             <p className="mt-5 text-ink/70 text-lg">
               {isDiaspora
                 ? "Type, place, scale, contact details, and your situation abroad. We will schedule around your time zone."
-                : "Type, place, scale, and how to reach you. You will see an indicative range before you send anything. It is not a quotation."}
+                : "Tell us what you need, where it is, and how to reach you. Standard building work gets an indicative planning range; custom scopes are reviewed by a person. Neither is a quotation."}
             </p>
+
+            {selectedService ? (
+              <div className="mt-6 rounded-2xl border border-gold/30 bg-gold/10 p-5">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-burgundy">
+                  Service you selected
+                </p>
+                <p className="mt-2 font-display text-xl text-maroon">{selectedService.title}</p>
+                <p className="mt-2 text-sm leading-relaxed text-ink/70">
+                  We will attach this to your enquiry. Add any project details in the form so we can
+                  understand the wider brief.
+                </p>
+              </div>
+            ) : null}
 
             {/* Steps preview */}
             <div className="mt-10 space-y-4">
               {[
-                { num: "1", title: "Project type", desc: "Residential, commercial, or institutional." },
-                { num: "2", title: "Location", desc: "Zone-aware pricing for all 7 regions." },
-                { num: "3", title: "Scale & finish", desc: "Area in m² and finish level." },
+                {
+                  num: "1",
+                  title: "Project type",
+                  desc: "Residential, commercial, or institutional.",
+                },
+                {
+                  num: "2",
+                  title: "Location",
+                  desc: "Choose from all 47 counties; availability is confirmed in a call.",
+                },
+                {
+                  num: "3",
+                  title: "Scale or project brief",
+                  desc: "Area and finish for building work, or details for a custom scope.",
+                },
                 { num: "4", title: "Contact details", desc: "Name, phone, email." },
-                ...(isDiaspora ? [{ num: "5", title: "Building from abroad", desc: "Country, time zone, Kenya contact, visit plans." }] : []),
+                ...(isDiaspora
+                  ? [
+                      {
+                        num: "5",
+                        title: "Building from abroad",
+                        desc: "Country, time zone, Kenya contact, visit plans.",
+                      },
+                    ]
+                  : []),
               ].map((s) => (
                 <div key={s.num} className="flex items-start gap-4">
                   <div className="size-10 rounded-full bg-gradient-to-br from-maroon to-burgundy flex items-center justify-center text-white text-sm font-bold shrink-0">
@@ -96,19 +143,31 @@ function StartPage() {
               <ul className="space-y-3 text-sm text-ink/70">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="size-4 text-gold mt-0.5 shrink-0" />
-                  <span>You see an indicative cost range instantly</span>
+                  <span>
+                    ATRO reviews the scope and confirms whether the location and work can be
+                    supported
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="size-4 text-gold mt-0.5 shrink-0" />
-                  <span>A person at ATRO follows up within 24 hours</span>
+                  <span>
+                    A person follows up to clarify the brief, timing, drawings, and site conditions
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="size-4 text-gold mt-0.5 shrink-0" />
-                  <span>{isDiaspora ? "We schedule a video call at a time that works for you" : "We schedule a site visit or video call"}</span>
+                  <span>
+                    {isDiaspora
+                      ? "We arrange a video call at a time that works for you and plan site verification"
+                      : "We arrange a site visit or video call where appropriate"}
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="size-4 text-gold mt-0.5 shrink-0" />
-                  <span>No commitment until you approve the quote</span>
+                  <span>
+                    ATRO prepares a scoped proposal; work starts only after you agree to the scope
+                    and terms
+                  </span>
                 </li>
               </ul>
             </div>
@@ -154,7 +213,11 @@ function StartPage() {
 
           {/* Right: enquiry wizard */}
           <div className="lg:col-span-8">
-            <EnquiryWizard forcedDiaspora={isDiaspora} />
+            <EnquiryWizard
+              forcedDiaspora={isDiaspora}
+              serviceOfInterest={selectedService?.title}
+              initialZone={zoneParam}
+            />
           </div>
         </div>
       </div>

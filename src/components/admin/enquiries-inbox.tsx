@@ -32,7 +32,12 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { listEnquiriesFromDb } from "@/lib/enquiry-server";
 import { claimEnquiry, openProjectFromEnquiry, setEnquiryStatus } from "@/lib/staff-ops";
-import { claimState, enquiryTransitions, statusLabel, type EnquiryStatus } from "@/lib/enquiry-funnel";
+import {
+  claimState,
+  enquiryTransitions,
+  statusLabel,
+  type EnquiryStatus,
+} from "@/lib/enquiry-funnel";
 import { TRACK_LIST } from "@/lib/diaspora/tracks";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -93,7 +98,11 @@ const TYPE_ICONS: Record<string, typeof Home> = {
 
 function formatKes(n: number | null) {
   if (n == null) return "—";
-  return new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("en-KE", {
+    style: "currency",
+    currency: "KES",
+    maximumFractionDigits: 0,
+  }).format(n);
 }
 
 function timeAgo(dateStr: string) {
@@ -107,7 +116,11 @@ function timeAgo(dateStr: string) {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-KE", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /**
@@ -197,8 +210,8 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
   if (enquiry.status === "converted") {
     return (
       <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-        Project opened. It is waiting for {enquiry.email} or the number on the
-        enquiry — whichever they sign in with finds it in the portal.
+        Project opened. It is waiting for {enquiry.email} or the number on the enquiry — whichever
+        they sign in with finds it in the portal.
       </p>
     );
   }
@@ -249,8 +262,7 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
     );
   }
 
-  const field =
-    "h-11 w-full rounded-xl border border-line bg-paper px-3 text-sm";
+  const field = "h-11 w-full rounded-xl border border-line bg-paper px-3 text-sm";
   const label = "mb-1 block text-[11px] uppercase tracking-[0.14em] text-muted";
 
   return (
@@ -260,7 +272,9 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className={label} htmlFor={`cv-title-${enquiry.id}`}>Project</label>
+          <label className={label} htmlFor={`cv-title-${enquiry.id}`}>
+            Project
+          </label>
           <input
             id={`cv-title-${enquiry.id}`}
             value={title}
@@ -269,7 +283,9 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
           />
         </div>
         <div>
-          <label className={label} htmlFor={`cv-track-${enquiry.id}`}>Kind of work</label>
+          <label className={label} htmlFor={`cv-track-${enquiry.id}`}>
+            Kind of work
+          </label>
           <select
             id={`cv-track-${enquiry.id}`}
             value={track}
@@ -284,7 +300,9 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
           </select>
         </div>
         <div>
-          <label className={label} htmlFor={`cv-value-${enquiry.id}`}>Contract value (KES)</label>
+          <label className={label} htmlFor={`cv-value-${enquiry.id}`}>
+            Contract value (KES)
+          </label>
           <input
             id={`cv-value-${enquiry.id}`}
             value={value}
@@ -294,7 +312,9 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
           />
         </div>
         <div>
-          <label className={label} htmlFor={`cv-months-${enquiry.id}`}>Programme (months)</label>
+          <label className={label} htmlFor={`cv-months-${enquiry.id}`}>
+            Programme (months)
+          </label>
           <input
             id={`cv-months-${enquiry.id}`}
             value={months}
@@ -305,9 +325,9 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
         </div>
       </div>
       <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
-        Stages and the payment schedule are generated from this. The client does not
-        need an account yet — the project waits for {enquiry.email} (or the enquiry's
-        number) and appears the first time they sign in.
+        Stages and the payment schedule are generated from this. The client does not need an account
+        yet — the project waits for {enquiry.email} (or the enquiry's number) and appears the first
+        time they sign in.
       </p>
       <div className="mt-4 flex gap-2">
         <button
@@ -331,14 +351,7 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
 }
 
 export type EnquiryFilterStatus =
-  | "all"
-  | "open"
-  | "new"
-  | "contacted"
-  | "quoted"
-  | "won"
-  | "lost"
-  | "converted";
+  "all" | "open" | "new" | "contacted" | "quoted" | "won" | "lost" | "converted";
 
 export function EnquiriesInbox({
   statusFilter,
@@ -357,7 +370,14 @@ export function EnquiriesInbox({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [localStatusFilter, setLocalStatusFilter] = useState<EnquiryFilterStatus>("open");
   const [filterType, setFilterType] = useState<
-    "all" | "Residential" | "Commercial" | "Institutional"
+    | "all"
+    | "Residential"
+    | "Commercial"
+    | "Institutional"
+    | "Church"
+    | "School"
+    | "Renovation"
+    | "Other"
   >("all");
   const [filterDiaspora, setFilterDiaspora] = useState<"all" | "diaspora" | "local">("all");
   const [filterOwner, setFilterOwner] = useState<"all" | "unclaimed" | "mine" | "other">("all");
@@ -485,7 +505,9 @@ export function EnquiriesInbox({
             <h1 className="font-display text-xl text-maroon">Enquiries</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-[13px] text-muted">
-            <span>{stats.loaded} of {stats.total} matching enquiries loaded</span>
+            <span>
+              {stats.loaded} of {stats.total} matching enquiries loaded
+            </span>
             <span className="hidden text-gold sm:inline">·</span>
             <span>{stats.diaspora} diaspora shown</span>
             <span className="hidden text-gold sm:inline">·</span>
@@ -527,6 +549,10 @@ export function EnquiriesInbox({
             <option value="Residential">Residential</option>
             <option value="Commercial">Commercial</option>
             <option value="Institutional">Institutional</option>
+            <option value="Church">Church</option>
+            <option value="School">School</option>
+            <option value="Renovation">Renovation</option>
+            <option value="Other">Other / custom</option>
           </select>
           <select
             value={filterDiaspora}
@@ -537,7 +563,9 @@ export function EnquiriesInbox({
             <option value="diaspora">Diaspora only</option>
             <option value="local">Local only</option>
           </select>
-          <label className="sr-only" htmlFor="enquiry-status-filter">Filter by status</label>
+          <label className="sr-only" htmlFor="enquiry-status-filter">
+            Filter by status
+          </label>
           <select
             id="enquiry-status-filter"
             value={filterStatus}
@@ -553,7 +581,9 @@ export function EnquiriesInbox({
             <option value="lost">Lost</option>
             <option value="converted">Converted</option>
           </select>
-          <label className="sr-only" htmlFor="enquiry-owner-filter">Filter by owner</label>
+          <label className="sr-only" htmlFor="enquiry-owner-filter">
+            Filter by owner
+          </label>
           <select
             id="enquiry-owner-filter"
             value={filterOwner}
@@ -612,8 +642,11 @@ export function EnquiriesInbox({
                 ? "New project requests will appear here."
                 : "Try a different status, owner, client type, or search term."}
             </p>
-            {(search || filterType !== "all" || filterDiaspora !== "all" ||
-              filterStatus !== "open" || filterOwner !== "all") ? (
+            {search ||
+            filterType !== "all" ||
+            filterDiaspora !== "all" ||
+            filterStatus !== "open" ||
+            filterOwner !== "all" ? (
               <Button
                 className="mt-4"
                 size="sm"
@@ -646,11 +679,17 @@ export function EnquiriesInbox({
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4 min-w-0">
-                      <div className={cn(
-                        "size-10 rounded-xl flex items-center justify-center shrink-0",
-                        e.diaspora ? "bg-gold/10 text-gold" : "bg-maroon/10 text-maroon",
-                      )}>
-                        {e.diaspora ? <Globe className="size-5" /> : <TypeIcon className="size-5" />}
+                      <div
+                        className={cn(
+                          "size-10 rounded-xl flex items-center justify-center shrink-0",
+                          e.diaspora ? "bg-gold/10 text-gold" : "bg-maroon/10 text-maroon",
+                        )}
+                      >
+                        {e.diaspora ? (
+                          <Globe className="size-5" />
+                        ) : (
+                          <TypeIcon className="size-5" />
+                        )}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -718,20 +757,22 @@ export function EnquiriesInbox({
       {/* Detail modal */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6">
-          <button
-            type="button"
-            className="absolute inset-0 bg-ink/50"
-            onClick={closeSelected}
-          />
+          <button type="button" className="absolute inset-0 bg-ink/50" onClick={closeSelected} />
           <div className="relative w-full sm:max-w-lg bg-paper rounded-t-2xl sm:rounded-2xl shadow-soft max-h-[85vh] overflow-y-auto">
             {/* Header */}
             <div className="sticky top-0 bg-paper border-b border-line/50 px-6 py-4 flex items-center justify-between z-10">
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "size-10 rounded-xl flex items-center justify-center",
-                  selected.diaspora ? "bg-gold/10 text-gold" : "bg-maroon/10 text-maroon",
-                )}>
-                  {selected.diaspora ? <Globe className="size-5" /> : <FileText className="size-5" />}
+                <div
+                  className={cn(
+                    "size-10 rounded-xl flex items-center justify-center",
+                    selected.diaspora ? "bg-gold/10 text-gold" : "bg-maroon/10 text-maroon",
+                  )}
+                >
+                  {selected.diaspora ? (
+                    <Globe className="size-5" />
+                  ) : (
+                    <FileText className="size-5" />
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -758,11 +799,17 @@ export function EnquiriesInbox({
               <Accordion>
                 <AccordionItem title="Contact" defaultOpen>
                   <div className="space-y-2">
-                    <a href={`tel:${selected.phone}`} className="flex items-center gap-3 text-sm hover:text-maroon transition-colors">
+                    <a
+                      href={`tel:${selected.phone}`}
+                      className="flex items-center gap-3 text-sm hover:text-maroon transition-colors"
+                    >
                       <Phone className="size-4 text-muted" />
                       {formatPhone(selected.phone)}
                     </a>
-                    <a href={`mailto:${selected.email}`} className="flex items-center gap-3 text-sm hover:text-maroon transition-colors">
+                    <a
+                      href={`mailto:${selected.email}`}
+                      className="flex items-center gap-3 text-sm hover:text-maroon transition-colors"
+                    >
                       <Mail className="size-4 text-muted" />
                       {selected.email}
                     </a>
@@ -777,15 +824,21 @@ export function EnquiriesInbox({
                     </div>
                     <div className="p-3 bg-white rounded-xl border border-ink/10">
                       <p className="text-xs text-muted">Zone</p>
-                      <p className="text-sm font-medium text-maroon">{ZONE_LABELS[selected.zone] || selected.zone}</p>
+                      <p className="text-sm font-medium text-maroon">
+                        {ZONE_LABELS[selected.zone] || selected.zone}
+                      </p>
                     </div>
                     <div className="p-3 bg-white rounded-xl border border-ink/10">
                       <p className="text-xs text-muted">Size</p>
-                      <p className="text-sm font-medium text-maroon">{selected.sqm ? `${selected.sqm} m²` : "—"}</p>
+                      <p className="text-sm font-medium text-maroon">
+                        {selected.sqm ? `${selected.sqm} m²` : "—"}
+                      </p>
                     </div>
                     <div className="p-3 bg-white rounded-xl border border-ink/10">
                       <p className="text-xs text-muted">Finish</p>
-                      <p className="text-sm font-medium text-maroon capitalize">{selected.finish || "—"}</p>
+                      <p className="text-sm font-medium text-maroon capitalize">
+                        {selected.finish || "—"}
+                      </p>
                     </div>
                     <div className="p-3 bg-white rounded-xl border border-ink/10">
                       <p className="text-xs text-muted">Stage</p>
@@ -793,7 +846,9 @@ export function EnquiriesInbox({
                     </div>
                     <div className="p-3 bg-white rounded-xl border border-ink/10">
                       <p className="text-xs text-muted">Start date</p>
-                      <p className="text-sm font-medium text-maroon">{selected.start_date || "—"}</p>
+                      <p className="text-sm font-medium text-maroon">
+                        {selected.start_date || "—"}
+                      </p>
                     </div>
                   </div>
                 </AccordionItem>
@@ -822,22 +877,30 @@ export function EnquiriesInbox({
                       <div className="flex items-center gap-3 text-sm">
                         <Globe className="size-4 text-gold shrink-0" />
                         <span className="text-muted">Country:</span>
-                        <span className="font-medium text-maroon">{selected.diaspora_country || "Not specified"}</span>
+                        <span className="font-medium text-maroon">
+                          {selected.diaspora_country || "Not specified"}
+                        </span>
                       </div>
                       <div className="flex items-center gap-3 text-sm">
                         <Clock className="size-4 text-gold shrink-0" />
                         <span className="text-muted">Time zone:</span>
-                        <span className="font-medium text-maroon">{selected.diaspora_timezone || "Not specified"}</span>
+                        <span className="font-medium text-maroon">
+                          {selected.diaspora_timezone || "Not specified"}
+                        </span>
                       </div>
                       <div className="flex items-center gap-3 text-sm">
                         <Users className="size-4 text-gold shrink-0" />
                         <span className="text-muted">Kenya contact:</span>
-                        <span className="font-medium text-maroon">{selected.diaspora_kenya_contact || "None"}</span>
+                        <span className="font-medium text-maroon">
+                          {selected.diaspora_kenya_contact || "None"}
+                        </span>
                       </div>
                       <div className="flex items-center gap-3 text-sm">
                         <Plane className="size-4 text-gold shrink-0" />
                         <span className="text-muted">Visit plans:</span>
-                        <span className="font-medium text-maroon">{selected.diaspora_visit_plans || "Not specified"}</span>
+                        <span className="font-medium text-maroon">
+                          {selected.diaspora_visit_plans || "Not specified"}
+                        </span>
                       </div>
                     </div>
                   </AccordionItem>
@@ -867,7 +930,9 @@ export function EnquiriesInbox({
                   Email
                 </a>
                 <a
-                  href={whatsappHref(`Hello ${selected.name} — thank you for your enquiry with ATRO. We have received your brief and would like to schedule a call.`)}
+                  href={whatsappHref(
+                    `Hello ${selected.name} — thank you for your enquiry with ATRO. We have received your brief and would like to schedule a call.`,
+                  )}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-11 flex-1 items-center justify-center gap-2 bg-green-600 text-white text-[11px] uppercase tracking-[0.14em] font-semibold rounded-xl hover:bg-green-700 transition-colors sm:flex-none sm:px-5"
