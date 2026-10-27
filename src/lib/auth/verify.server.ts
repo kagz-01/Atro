@@ -1,10 +1,7 @@
 import { getRequest } from "@tanstack/react-start/server";
 import { configured, previewIdentity, ACCESS_TOKEN_COOKIE } from "@/lib/supabase/config";
 import { verifyAccessToken } from "@/lib/supabase/server";
-import {
-  personaKeyFromCookieHeader,
-  previewPersona,
-} from "@/lib/preview-personas";
+import { personaKeyFromCookieHeader, previewPersona } from "@/lib/preview-personas";
 
 /**
  * Server-side session resolution (server-only).
@@ -40,7 +37,12 @@ export class UnauthorizedError extends Error {
   }
 }
 
-export type VerifiedUser = { id: string; email: string | null; phone?: string | null };
+export type VerifiedUser = {
+  id: string;
+  email: string | null;
+  emailVerified: boolean;
+  phone?: string | null;
+};
 
 /**
  * Resolve the signed-in user from the current request, or `null` when nobody is
@@ -49,21 +51,18 @@ export type VerifiedUser = { id: string; email: string | null; phone?: string | 
  * The token is read from the cookie, or from `Authorization: Bearer …` which is
  * what the middleware forwards when the session is not cookie-visible.
  */
-export async function getSessionUser(
-  bearerToken?: string,
-): Promise<VerifiedUser | null> {
+export async function getSessionUser(bearerToken?: string): Promise<VerifiedUser | null> {
   // No Supabase means no way to sign in, so preview — as whoever the
   // persona cookie says, or as the seeded studio admin when it says nothing.
   if (!configured) {
     const request = getRequest();
-    const key = personaKeyFromCookieHeader(
-      request?.headers.get("cookie") ?? null,
-    );
+    const key = personaKeyFromCookieHeader(request?.headers.get("cookie") ?? null);
     if (key) {
       const persona = previewPersona(key);
-      return { id: persona.userId, email: persona.email };
+      return { id: persona.userId, email: persona.email, emailVerified: false };
     }
-    return previewIdentity();
+    const identity = previewIdentity();
+    return identity ? { ...identity, emailVerified: false } : null;
   }
 
   const request = getRequest();
@@ -84,7 +83,12 @@ export async function getSessionUser(
 
   const user = await verifyAccessToken(token);
   if (!user) return null;
-  return { id: user.id, email: user.email, phone: user.phone };
+  return {
+    id: user.id,
+    email: user.email,
+    emailVerified: user.emailVerified,
+    phone: user.phone,
+  };
 }
 
 /**
@@ -104,6 +108,7 @@ export async function getSessionUser(
 export type SessionIdentity = {
   userId: string;
   email: string;
+  emailVerified: boolean;
   phone: string | null;
 };
 
@@ -116,7 +121,12 @@ export async function requireSession(bearerToken?: string): Promise<SessionIdent
   }
   const user = await getSessionUser(bearerToken);
   if (!user) throw new UnauthorizedError();
-  return { userId: user.id, email: user.email ?? "", phone: user.phone ?? null };
+  return {
+    userId: user.id,
+    email: user.email ?? "",
+    emailVerified: user.emailVerified,
+    phone: user.phone ?? null,
+  };
 }
 
 /**

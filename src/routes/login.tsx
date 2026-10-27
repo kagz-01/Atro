@@ -52,7 +52,13 @@ function Login() {
    * one would render the portal against a stale signed-out state.
    */
   const goToPortal = () => {
-    if (typeof window !== "undefined") window.location.href = "/portal";
+    if (typeof window === "undefined") return;
+    const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+    const destination =
+      returnTo?.startsWith("/portal/") && !returnTo.startsWith("//") && !returnTo.includes("\\")
+        ? returnTo
+        : "/portal";
+    window.location.assign(destination);
   };
 
   // Keep the server-visible session cookie in step with the Supabase session.
@@ -83,8 +89,8 @@ function Login() {
                 <span className="text-gold">wherever you are.</span>
               </h1>
               <p className="mt-5 max-w-md text-[16px] leading-relaxed text-paper/70">
-                The portal is the same record your project manager works from — not
-                a summary sent to you later.
+                The portal is the same record your project manager works from — not a summary sent
+                to you later.
               </p>
 
               <ul className="mt-9 space-y-5">
@@ -94,9 +100,7 @@ function Login() {
                       <perk.icon className="size-4.5" />
                     </span>
                     <span>
-                      <span className="block font-display text-lg text-paper">
-                        {perk.title}
-                      </span>
+                      <span className="block font-display text-lg text-paper">{perk.title}</span>
                       <span className="mt-1 block text-[14px] leading-relaxed text-paper/60">
                         {perk.body}
                       </span>
@@ -125,17 +129,17 @@ function Login() {
               <div className="mt-10">
                 <h2 className="font-display text-3xl text-maroon">Sign in</h2>
                 <p className="mt-3 text-[15px] leading-relaxed text-ink/65">
-                  Sign-in is not configured on this deployment yet, so accounts
-                  cannot be created or verified here.
+                  Sign-in is not configured on this deployment yet, so accounts cannot be created or
+                  verified here.
                 </p>
                 <p className="mt-3 text-[13px] leading-relaxed text-ink/50">
                   It needs <code className="font-mono">VITE_SUPABASE_URL</code> and{" "}
-                  <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> set on the
-                  server that served this page.
+                  <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> set on the server that
+                  served this page.
                 </p>
                 <p className="mt-4 text-[14px] text-ink/65">
-                  In the meantime, call or WhatsApp the studio and we will open your
-                  project for you.
+                  In the meantime, call or WhatsApp the studio and we will open your project for
+                  you.
                 </p>
               </div>
             ) : isPending || !hydrated ? (
@@ -149,8 +153,8 @@ function Login() {
               <div className="mt-10">
                 <h2 className="font-display text-3xl text-maroon">You are signed in</h2>
                 <p className="mt-3 text-[15px] leading-relaxed text-ink/65">
-                  {user.displayName ?? user.primaryEmail ?? "Your account"} — your
-                  projects, milestones and documents are one click away.
+                  {user.displayName ?? user.primaryEmail ?? "Your account"} — your projects,
+                  milestones and documents are one click away.
                 </p>
 
                 <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-ink/10 bg-cream px-5 py-4">
@@ -158,25 +162,17 @@ function Login() {
                   <UserButton />
                 </div>
 
-                <Button
-                  asChild
-                  variant="primary"
-                  size="lg"
-                  className="mt-6 w-full"
-                >
-                  <Link to="/portal">
-                    Open the portal
-                    <ArrowRight className="size-4" />
-                  </Link>
+                <Button variant="primary" size="lg" className="mt-6 w-full" onClick={goToPortal}>
+                  Open the portal
+                  <ArrowRight className="size-4" />
                 </Button>
               </div>
             ) : (
               <div className="mt-10">
                 <h2 className="font-display text-3xl text-maroon">Sign in</h2>
                 <p className="mt-3 text-[15px] leading-relaxed text-ink/65">
-                  Use the account you already have. Your portal stays private to you
-                  — projects, evidence, payments and documents are scoped to your
-                  sign-in.
+                  Use the account you already have. Your portal stays private to you — projects,
+                  evidence, payments and documents are scoped to your sign-in.
                 </p>
 
                 <div className="mt-8">

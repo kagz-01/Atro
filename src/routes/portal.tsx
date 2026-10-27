@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -35,6 +35,7 @@ import {
   type PortalPayload,
 } from "@/lib/diaspora/server";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
+import { getMyProjectCircle } from "@/lib/project-circle-server";
 
 export const Route = createFileRoute("/portal")({
   component: PortalPage,
@@ -439,11 +440,21 @@ function NewProjectForm({
 /* ── the portal ── */
 
 function PortalPage() {
+  const isNestedPortalRoute = useRouterState({
+    select: (state) => state.location.pathname.replace(/\/+$/, "") !== "/portal",
+  });
+  const { isPending: sessionPending } = useCurrentUserState();
+  const hydrated = useIsHydrated();
   const user = useCurrentUser();
   const { data: nudges } = useQuery({
     queryKey: ["my-nudges"],
     queryFn: () => getMyNudges({ data: undefined }),
-    enabled: Boolean(user),
+    enabled: Boolean(user && !isNestedPortalRoute),
+  });
+  const { data: sharedProjects } = useQuery({
+    queryKey: ["my-project-circle"],
+    queryFn: () => getMyProjectCircle(),
+    enabled: Boolean(user && !isNestedPortalRoute),
   });
   const [data, setData] = useState<PortalPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -452,7 +463,7 @@ function PortalPage() {
   const { data: documents } = useQuery({
     queryKey: ["my-documents"],
     queryFn: () => listMyDocuments({ data: undefined }),
-    enabled: Boolean(user),
+    enabled: Boolean(user && !isNestedPortalRoute),
   });
   const [pending, setPending] = useState("");
   const firstVisit = useRef<string | null>(null);
@@ -469,7 +480,9 @@ function PortalPage() {
       setError(
         message === "Unauthorized"
           ? "Your session has expired. Sign in again to open your project."
-          : "We could not reach your project just now.",
+          : message === "Open your project circle to see the project shared with you."
+            ? message
+            : "We could not reach your project just now.",
       );
     } finally {
       setLoading(false);
@@ -477,9 +490,10 @@ function PortalPage() {
   }
 
   useEffect(() => {
+    if (isNestedPortalRoute) return;
     void load();
     // Re-check when the account changes (sign-in, sign-out).
-  }, [user?.id]);
+  }, [user?.id, isNestedPortalRoute]);
 
   async function run(key: string, action: () => Promise<unknown>, done: string) {
     setPending(key);
@@ -494,10 +508,10 @@ function PortalPage() {
     }
   }
 
+  if (isNestedPortalRoute) return <Outlet />;
+
   // Signed-out visitors get the sign-in wall, never the payload — and never a flash
   // of it: `useCurrentUserState().isPending` holds back until the session resolves.
-  const { isPending: sessionPending } = useCurrentUserState();
-  const hydrated = useIsHydrated();
   // The server always renders "pending", so the first client paint must too —
   // otherwise the two trees differ and React throws the page away.
   if (sessionPending || !hydrated) return <LoadingBlock label="Checking your session" />;
@@ -524,7 +538,15 @@ function PortalPage() {
           <h1 className="mt-5 font-display text-3xl text-maroon">Portal unavailable</h1>
           <p className="mt-4 text-ink/70">{error}</p>
           <div className="mt-8 flex justify-center gap-3">
-            <Button onClick={() => void load()}>Try again</Button>
+            {error === "Open your project circle to see the project shared with you." ? (
+              <Button asChild>
+                <Link to="/portal/circle" search={{ projectId: undefined }}>
+                  Open shared project
+                </Link>
+              </Button>
+            ) : (
+              <Button onClick={() => void load()}>Try again</Button>
+            )}
             <Button asChild variant="outline">
               <Link to="/login">Sign in</Link>
             </Button>
@@ -539,7 +561,6 @@ function PortalPage() {
 
   return (
     <>
-
       <ClientDashboard
         data={data}
         documents={documents ?? []}
@@ -570,6 +591,13 @@ function PortalPage() {
         }
       >
         <div className="flex flex-wrap items-center gap-2">
+          {sharedProjects?.length ? (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/portal/circle" search={{ projectId: undefined }}>
+                Shared projects ({sharedProjects.length})
+              </Link>
+            </Button>
+          ) : null}
           {data.projects.length > 1 ? (
             <span className="rounded-full border border-ink/12 px-3 py-1 text-[11px] text-ink/55">
               {data.projects.length} projects

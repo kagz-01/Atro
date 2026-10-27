@@ -44,16 +44,25 @@ permissions. The interface adapts coordination details to the client:
 - **Diaspora clients** can request a remote walkthrough and see relevant calls
   and appointments in their own configured time zone, alongside Kenya time
   where useful.
+- **Project representatives** can be invited to one named project through the
+  Project circle. They can read milestone/site updates, request a site visit,
+  and submit recommendations on open decisions. The owner records every final
+  decision; representatives cannot approve milestones, access financial
+  records, change contracts, or invite others. Invitations are single-use,
+  require the invited verified email, expire after 7 days, and grant 90 days
+  of access after acceptance. Owners copy and share the invitation link
+  themselves; the app does not send invitation email.
 
 ## Roles and responsibilities
 
-| Role | Main responsibility | Typical access |
-| --- | --- | --- |
-| **Admin / owner** | Own the portfolio and business-level decisions. | Portfolio and business overview; project operations; lifecycle transitions; financial actions such as payment certification and retention release; staff access administration. |
-| **Office manager** | Coordinate the studio's day-to-day project operations. | Project and enquiry coordination; shared calendar and call scheduling; project follow-up. Admin-only financial, lifecycle close-out, business overview, and access-administration actions remain restricted. |
-| **Staff** | Work the operational queue and maintain project records. | Enquiries, projects, project updates, evidence and coordination; read the shared calendar and manage personal follow-up reminders. Call scheduling and admin-only actions are restricted. |
-| **Kenyan client** | Follow their project, review evidence, make decisions, and coordinate locally. | Their own project records and client actions, including approvals, decisions, payments, documents, messages, site visits, and after-handover items. |
-| **Diaspora client** | Do the same client work remotely and asynchronously. | The same client records and rights, with timezone-aware coordination, remote walkthroughs, and abroad-specific guidance. |
+| Role                       | Main responsibility                                                            | Typical access                                                                                                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Admin / owner**          | Own the portfolio and business-level decisions.                                | Portfolio and business overview; project operations; lifecycle transitions; financial actions such as payment certification and retention release; staff access administration.                              |
+| **Office manager**         | Coordinate the studio's day-to-day project operations.                         | Project and enquiry coordination; shared calendar and call scheduling; project follow-up. Admin-only financial, lifecycle close-out, business overview, and access-administration actions remain restricted. |
+| **Staff**                  | Work the operational queue and maintain project records.                       | Enquiries, projects, project updates, evidence and coordination; read the shared calendar and manage personal follow-up reminders. Call scheduling and admin-only actions are restricted.                    |
+| **Kenyan client**          | Follow their project, review evidence, make decisions, and coordinate locally. | Their own project records and client actions, including approvals, decisions, payments, documents, messages, site visits, and after-handover items.                                                          |
+| **Diaspora client**        | Do the same client work remotely and asynchronously.                           | The same client records and rights, with timezone-aware coordination, remote walkthroughs, and abroad-specific guidance.                                                                                     |
+| **Project representative** | Help coordinate on a project for its owner.                                    | Only explicitly shared project updates, site-visit requests, and decision recommendations. No final approvals, payments, contract actions, other projects, or access administration.                         |
 
 Staff roles are allowlisted. Admins manage staff access; office managers do not
 receive access to the staff-access administration. Server-side authorization
@@ -88,6 +97,10 @@ profile settings.
    scope or commercial commitment.
 4. **The client signs in.** Phone one-time-code sign-in identifies the client.
    Project reads and writes are checked against project ownership on the server.
+   An owner may separately invite a trusted representative to a single project.
+   The invitation must be accepted by a signed-in account with the matching
+   verified email; the representative's limited access expires and can be
+   revoked by the owner.
 5. **Work is delivered and recorded.** Staff maintain milestones and evidence,
    publish updates, manage approval records and client decisions, maintain
    project documents and payment records, and coordinate calls or
@@ -98,6 +111,8 @@ profile settings.
    a certified payment, review project documents, message the studio, or
    request a site visit or walkthrough. Client choices are recorded in the
    project history.
+   A project representative may request a site visit and suggest an answer to
+   an open decision; the owner must record any final decision or approval.
 7. **The project moves through its lifecycle.** The studio tracks
    pre-construction, active build, handover, and the defects period. Build
    completion is not by itself a record of handover or close-out. Closing and

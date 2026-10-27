@@ -99,6 +99,26 @@ values
   ('dev-staff', 'Juma', 'Office coordination', 'Africa/Nairobi')
 on conflict (user_id) do nothing;
 
+-- Preview the limited project-circle role: Wanjiku can coordinate on Brian's
+-- project, but this relationship never changes project ownership.
+with representative as (
+  insert into portal_project_representatives (
+    project_id, owner_user_id, invite_email, representative_user_id, status,
+    invited_by, expires_at, accepted_at
+  )
+  select p.id, 'dev-abroad', 'wanjiku@example.com', 'dev-local', 'active',
+    'dev-abroad', now() + interval '90 days', now()
+  from portal_projects p
+  where p.reference = 'ATRO-2402'
+  returning id, project_id
+)
+insert into portal_project_circle_audit (
+  project_id, representative_id, actor_user_id, event, details
+)
+select project_id, id, 'dev-abroad', 'accepted',
+  '{"email":"wanjiku@example.com","actorEmail":"b.otieno@example.com"}'::jsonb
+from representative;
+
 -- ── milestones: nine stages per project, worked to a believable point ──
 insert into portal_milestones (
   project_id, ord, stage, name, status, progress, planned_start, planned_end,

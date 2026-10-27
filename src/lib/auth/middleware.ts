@@ -48,6 +48,11 @@ export const authMiddleware = createMiddleware({ type: "function" })
     assertSameSiteRequest();
     const session = await requireSession(context.bearerToken);
     return next({
-      context: { userId: session.userId, email: session.email, phone: session.phone },
+      context: {
+        userId: session.userId,
+        email: session.email,
+        emailVerified: session.emailVerified,
+        phone: session.phone,
+      },
     });
   });

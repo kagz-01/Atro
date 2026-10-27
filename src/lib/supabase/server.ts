@@ -40,9 +40,12 @@ export function supabaseAdmin(): SupabaseClient | null {
  * verification is that a client cannot mint its own user id, and decoding a
  * self-supplied token proves nothing.
  */
-export async function verifyAccessToken(
-  token: string | null | undefined,
-): Promise<{ id: string; email: string | null; phone: string | null } | null> {
+export async function verifyAccessToken(token: string | null | undefined): Promise<{
+  id: string;
+  email: string | null;
+  emailVerified: boolean;
+  phone: string | null;
+} | null> {
   if (!token) return null;
   const supabase = supabaseAnon();
   if (!supabase) return null;
@@ -52,6 +55,7 @@ export async function verifyAccessToken(
     return {
       id: data.user.id,
       email: data.user.email ?? null,
+      emailVerified: Boolean(data.user.email_confirmed_at),
       phone: data.user.phone ?? null,
     };
   } catch {

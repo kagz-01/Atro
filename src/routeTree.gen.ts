@@ -32,6 +32,8 @@ import { Route as GuidesSlugRouteImport } from './routes/guides/$slug'
 import { Route as GuidesJourneyRouteImport } from './routes/guides/journey'
 import { Route as InsightsIndexRouteImport } from './routes/insights/index'
 import { Route as InsightsSlugRouteImport } from './routes/insights/$slug'
+import { Route as PortalCircleRouteImport } from './routes/portal.circle'
+import { Route as PortalInviteRouteImport } from './routes/portal.invite'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsSlugRouteImport } from './routes/projects/$slug'
 import { Route as ServicesIndexRouteImport } from './routes/services/index'
@@ -160,6 +162,16 @@ const InsightsSlugRoute = InsightsSlugRouteImport.update({
   path: '/insights/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalCircleRoute = PortalCircleRouteImport.update({
+  id: '/circle',
+  path: '/circle',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalInviteRoute = PortalInviteRouteImport.update({
+  id: '/invite',
+  path: '/invite',
+  getParentRoute: () => PortalRoute,
+} as any)
 const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -242,6 +254,8 @@ export interface FileRoutesByFullPath {
   '/guides/$slug': typeof GuidesSlugRoute
   '/guides/journey': typeof GuidesJourneyRoute
   '/insights/$slug': typeof InsightsSlugRoute
+  '/portal/circle': typeof PortalCircleRoute
+  '/portal/invite': typeof PortalInviteRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
   '/tools/boq-generator': typeof ToolsBoqGeneratorRoute
@@ -279,6 +293,8 @@ export interface FileRoutesByTo {
   '/guides/$slug': typeof GuidesSlugRoute
   '/guides/journey': typeof GuidesJourneyRoute
   '/insights/$slug': typeof InsightsSlugRoute
+  '/portal/circle': typeof PortalCircleRoute
+  '/portal/invite': typeof PortalInviteRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
   '/tools/boq-generator': typeof ToolsBoqGeneratorRoute
@@ -317,6 +333,8 @@ export interface FileRoutesById {
   '/guides/$slug': typeof GuidesSlugRoute
   '/guides/journey': typeof GuidesJourneyRoute
   '/insights/$slug': typeof InsightsSlugRoute
+  '/portal/circle': typeof PortalCircleRoute
+  '/portal/invite': typeof PortalInviteRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
   '/tools/boq-generator': typeof ToolsBoqGeneratorRoute
@@ -356,6 +374,8 @@ export interface FileRouteTypes {
     | '/guides/$slug'
     | '/guides/journey'
     | '/insights/$slug'
+    | '/portal/circle'
+    | '/portal/invite'
     | '/projects/$slug'
     | '/services/$slug'
     | '/tools/boq-generator'
@@ -393,6 +413,8 @@ export interface FileRouteTypes {
     | '/guides/$slug'
     | '/guides/journey'
     | '/insights/$slug'
+    | '/portal/circle'
+    | '/portal/invite'
     | '/projects/$slug'
     | '/services/$slug'
     | '/tools/boq-generator'
@@ -430,6 +452,8 @@ export interface FileRouteTypes {
     | '/guides/$slug'
     | '/guides/journey'
     | '/insights/$slug'
+    | '/portal/circle'
+    | '/portal/invite'
     | '/projects/$slug'
     | '/services/$slug'
     | '/tools/boq-generator'
@@ -647,6 +671,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsightsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/circle': {
+      id: '/portal/circle'
+      path: '/circle'
+      fullPath: '/portal/circle'
+      preLoaderRoute: typeof PortalCircleRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/invite': {
+      id: '/portal/invite'
+      path: '/invite'
+      fullPath: '/portal/invite'
+      preLoaderRoute: typeof PortalInviteRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/projects/': {
       id: '/projects/'
       path: '/projects'
@@ -735,10 +773,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface PortalRouteChildren {
+  PortalCircleRoute: typeof PortalCircleRoute
+  PortalInviteRoute: typeof PortalInviteRoute
   PortalDocumentIdRoute: typeof PortalDocumentIdRoute
 }
 
 const PortalRouteChildren: PortalRouteChildren = {
+  PortalCircleRoute: PortalCircleRoute,
+  PortalInviteRoute: PortalInviteRoute,
   PortalDocumentIdRoute: PortalDocumentIdRoute,
 }
 

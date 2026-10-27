@@ -1011,6 +1011,15 @@ export async function loadPortal(
   await claimProvisionedProjects(sql, userId, session);
   let rows = await selectOwnedProjects(sql, userId);
   if (rows.length === 0) {
+    const [circle] = await sql<{ id: string }>`
+      select id from portal_project_representatives
+      where representative_user_id = ${userId} and status = 'active'
+        and expires_at > now()
+      limit 1
+    `;
+    if (circle) {
+      throw new Error("Open your project circle to see the project shared with you.");
+    }
     await seedSampleProject(sql, userId);
     rows = await selectOwnedProjects(sql, userId);
   }
@@ -1219,11 +1228,13 @@ export async function recordDecisionFor(
     throw new Error("Choose one of the listed options.");
   }
 
-  await sql`
+  const [recorded] = await sql<{ id: string }>`
     update portal_decisions
     set chosen = ${data.choice}, state = 'decided', decided_at = now()
-    where id = ${data.decisionId} and project_id = ${projectId}
+    where id = ${data.decisionId} and project_id = ${projectId} and state <> 'decided'
+    returning id
   `;
+  if (!recorded) throw new Error("That decision was already recorded.");
 
   await logActivity(
     sql,

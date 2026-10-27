@@ -18,6 +18,7 @@ import {
   MessageSquare,
   MessageSquareWarning,
   SlidersHorizontal,
+  UsersRound,
   UserRound,
   Wrench,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Gauge, type Slice } from "@/components/dashboard/charts";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { ProfilePanel } from "@/components/profile/profile-panel";
+import { ProjectCircleOwnerPanel } from "@/components/project-circle/project-circle-panels";
 import { SelectionsPanel } from "@/components/dashboard/selections-panel";
 import { listMySelections } from "@/lib/selections-server";
 import { ApprovalsPanel } from "@/components/dashboard/approvals-panel";
@@ -110,6 +112,7 @@ type Section =
   | "messages"
   | "after-handover"
   | "abroad"
+  | "people"
   | "profile";
 
 export function ClientDashboard({
@@ -271,6 +274,7 @@ export function ClientDashboard({
               icon: MessageSquare,
               badge: unreadMessages || undefined,
             },
+            { id: "people", label: "Project circle", icon: UsersRound },
             {
               id: "after-handover",
               label: "After handover",
@@ -722,6 +726,10 @@ export function ClientDashboard({
       ) : null}
 
       {section === "profile" ? <ProfilePanel /> : null}
+
+      {section === "people" ? (
+        <ProjectCircleOwnerPanel projectId={p.id} disabled={p.isSample} />
+      ) : null}
 
       {section === "abroad" ? (
         <AbroadPanel
