@@ -10,11 +10,10 @@ import {
   BOQ_CATEGORIES,
   BOQ_TEMPLATES,
   UNITS,
-  CONTINGENCY_OPTIONS,
   createEmptyLineItem,
   calculateLineTotal,
   calculateCategorySubtotal,
-  calculateGrandTotal,
+  calculatePricedSubtotal,
   downloadBoqWorksheet,
   type BoqLineItem,
 } from "@/lib/boq";
@@ -24,11 +23,13 @@ export function BoqGenerator() {
   const [projectType, setProjectType] = useState("3-Bedroom Bungalow");
   const [items, setItems] = useState<BoqLineItem[]>([]);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(["prelim"]));
-  const [contingencyId, setContingencyId] = useState("10");
   const [showSummary, setShowSummary] = useState(false);
 
-  const contingencyPct = CONTINGENCY_OPTIONS.find((c) => c.id === contingencyId)?.value ?? 0.10;
-  const totals = useMemo(() => calculateGrandTotal(items, contingencyPct), [items, contingencyPct]);
+  const pricedLineCount = useMemo(
+    () => items.filter((item) => item.quantity > 0 && item.rate > 0).length,
+    [items],
+  );
+  const pricedSubtotal = useMemo(() => calculatePricedSubtotal(items), [items]);
   const sectionCount = useMemo(() => new Set(items.map((item) => item.categoryId)).size, [items]);
 
   const toggleCategory = (catId: string) => {
@@ -44,7 +45,13 @@ export function BoqGenerator() {
     const template = BOQ_TEMPLATES.find((t) => t.id === templateId);
     if (!template) return;
     setProjectName(template.name);
-    setProjectType(template.name);
+    setProjectType(
+      template.id === "3bed-bungalow"
+        ? "3-Bedroom Bungalow"
+        : template.id === "2bed-apartment"
+          ? "2-Bedroom Apartment"
+          : "Residential Renovation",
+    );
     setItems(
       template.items.map((item, i) => ({
         ...item,
@@ -84,7 +91,7 @@ export function BoqGenerator() {
   };
 
   const handleDownload = () => {
-    downloadBoqWorksheet(items, contingencyPct, projectName, projectType);
+    downloadBoqWorksheet(items, projectName, projectType);
   };
 
   return (
@@ -95,7 +102,7 @@ export function BoqGenerator() {
           <div>
             <h2 className="font-display text-2xl text-maroon">Preliminary worksheet</h2>
             <p className="text-sm text-ink/60 mt-1">
-              {items.length} line items · KES {totals.subtotal.toLocaleString("en-KE")} before contingency
+              {items.length} scope lines · {pricedLineCount} with measured quantity and rate
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -105,7 +112,7 @@ export function BoqGenerator() {
             </Button>
             <Button size="sm" variant="outline" onClick={() => setShowSummary(!showSummary)}>
               <Calculator className="size-4 mr-1.5" />
-              Summary
+              Priced lines
             </Button>
           </div>
         </div>
@@ -130,6 +137,7 @@ export function BoqGenerator() {
               className="w-full h-10 px-3 bg-cream border border-line rounded-lg text-sm text-ink outline-none focus:border-burgundy appearance-none cursor-pointer"
             >
               <option>3-Bedroom Bungalow</option>
+              <option>2-Bedroom Apartment</option>
               <option>2-Bedroom Apartment</option>
               <option>Residential Renovation</option>
               <option>Commercial Office</option>
@@ -159,9 +167,9 @@ export function BoqGenerator() {
       <div className="border-b border-line bg-paper/60 p-5">
         <div className="grid gap-3 md:grid-cols-3">
           {[
-            { title: "1. Start with a template", text: "Load a common residential or commercial pattern and replace quantities to fit the site." },
-            { title: "2. Adjust the scope", text: "Edit rates, units and line descriptions to match your design intent and supply logic." },
-            { title: "3. Export for review", text: "Download the worksheet and discuss it with a QS or design lead before commitment." },
+            { title: "1. Start with a template", text: "Templates provide scope prompts only; no quantities or prices are assumed." },
+            { title: "2. Measure and price", text: "Enter measured quantities and current, project-specific supplier or contractor rates." },
+            { title: "3. Export for review", text: "Priced line subtotals are not a whole-project total. Have a QS check scope and quantities." },
           ].map((step) => (
             <div key={step.title} className="rounded-2xl border border-line/60 bg-cream p-4">
               <p className="text-[10px] uppercase tracking-[0.14em] text-muted">{step.title}</p>
@@ -197,47 +205,22 @@ export function BoqGenerator() {
         </div>
       )}
 
-      {/* Summary (collapsible) */}
+      {/* Priced lines summary (collapsible) */}
       {showSummary && items.length > 0 && (
         <div className="p-6 border-b border-line bg-paper">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Subtotal</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Priced lines subtotal</p>
               <p className="font-display text-2xl text-maroon tabular-nums mt-1">
-                KES {totals.subtotal.toLocaleString("en-KE")}
+                {pricedLineCount > 0 ? `KES ${pricedSubtotal.toLocaleString("en-KE")}` : "No rates entered"}
               </p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Contingency ({Math.round(contingencyPct * 100)}%)</p>
-              <p className="font-display text-2xl text-maroon tabular-nums mt-1">
-                KES {totals.contingency.toLocaleString("en-KE")}
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Coverage</p>
+              <p className="mt-1 text-sm leading-relaxed text-ink/70">
+                This sums only lines with both a quantity and a rate. It does not represent the
+                complete project cost.
               </p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Grand Total</p>
-              <p className="font-display text-2xl text-gold tabular-nums mt-1">
-                KES {totals.total.toLocaleString("en-KE")}
-              </p>
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-[0.12em] text-muted block mb-1">Contingency</label>
-              <div className="flex gap-2">
-                {CONTINGENCY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setContingencyId(opt.id)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                      contingencyId === opt.id
-                        ? "bg-maroon text-white"
-                        : "bg-cream border border-line text-ink/70 hover:border-burgundy",
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         </div>
@@ -349,7 +332,9 @@ export function BoqGenerator() {
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="font-display text-sm text-maroon tabular-nums">
-                                KES {calculateLineTotal(item).toLocaleString("en-KE")}
+                                {item.quantity > 0 && item.rate > 0
+                                  ? `KES ${calculateLineTotal(item).toLocaleString("en-KE")}`
+                                  : "Amount pending"}
                               </span>
                               <div className="flex items-center gap-1">
                                 <button
@@ -405,7 +390,9 @@ export function BoqGenerator() {
                               className="w-full h-9 px-3 bg-cream border border-line/50 rounded-xl text-sm text-ink text-right tabular-nums outline-none focus:border-burgundy"
                             />
                             <div className="h-9 flex items-center justify-end px-3 font-display text-sm text-maroon tabular-nums">
-                              {calculateLineTotal(item).toLocaleString("en-KE")}
+                              {item.quantity > 0 && item.rate > 0
+                                ? calculateLineTotal(item).toLocaleString("en-KE")
+                                : "—"}
                             </div>
                             <div className="flex items-center gap-1">
                               <button
@@ -451,12 +438,12 @@ export function BoqGenerator() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <p className="text-xs text-muted">
-              Template rates and quantities are placeholders. Have a quantity surveyor verify the project-specific scope before tendering.
+              Template lines are prompts only. Measure each item and enter current project-specific rates; have a quantity surveyor verify the scope before tendering.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.14em] text-muted">
-            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">Indicative only</span>
-            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">Plan, not tender</span>
+            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">No assumed prices</span>
+            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">Worksheet, not tender</span>
             <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">Review before procurement</span>
           </div>
         </div>
@@ -466,9 +453,9 @@ export function BoqGenerator() {
       {items.length > 0 && (
         <div className="sticky bottom-0 z-10 bg-maroon text-paper px-6 py-3 flex items-center justify-between shadow-lg sm:hidden">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.14em] text-gold">Grand Total</p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-gold">Priced lines subtotal</p>
             <p className="font-display text-xl tabular-nums">
-              KES {totals.total.toLocaleString("en-KE")}
+              {pricedLineCount > 0 ? `KES ${pricedSubtotal.toLocaleString("en-KE")}` : "No rates entered"}
             </p>
           </div>
           <Button size="sm" onClick={handleDownload} className="bg-gold text-maroon hover:bg-gold-light">

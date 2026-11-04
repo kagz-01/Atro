@@ -1,7 +1,7 @@
 // ATRO — Build Journey
 // The full sequence of building in Kenya as a diaspora client, stage by stage.
 // Every stage: what happens, how long, what you must approve, what you receive,
-// what it costs, and how it most often goes wrong.
+// how project costs are established, and how it most often goes wrong.
 
 export type JourneyStage = {
   id: string;
@@ -9,7 +9,6 @@ export type JourneyStage = {
   name: string;
   phase: "Before you build" | "Getting it built";
   duration: string;
-  costShare: string;
   summary: string;
   happens: string[];
   youApprove: string[];
@@ -26,7 +25,6 @@ export const JOURNEY: JourneyStage[] = [
     name: "Land and due diligence",
     phase: "Before you build",
     duration: "2–8 weeks",
-    costShare: "No build cost",
     summary:
       "Confirming the land is genuinely owned, genuinely for sale, and genuinely the size it claims — while you are physically unable to stand on it.",
     happens: [
@@ -70,7 +68,6 @@ export const JOURNEY: JourneyStage[] = [
     name: "Appoint and verify the team",
     phase: "Before you build",
     duration: "1–3 weeks",
-    costShare: "1–3%",
     summary:
       "Deciding who designs it, who measures it, who builds it, and who checks them — then verifying every one of those registrations yourself.",
     happens: [
@@ -111,7 +108,6 @@ export const JOURNEY: JourneyStage[] = [
     name: "Design and drawings",
     phase: "Before you build",
     duration: "4–10 weeks",
-    costShare: "6–12%",
     summary:
       "Producing drawings specific to your plot and brief, then a specification and bill of quantities that turn those drawings into a number you can hold someone to.",
     happens: [
@@ -153,7 +149,6 @@ export const JOURNEY: JourneyStage[] = [
     name: "Statutory approvals",
     phase: "Before you build",
     duration: "6–16 weeks",
-    costShare: "3–8%",
     summary:
       "Getting every approval the law requires before a single block is laid. Delays here are the single biggest cause of programme overrun in Kenya.",
     happens: [
@@ -194,7 +189,6 @@ export const JOURNEY: JourneyStage[] = [
     name: "Site set-up and foundation",
     phase: "Getting it built",
     duration: "4–8 weeks",
-    costShare: "10–15%",
     summary:
       "Setting out the building exactly as drawn, then excavating, reinforcing and casting the foundation. Everything above this level depends on it being right.",
     happens: [
@@ -236,7 +230,6 @@ export const JOURNEY: JourneyStage[] = [
     name: "Structural frame",
     phase: "Getting it built",
     duration: "6–14 weeks",
-    costShare: "18–25%",
     summary:
       "Building the walls, ring beam, columns and roof structure. This is the stage where a building's shape becomes undeniable, and where the most money is spent.",
     happens: [
@@ -278,7 +271,6 @@ export const JOURNEY: JourneyStage[] = [
     name: "Roofing and rainwater",
     phase: "Getting it built",
     duration: "3–6 weeks",
-    costShare: "8–12%",
     summary:
       "Covering the building so rain stops entering, and getting water away from it safely. Getting this wrong causes damp for years.",
     happens: [
@@ -319,7 +311,6 @@ export const JOURNEY: JourneyStage[] = [
     name: "Plumbing, electrical and drainage",
     phase: "Getting it built",
     duration: "4–10 weeks",
-    costShare: "10–16%",
     summary:
       "Everything hidden inside the walls and under the floor. Once it is covered, nobody can check it without breaking into the building.",
     happens: [
@@ -361,7 +352,6 @@ export const JOURNEY: JourneyStage[] = [
     name: "Finishes and fit-out",
     phase: "Getting it built",
     duration: "8–20 weeks",
-    costShare: "20–30%",
     summary:
       "Plastering, painting, flooring, ceilings, joinery, sanitary fittings and kitchen — where the specification decisions actually become visible.",
     happens: [
@@ -405,7 +395,6 @@ export const JOURNEY: JourneyStage[] = [
     name: "Handover and defects period",
     phase: "Getting it built",
     duration: "2 weeks + 3–12 months",
-    costShare: "Retention released",
     summary:
       "Testing everything, listing what is wrong, getting it fixed, and releasing the retention only once it is.",
     happens: [

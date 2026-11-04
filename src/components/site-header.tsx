@@ -290,7 +290,7 @@ export function SiteHeader() {
         </div>
       ) : null}
 
-      {!open ? (
+      {!open && pathname !== "/start" ? (
         <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 flex items-center justify-around px-2 py-2 glass rounded-full border border-line/50 shadow-card">
           {[
             { to: "/", icon: Home, label: "Home" },

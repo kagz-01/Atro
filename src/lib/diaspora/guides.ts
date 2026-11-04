@@ -436,7 +436,7 @@ export const GUIDES: Guide[] = [
       },
       {
         kind: "p",
-        text: "Two quotes can differ by thirty percent and describe the same building. Without a BOQ, there is no way to tell whether the difference is a better price, a different specification, or an omitted scope. With a BOQ, you compare line by line in an afternoon.",
+        text: "Quotes can cover different specifications or omit different work. Without a BOQ, those scope differences are hard to see; with one, you can compare quantities, specifications and rates line by line.",
       },
       {
         kind: "p",
@@ -473,7 +473,7 @@ export const GUIDES: Guide[] = [
       {
         kind: "ordered",
         items: [
-          "Check the total against the area and quality. A rate per square metre outside the normal Kenyan band means something is missing or misstated.",
+          "Do not judge a BOQ against a generic price-per-square-metre band. Review its defined scope, measured quantities and current quoted rates with a quantity surveyor.",
           "Find the preliminaries. These are a legitimate cost, and they are also the easiest place for an inflated number to hide.",
           "Look at the material names, not just the rates. 'Cement 32.5R' and 'Cement 42.5N' are different products with different behaviour.",
           "Identify every provisional sum. These are estimates that will be replaced by actual invoices, and they should be visible to you.",
@@ -483,7 +483,7 @@ export const GUIDES: Guide[] = [
       },
       {
         kind: "warn",
-        text: "Treat any BOQ produced from a website tool, including ours, as a budgeting tool. It gives you a realistic order of magnitude and a structure to compare against. A contract BOQ is measured from your specific drawings by a registered quantity surveyor, and only that document binds.",
+        text: "Our website worksheet provides unpriced scope prompts; it does not generate a cost estimate or a contract BOQ. A project cost requires measured quantities and current project-specific quotations, reviewed by a quantity surveyor.",
       },
       {
         kind: "h",
@@ -507,7 +507,7 @@ export const GUIDES: Guide[] = [
     slug: "statutory-approvals",
     title: "Permits and approvals you will need",
     summary:
-      "What must be in hand before construction starts, who applies, what it costs roughly, and why this stage derails more programmes than any other.",
+      "What must be in hand before construction starts, who applies, how to verify current charges and why this stage can affect the programme.",
     category: "During the build",
     readMinutes: 6,
     stage: "approvals",
@@ -522,49 +522,49 @@ export const GUIDES: Guide[] = [
       },
       {
         kind: "table",
-        head: ["Approval", "Authority", "Indicative cost", "Lead time"],
+        head: ["Approval", "Authority", "How to confirm current charges", "Lead time"],
         rows: [
           [
             "Development permission and building plans",
             "County government",
-            "KES 80,000–200,000",
+            "Request the current county fee schedule for this site and project",
             "6–12 weeks",
           ],
           [
             "NCA project registration",
             "National Construction Authority",
-            "Modest, category-dependent",
+            "Confirm current category and charges with NCA",
             "2–4 weeks",
           ],
           [
             "Environmental impact assessment and licence",
             "NEMA",
-            "KES 50,000–100,000, where required",
+            "Confirm current requirements and charges with NEMA",
             "8–16 weeks",
           ],
           [
             "Water connection",
             "Water utility",
-            "KES 50,000–100,000",
+            "Request a connection quote from the local water utility",
             "4–10 weeks",
           ],
           [
             "Sewerage connection",
             "County / water utility",
-            "KES 60,000–150,000",
+            "Confirm current connection requirements and charges with the provider",
             "6–12 weeks",
           ],
           [
             "Electrical connection",
             "Kenya Power",
-            "KES 35,000–85,000",
+            "Request a connection quote from Kenya Power",
             "4–8 weeks",
           ],
         ],
       },
       {
         kind: "p",
-        text: "These are indicative planning figures, not quotations. They vary by county, plot area and project value.",
+        text: "No generic fee figures are supplied here. Requirements and charges depend on the authority, project and site; confirm them directly before putting them in a project budget.",
       },
       {
         kind: "h",
@@ -694,7 +694,7 @@ export const GUIDES: Guide[] = [
         items: [
           "A payment certificate from a registered quantity surveyor before each release.",
           "Payment tied to measured quantities, never to a percentage of time elapsed.",
-          "Retention of 5–10% held until defects are closed.",
+          "Retention amount and release conditions agreed in the contract.",
           "Variations priced and approved in writing before work begins.",
           "Each payment referenced to a certificate number in your bank transfer.",
         ],

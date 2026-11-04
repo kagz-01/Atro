@@ -1,5 +1,5 @@
-// Editable preliminary BOQ worksheet data. Template rates and quantities are
-// planning placeholders, not verified market quotations or measured quantities.
+// Editable quantities worksheet data. Templates contain no assumed quantities
+// or rates; enter measurements and current project-specific prices yourself.
 
 export type BoqCategory = {
   id: string;
@@ -42,99 +42,53 @@ export const UNITS = [
   "m²", "m³", "m", "kg", "tonne", "No", "LS", "set", "lot", "hr", "day", "week", "month",
 ] as const;
 
-export const CONTINGENCY_OPTIONS = [
-  { id: "5", label: "5%", value: 0.05 },
-  { id: "10", label: "10%", value: 0.10 },
-  { id: "15", label: "15%", value: 0.15 },
-  { id: "20", label: "20%", value: 0.20 },
-] as const;
-
-// Illustrative template rates (KES); replace with current, project-specific rates.
 export const BOQ_TEMPLATES: BoqProjectTemplate[] = [
   {
     id: "3bed-bungalow",
-    name: "3-Bedroom Bungalow (120m²)",
-    description: "Standard residential bungalow with 3 bedrooms, 2 bathrooms, kitchen, living room",
+    name: "Residential Building",
+    description: "Scope starter only. Measure quantities and enter current project-specific rates.",
     items: [
-      // Preliminaries
-      { categoryId: "prelim", description: "Site establishment, access, security", unit: "LS", quantity: 1, rate: 180000 },
-      { categoryId: "prelim", description: "Scaffolding, temporary power, water", unit: "LS", quantity: 1, rate: 120000 },
-      // Substructure
-      { categoryId: "substructure", description: "Excavate topsoil 200mm deep, remove from site", unit: "m³", quantity: 45, rate: 350 },
-      { categoryId: "substructure", description: "Mass concrete in foundations (1:3:6), 600mm deep", unit: "m³", quantity: 36, rate: 8500 },
-      { categoryId: "substructure", description: "Reinforced concrete strip foundations (1:2:4)", unit: "m³", quantity: 18, rate: 12500 },
-      { categoryId: "substructure", description: "Damp-proof course (DPC) — 2-course thick", unit: "m", quantity: 48, rate: 850 },
-      // Concrete
-      { categoryId: "concrete", description: "Reinforced concrete columns (1:2:4), 300×300mm", unit: "m³", quantity: 6, rate: 18000 },
-      { categoryId: "concrete", description: "RC beams and lintels (1:2:4)", unit: "m³", quantity: 8, rate: 16500 },
-      { categoryId: "concrete", description: "RC floor slab, 150mm thick (1:2:4)", unit: "m²", quantity: 120, rate: 4200 },
-      { categoryId: "concrete", description: "RC staircases including finish", unit: "LS", quantity: 1, rate: 185000 },
-      // Masonry
-      { categoryId: "masonry", description: "Machine-cut stone walls, 225mm thick, cement mortar 1:6", unit: "m²", quantity: 280, rate: 3200 },
-      { categoryId: "masonry", description: "Internal partition walls, 115mm thick", unit: "m²", quantity: 95, rate: 2100 },
-      { categoryId: "masonry", description: "Cement plaster 12mm both sides (1:4)", unit: "m²", quantity: 420, rate: 780 },
-      // Roofing
-      { categoryId: "roofing", description: "Timber roof trusses, treated cypress 50×150mm", unit: "m²", quantity: 140, rate: 1800 },
-      { categoryId: "roofing", description: "Gauge 28 corrugated iron sheets, coloured", unit: "m²", quantity: 140, rate: 1100 },
-      { categoryId: "roofing", description: "Fascia boards, guttering, downpipes (PVC)", unit: "m", quantity: 48, rate: 950 },
-      { categoryId: "roofing", description: "Ceiling boards — gypsum, 9mm", unit: "m²", quantity: 120, rate: 650 },
-      // Carpentry
-      { categoryId: "carpentry", description: "Solid wood flush doors, 813×2032mm, with frame, lock, stops", unit: "No", quantity: 8, rate: 12000 },
-      { categoryId: "carpentry", description: "Steel security door (main entrance), 3-point lock", unit: "No", quantity: 1, rate: 28000 },
-      { categoryId: "carpentry", description: "Aluminium sliding windows, glazed, with mosquito nets", unit: "m²", quantity: 18, rate: 5500 },
-      // Finishes
-      { categoryId: "finishes", description: "Ceramic floor tiles 600×600mm, cement adhesive", unit: "m²", quantity: 100, rate: 3200 },
-      { categoryId: "finishes", description: "Wall tiles 300×600mm, bathrooms and kitchen", unit: "m²", quantity: 65, rate: 3800 },
-      { categoryId: "finishes", description: "Interior paint — 2 coats emulsion on plaster", unit: "m²", quantity: 380, rate: 380 },
-      { categoryId: "finishes", description: "Exterior paint — 2 coats weatherproof on plaster", unit: "m²", quantity: 160, rate: 420 },
-      // Plumbing
-      { categoryId: "plumbing", description: "Complete plumbing installation — cold & hot water", unit: "LS", quantity: 1, rate: 350000 },
-      { categoryId: "plumbing", description: "Sanitaryware — 2 WC, 2 basins, 1 bath, 1 kitchen sink", unit: "LS", quantity: 1, rate: 180000 },
-      { categoryId: "plumbing", description: "10,000L water tank on steel stand", unit: "No", quantity: 1, rate: 52000 },
-      { categoryId: "plumbing", description: "Soak-away pit, 3-chamber, masonry lined", unit: "LS", quantity: 1, rate: 65000 },
-      // Electrical
-      { categoryId: "electrical", description: "Complete electrical installation — wiring, lighting, sockets", unit: "LS", quantity: 1, rate: 280000 },
-      { categoryId: "electrical", description: "Consumer unit, 12-way MCB board", unit: "No", quantity: 1, rate: 8500 },
-      // External
-      { categoryId: "external", description: "Perimeter wall, 2.4m high, stone with coping", unit: "m", quantity: 50, rate: 8500 },
-      { categoryId: "external", description: "Car park — cabro paving on compacted sub-base", unit: "m²", quantity: 30, rate: 3800 },
-      { categoryId: "external", description: "Septic tank, 3-chamber, reinforced concrete", unit: "LS", quantity: 1, rate: 120000 },
+      { categoryId: "prelim", description: "Site establishment and temporary works", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "substructure", description: "Excavation and disposal", unit: "m³", quantity: 0, rate: 0 },
+      { categoryId: "substructure", description: "Foundations and damp-proof course", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "concrete", description: "Reinforced concrete frame and slabs", unit: "m³", quantity: 0, rate: 0 },
+      { categoryId: "masonry", description: "External and internal walling", unit: "m²", quantity: 0, rate: 0 },
+      { categoryId: "roofing", description: "Roof structure and covering", unit: "m²", quantity: 0, rate: 0 },
+      { categoryId: "carpentry", description: "Doors, windows and joinery", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "finishes", description: "Floor, wall and ceiling finishes", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "plumbing", description: "Water supply and drainage", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "electrical", description: "Electrical installation", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "external", description: "External works and services", unit: "LS", quantity: 0, rate: 0 },
     ],
   },
   {
     id: "2bed-apartment",
-    name: "2-Bedroom Apartment (80m²)",
-    description: "Standard apartment unit with 2 bedrooms, 1 bathroom, kitchen, living area",
+    name: "Apartment or Multi-unit",
+    description: "Scope starter only. Confirm shared works and measure this project's quantities.",
     items: [
-      { categoryId: "prelim", description: "Pro-rata site establishment", unit: "LS", quantity: 1, rate: 60000 },
-      { categoryId: "concrete", description: "RC slab contribution (shared structure)", unit: "m²", quantity: 80, rate: 3500 },
-      { categoryId: "masonry", description: "Block walls 150mm, cement mortar", unit: "m²", quantity: 180, rate: 2400 },
-      { categoryId: "masonry", description: "Cement plaster 12mm both sides", unit: "m²", quantity: 280, rate: 750 },
-      { categoryId: "carpentry", description: "Flush doors with frames and locks", unit: "No", quantity: 5, rate: 11000 },
-      { categoryId: "carpentry", description: "Aluminium sliding windows, glazed", unit: "m²", quantity: 10, rate: 5200 },
-      { categoryId: "finishes", description: "Ceramic floor tiles 600×600mm", unit: "m²", quantity: 75, rate: 3000 },
-      { categoryId: "finishes", description: "Wall tiles, bathroom and kitchen", unit: "m²", quantity: 40, rate: 3500 },
-      { categoryId: "finishes", description: "Interior paint, 2 coats", unit: "m²", quantity: 240, rate: 360 },
-      { categoryId: "plumbing", description: "Plumbing installation — water supply and drainage", unit: "LS", quantity: 1, rate: 180000 },
-      { categoryId: "plumbing", description: "Sanitaryware — 1 WC, 1 basin, 1 shower, 1 kitchen sink", unit: "LS", quantity: 1, rate: 95000 },
-      { categoryId: "electrical", description: "Electrical installation — wiring, lighting, sockets", unit: "LS", quantity: 1, rate: 140000 },
+      { categoryId: "prelim", description: "Site establishment and temporary works", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "substructure", description: "Foundations and below-ground services", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "concrete", description: "Shared frame, slabs and stairs", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "masonry", description: "External and internal walling", unit: "m²", quantity: 0, rate: 0 },
+      { categoryId: "roofing", description: "Roof structure and covering", unit: "m²", quantity: 0, rate: 0 },
+      { categoryId: "carpentry", description: "Doors, windows and joinery", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "finishes", description: "Floor, wall and ceiling finishes", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "plumbing", description: "Water supply and drainage", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "electrical", description: "Electrical installation", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "external", description: "External works and shared services", unit: "LS", quantity: 0, rate: 0 },
     ],
   },
   {
     id: "renovation",
-    name: "Residential Renovation (100m²)",
-    description: "Kitchen/bathroom renovation, repainting, floor retile",
+    name: "Renovation",
+    description: "Scope starter only. Inspect the existing property and measure affected areas.",
     items: [
-      { categoryId: "prelim", description: "Site protection, dust screens, access", unit: "LS", quantity: 1, rate: 35000 },
-      { categoryId: "masonry", description: "Demolition of existing tiles and plaster (selective)", unit: "m²", quantity: 60, rate: 450 },
-      { categoryId: "masonry", description: "Re-plaster damaged walls, 12mm", unit: "m²", quantity: 40, rate: 850 },
-      { categoryId: "finishes", description: "New ceramic floor tiles, 600×600mm", unit: "m²", quantity: 50, rate: 3200 },
-      { categoryId: "finishes", description: "New wall tiles, bathroom and kitchen", unit: "m²", quantity: 35, rate: 3800 },
-      { categoryId: "finishes", description: "Interior paint, full repaint, 2 coats", unit: "m²", quantity: 200, rate: 380 },
-      { categoryId: "plumbing", description: "Re-plumb kitchen and bathroom", unit: "LS", quantity: 1, rate: 120000 },
-      { categoryId: "plumbing", description: "New sanitaryware — WC, basin, shower", unit: "LS", quantity: 1, rate: 85000 },
-      { categoryId: "electrical", description: "Re-wire kitchen and bathroom", unit: "LS", quantity: 1, rate: 65000 },
-      { categoryId: "carpentry", description: "New kitchen cabinets and countertop", unit: "LS", quantity: 1, rate: 180000 },
+      { categoryId: "prelim", description: "Protection, access and temporary works", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "masonry", description: "Demolition, making good and repairs", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "carpentry", description: "Doors, windows and joinery", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "finishes", description: "Floor, wall and ceiling finishes", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "plumbing", description: "Plumbing alterations and fixtures", unit: "LS", quantity: 0, rate: 0 },
+      { categoryId: "electrical", description: "Electrical alterations", unit: "LS", quantity: 0, rate: 0 },
     ],
   },
 ];
@@ -160,30 +114,24 @@ export function calculateCategorySubtotal(items: BoqLineItem[], categoryId: stri
     .reduce((sum, i) => sum + calculateLineTotal(i), 0);
 }
 
-export function calculateGrandTotal(items: BoqLineItem[], contingencyPct: number): {
-  subtotal: number;
-  contingency: number;
-  total: number;
-} {
+export function calculatePricedSubtotal(items: BoqLineItem[]): number {
   const subtotal = items.reduce((sum, i) => sum + calculateLineTotal(i), 0);
-  const contingency = Math.round(subtotal * contingencyPct);
-  return { subtotal, contingency, total: subtotal + contingency };
+  return subtotal;
 }
 
 export function downloadBoqWorksheet(
   items: BoqLineItem[],
-  contingencyPct: number,
   projectName: string,
   projectType: string,
 ): void {
-  const { subtotal, contingency, total } = calculateGrandTotal(items, contingencyPct);
+  const subtotal = calculatePricedSubtotal(items);
   const lines: string[] = [];
 
   lines.push("PRELIMINARY QUANTITIES WORKSHEET");
   lines.push(`Project: ${projectName || "Untitled Project"}`);
   lines.push(`Type: ${projectType}`);
   lines.push(`Generated: ${new Date().toLocaleDateString("en-KE", { year: "numeric", month: "long", day: "numeric" })}`);
-  lines.push(`Currency: KES (VAT exclusive)`);
+  lines.push(`Currency: KES (confirm tax treatment)`);
   lines.push("");
   lines.push("─".repeat(80));
 
@@ -213,8 +161,8 @@ export function downloadBoqWorksheet(
         item.description.padEnd(45).slice(0, 45) +
         item.unit.padEnd(8) +
         String(item.quantity).padStart(8) +
-        item.rate.toLocaleString("en-KE").padStart(14) +
-        amt.toLocaleString("en-KE").padStart(14),
+        (item.rate > 0 ? item.rate.toLocaleString("en-KE") : "—").padStart(14) +
+        (item.quantity > 0 && item.rate > 0 ? amt.toLocaleString("en-KE") : "—").padStart(14),
       );
     }
     lines.push(
@@ -222,7 +170,7 @@ export function downloadBoqWorksheet(
       "".padEnd(8) +
       "".padStart(8) +
       "Subtotal".padStart(14) +
-      catTotal.toLocaleString("en-KE").padStart(14),
+      (catTotal > 0 ? catTotal.toLocaleString("en-KE").padStart(14) : "—".padStart(14)),
     );
     lines.push("─".repeat(80));
   }
@@ -233,32 +181,17 @@ export function downloadBoqWorksheet(
     "".padEnd(45) +
     "".padEnd(8) +
     "".padStart(8) +
-    "SUBTOTAL".padStart(14) +
-    subtotal.toLocaleString("en-KE").padStart(14),
-  );
-  lines.push(
-    "".padEnd(45) +
-    "".padEnd(8) +
-    "".padStart(8) +
-    `CONTINGENCY (${Math.round(contingencyPct * 100)}%)`.padStart(14) +
-    contingency.toLocaleString("en-KE").padStart(14),
-  );
-  lines.push("─".repeat(80));
-  lines.push(
-    "".padEnd(45) +
-    "".padEnd(8) +
-    "".padStart(8) +
-    "GRAND TOTAL".padStart(14) +
-    total.toLocaleString("en-KE").padStart(14),
+    "PRICED LINES SUBTOTAL".padStart(14) +
+    (subtotal > 0 ? subtotal.toLocaleString("en-KE").padStart(14) : "—".padStart(14)),
   );
   lines.push("─".repeat(80));
   lines.push("");
   lines.push("NOTES:");
-  lines.push("1. Template rates are planning placeholders, not current supplier quotations.");
-  lines.push("2. Quantities are preliminary and must be measured and checked for this site.");
-  lines.push("3. Excludes VAT (16%), statutory fees, professional fees, land and site investigations.");
+  lines.push("1. Templates do not include assumed quantities or rates; enter measured quantities and current quotations.");
+  lines.push("2. The priced-lines subtotal includes only the entries priced in this worksheet; it is not a whole-project total.");
+  lines.push("3. Confirm tax treatment, delivery, labour, statutory charges and omitted scope separately.");
   lines.push("4. Work sections and units are a worksheet structure, not a claim of compliance with a measurement standard.");
-  lines.push("5. A quantity surveyor must verify the scope, specification, quantities and rates before tendering.");
+  lines.push("5. A quantity surveyor must verify scope, specification, quantities and rates before tendering.");
   lines.push("");
   lines.push("Generated by ATRO Design & Construction — atro.co.ke");
 

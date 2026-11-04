@@ -13,7 +13,7 @@ export const CONSULTANCY_KB = {
       name: "Cost Planning",
       description: "Turning a brief into a number you can fund. If the sketch and the money disagree, the money wins until the sketch is rewritten.",
       deliverables: ["Preliminary cost plan", "Elemental cost plan", "Detailed cost plan", "Value engineering options"],
-      feeBasis: "Fixed fee or percentage of construction cost",
+      feeBasis: "Agreed scope and written proposal",
       whenNeeded: "Before design is finalised — the earlier, the better",
     },
     {
@@ -21,7 +21,7 @@ export const CONSULTANCY_KB = {
       name: "Bill of Quantities (BOQ)",
       description: "A document listing every material, labour item and cost. The basis for tendering, payment valuations and cost control.",
       deliverables: ["Priced BOQ (for tender)", "Unpriced BOQ (for contractor pricing)", "Interim payment certificates", "Final account"],
-      feeBasis: "0.8-1.5% of construction cost",
+      feeBasis: "Agreed scope and written proposal",
       standard: "SMM2 — Standard Method of Measurement, 2nd Edition (2008)",
     },
     {
@@ -29,7 +29,7 @@ export const CONSULTANCY_KB = {
       name: "Project Management",
       description: "You know what happened this week, what is next, and what needs a decision. Especially if you are not in the country.",
       deliverables: ["Programme (Gantt chart)", "Weekly written reports", "Photo timeline", "Decision log", "Variation management", "Payment certification"],
-      feeBasis: "3-6% of construction cost",
+      feeBasis: "Agreed scope and written proposal",
       reportingFrequency: "Weekly written reports with photographs",
     },
     {
@@ -45,7 +45,7 @@ export const CONSULTANCY_KB = {
       name: "Contract Administration",
       description: "Managing the contract between client and contractor. Payments, variations, extensions of time, disputes.",
       deliverables: ["Interim payment certificates", "Variation orders", "Extension of time assessments", "Defects liability management", "Final account"],
-      feeBasis: "2-4% of construction cost",
+      feeBasis: "Agreed scope and written proposal",
       contractForms: ["JCT", "NEC", "FIDIC", "AAK form", "Growth Sustain"],
     },
     {
@@ -53,7 +53,7 @@ export const CONSULTANCY_KB = {
       name: "Site Supervision",
       description: "Someone is on site, checking that the work matches the drawings and the specifications. Not just taking photographs.",
       deliverables: ["Regular site inspections", "Inspection reports", "Material approval", "Workmanship assessment", "Progress monitoring"],
-      feeBasis: "2-4% of construction cost",
+      feeBasis: "Agreed scope and written proposal",
       frequency: "Weekly or bi-weekly visits depending on project stage",
     },
     {
@@ -61,7 +61,7 @@ export const CONSULTANCY_KB = {
       name: "Diaspora Project Management",
       description: "For Kenyans building at home from the UK, Gulf, US and the region. The product is the same — the communication is built for time zones, video and WhatsApp.",
       deliverables: ["EAT working hours calls", "Photo timelines", "Written decision logs", "WhatsApp updates", "Named site contact"],
-      feeBasis: "Same as project management + communication overhead",
+      feeBasis: "Agreed scope and written proposal",
       communicationTools: ["Scheduled video calls", "WhatsApp group", "Photo timeline", "Written decision log"],
     },
     {
@@ -77,28 +77,28 @@ export const CONSULTANCY_KB = {
   // ─── Cost Planning Stages ───
   costPlanningStages: [
     {
-      stage: "Feasibility Estimate",
-      description: "Rough order of magnitude. Based on area, type and location. Accuracy: ±30-40%.",
+      stage: "Feasibility Review",
+      description: "Identify the scope, site constraints, cost drivers and information still needed. Do not generate a whole-build total from floor area.",
       when: "Before design starts",
-      method: "Area-based rate × floor area × zone multiplier",
+      method: "Brief review, site information and explicit assumptions",
     },
     {
       stage: "Elemental Cost Plan",
-      description: "Broken down by building element. Based on concept design. Accuracy: ±20-25%.",
+      description: "Coordinate the concept with the client's budget objectives and identify design choices that need measurement or current quotations.",
       when: "After concept design",
-      method: "Element rates × quantities from concept drawings",
+      method: "Use measured quantities and disclose any unpriced scope",
     },
     {
       stage: "Detailed Cost Plan",
-      description: "Item-by-item costing. Based on developed design. Accuracy: ±10-15%.",
+      description: "Develop an item-by-item cost plan from coordinated design information and current project-specific rates.",
       when: "After developed design",
-      method: "Measured quantities × market rates",
+      method: "Measured quantities × current local quotations and agreed rates",
     },
     {
       stage: "Bill of Quantities",
-      description: "Full measurement and pricing. Based on technical design. Accuracy: ±5-10%.",
+      description: "Measure the defined scope and price it with current, documented tender or supplier rates.",
       when: "Before tender",
-      method: "SMM2 measurement × contractor rates",
+      method: "Quantity surveyor measurement × current tender rates",
     },
     {
       stage: "Final Account",
@@ -110,21 +110,20 @@ export const CONSULTANCY_KB = {
 
   // ─── What We Cost ───
   costBreakdown: {
-    structure: { pct: "30-35%", description: "Foundations, frame, floor slabs, roof structure" },
-    finishes: { pct: "25-32%", description: "Tiles, paint, doors, windows, joinery, sanitaryware" },
-    services: { pct: "15-20%", description: "Plumbing, electrical, drainage, solar" },
-    external: { pct: "8-12%", description: "Fencing, paving, landscaping, external drainage" },
-    professional: { pct: "8-15%", description: "Architect, engineer, QS, NEMA, county fees" },
-    contingency: { pct: "5-15%", description: "For unforeseen conditions and scope changes" },
+    structure: { description: "Foundations, frame, floor slabs, roof structure" },
+    finishes: { description: "Tiles, paint, doors, windows, joinery, sanitaryware" },
+    services: { description: "Plumbing, electrical, drainage, solar" },
+    external: { description: "Fencing, paving, landscaping, external drainage" },
+    professional: { description: "Professional appointments and statutory processes, priced for the specific project" },
+    contingency: { description: "A project-specific allowance, agreed after risks and scope are reviewed" },
   },
 
   // ─── What's NOT in a Construction Quote ───
   exclusions: [
     "Land cost",
     "Stamp duty and legal fees",
-    "County building permits (KES 80,000–200,000)",
-    "NEMA licence (KES 50,000–100,000)",
-    "Utility connections — water (KES 50,000–100,000), electricity (KES 35,000–85,000), sewer (KES 60,000–150,000)",
+    "County building permits and NEMA applications — confirm current requirements and charges with the relevant authority",
+    "Utility connections — confirm current requirements and charges with the relevant provider",
     "Furniture, fixtures and equipment (FF&E)",
     "Landscaping (unless specified)",
     "Swimming pool, generator, solar panels (unless specified)",
@@ -149,7 +148,7 @@ export const CONSULTANCY_KB = {
     },
     {
       q: "How much does it cost to build in Kenya?",
-      a: "Residential construction ranges from KES 35,000 to KES 120,000 per square metre depending on finish level and location. A standard 3-bedroom house (150 m²) in Nairobi costs KES 6-8 million to build (excluding land).",
+      a: "ATRO does not publish a generic construction price per square metre or a standard house total. The PPRA June 2026 guide gives dated unit-price references for selected materials in five towns, but those are not a BOQ. A project total needs a defined scope, measured quantities, current local material and contractor quotations, delivery and site-condition review.",
     },
     {
       q: "Do I need an architect?",

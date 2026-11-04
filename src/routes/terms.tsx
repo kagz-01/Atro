@@ -47,19 +47,18 @@ function TermsPage() {
                 any of those things.
               </p>
               <p>
-                The cost calculator, material price tables and zone multipliers are{" "}
-                <strong>indicative</strong>. They are built from published Kenyan
-                sources and our own project data, but they exclude land, statutory
-                fees, financing costs and extraordinary ground conditions. A real
-                figure comes only from drawings, a site visit and a measured bill of
-                quantities.
+                Material prices are dated survey references, not live supplier
+                quotations. The PPRA table covers selected items in five surveyed
+                towns and does not calculate whole-project costs. A project-specific
+                total requires a defined scope, measured quantities, current local
+                quotations, delivery and site-condition review.
               </p>
               <p>
-                Bill of quantities produced by our generator are a teaching and
-                early-stage budgeting tool prepared to Kenya&apos;s Standard Method
-                of Measurement. They are not a contract document and must be
-                re-measured and verified by a registered quantity surveyor before
-                they are relied on.
+                The BOQ worksheet provides editable scope prompts only; templates
+                do not contain assumed quantities or rates. It is not a measured
+                BOQ or contract document. Quantities, specifications and current
+                quotations must be checked by a quantity surveyor before they are
+                relied on.
               </p>
             </>
           ),

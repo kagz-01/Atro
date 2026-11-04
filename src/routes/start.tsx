@@ -38,7 +38,7 @@ export const Route = createFileRoute("/start")({
       {
         name: "description",
         content:
-          "Tell ATRO about your project, choose a county, and get an indicative range where the planning model fits or a manual review for custom scopes.",
+          "Tell ATRO about your project and site. We review the scope and conditions before preparing a project-specific proposal; we do not generate a whole-build price from floor area alone.",
       },
     ],
   }),
@@ -57,20 +57,33 @@ function StartPage() {
   }, [zoneParam, setSelectedZone]);
 
   return (
-    <main className="pt-32 pb-24">
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+    <section className="pt-24 pb-16 sm:pt-28 sm:pb-24">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-8 md:px-12 lg:px-16">
         {/* Breadcrumb */}
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon mb-8"
+          className="mb-5 inline-flex min-h-10 items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon sm:mb-8"
         >
           <ArrowLeft className="size-3.5" />
           Home
         </Link>
 
-        <div className="grid lg:grid-cols-12 gap-12 items-start">
+        <div className="mb-6 lg:hidden">
+          <Badge tone={isDiaspora ? "gold" : "maroon"} className="mb-3">
+            {isDiaspora ? "Diaspora enquiry" : "Start a project"}
+          </Badge>
+          <h1 className="font-display text-[2rem] leading-[0.98] tracking-[-0.05em] text-maroon sm:text-[2.4rem]">
+            Tell us about your project.
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/70 sm:text-base">
+            A few details help us understand the work and plan a useful first conversation. No
+            commitment to proceed.
+          </p>
+        </div>
+
+        <div className="grid items-start gap-8 lg:grid-cols-12 lg:gap-12">
           {/* Left: info sidebar */}
-          <div className="lg:col-span-4 lg:sticky lg:top-24">
+          <div className="hidden lg:sticky lg:top-24 lg:col-span-4 lg:block">
             <Badge tone={isDiaspora ? "gold" : "maroon"} className="mb-4">
               {isDiaspora ? "Diaspora enquiry" : "Start a project"}
             </Badge>
@@ -105,12 +118,12 @@ function StartPage() {
                 {
                   num: "2",
                   title: "Location",
-                  desc: "Choose the county or site area.",
+                  desc: "Choose a county or tell us if you are still deciding.",
                 },
                 {
                   num: "3",
                   title: "Project brief",
-                  desc: "Scope, size, finishes or the issue to solve.",
+                  desc: "Optional area or finish preferences, or a short custom brief.",
                 },
                 {
                   num: "4",
@@ -219,7 +232,7 @@ function StartPage() {
           </div>
 
           {/* Right: enquiry wizard */}
-          <div className="lg:col-span-8">
+          <div className="min-w-0 lg:col-span-8">
             <EnquiryWizard
               forcedDiaspora={isDiaspora}
               serviceOfInterest={selectedService?.title}
@@ -228,6 +241,6 @@ function StartPage() {
           </div>
         </div>
       </div>
-    </main>
+    </section>
   );
 }

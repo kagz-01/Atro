@@ -321,8 +321,8 @@ function CountyDetail({
           </Link>
         </Button>
         <Button asChild size="sm" variant="outline">
-          <Link to="/tools/cost-calculator" search={{ zone: county.slug }}>
-            See a planning range
+          <Link to="/tools/material-prices">
+            Compare material prices
           </Link>
         </Button>
         {zone ? (

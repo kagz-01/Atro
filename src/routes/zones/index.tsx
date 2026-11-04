@@ -9,7 +9,6 @@ import { useSiteStore } from "@/lib/store";
 import {
   AVAILABILITY_ORDER,
   availabilityFor,
-  formatBand,
   funnelsByStatus,
   type Availability,
   type ZoneFunnel,
@@ -20,11 +19,11 @@ export const Route = createFileRoute("/zones/")({
   component: ZonesPage,
   head: () => ({
     meta: [
-      { title: "Where we build — Zone coverage and cost | ATRO" },
+      { title: "Where we build — Zone coverage | ATRO" },
       {
         name: "description",
         content:
-          "ATRO coverage across Nairobi, Kiambu, Machakos, Kajiado, the Coast, Nakuru and Kisumu — with an honest answer on whether we build in your county, what it costs there, and what happens when you enquire.",
+          "ATRO coverage across Nairobi, Kiambu, Machakos, Kajiado, the Coast, Nakuru and Kisumu — with an honest answer on whether we build in your county and what happens when you enquire.",
       },
     ],
   }),
@@ -39,7 +38,7 @@ const STATUS_HEADING: Record<string, string> = {
 
 const STATUS_INTRO: Record<string, string> = {
   active:
-    "Counties we are running sites in this year. Send a brief and you get an indicative range and a programme.",
+    "Counties where we are running sites this year. Send a brief and we will review scope, site conditions and timing before discussing a project-specific proposal.",
   limited:
     "Counties we build in, with a cap on how many projects we take on at once so no site gets half the attention.",
   request:
@@ -51,8 +50,8 @@ const STATUS_INTRO: Record<string, string> = {
 const LOCAL_EDGE = [
   {
     icon: Truck,
-    title: "Material pricing, county by county",
-    body: "Cement, block and reinforcement are not a Nairobi number with a surcharge. Haulage distance and quarry supply move the rate, and we quote from what your site actually costs to supply.",
+    title: "Local supply and logistics",
+    body: "Cement, block and reinforcement availability depends on suppliers, haulage distance and quarry supply. We confirm current rates against the actual site instead of applying a county multiplier.",
   },
   {
     icon: Building2,
@@ -62,7 +61,7 @@ const LOCAL_EDGE = [
   {
     icon: CheckCircle2,
     title: "Retention, enforced in person",
-    body: "5–10% is held against defects and is not payable until they close. Locally, that is leverage we can actually use.",
+    body: "An agreed retention amount can be held against defects and released once they are closed. The contract should set the amount and release conditions. Locally, that is leverage we can actually use.",
   },
 ];
 
@@ -97,12 +96,6 @@ function ZoneCard({ funnel }: { funnel: ZoneFunnel }) {
           <p className="mt-2 line-clamp-2 text-[10px] leading-snug text-ink/65 group-open:line-clamp-none sm:mt-4 sm:text-[14px] sm:leading-relaxed">
             {funnel.localNote}
           </p>
-          <div className="mt-3 flex items-center justify-between gap-2 border-t border-ink/8 pt-2.5 sm:mt-5 sm:pt-4">
-            <span className="text-[8px] leading-tight text-muted sm:text-[12px]">Indicative · 220 m² house</span>
-            <span className="text-right text-[10px] font-medium leading-tight text-maroon sm:text-[12px]">
-              {formatBand(funnel.indicativeMin, funnel.indicativeMax)}
-            </span>
-          </div>
           <span className="mt-2 flex items-center justify-between text-[8px] font-semibold uppercase tracking-[0.1em] text-burgundy sm:text-[10px] sm:tracking-[0.14em]">
             More about {zone.name}
             <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
@@ -147,7 +140,7 @@ function ZonesPage() {
       <PageHero
         kicker="Zone coverage"
         title="Where we take on projects across Kenya."
-        lede="Location affects access, materials, approvals and cost. Check our published coverage and the practical considerations for your area."
+        lede="Location affects access, materials, approvals and delivery requirements. Check our published coverage and the practical considerations for your area."
         image="/catalog/images/school.webp"
       />
 

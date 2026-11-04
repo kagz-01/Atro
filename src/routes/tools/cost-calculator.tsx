@@ -1,109 +1,47 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { CostCalculator } from "@/components/cost-calculator";
+import { MaterialPrices } from "@/components/material-prices";
 import { Badge } from "@/components/ui/badge";
-import { COMPANY, ZONES } from "@/lib/site";
-import { FINISHES, PROJECT_TYPES, type CostProjectType, type FinishId } from "@/lib/cost";
-import { countyBySlug } from "@/lib/counties";
+import { COMPANY } from "@/lib/site";
 
 export const Route = createFileRoute("/tools/cost-calculator")({
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): {
-    type?: CostProjectType;
-    zone?: string;
-    sqm?: number;
-    finish?: FinishId;
-  } => {
-    const type =
-      typeof search.type === "string"
-        ? PROJECT_TYPES.find((item) => item.id === search.type)?.id
-        : undefined;
-    const zone =
-      typeof search.zone === "string" &&
-      (countyBySlug(search.zone) ||
-        search.zone === "coast" ||
-        ZONES.some((item) => item.slug === search.zone && item.slug !== "diaspora"))
-        ? search.zone
-        : undefined;
-    const sqmValue = Number(search.sqm);
-    const sqm =
-      Number.isInteger(sqmValue) && sqmValue >= 40 && sqmValue <= 800
-        ? sqmValue
-        : undefined;
-    const finish =
-      typeof search.finish === "string"
-        ? FINISHES.find((item) => item.id === search.finish)?.id
-        : undefined;
-    return { type, zone, sqm, finish };
-  },
-  component: CostCalculatorPage,
+  component: MaterialPriceReferencePage,
   head: () => ({
     meta: [
-      { title: `Cost Calculator | ${COMPANY.name}` },
+      { title: `Material Price Reference | ${COMPANY.name}` },
       {
         name: "description",
-        content: "Get an instant indicative construction cost range for your project in Kenya. Select type, zone, area and finish level.",
+        content:
+          "Compare dated PPRA construction material-price references for Nairobi, Mombasa, Kisumu, Nakuru and Eldoret. No whole-project totals.",
       },
     ],
   }),
 });
 
-function CostCalculatorPage() {
-  const search = Route.useSearch();
-
+function MaterialPriceReferencePage() {
   return (
     <main className="pt-32 pb-24">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-        {/* Breadcrumb */}
         <Link
           to="/tools"
-          className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon mb-8"
+          className="mb-8 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon"
         >
           <ArrowLeft className="size-3.5" />
           All tools
         </Link>
 
-        <div className="grid lg:grid-cols-12 gap-12 items-start">
-          {/* Left: info */}
-          <div className="lg:col-span-4 lg:sticky lg:top-24">
-            <Badge tone="maroon" className="mb-4">Cost Calculator</Badge>
-            <h1 className="font-display text-4xl md:text-5xl text-maroon">
-              What will it cost?
-            </h1>
-            <p className="mt-5 text-ink/70">
-              Five steps to a broad planning range. Then a person to discuss the site, scope and real costs before any commitment.
-            </p>
-            <div className="mt-8 space-y-4">
-              <div className="flex items-start gap-3">
-                <span className="text-lg">📊</span>
-                <div>
-                  <p className="font-medium text-maroon">Instant breakdown</p>
-                  <p className="text-sm text-ink/70">Structure, finishes, services, professional fees.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-lg">⏱</span>
-                <div>
-                  <p className="font-medium text-maroon">Timeline estimate</p>
-                  <p className="text-sm text-ink/70">How long your project will realistically take.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-lg">📍</span>
-                <div>
-                  <p className="font-medium text-maroon">Zone-aware</p>
-                  <p className="text-sm text-ink/70">Existing areas use planning factors; other counties use a neutral baseline.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: calculator */}
-          <div className="lg:col-span-8">
-            <CostCalculator initialValues={search} />
-          </div>
+        <div className="mb-10 max-w-3xl">
+          <Badge tone="maroon" className="mb-4">Material Price Reference</Badge>
+          <h1 className="font-display text-4xl text-maroon md:text-5xl">
+            What do common materials cost?
+          </h1>
+          <p className="mt-5 text-lg leading-relaxed text-ink/70">
+            Compare published unit prices for surveyed towns. These are historical market
+            references, not supplier quotes or a construction budget.
+          </p>
         </div>
+
+        <MaterialPrices />
       </div>
     </main>
   );

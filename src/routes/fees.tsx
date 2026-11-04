@@ -137,10 +137,9 @@ function FeesPage() {
                   certificate, not against a schedule.
                 </li>
                 <li>
-                  <strong>Retention.</strong> A customary{" "}
-                  <strong>5–10%</strong> of each interim payment is held back. It is
-                  not a penalty and it is not our money — it protects you against
-                  defects being left unresolved at the end.
+                  <strong>Retention.</strong> If agreed in the contract, an amount
+                  may be held back from interim payments. The contract should specify
+                  how much, what it protects against and when it is released.
                 </li>
                 <li>
                   <strong>Practical completion and defects period.</strong> On

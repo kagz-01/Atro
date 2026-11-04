@@ -7,7 +7,9 @@ import { WhatsappFab } from "@/components/whatsapp-fab";
 import { useSiteStore } from "@/lib/store";
 
 export function SiteShell({ children }: { children: ReactNode }) {
-  const isHome = useRouterState({ select: (state) => state.location.pathname === "/" });
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isHome = pathname === "/";
+  const isStartingProject = pathname === "/start";
   const [footerVisible, setFooterVisible] = useState(false);
 
   useEffect(() => {
@@ -40,7 +42,13 @@ export function SiteShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       {isHome ? <SiteFooter /> : null}
-      {!footerVisible ? (
+      {!isStartingProject ? (
+        <div
+          aria-hidden="true"
+          className="h-[calc(9rem+env(safe-area-inset-bottom))] shrink-0 md:hidden"
+        />
+      ) : null}
+      {!footerVisible && !isStartingProject ? (
         <>
           <WhatsappFab />
           <Concierge />

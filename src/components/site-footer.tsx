@@ -30,7 +30,7 @@ export function SiteFooter() {
       <div className="absolute inset-0 bg-maroon" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-burgundy/40 via-maroon to-maroon" />
 
-      <div className="relative mx-auto max-w-[1400px] px-5 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-8 sm:pt-10 md:px-12 md:pb-12 lg:px-16">
+      <div className="relative mx-auto max-w-[1400px] px-5 pt-8 pb-8 sm:px-8 sm:pt-10 md:px-12 md:pb-12 lg:px-16">
         <div className="flex flex-col gap-5 border-b border-paper/10 pb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
           <div className="space-y-1.5">
             <Logo className="[&_img]:brightness-200" />

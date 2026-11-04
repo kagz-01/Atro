@@ -83,7 +83,7 @@ export function AbroadPanel({
       {stage ? (
         <Panel
           title="Where you are in the journey"
-          subtitle={`${stage.phase} · ${stage.duration} · ${stage.costShare} of the build`}
+          subtitle={`${stage.phase} · ${stage.duration}`}
         >
           <div className="flex flex-wrap items-center gap-3">
             <h3 className="font-display text-[17px] text-maroon">{stage.name}</h3>

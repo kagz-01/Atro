@@ -214,15 +214,19 @@ function JourneyPage() {
                 </div>
                 <div className="rounded-2xl border border-ink/10 bg-white p-5">
                   <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-                    Share of build cost
+                    Cost approach
                   </dt>
                   <dd className="mt-2 font-display text-xl text-maroon">
-                    {stage.costShare}
+                    Measured scope
                   </dd>
                 </div>
               </dl>
 
               <p className="mt-6 text-[12px] leading-relaxed text-ink/50">
+                A project total is based on measured quantities and current project-specific
+                quotations, not a fixed share of the build.
+              </p>
+              <p className="mt-3 text-[12px] leading-relaxed text-ink/50">
                 Durations assume prompt approvals, funded payments and no
                 extraordinary ground conditions. The most common cause of overrun in
                 Kenya is not the build — it is the approvals stage running long.

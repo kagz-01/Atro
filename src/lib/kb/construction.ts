@@ -136,7 +136,7 @@ export const CONSTRUCTION_KB = {
       description: "Reinforced concrete frame with stone, block or brick infill walls. The most common method in Kenya.",
       pros: ["Proven, familiar to all contractors", "Flexible for design changes", "Wide range of finishes available"],
       cons: ["Slower than precast", "Weather dependent", "Requires skilled labour"],
-      costLevel: "Baseline",
+      costLevel: "No generic price published; price from the specific scope, quantities and current quotations.",
       typicalFor: ["Residential", "Low-rise commercial", "Institutional"],
     },
     {
@@ -145,7 +145,7 @@ export const CONSTRUCTION_KB = {
       description: "Factory-made panels and elements assembled on site. Faster, more consistent, but less flexible.",
       pros: ["Faster erection", "Better quality control", "Less site labour"],
       cons: ["Requires crane access", "Less design flexibility", "Transport constraints"],
-      costLevel: "5-10% premium over conventional",
+      costLevel: "Project-specific; compare design, fabrication, transport and installation quotations.",
       typicalFor: ["Apartments", "Warehouses", "Industrial"],
     },
     {
@@ -154,7 +154,7 @@ export const CONSTRUCTION_KB = {
       description: "Structural steel with cladding or infill. For larger spans and commercial work.",
       pros: ["Long spans without columns", "Fast erection", "Future adaptability"],
       cons: ["Fire protection needed", "Corrosion protection", "Higher initial cost"],
-      costLevel: "15-25% premium over conventional",
+      costLevel: "Project-specific; compare design, fabrication, transport and installation quotations.",
       typicalFor: ["Commercial", "Industrial", "Large institutional"],
     },
     {
@@ -163,7 +163,7 @@ export const CONSTRUCTION_KB = {
       description: "Treated timber structure with cladding. Common for residential and some institutional work.",
       pros: ["Lightweight", "Sustainable", "Fast construction"],
       cons: ["Termite risk (requires treatment)", "Fire regulations", "Limited height"],
-      costLevel: "Variable — can be cheaper or premium",
+      costLevel: "Project-specific; compare treatment, specification, transport and installation quotations.",
       typicalFor: ["Residential", "Resorts", "Rural institutional"],
     },
   ],

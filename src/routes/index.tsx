@@ -554,9 +554,9 @@ function Tools() {
 
   const tools = [
     {
-      title: "Cost Calculator",
-      desc: "Budget direction before a briefing. Understand the likely range and project shape quickly.",
-      link: "/tools/cost-calculator",
+      title: "Material Price Reference",
+      desc: "Compare dated PPRA unit prices for selected construction materials across five surveyed towns.",
+      link: "/tools/material-prices",
       icon: "📊",
     },
     {
@@ -566,14 +566,8 @@ function Tools() {
       icon: "📍",
     },
     {
-      title: "Material Prices",
-      desc: "Sense-check the likely material package across a selection of major building inputs.",
-      link: "/tools/material-prices",
-      icon: "📦",
-    },
-    {
       title: "BOQ Generator",
-      desc: "Frame a preliminary quantities worksheet and rough cost structure without committing to a final BOQ.",
+      desc: "Frame measured quantities and enter current supplier or contractor rates; templates do not include prices or quantities.",
       link: "/tools/boq-generator",
       icon: "🧾",
     },
@@ -588,11 +582,11 @@ function Tools() {
             Decide with data, not guesses.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-ink/70">
-            Free tools to help you understand costs, timelines and what’s possible.
+            Free tools to check dated material prices, delivery coverage and project quantities.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 stagger">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 stagger">
           {tools.map((t, i) => (
             <Reveal key={t.title} style={{ transitionDelay: `${i * 100}ms` }}>
               <Link

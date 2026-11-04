@@ -62,8 +62,6 @@ type Enquiry = {
   description: string;
   sqm: number | null;
   finish: string | null;
-  indicative_min: number | null;
-  indicative_max: number | null;
   diaspora: boolean;
   diaspora_country: string;
   diaspora_timezone: string;
@@ -155,15 +153,6 @@ function EnquiryAttachmentFile({
       {error ? <p role="alert" className="basis-full text-xs text-red-700">{error}</p> : null}
     </div>
   );
-}
-
-function formatKes(n: number | null) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("en-KE", {
-    style: "currency",
-    currency: "KES",
-    maximumFractionDigits: 0,
-  }).format(n);
 }
 
 function timeAgo(dateStr: string) {
@@ -787,11 +776,6 @@ export function EnquiriesInbox({
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-xs text-muted">{timeAgo(e.created_at)}</p>
-                      {e.indicative_min && e.indicative_max && (
-                        <p className="text-sm font-medium text-maroon mt-1">
-                          {formatKes(e.indicative_min)} – {formatKes(e.indicative_max)}
-                        </p>
-                      )}
                     </div>
                   </div>
                 </button>
@@ -913,16 +897,6 @@ export function EnquiriesInbox({
                     </div>
                   </div>
                 </AccordionItem>
-
-                {selected.indicative_min && selected.indicative_max ? (
-                  <AccordionItem title="Indicative range">
-                    <div className="p-4 bg-gradient-to-br from-maroon to-burgundy rounded-2xl">
-                      <p className="font-display text-[1.7rem] leading-none text-paper">
-                        {formatKes(selected.indicative_min)} – {formatKes(selected.indicative_max)}
-                      </p>
-                    </div>
-                  </AccordionItem>
-                ) : null}
 
                 {selected.description ? (
                   <AccordionItem title="Notes">

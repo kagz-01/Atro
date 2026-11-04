@@ -10,7 +10,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 const STARTERS = [
   "Do you build in Kiambu?",
-  "How does the cost range work?",
+  "How do material price references work?",
   "I am building from abroad — how do you run the site?",
 ];
 

@@ -88,7 +88,7 @@ function GuidesIndex() {
                       {s.name}
                     </span>
                     <span className="mt-1 block text-[9px] leading-tight text-ink/50 sm:mt-1.5 sm:text-[12px]">
-                      {s.duration} · {s.costShare}
+                      {s.duration}
                     </span>
                   </span>
                 </Link>

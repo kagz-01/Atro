@@ -336,8 +336,8 @@ export const DIASPORA_KB = {
       },
       {
         phase: "Retention",
-        payment: "5-10% retained until defects liability period ends",
-        protection: "Ensures contractor returns to fix any defects after handover",
+        payment: "Contract-agreed retention held until the defects liability period ends",
+        protection: "The contract should define the amount and release conditions",
       },
     ],
   },
@@ -427,7 +427,7 @@ export const DIASPORA_KB = {
 
   // ─── Red Flags to Warn Clients About ───
   redFlags: [
-    "Developer asks for large upfront deposit (more than 10-15%) before construction starts",
+    "Developer asks for a large upfront deposit before construction starts without clear scope, safeguards and signed milestones",
     "No NCA registration number displayed or provided",
     "No written contract — just WhatsApp agreements",
     "Cannot provide references from completed projects",
@@ -450,7 +450,7 @@ export const DIASPORA_KB = {
     "Physical office in Nairobi — you can visit",
     "Portfolio of completed projects with addresses",
     "Client testimonials with names and locations",
-    "Published BOQ examples and cost ranges",
+    "Dated material-price references and project-specific cost plans from measured BOQs and current quotations",
     "Weekly written reports as standard (not optional)",
     "Milestone-based payment terms in every contract",
     "Named project manager — not a call centre",

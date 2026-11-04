@@ -97,8 +97,8 @@ function AccessibilityPage() {
               </p>
               <ul className="ml-5 list-disc space-y-3 marker:text-gold">
                 <li>
-                  <strong>The interactive cost calculator, material price list, zone
-                  map and bill of quantities tools are pointer- and keyboard-driven
+                  <strong>The interactive material price comparison, zone map and
+                  bill of quantities tools are pointer- and keyboard-driven
                   but have not yet been fully tested with a screen reader.</strong>{" "}
                   The same information is available as written tables and text on
                   request, and we will supply it on any of our contact channels.

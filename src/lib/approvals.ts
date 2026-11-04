@@ -10,8 +10,8 @@
  * So the tracker is not a checklist for the studio's own use — it is the client
  * watching the thing that would otherwise be invisible, and the studio charging
  * for it. Fees are tracked because they are real money that leaks out of a build
- * budget (permits alone run from KES 50,000 to 300,000), and because an
- * approval handled for a fee is a billable line.
+ * budget, and because an approval handled for a fee is a billable line. The
+ * amount is recorded from the authority's current charge and project evidence.
  *
  * Pure functions, so the rules can be tested without a database.
  */

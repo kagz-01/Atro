@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Calculator, MapPin, TrendingUp, FileText, BarChart3, Clock, Shield } from "lucide-react";
+import { ArrowRight, MapPin, TrendingUp, FileText, BarChart3, Clock, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { COMPANY } from "@/lib/site";
@@ -11,7 +11,7 @@ export const Route = createFileRoute("/tools/")({
       { title: `Tools | ${COMPANY.name}` },
       {
         name: "description",
-        content: "Construction planning tools: an indicative cost calculator, coverage search for all 47 Kenyan counties, dated material-price references and a preliminary BOQ worksheet.",
+        content: "Construction planning tools: PPRA material-price references for five surveyed towns, coverage search for all 47 Kenyan counties, and a preliminary BOQ worksheet.",
       },
     ],
   }),
@@ -19,17 +19,17 @@ export const Route = createFileRoute("/tools/")({
 
 const TOOLS = [
   {
-    icon: Calculator,
-    title: "Cost Calculator",
-    desc: "Estimates a broad planning range for residential, commercial and institutional work based on live project inputs.",
-    longDesc: "Use this when you need to understand the shape of the budget before a site visit, briefing or design conversation.",
-    link: "/tools/cost-calculator",
-    badge: "Planning",
-    badgeTone: "gold" as const,
-    stats: "6 project types · 4 finish levels",
-    useCase: "Budget direction",
-    output: "Indicative cost range + rough timeline",
-    limit: "Not a quotation or measured estimate",
+    icon: TrendingUp,
+    title: "Material Price Reference",
+    desc: "Compare dated PPRA unit prices for common building materials across five surveyed towns.",
+    longDesc: "Use this to check an individual material reference before requesting current supplier quotations.",
+    link: "/tools/material-prices",
+    badge: "Reference",
+    badgeTone: "maroon" as const,
+    stats: "11 items · 5 surveyed towns",
+    useCase: "Check dated unit prices",
+    output: "PPRA reference prices by town",
+    limit: "No whole-project estimate",
   },
   {
     icon: MapPin,
@@ -45,19 +45,6 @@ const TOOLS = [
     limit: "Not a legal or boundary map",
   },
   {
-    icon: TrendingUp,
-    title: "Material Prices",
-    desc: "Brings together dated, indicative material ranges so you can sense-check the likely cost of the building package.",
-    longDesc: "Useful when you want to understand the cost pressure points and compare materials before a detailed estimate is prepared.",
-    link: "/tools/material-prices",
-    badge: "Reference",
-    badgeTone: "maroon" as const,
-    stats: "10 categories · Dated records",
-    useCase: "Build package review",
-    output: "Material ranges and supplier context",
-    limit: "Not a live supplier quote or order sheet",
-  },
-  {
     icon: FileText,
     title: "BOQ Worksheet",
     desc: "Creates a preliminary quantities worksheet for early planning, not a final tender or payment schedule.",
@@ -65,15 +52,15 @@ const TOOLS = [
     link: "/tools/boq-generator",
     badge: "Draft",
     badgeTone: "maroon" as const,
-    stats: "11 work sections · Editable templates",
+    stats: "11 work sections · Unpriced templates",
     useCase: "Quantity framing",
-    output: "Preliminary BOQ lines and totals",
-    limit: "Requires measurement review before commitment",
+    output: "Editable scope and priced line subtotals",
+    limit: "Not a complete project total or tender-ready BOQ",
   },
 ];
 
 const TRUST = [
-  { icon: BarChart3, label: "Early planning", desc: "Use ranges to frame questions" },
+  { icon: BarChart3, label: "Early planning", desc: "Use dated item prices carefully" },
   { icon: Clock, label: "Check the date", desc: "Reference prices are dated" },
   { icon: Shield, label: "Human review", desc: "Call before any commitment" },
 ];
@@ -86,10 +73,10 @@ function ToolsIndex() {
         <div className="mb-8 max-w-3xl md:mb-16">
           <Badge tone="maroon" className="mb-3 md:mb-4">Tools</Badge>
           <h1 className="font-display text-[2.5rem] md:text-[3.3rem] leading-[0.92] tracking-[-0.05em] text-maroon">
-            Plan your build with clearer numbers.
+            Plan your build without invented totals.
           </h1>
           <p className="mt-4 max-w-xl text-sm text-ink/70 sm:text-base md:mt-5 md:text-lg">
-            Explore early cost ranges, location and scope before speaking with our team. These tools do not confirm project acceptance, live prices or a tender-ready budget.
+            Compare dated material references, check service coverage and frame measured quantities. No generic whole-project price is generated.
           </p>
 
           {/* Trust strip */}

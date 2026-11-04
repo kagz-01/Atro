@@ -5,7 +5,7 @@ import { ProjectCard } from "@/components/project-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { projectsInZone, zoneBySlug } from "@/lib/site";
-import { zoneFunnel, formatBand } from "@/lib/zones";
+import { zoneFunnel } from "@/lib/zones";
 import { useSiteStore } from "@/lib/store";
 import { useEffect } from "react";
 
@@ -75,12 +75,6 @@ function ZoneDetail() {
         <Fact label="Coverage" value={zone.coverage} />
         <Fact label="Typical work" value={zone.typical} />
         <Fact label="Logistics" value={zone.logistics} />
-        {funnel ? (
-          <Fact
-            label="Indicative, 220 m² house"
-            value={formatBand(funnel.indicativeMin, funnel.indicativeMax)}
-          />
-        ) : null}
       </section>
 
       {funnel ? (

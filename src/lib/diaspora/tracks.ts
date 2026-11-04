@@ -102,7 +102,7 @@ export const TRACKS: Record<TrackId, Track> = {
     services: ["architectural-design", "structural-design", "interior-spatial", "landscape-architecture", "master-planning"],
     stages: [
       { name: "Brief and site survey", summary: "What you want to build, what the site allows, and what you can afford.", weight: 0.12 },
-      { name: "Concept options with costs", summary: "Two or three directions, each with an indicative cost, not just a mood.", weight: 0.18 },
+      { name: "Concept options and cost drivers", summary: "Two or three directions, with the scope and information needed for a measured project-specific cost plan.", weight: 0.18 },
       { name: "Developed design", summary: "The chosen option drawn properly, coordinated with structure and services.", weight: 0.25 },
       { name: "Statutory approvals", summary: "County building approval and anything else the drawings need.", weight: 0.2 },
       { name: "Construction drawings and BOQ", summary: "The set a contractor prices and builds from, with a measured bill of quantities.", weight: 0.17 },

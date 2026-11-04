@@ -6,7 +6,7 @@
 //   const services = KB.design.services;
 //   const phases = KB.construction.phases;
 //   const faqs = KB.consultancy.faqs;
-//   const rates = KB.reference.rates;
+//   const prices = KB.reference.materialPriceGuide;
 //   const diaspora = KB.diaspora;
 
 export { DESIGN_KB } from "./design";
@@ -30,7 +30,7 @@ import { AGENT_OPERATING_MANUAL } from "./operating-manual";
  *   KB.design         — What we do: services, process, standards, building types, finish levels
  *   KB.construction   — How we build: phases, methods, QC, site management, specs, programmes
  *   KB.consultancy    — What we advise: cost planning, BOQ, project management, FAQs, regulations
- *   KB.reference      — Numbers: rates, fees, utilities, location notes
+ *   KB.reference      — Dated material prices, source notes and pricing guardrails
  *   KB.diaspora       — Kenyans abroad: market, pain points, trust, communication, payments
  */
 export const KB = {
@@ -66,14 +66,6 @@ export const KB = {
       terms: [s.name, "consultancy", s.description.toLowerCase()],
     })),
     {
-      id: "cost-calculator",
-      category: "tool",
-      name: "Cost Calculator",
-      summary: "Indicative cost range for a project using type, zone, size and finish inputs.",
-      tags: ["cost", "calculator", "estimate", "budget", "range", "planning"],
-      terms: ["cost calculator", "estimate", "budget", "range", "tender", "planning"],
-    },
-    {
       id: "zone-map",
       category: "tool",
       name: "Zone Map",
@@ -84,10 +76,10 @@ export const KB = {
     {
       id: "material-prices",
       category: "tool",
-      name: "Material Prices",
-      summary: "Reference material ranges for planning, not live supplier prices.",
+      name: "PPRA Material Price Reference",
+      summary: "Dated PPRA unit-price references for selected materials in five surveyed towns; not a whole-project estimate or live quote.",
       tags: ["materials", "prices", "price reference", "cement", "tiles", "steel", "build package"],
-      terms: ["material price", "materials", "price reference", "cement", "tiles", "steel"],
+      terms: ["material price", "materials", "price reference", "PPRA", "cement", "tiles", "steel"],
     },
     {
       id: "boq-generator",
@@ -99,7 +91,7 @@ export const KB = {
     },
   ],
   decisionModel: {
-    defaultApproach: "Start with scope, zone, finish level and budget comfort. Use indicative tools to narrow the question, then move to a project-specific briefing or site review.",
+    defaultApproach: "Start with scope, site, drawings and finish preferences. Use the dated PPRA table only for listed material unit prices, then use measured quantities and current local quotations for project pricing.",
     routeToHuman: [
       "The client wants a fixed price or a signed quotation",
       "The project requires a measured BOQ before commitment",
@@ -115,7 +107,6 @@ export const KB_SEARCH_TERMS = [
   "design",
   "construction",
   "consultancy",
-  "cost calculator",
   "material prices",
   "zone map",
   "boq",

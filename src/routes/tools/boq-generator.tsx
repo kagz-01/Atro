@@ -11,7 +11,7 @@ export const Route = createFileRoute("/tools/boq-generator")({
       { title: `BOQ Worksheet | ${COMPANY.name}` },
       {
         name: "description",
-        content: "Draft an editable preliminary construction quantities worksheet. Replace template quantities and rates with project-specific measurements and quotations before use.",
+        content: "Draft an unpriced construction quantities worksheet. Templates contain no assumed quantities or rates; add measured quantities and current project-specific quotations.",
       },
     ],
   }),
@@ -36,7 +36,7 @@ function BoqGeneratorPage() {
             Draft a quantities worksheet
           </h1>
           <p className="mt-5 text-ink/70 text-lg">
-            Start from a template or build from scratch. This is a planning worksheet, not a tender-ready BOQ; a quantity surveyor must verify measurements, specifications and current rates.
+            Templates provide scope prompts only: they contain no assumed quantities or prices. Enter measured quantities and current project-specific rates; any displayed subtotal covers only the lines you have priced.
           </p>
         </div>
 

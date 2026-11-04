@@ -65,7 +65,7 @@ export const ABROAD_FEATURES: AbroadFeature[] = [
     to: "/fees",
     title: "How payment actually works",
     kicker: "Fees and terms",
-    body: "Stage payments released against certificates, 5–10% retention, what every quote excludes, and how to pay for a project in Kenya from another country.",
+    body: "Stage payments released against certificates, contract-agreed retention, what every quote excludes, and how to pay for a project in Kenya from another country.",
     cta: "Read the payment terms",
   },
 ];
@@ -136,7 +136,7 @@ export const ABROAD_PROCESS = [
     icon: "clipboard",
     desc: "Architectural design, structural engineering, cost planning — happening together, not sequentially.",
     detail:
-      "You see concept options with indicative costs. If the sketch and the money disagree, the money wins until the sketch is rewritten.",
+      "You see concept options and the cost information still needed. A project-specific cost plan follows measured quantities and current quotations, so the scope can be revised if it does not fit the agreed budget.",
   },
   {
     num: 4,
@@ -250,8 +250,8 @@ export const ABROAD_PAYMENT_PHASES = [
   },
   {
     phase: "Retention",
-    pay: "5-10% retained until defects liability ends",
-    protect: "Ensures contractor returns to fix any defects",
+    pay: "Contract-agreed retention held until defects liability ends",
+    protect: "Amount and release conditions are set in the contract",
   },
 ] as const;
 
@@ -306,7 +306,7 @@ export const ABROAD_FAQS = [
 ] as const;
 
 export const ABROAD_RED_FLAGS = [
-  "Large upfront deposit (more than 15%) before construction starts",
+  "Large upfront deposit before construction starts without clear scope, safeguards and signed milestones",
   "No NCA registration number displayed or provided",
   "No written contract — just WhatsApp agreements",
   "Cannot provide references from completed projects",

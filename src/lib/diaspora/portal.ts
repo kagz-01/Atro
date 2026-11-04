@@ -207,7 +207,7 @@ export const MILESTONES: Milestone[] = [
         date: "24 Apr 2026",
         caption: "Approved building plans, stamped",
         detail:
-          "County stamp on all sheets. Condition 4 requires retention at 5% — reflected in the payment schedule.",
+          "County stamp on all sheets. Contract-agreed retention terms are reflected in the payment schedule.",
       },
       {
         date: "24 Apr 2026",
@@ -407,7 +407,7 @@ export const PAYMENTS: Payment[] = [
     paidDate: "25 Jul 2026",
     certificate: "CERT-006",
     method: "Bank transfer",
-    note: "5% retention of 4,480,000 held against defects.",
+    note: "Contract-agreed retention held against defects.",
   },
   {
     id: "p7",
@@ -454,7 +454,7 @@ export const PAYMENTS: Payment[] = [
   },
   {
     id: "p12",
-    label: "Retention — 5% held for defects",
+    label: "Retention — held for defects",
     stage: "Retention",
     amount: 940_000,
     status: "retained",

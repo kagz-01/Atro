@@ -1,11 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/field";
 import {
   COST_CAVEAT,
-  estimateCost,
   FINISHES,
   PROJECT_TYPES,
   STAGES,
@@ -24,7 +23,8 @@ import {
   validateMessageAttachmentMetadata,
 } from "@/lib/enquiry-attachments";
 import { useSiteStore } from "@/lib/store";
-import { formatKes, cn } from "@/lib/utils";
+import { toE164 } from "@/lib/phone";
+import { cn } from "@/lib/utils";
 import { whatsappHref } from "@/lib/whatsapp";
 import {
   ArrowRight,
@@ -49,19 +49,19 @@ import {
 } from "lucide-react";
 
 const STEPS_BASE = [
-  { id: "type", label: "Type", icon: Building2 },
-  { id: "place", label: "Place", icon: MapPin },
-  { id: "scale", label: "Scale", icon: Ruler },
-  { id: "you", label: "You", icon: User },
+  { id: "type", label: "Project", icon: Building2 },
+  { id: "place", label: "Site", icon: MapPin },
+  { id: "scale", label: "Scope", icon: Ruler },
+  { id: "you", label: "Contact", icon: User },
   { id: "review", label: "Review", icon: CheckCircle2 },
 ] as const;
 
 const DIASPORA_STEPS = [
-  { id: "type", label: "Type", icon: Building2 },
-  { id: "place", label: "Place", icon: MapPin },
-  { id: "scale", label: "Scale", icon: Ruler },
-  { id: "you", label: "You", icon: User },
-  { id: "abroad", label: "Abroad", icon: Globe },
+  { id: "type", label: "Project", icon: Building2 },
+  { id: "place", label: "Site", icon: MapPin },
+  { id: "scale", label: "Scope", icon: Ruler },
+  { id: "you", label: "Contact", icon: User },
+  { id: "abroad", label: "Remote", icon: Globe },
   { id: "review", label: "Review", icon: CheckCircle2 },
 ] as const;
 
@@ -99,8 +99,15 @@ const COUNTY_CHOICES = KENYA_COUNTIES.map((county) => ({
     "Enquiry first · availability unconfirmed",
 }));
 
+const NO_SITE_SLUG = "not-selected";
+const NO_SITE_NAME = "No site chosen yet";
 const COAST_ZONE = ZONES.find((zone) => zone.slug === "coast");
 const PLACE_CHOICES = [
+  {
+    slug: NO_SITE_SLUG,
+    name: "I haven't chosen a site yet",
+    coverage: "That’s fine — we can discuss location as the brief develops.",
+  },
   ...COUNTY_CHOICES,
   ...(COAST_ZONE
     ? [{ slug: COAST_ZONE.slug, name: "Coast (regional)", coverage: COAST_ZONE.coverage }]
@@ -120,7 +127,7 @@ function buildWhatsAppMessage(data: {
   zone: string;
   sqm?: number;
   finish?: string;
-  estimateLabel?: string;
+  siteArea?: string;
   diaspora: boolean;
   diasporaCountry?: string;
   serviceOfInterest?: string;
@@ -134,11 +141,9 @@ function buildWhatsAppMessage(data: {
     `Type: ${data.type}`,
     ...(data.serviceOfInterest ? [`Service of interest: ${data.serviceOfInterest}`] : []),
     `Location: ${data.zone}`,
+    ...(data.siteArea ? [`Nearby area: ${data.siteArea}`] : []),
     ...(data.sqm ? [`Approximate area: ~${data.sqm} m²`] : []),
     ...(data.finish ? [`Finish: ${data.finish}`] : []),
-    ...(data.estimateLabel
-      ? [`Indicative planning range (not a quotation): ${data.estimateLabel}`]
-      : []),
     ...(data.customBrief ? [``, `Project brief: ${data.customBrief}`] : []),
   ];
   if (data.diaspora) {
@@ -168,9 +173,11 @@ export function EnquiryWizard({
   const totalSteps = steps.length;
   const defaultZone = PLACE_CHOICES.some((place) => place.slug === storedZone)
     ? (storedZone ?? "nairobi")
-    : "nairobi";
+    : NO_SITE_SLUG;
 
   const [step, setStep] = useState(0);
+  const wizardRef = useRef<HTMLDivElement>(null);
+  const previousStep = useRef(step);
   const [type, setType] = useState<ProjectSelection>("Residential");
   const [customProjectName, setCustomProjectName] = useState("");
   const [customBrief, setCustomBrief] = useState("");
@@ -179,10 +186,12 @@ export function EnquiryWizard({
       ? initialZone
       : defaultZone,
   );
+  const [siteArea, setSiteArea] = useState("");
   const [placeSearch, setPlaceSearch] = useState("");
-  const [sqm, setSqm] = useState(220);
-  const [finish, setFinish] = useState<FinishId>("standard");
-  const [stage, setStage] = useState<string>("Have a plot");
+  const [sqm, setSqm] = useState("");
+  const [areaError, setAreaError] = useState("");
+  const [finish, setFinish] = useState<FinishId | "">("");
+  const [stage, setStage] = useState<string>("Just exploring");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -193,6 +202,7 @@ export function EnquiryWizard({
   const [enquiryId, setEnquiryId] = useState("");
   const [uploadToken, setUploadToken] = useState("");
   const [attachmentError, setAttachmentError] = useState("");
+  const [contactError, setContactError] = useState("");
   const [attachmentsSkipped, setAttachmentsSkipped] = useState(false);
   const [diasporaCountry, setDiasporaCountry] = useState("");
   const [diasporaTimezone, setDiasporaTimezone] = useState("");
@@ -202,17 +212,16 @@ export function EnquiryWizard({
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const estimateType: CostProjectType = type === "Other" ? "Residential" : type;
-  const estimate = useMemo(
-    () => estimateCost({ type: estimateType, zone, sqm, finish }),
-    [estimateType, zone, sqm, finish],
-  );
   const visiblePlaces = useMemo(() => {
     const query = placeSearch.trim().toLocaleLowerCase();
     return query
       ? PLACE_CHOICES.filter((place) => place.name.toLocaleLowerCase().includes(query))
       : PLACE_CHOICES;
   }, [placeSearch]);
+  const selectedPlaceName =
+    zone === NO_SITE_SLUG
+      ? NO_SITE_NAME
+      : (PLACE_CHOICES.find((place) => place.slug === zone)?.name ?? NO_SITE_NAME);
 
   useEffect(() => {
     if (initialZone) {
@@ -221,9 +230,18 @@ export function EnquiryWizard({
     }
   }, [initialZone, setZone]);
 
+  useEffect(() => {
+    if (previousStep.current === step) return;
+    previousStep.current = step;
+    wizardRef.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [step]);
+
   function chooseZone(slug: string) {
     setLocalZone(slug);
-    setZone(slug);
+    setZone(slug === NO_SITE_SLUG ? null : slug);
   }
 
   function continueToNextStep() {
@@ -235,15 +253,31 @@ export function EnquiryWizard({
       toast.error("Tell us a little about the project so we can review the scope.");
       return;
     }
+    if (
+      step === 2 &&
+      type !== "Other" &&
+      sqm.trim() &&
+      (!Number.isFinite(Number(sqm)) || Number(sqm) <= 0)
+    ) {
+      setAreaError("Enter a positive area in square metres, or leave this optional field blank.");
+      return;
+    }
     if (step === 3) {
       if (!name.trim() || !phone.trim() || !email.trim()) {
-        toast.error("Add your name, phone and email before reviewing the enquiry.");
+        setContactError("Add your name, phone number and email to continue.");
+        return;
+      }
+      if (!toE164(phone)) {
+        setContactError(
+          "Enter a valid phone number. Kenyan numbers can use 0799 034 712; international numbers need a country code.",
+        );
         return;
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        toast.error("Enter a valid email address so we can reply to you.");
+        setContactError("Enter a valid email address so we can reply to you.");
         return;
       }
+      setContactError("");
     }
     setStep((current) => current + 1);
   }
@@ -313,12 +347,26 @@ export function EnquiryWizard({
       setStep(!customProjectName.trim() ? 0 : 2);
       return;
     }
+    if (type !== "Other" && sqm.trim() && (!Number.isFinite(Number(sqm)) || Number(sqm) <= 0)) {
+      setAreaError("Enter a positive area in square metres, or leave this optional field blank.");
+      setStep(2);
+      return;
+    }
     if (!name.trim() || !phone.trim() || !email.trim()) {
-      toast.error("Name, phone and email are required.");
+      setContactError("Add your name, phone number and email to continue.");
+      setStep(3);
+      return;
+    }
+    if (!toE164(phone)) {
+      setContactError(
+        "Enter a valid phone number. Kenyan numbers can use 0799 034 712; international numbers need a country code.",
+      );
+      setStep(3);
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      toast.error("Enter a valid email address so we can reply to you.");
+      setContactError("Enter a valid email address so we can reply to you.");
+      setStep(3);
       return;
     }
     setSubmitting(true);
@@ -331,11 +379,12 @@ export function EnquiryWizard({
         phone: phone.trim(),
         email: email.trim(),
         projectType: type === "Other" ? `Other — ${customProjectName.trim()}` : type,
-        zone,
+        zone: selectedPlaceName,
         stage,
         startDate,
         description: [
           serviceOfInterest ? `Service of interest: ${serviceOfInterest}` : "",
+          siteArea.trim() ? `Site area: ${siteArea.trim()}` : "",
           type === "Other" ? `Project brief: ${customBrief.trim()}` : "",
           description.trim() ? `Additional notes: ${description.trim()}` : "",
         ]
@@ -344,10 +393,8 @@ export function EnquiryWizard({
         ...(type === "Other"
           ? {}
           : {
-              sqm,
-              finish,
-              indicativeMin: Math.round(estimate.min),
-              indicativeMax: Math.round(estimate.max),
+              ...(finish ? { finish } : {}),
+              ...(sqm.trim() ? { sqm: Number(sqm) } : {}),
             }),
         diaspora,
         diasporaCountry: diaspora ? diasporaCountry : "",
@@ -380,8 +427,7 @@ export function EnquiryWizard({
     }
 
     const filesUploaded =
-      selectedFiles.length === 0 ||
-      (await uploadSelectedFiles(targetEnquiryId, targetUploadToken));
+      selectedFiles.length === 0 || (await uploadSelectedFiles(targetEnquiryId, targetUploadToken));
     if (!filesUploaded) {
       setSubmitting(false);
       return;
@@ -395,8 +441,14 @@ export function EnquiryWizard({
     const whatsAppMsg = buildWhatsAppMessage({
       name,
       type: type === "Other" ? `Other — ${customProjectName.trim()}` : type,
-      zone: estimate.zoneName,
-      ...(type === "Other" ? {} : { sqm, finish, estimateLabel: estimate.label }),
+      zone: selectedPlaceName,
+      ...(type === "Other"
+        ? {}
+        : {
+            ...(sqm.trim() ? { sqm: Number(sqm) } : {}),
+            ...(finish ? { finish } : {}),
+          }),
+      siteArea: siteArea.trim(),
       diaspora,
       diasporaCountry,
       serviceOfInterest,
@@ -405,11 +457,13 @@ export function EnquiryWizard({
     });
 
     return (
-      <div className="border border-line/50 bg-cream p-8 md:p-12 rounded-2xl">
+      <div className="border border-line/50 bg-cream p-5 sm:p-8 md:p-12 rounded-2xl">
         <div className="size-16 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center mb-6">
           <CheckCircle2 className="size-8 text-white" />
         </div>
-        <h2 className="font-display text-[2rem] leading-none text-maroon md:text-[2.6rem]">We have the brief.</h2>
+        <h2 className="font-display text-[2rem] leading-none text-maroon md:text-[2.6rem]">
+          We have the brief.
+        </h2>
         <p className="mt-4 text-ink/80 max-w-lg text-lg">
           Thank you, {name.split(" ")[0]}. Here is what happens next:
         </p>
@@ -472,11 +526,7 @@ export function EnquiryWizard({
           </div>
         )}
 
-        <p className="mt-4 text-sm text-muted">
-          {type === "Other"
-            ? "No automatic price or delivery estimate is made for a custom scope. ATRO will review the brief and confirm the next steps before any commitment."
-            : COST_CAVEAT}
-        </p>
+        <p className="mt-4 text-sm text-muted">{COST_CAVEAT}</p>
 
         {selectedFiles.length > 0 ? (
           <div
@@ -510,7 +560,11 @@ export function EnquiryWizard({
   }
 
   return (
-    <div className="border border-line/50 bg-cream rounded-2xl overflow-hidden shadow-card">
+    <div
+      ref={wizardRef}
+      tabIndex={-1}
+      className="scroll-mt-24 min-w-0 overflow-hidden rounded-2xl border border-line/50 bg-cream shadow-card"
+    >
       {/* Progress bar */}
       <div className="h-1 bg-stone/50">
         <div
@@ -520,8 +574,25 @@ export function EnquiryWizard({
       </div>
 
       {/* Step indicator */}
-      <div className="px-6 py-4 border-b border-line/50 bg-paper/50">
-        <div className="flex items-center justify-between">
+      <div className="border-b border-line/50 bg-paper/50 px-3 py-3 sm:px-6 sm:py-4">
+        <div
+          className="flex items-center justify-between 2xl:hidden"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted">
+              Step {step + 1} of {totalSteps}
+            </p>
+            <p className="mt-0.5 truncate text-sm font-medium text-maroon">
+              {type === "Other" && steps[step]?.id === "scale"
+                ? "Project brief"
+                : steps[step]?.label}
+            </p>
+          </div>
+          <span className="ml-3 shrink-0 text-[11px] text-muted">No commitment</span>
+        </div>
+        <div className="hidden items-center justify-between 2xl:flex">
           {steps.map((s, i) => {
             const Icon = s.icon;
             const isActive = i === step;
@@ -531,9 +602,10 @@ export function EnquiryWizard({
                 <button
                   type="button"
                   onClick={() => i < step && !enquiryId && setStep(i)}
-                  disabled={Boolean(enquiryId)}
+                  disabled={Boolean(enquiryId) || i >= step}
+                  aria-current={isActive ? "step" : undefined}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300",
+                    "flex items-center gap-1 px-1.5 py-2 rounded-xl transition-all duration-300 2xl:gap-2 2xl:px-3",
                     isActive
                       ? "bg-gradient-to-r from-maroon to-burgundy text-white shadow-soft"
                       : isComplete
@@ -542,14 +614,14 @@ export function EnquiryWizard({
                   )}
                 >
                   <Icon className="size-4" />
-                  <span className="text-[11px] uppercase tracking-[0.14em] font-medium hidden sm:inline">
+                  <span className="hidden text-[11px] uppercase tracking-[0.14em] font-medium 2xl:inline">
                     {type === "Other" && s.id === "scale" ? "Brief" : s.label}
                   </span>
                 </button>
                 {i < steps.length - 1 && (
                   <div
                     className={cn(
-                      "w-8 h-0.5 mx-2 transition-colors duration-300",
+                      "h-0.5 w-2 mx-1 transition-colors duration-300 2xl:mx-2 2xl:w-8",
                       isComplete ? "bg-gold" : "bg-stone",
                     )}
                   />
@@ -560,7 +632,7 @@ export function EnquiryWizard({
         </div>
       </div>
 
-      <div className="p-6 md:p-10">
+      <div className="p-4 sm:p-6 md:p-10">
         {serviceOfInterest ? (
           <div className="mb-8 rounded-xl border border-gold/30 bg-gold/10 px-4 py-3">
             <p className="text-[10px] uppercase tracking-[0.14em] text-burgundy">
@@ -577,16 +649,18 @@ export function EnquiryWizard({
               What kind of project or work do you have in mind?
             </legend>
             <p className="text-sm text-muted mb-6">
-              Choose the closest match, or tell us about a project that is not listed.
+              The type of work affects the people, approvals and approach we may need. Choose the
+              closest match; ATRO will confirm the scope with you.
             </p>
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4">
               {PROJECT_CHOICES.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setType(t.id)}
+                  aria-pressed={type === t.id}
                   className={cn(
-                    "group text-left p-6 border rounded-2xl transition-all duration-300",
+                    "group text-left p-4 sm:p-6 border rounded-2xl transition-all duration-300",
                     type === t.id
                       ? "border-burgundy bg-gradient-to-br from-maroon to-burgundy text-paper shadow-soft scale-[1.02]"
                       : "border-line/50 bg-paper hover:border-burgundy/50 hover:shadow-card card-lift",
@@ -594,25 +668,25 @@ export function EnquiryWizard({
                 >
                   <div
                     className={cn(
-                      "size-12 rounded-xl flex items-center justify-center mb-4 transition-colors duration-300",
+                      "size-10 sm:size-12 rounded-xl flex items-center justify-center mb-2 sm:mb-4 transition-colors duration-300",
                       type === t.id ? "bg-white/20" : "bg-maroon/5 group-hover:bg-maroon/10",
                     )}
                   >
                     {t.id === "Residential" ? (
-                      <Home className="size-6" />
+                      <Home className="size-5 sm:size-6" />
                     ) : t.id === "Commercial" ? (
-                      <Building2 className="size-6" />
+                      <Building2 className="size-5 sm:size-6" />
                     ) : t.id === "Other" ? (
-                      <FileText className="size-6" />
+                      <FileText className="size-5 sm:size-6" />
                     ) : (
-                      <Landmark className="size-6" />
+                      <Landmark className="size-5 sm:size-6" />
                     )}
                   </div>
-                  <span className="font-display text-xl">{t.label}</span>
+                  <span className="font-display text-lg sm:text-xl">{t.label}</span>
                   {"desc" in t ? (
                     <span
                       className={cn(
-                        "block text-sm mt-1",
+                        "block text-xs leading-snug mt-1 sm:text-sm",
                         type === t.id ? "text-paper/80" : "text-ink/60",
                       )}
                     >
@@ -645,12 +719,45 @@ export function EnquiryWizard({
         {step === 1 ? (
           <fieldset>
             <legend className="font-display text-2xl md:text-3xl text-maroon mb-2">
-              Where is the site?
+              Where is the project?
             </legend>
             <p className="text-sm text-muted mb-4">
-              Choose a county. An enquiry is not acceptance of a project; our team will discuss
-              capacity, timing and site conditions with you first.
+              Location helps us check service coverage, access, travel and local supply. A county
+              alone cannot determine a project cost.
             </p>
+            <div className="sm:hidden">
+              <Label htmlFor="enquiry-county-mobile">County or site status</Label>
+              <Select
+                id="enquiry-county-mobile"
+                value={zone}
+                onChange={(event) => chooseZone(event.target.value)}
+                className="rounded-xl"
+              >
+                {PLACE_CHOICES.map((place) => (
+                  <option key={place.slug} value={place.slug}>
+                    {place.name}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-2 text-xs leading-relaxed text-muted">
+                {PLACE_CHOICES.find((place) => place.slug === zone)?.coverage}
+              </p>
+            </div>
+            <div className="mb-4 mt-4">
+              <Label htmlFor="enquiry-site-area">Town, estate or nearby area (optional)</Label>
+              <Input
+                id="enquiry-site-area"
+                value={siteArea}
+                onChange={(event) => setSiteArea(event.target.value)}
+                placeholder="e.g. Ruiru, Karen or near the town centre"
+                maxLength={120}
+                className="rounded-xl"
+              />
+              <p className="mt-1 text-xs leading-relaxed text-muted">
+                Helps us understand local access and travel. Please don’t send a house number or
+                exact plot address yet.
+              </p>
+            </div>
             <label htmlFor="enquiry-county-search" className="sr-only">
               Search counties
             </label>
@@ -660,14 +767,15 @@ export function EnquiryWizard({
               value={placeSearch}
               onChange={(event) => setPlaceSearch(event.target.value)}
               placeholder="Search counties"
-              className="mb-4 h-11 w-full rounded-xl border border-line bg-paper px-4 text-sm text-ink outline-none focus:border-burgundy"
+              className="mb-4 hidden h-11 w-full rounded-xl border border-line bg-paper px-4 text-sm text-ink outline-none focus:border-burgundy sm:block"
             />
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="hidden grid-cols-2 gap-4 sm:grid">
               {visiblePlaces.map((z) => (
                 <button
                   key={z.slug}
                   type="button"
                   onClick={() => chooseZone(z.slug)}
+                  aria-pressed={zone === z.slug}
                   className={cn(
                     "group text-left p-6 border rounded-2xl transition-all duration-300",
                     zone === z.slug
@@ -695,7 +803,7 @@ export function EnquiryWizard({
                 </button>
               ))}
               {visiblePlaces.length === 0 ? (
-                <p className="rounded-xl border border-line bg-paper p-5 text-sm text-muted sm:col-span-2">
+                <p className="hidden rounded-xl border border-line bg-paper p-5 text-sm text-muted sm:col-span-2 sm:block">
                   No county matches that search.
                 </p>
               ) : null}
@@ -729,8 +837,8 @@ export function EnquiryWizard({
                 className="min-h-36 rounded-xl"
               />
               <p className="mt-2 text-xs text-muted">
-                A few sentences are enough to start. You can share drawings or photos with the team
-                later.
+                This helps us route the enquiry and decide what to ask next. A few sentences are
+                enough; drawings and photos are optional.
               </p>
             </div>
           </div>
@@ -739,79 +847,112 @@ export function EnquiryWizard({
         {/* Step 2: Scale */}
         {step === 2 && type !== "Other" ? (
           <div>
-            <h2 className="font-display text-2xl md:text-3xl text-maroon mb-2">Scale and finish</h2>
-            <p className="text-sm text-muted mb-8">
-              A starting size. We will measure properly after we see the plot.
+            <h2 className="font-display text-2xl md:text-3xl text-maroon mb-2">Scope and finish</h2>
+            <p className="text-sm text-muted mb-5">
+              These details are optional. Share what you know; leave anything undecided blank. They
+              help us understand the brief but do not generate a whole-project price.
             </p>
 
-            <div className="p-6 bg-paper border border-line/50 rounded-2xl mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <Label htmlFor="sqm" className="text-base">
-                  Approximate area
-                </Label>
-                <span className="font-display text-2xl text-gradient-gold">{sqm} m²</span>
-              </div>
-              <input
+            <div className="mb-6 max-w-xl rounded-2xl border border-line/50 bg-paper p-4 sm:p-6">
+              <Label htmlFor="sqm" className="mb-2 block text-sm sm:text-base">
+                Approximate floor or affected area (m²) <span className="text-muted">Optional</span>
+              </Label>
+              <Input
                 id="sqm"
-                type="range"
-                min={60}
-                max={800}
-                step={10}
+                type="number"
+                min="1"
+                step="any"
+                inputMode="decimal"
                 value={sqm}
-                onChange={(e) => setSqm(Number(e.target.value))}
-                className="w-full accent-burgundy h-2"
-                suppressHydrationWarning
+                onChange={(event) => {
+                  setSqm(event.target.value);
+                  setAreaError("");
+                }}
+                aria-invalid={Boolean(areaError)}
+                aria-describedby={areaError ? "area-error" : "area-help"}
+                placeholder="e.g. 180"
+                className="rounded-xl"
               />
-              <div className="flex justify-between text-xs text-muted mt-2">
-                <span>60 m²</span>
-                <span>800 m²</span>
-              </div>
+              <p id="area-help" className="mt-2 text-xs leading-relaxed text-muted">
+                For a new build, use the rough total floor area; for a renovation, use the area
+                affected. A rough figure is enough. Leave blank if you do not know it.
+              </p>
+              {areaError ? (
+                <p id="area-error" role="alert" className="mt-2 text-xs text-red-700">
+                  {areaError}
+                </p>
+              ) : null}
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              {FINISHES.map((f) => (
+            <fieldset>
+              <legend className="mb-1 text-sm font-medium text-maroon">
+                Finish preference <span className="font-normal text-muted">Optional</span>
+              </legend>
+              <p className="mb-3 text-xs text-muted">
+                This is only an early preference, not a final material specification.
+              </p>
+              <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4">
                 <button
-                  key={f.id}
                   type="button"
-                  onClick={() => setFinish(f.id)}
+                  onClick={() => setFinish("")}
+                  aria-pressed={!finish}
                   className={cn(
-                    "group text-left p-6 border rounded-2xl transition-all duration-300",
-                    finish === f.id
-                      ? "border-burgundy bg-gradient-to-br from-maroon to-burgundy text-paper shadow-soft scale-[1.02]"
+                    "group text-left p-4 sm:p-6 border rounded-2xl transition-all duration-300",
+                    !finish
+                      ? "border-burgundy bg-gradient-to-br from-maroon to-burgundy text-paper shadow-soft"
                       : "border-line/50 bg-paper hover:border-burgundy/50 hover:shadow-card card-lift",
                   )}
                 >
-                  <div
-                    className={cn(
-                      "size-12 rounded-xl flex items-center justify-center mb-4 transition-colors duration-300",
-                      finish === f.id ? "bg-white/20" : "bg-maroon/5 group-hover:bg-maroon/10",
-                    )}
-                  >
-                    <Paintbrush className="size-6" />
-                  </div>
-                  <span className="font-display text-xl block">{f.label}</span>
+                  <span className="font-display text-lg sm:text-xl block">Not sure yet</span>
                   <span
                     className={cn(
-                      "block text-sm mt-1",
-                      finish === f.id ? "text-paper/80" : "text-ink/60",
+                      "mt-1 block text-xs sm:text-sm",
+                      !finish ? "text-paper/80" : "text-ink/60",
                     )}
                   >
-                    {f.hint}
+                    We can discuss this when we review the brief.
                   </span>
                 </button>
-              ))}
-            </div>
+                {FINISHES.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setFinish(f.id)}
+                    aria-pressed={finish === f.id}
+                    className={cn(
+                      "group text-left p-4 sm:p-6 border rounded-2xl transition-all duration-300",
+                      finish === f.id
+                        ? "border-burgundy bg-gradient-to-br from-maroon to-burgundy text-paper shadow-soft scale-[1.02]"
+                        : "border-line/50 bg-paper hover:border-burgundy/50 hover:shadow-card card-lift",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "size-10 sm:size-12 rounded-xl flex items-center justify-center mb-2 sm:mb-4 transition-colors duration-300",
+                        finish === f.id ? "bg-white/20" : "bg-maroon/5 group-hover:bg-maroon/10",
+                      )}
+                    >
+                      <Paintbrush className="size-5 sm:size-6" />
+                    </div>
+                    <span className="font-display text-lg sm:text-xl block">{f.label}</span>
+                    <span
+                      className={cn(
+                        "block text-xs leading-snug mt-1 sm:text-sm",
+                        finish === f.id ? "text-paper/80" : "text-ink/60",
+                      )}
+                    >
+                      {f.hint}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
 
-            <div className="mt-8 p-6 bg-gradient-to-br from-maroon via-burgundy to-maroon rounded-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-gold/10 rounded-full blur-[80px] pointer-events-none" />
-              <p className="relative text-[11px] uppercase tracking-[0.18em] text-gold mb-2">
-                Indicative range · {estimate.zoneName}
+            <div className="mt-8 rounded-2xl border border-line/50 bg-paper p-4 sm:p-6">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-burgundy">
+                How project pricing works
               </p>
-              <p className="relative font-display text-4xl md:text-5xl">{estimate.label}</p>
-              <p className="relative text-sm text-paper/70 mt-3">
-                About {formatKes(estimate.perSqm)} / m² as a midpoint. {estimate.locationNote}{" "}
-                {COST_CAVEAT}
-              </p>
+              <p className="mt-2 text-sm leading-relaxed text-ink/70">{COST_CAVEAT}</p>
             </div>
           </div>
         ) : null}
@@ -821,14 +962,23 @@ export function EnquiryWizard({
           <div className="grid gap-6 max-w-xl">
             <div>
               <h2 className="font-display text-2xl md:text-3xl text-maroon mb-2">
-                How do we reach you?
+                Your details and timing
               </h2>
               <p className="text-sm text-muted">
-                {type === "Other"
-                  ? "Your brief will be reviewed by a person before we suggest a scope, estimate, or next step."
-                  : "The range stays on the record as indicative — a person will confirm nothing until they have seen the site."}
+                We need a phone number and email to reply. Your planning stage helps us make the
+                first conversation useful. Timing, notes and files are optional.
               </p>
             </div>
+
+            {contactError ? (
+              <p
+                id="contact-error"
+                role="alert"
+                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+              >
+                {contactError}
+              </p>
+            ) : null}
 
             <div className="space-y-4">
               <div>
@@ -839,7 +989,10 @@ export function EnquiryWizard({
                 <Input
                   id="name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setContactError("");
+                  }}
                   autoComplete="name"
                   required
                   className="rounded-xl"
@@ -854,7 +1007,11 @@ export function EnquiryWizard({
                 <Input
                   id="phone"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  inputMode="tel"
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setContactError("");
+                  }}
                   autoComplete="tel"
                   required
                   placeholder={diaspora ? "+44 7XXX XXX XXX" : "+254 7XX XXX XXX"}
@@ -870,7 +1027,10 @@ export function EnquiryWizard({
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setContactError("");
+                  }}
                   autoComplete="email"
                   required
                   className="rounded-xl"
@@ -879,7 +1039,7 @@ export function EnquiryWizard({
               <div>
                 <Label htmlFor="stage" className="flex items-center gap-2 mb-2">
                   <FileText className="size-4 text-muted" />
-                  Stage
+                  Where are you in the planning process?
                 </Label>
                 <Select
                   id="stage"
@@ -906,6 +1066,9 @@ export function EnquiryWizard({
                   onChange={(e) => setStartDate(e.target.value)}
                   className="rounded-xl"
                 />
+                <p className="mt-1 text-xs text-muted">
+                  Helps us understand your timing; it is not a confirmed start date.
+                </p>
               </div>
               <div>
                 <Label htmlFor="desc" className="flex items-center gap-2 mb-2">
@@ -944,7 +1107,8 @@ export function EnquiryWizard({
                 />
                 <p className="mt-2 text-xs text-muted">
                   Up to {MAX_ENQUIRY_ATTACHMENTS} files, 10 MB each. JPG, PNG, WebP, PDF, DOCX,
-                  XLSX, MP4 or WebM. Files are private and available to ATRO staff handling your
+                  XLSX, MP4 or WebM. Photos or drawings can help us understand the brief sooner, but
+                  are not required. Files are private and visible to ATRO staff handling your
                   enquiry.
                 </p>
                 {selectedFiles.length > 0 ? (
@@ -994,7 +1158,8 @@ export function EnquiryWizard({
                 Building from abroad
               </h2>
               <p className="text-sm text-muted">
-                These details help us schedule calls at the right time and plan site visits.
+                Optional: these details help us schedule calls at the right time and plan site
+                visits. You can skip this step and still send your brief.
               </p>
             </div>
 
@@ -1098,7 +1263,8 @@ export function EnquiryWizard({
                 Review your enquiry
               </h2>
               <p className="text-sm text-muted">
-                Check these details before sending. Use Edit to change any section.
+                Check these details before sending. This gives you a final chance to catch a mistake
+                before ATRO receives the enquiry.
               </p>
             </div>
 
@@ -1119,8 +1285,9 @@ export function EnquiryWizard({
                       </p>
                     ) : (
                       <p className="mt-1 text-sm text-ink/70">
-                        Approximately {sqm} m² ·{" "}
-                        {FINISHES.find((item) => item.id === finish)?.label}
+                        {sqm.trim() ? `Approximately ${sqm} m²` : "Area not specified"} ·{" "}
+                        {FINISHES.find((item) => item.id === finish)?.label ??
+                          "Finish preference not specified"}
                       </p>
                     )}
                   </div>
@@ -1133,33 +1300,17 @@ export function EnquiryWizard({
               <section className="p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.14em] text-muted">Site & timing</p>
-                    <p className="mt-1 font-medium text-maroon">{estimate.zoneName}</p>
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted">Site</p>
+                    <p className="mt-1 font-medium text-maroon">
+                      {selectedPlaceName}
+                      {siteArea.trim() ? ` · ${siteArea.trim()}` : ""}
+                    </p>
                   </div>
                   <Button type="button" size="sm" variant="outline" onClick={() => setStep(1)}>
                     Edit
                   </Button>
                 </div>
               </section>
-
-              {type !== "Other" ? (
-                <section className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.14em] text-muted">
-                        Indicative planning range
-                      </p>
-                      <p className="mt-1 font-medium text-maroon">{estimate.label}</p>
-                      <p className="mt-1 text-xs text-muted">
-                        Not a quotation. {estimate.locationNote}
-                      </p>
-                    </div>
-                    <Button type="button" size="sm" variant="outline" onClick={() => setStep(2)}>
-                      Edit
-                    </Button>
-                  </div>
-                </section>
-              ) : null}
 
               {selectedFiles.length > 0 ? (
                 <section className="p-5">
@@ -1207,7 +1358,7 @@ export function EnquiryWizard({
                     <p className="mt-1 font-medium text-maroon">{name.trim()}</p>
                     <p className="mt-1 text-sm text-ink/70">{phone.trim()}</p>
                     <p className="text-sm text-ink/70">{email.trim()}</p>
-                    <p className="mt-2 text-sm text-ink/70">Project stage: {stage}</p>
+                    <p className="mt-2 text-sm text-ink/70">Project progress: {stage}</p>
                     {startDate ? (
                       <p className="text-sm text-ink/70">Target start: {startDate}</p>
                     ) : null}
@@ -1261,7 +1412,9 @@ export function EnquiryWizard({
                 role="alert"
                 className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
               >
-                <p className="font-medium">Your enquiry is saved, but one or more files are not attached.</p>
+                <p className="font-medium">
+                  Your enquiry is saved, but one or more files are not attached.
+                </p>
                 <p className="mt-1">{attachmentError}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button
@@ -1295,7 +1448,7 @@ export function EnquiryWizard({
         ) : null}
 
         {/* Navigation */}
-        <div className="mt-10 flex items-center justify-between">
+        <div className="mt-8 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:mt-10 sm:flex sm:justify-between">
           <div>
             {step > 0 ? (
               <Button
@@ -1310,12 +1463,16 @@ export function EnquiryWizard({
               </Button>
             ) : null}
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted">
+          <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+            <span className="shrink-0 text-[11px] text-muted sm:text-sm">
               Step {step + 1} of {totalSteps}
             </span>
             {step < totalSteps - 1 ? (
-              <Button type="button" onClick={continueToNextStep} className="rounded-xl px-6">
+              <Button
+                type="button"
+                onClick={continueToNextStep}
+                className="rounded-xl px-3 sm:px-6"
+              >
                 Continue
                 <ArrowRight className="size-4 ml-2" />
               </Button>
@@ -1324,7 +1481,7 @@ export function EnquiryWizard({
                 type="button"
                 onClick={submit}
                 disabled={submitting}
-                className="rounded-xl px-6 bg-gradient-to-r from-gold to-gold-light text-maroon hover:from-gold-light hover:to-gold"
+                className="rounded-xl px-3 bg-gradient-to-r from-gold to-gold-light text-maroon hover:from-gold-light hover:to-gold sm:px-6"
               >
                 {submitting
                   ? enquiryId
@@ -1332,7 +1489,7 @@ export function EnquiryWizard({
                     : "Sending..."
                   : enquiryId
                     ? "Retry file uploads"
-                    : "Send project enquiry"}
+                    : "Send enquiry"}
                 <ArrowRight className="size-4 ml-2" />
               </Button>
             )}

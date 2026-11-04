@@ -2,11 +2,10 @@
 //
 // The zone registry says where we work and how active we are in each county. This
 // turns that into the answer a Kenyan actually needs: can you build here, what does
-// it cost, and what happens when I get in touch. The honest part is the availability
+// delivery involve, and what happens when I get in touch. The honest part is the availability
 // — telling someone in Nakuru that a quote needs a conversation is better than
 // taking their money and explaining it in month three.
 
-import { estimateCost } from "@/lib/cost";
 import { ZONES, type Zone, type ZoneStatus } from "@/lib/site";
 
 export type Availability = {
@@ -23,7 +22,7 @@ const AVAILABILITY: Record<ZoneStatus, Availability> = {
   active: {
     label: "Building here now",
     promise:
-      "We are running sites in this county this year. Send the brief and you will get an indicative range and a programme, not a brochure.",
+      "We are running sites in this county this year. Send the brief and we will review scope, site conditions and timing before discussing a project-specific proposal.",
     cta: "Start a project",
     tone: "green",
   },
@@ -53,9 +52,6 @@ const AVAILABILITY: Record<ZoneStatus, Availability> = {
 export type ZoneFunnel = {
   zone: Zone;
   availability: Availability;
-  /** Indicative band for a standard 220 m² house, from the same engine as the calculator. */
-  indicativeMin: number;
-  indicativeMax: number;
   /** What is genuinely different about building here. */
   localNote: string;
 };
@@ -81,17 +77,9 @@ const LOCAL_NOTES: Record<string, string> = {
 
 export function zoneFunnels(): ZoneFunnel[] {
   return ZONES.map((zone) => {
-    const estimate = estimateCost({
-      type: "Residential",
-      zone: zone.slug,
-      sqm: 220,
-      finish: "standard",
-    });
     return {
       zone,
       availability: AVAILABILITY[zone.status],
-      indicativeMin: estimate.min,
-      indicativeMax: estimate.max,
       localNote: LOCAL_NOTES[zone.slug] ?? zone.coverage,
     };
   });
@@ -119,10 +107,4 @@ const TONE_CLASS: Record<Availability["tone"], string> = {
 
 export function toneClass(tone: Availability["tone"]): string {
   return TONE_CLASS[tone];
-}
-
-const KES = new Intl.NumberFormat("en-KE", { maximumFractionDigits: 0 });
-
-export function formatBand(min: number, max: number): string {
-  return `KES ${KES.format(min)} – ${KES.format(max)}`;
 }
