@@ -1,7 +1,12 @@
 import { getRequest } from "@tanstack/react-start/server";
 import { configured, previewIdentity, ACCESS_TOKEN_COOKIE } from "@/lib/supabase/config";
 import { verifyAccessToken } from "@/lib/supabase/server";
-import { personaKeyFromCookieHeader, previewPersona } from "@/lib/preview-personas";
+import {
+  GUEST_PREVIEW_USER_ID,
+  isGuestPreviewCookie,
+  personaKeyFromCookieHeader,
+  previewPersona,
+} from "@/lib/preview-personas";
 
 /**
  * Server-side session resolution (server-only).
@@ -42,6 +47,7 @@ export type VerifiedUser = {
   email: string | null;
   emailVerified: boolean;
   phone?: string | null;
+  isGuestPreview: boolean;
 };
 
 /**
@@ -52,20 +58,35 @@ export type VerifiedUser = {
  * what the middleware forwards when the session is not cookie-visible.
  */
 export async function getSessionUser(bearerToken?: string): Promise<VerifiedUser | null> {
+  const request = getRequest();
+  const guestPreview = isGuestPreviewCookie(request?.headers.get("cookie"));
+
   // No Supabase means no way to sign in, so preview — as whoever the
   // persona cookie says, or as the seeded studio admin when it says nothing.
   if (!configured) {
-    const request = getRequest();
+    if (guestPreview) {
+      return {
+        id: GUEST_PREVIEW_USER_ID,
+        email: null,
+        emailVerified: false,
+        phone: null,
+        isGuestPreview: true,
+      };
+    }
     const key = personaKeyFromCookieHeader(request?.headers.get("cookie") ?? null);
     if (key) {
       const persona = previewPersona(key);
-      return { id: persona.userId, email: persona.email, emailVerified: false };
+      return {
+        id: persona.userId,
+        email: persona.email,
+        emailVerified: false,
+        isGuestPreview: false,
+      };
     }
     const identity = previewIdentity();
-    return identity ? { ...identity, emailVerified: false } : null;
+    return identity ? { ...identity, emailVerified: false, isGuestPreview: false } : null;
   }
 
-  const request = getRequest();
   if (!request) return null;
 
   let token = bearerToken ?? null;
@@ -82,12 +103,23 @@ export async function getSessionUser(bearerToken?: string): Promise<VerifiedUser
   }
 
   const user = await verifyAccessToken(token);
-  if (!user) return null;
+  if (!user) {
+    return guestPreview
+      ? {
+          id: GUEST_PREVIEW_USER_ID,
+          email: null,
+          emailVerified: false,
+          phone: null,
+          isGuestPreview: true,
+        }
+      : null;
+  }
   return {
     id: user.id,
     email: user.email,
     emailVerified: user.emailVerified,
     phone: user.phone,
+    isGuestPreview: false,
   };
 }
 
@@ -110,6 +142,7 @@ export type SessionIdentity = {
   email: string;
   emailVerified: boolean;
   phone: string | null;
+  isGuestPreview: boolean;
 };
 
 export async function requireSession(bearerToken?: string): Promise<SessionIdentity> {
@@ -126,6 +159,7 @@ export async function requireSession(bearerToken?: string): Promise<SessionIdent
     email: user.email ?? "",
     emailVerified: user.emailVerified,
     phone: user.phone ?? null,
+    isGuestPreview: user.isGuestPreview,
   };
 }
 

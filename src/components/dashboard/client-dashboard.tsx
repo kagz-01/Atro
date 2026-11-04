@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useSiteStore } from "@/lib/store";
 import {
   Banknote,
   CalendarDays,
@@ -126,6 +127,7 @@ export function ClientDashboard({
   documents,
   nudges,
   children,
+  readOnly = false,
 }: {
   data: PortalPayload;
   firstVisit: string | null;
@@ -138,10 +140,16 @@ export function ClientDashboard({
   documents: DocumentSummary[];
   /** Open decisions the client has not answered. */
   nudges: { decisionId: string; title: string; ageDays: number }[];
+  readOnly?: boolean;
   /** "Open a project" and friends, supplied by the route. */
   children?: React.ReactNode;
 }) {
   const [section, setSection] = useState<Section>("overview");
+  const [depositMethod, setDepositMethod] = useState("M-Pesa");
+  const [depositAmount, setDepositAmount] = useState("50000");
+  const walletBalance = useSiteStore((state) => state.clientWallet.balance);
+  const walletActivity = useSiteStore((state) => state.clientWallet.activity);
+  const addClientWalletDeposit = useSiteStore((state) => state.addClientWalletDeposit);
   const activityRef = useRef<HTMLDivElement>(null);
   const p = data.project;
 
@@ -163,6 +171,8 @@ export function ClientDashboard({
   const { data: messages } = useQuery({
     queryKey: ["my-messages", p.id],
     queryFn: () => listMyMessages({ data: { projectId: p.id } }),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
   const unreadMessages = unreadFor(messages ?? [], "client");
 
@@ -205,6 +215,18 @@ export function ClientDashboard({
   const newActivity = data.activity.filter((a) => firstVisit && a.at > firstVisit);
   const activityToShow = abroad && newActivity.length > 0 ? newActivity : data.activity.slice(0, 8);
 
+  const handleWalletDeposit = () => {
+    const value = Number(depositAmount);
+    if (!Number.isFinite(value) || value <= 0) return;
+    addClientWalletDeposit({
+      amount: value,
+      method: depositMethod,
+      label: "Client deposit",
+    });
+    setDepositAmount("");
+  };
+
+  const availableWallet = walletBalance - b.retentionHeld;
   const moneySlices: Slice[] = [
     { name: "Paid to you", value: b.paidToDate, color: "var(--color-maroon)" },
     {
@@ -223,66 +245,100 @@ export function ClientDashboard({
 
   const collected = p.contractValue > 0 ? (b.paidToDate / p.contractValue) * 100 : 0;
 
+  const projectTabs = abroad
+    ? [
+        { id: "overview", label: "Overview", icon: LayoutDashboard },
+        {
+          id: "milestones",
+          label: "Progress",
+          icon: ListChecks,
+          badge: awaitingApproval.length || undefined,
+        },
+        {
+          id: "decisions",
+          label: "Decisions",
+          icon: MessageSquareWarning,
+          badge: (openDecisions.length + blockingApprovals) || undefined,
+        },
+        {
+          id: "money",
+          label: "Money",
+          icon: CreditCard,
+          badge: releasable.length || undefined,
+        },
+        {
+          id: "messages",
+          label: "Updates",
+          icon: MessageSquare,
+          badge: unreadMessages || undefined,
+        },
+        { id: "calendar", label: "Calendar", icon: CalendarDays },
+        { id: "documents", label: "Documents", icon: FolderOpen },
+        { id: "people", label: "Team", icon: UsersRound },
+        ...(abroad ? [{ id: "abroad", label: "Abroad", icon: Globe }] : []),
+      ]
+    : [
+        { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "calendar", label: "Calendar", icon: CalendarDays },
+        {
+          id: "approvals",
+          label: "Approvals",
+          icon: FileCheck2,
+          badge: blockingApprovals || undefined,
+        },
+        {
+          id: "selections",
+          label: "Selections",
+          icon: SlidersHorizontal,
+          badge: openSelections || undefined,
+        },
+        {
+          id: "milestones",
+          label: "Milestones",
+          icon: ListChecks,
+          badge: awaitingApproval.length || undefined,
+        },
+        {
+          id: "money",
+          label: "Money",
+          icon: CreditCard,
+          badge: releasable.length || undefined,
+        },
+        {
+          id: "changes",
+          label: "Changes",
+          icon: FileDiff,
+          badge: changesWaiting || undefined,
+        },
+        {
+          id: "decisions",
+          label: "Decisions",
+          icon: MessageSquareWarning,
+          badge: openDecisions.length || undefined,
+        },
+        { id: "documents", label: "Documents", icon: FolderOpen },
+        {
+          id: "messages",
+          label: "Messages",
+          icon: MessageSquare,
+          badge: unreadMessages || undefined,
+        },
+        { id: "people", label: "Project circle", icon: UsersRound },
+        {
+          id: "after-handover",
+          label: "After handover",
+          icon: Wrench,
+          badge: awaitingFixCheck || undefined,
+        },
+        ...(abroad ? [{ id: "abroad", label: "Abroad", icon: Globe }] : []),
+      ];
+
   return (
     <DashboardShell
       groups={[
         {
           title: "Your project",
-          items: [
-            { id: "overview", label: "Overview", icon: LayoutDashboard },
-            { id: "calendar", label: "Calendar", icon: CalendarDays },
-            {
-              id: "approvals",
-              label: "Approvals",
-              icon: FileCheck2,
-              badge: blockingApprovals || undefined,
-            },
-            {
-              id: "selections",
-              label: "Selections",
-              icon: SlidersHorizontal,
-              badge: openSelections || undefined,
-            },
-            {
-              id: "milestones",
-              label: "Milestones",
-              icon: ListChecks,
-              badge: awaitingApproval.length || undefined,
-            },
-            {
-              id: "money",
-              label: "Money",
-              icon: CreditCard,
-              badge: releasable.length || undefined,
-            },
-            {
-              id: "changes",
-              label: "Changes",
-              icon: FileDiff,
-              badge: changesWaiting || undefined,
-            },
-            {
-              id: "decisions",
-              label: "Decisions",
-              icon: MessageSquareWarning,
-              badge: openDecisions.length || undefined,
-            },
-            { id: "documents", label: "Documents", icon: FolderOpen },
-            {
-              id: "messages",
-              label: "Messages",
-              icon: MessageSquare,
-              badge: unreadMessages || undefined,
-            },
-            { id: "people", label: "Project circle", icon: UsersRound },
-            {
-              id: "after-handover",
-              label: "After handover",
-              icon: Wrench,
-              badge: awaitingFixCheck || undefined,
-            },
-            ...(abroad ? [{ id: "abroad", label: "Abroad", icon: Globe }] : []),
-          ],
+          items: projectTabs,
         },
         {
           title: "You",
@@ -310,6 +366,7 @@ export function ClientDashboard({
           : []),
       ]}
       user={{ name: p.clientLabel || "Your account", email: p.clientLabel }}
+      readOnly={readOnly}
       toolbar={
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
@@ -364,8 +421,12 @@ export function ClientDashboard({
           )}
 
           <Panel
-            title="Needs you"
-            subtitle="Decisions, certified payments and stages waiting for your action"
+            title={abroad ? "What needs your action" : "What needs your action"}
+            subtitle={
+              abroad
+                ? "You do not need to check everything every day — just the decisions, money and work that need your reply."
+                : "Your project keeps moving. Keep an eye on the decisions, certified work and next steps."
+            }
           >
             {nudges.length > 0 ? (
               <p className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-900">
@@ -373,7 +434,9 @@ export function ClientDashboard({
                 {oldestNudge(nudges) > 0
                   ? ` The oldest has been waiting ${oldestNudge(nudges)} days.`
                   : ""}{" "}
-                A stage cannot move until you answer, and the site keeps running either way.
+                {abroad
+                  ? "The team keeps working, but the decision still needs your answer."
+                  : "A stage cannot move until you answer, and the site keeps running either way."}
               </p>
             ) : null}
             <ul className="space-y-2">
@@ -381,7 +444,7 @@ export function ClientDashboard({
               releasable.length === 0 &&
               awaitingApproval.length === 0 ? (
                 <li className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
-                  Nothing is waiting on you. The site keeps running either way.
+                  Nothing is waiting on you. The project keeps moving either way.
                 </li>
               ) : null}
 
@@ -395,7 +458,7 @@ export function ClientDashboard({
                     <span className="min-w-0">
                       <span className="block text-[13px] text-maroon">{d.title}</span>
                       <span className="mt-0.5 block text-[11px] text-ink/55">
-                        A decision is waiting on you
+                        {abroad ? "Decision waiting from abroad" : "A decision is waiting on you"}
                       </span>
                     </span>
                     <span className="shrink-0 text-[11px] uppercase tracking-[0.1em] text-amber-900">
@@ -413,7 +476,7 @@ export function ClientDashboard({
                   <span className="min-w-0">
                     <span className="block text-[13px] text-maroon">{pay.label}</span>
                     <span className="mt-0.5 block text-[11px] text-ink/55">
-                      Certified and waiting for your release
+                      {abroad ? "Certified and ready to release" : "Certified and ready to release"}
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
@@ -439,7 +502,9 @@ export function ClientDashboard({
                     <span className="mt-0.5 block text-[11px] text-ink/55">
                       {m.status === "blocked"
                         ? "Blocked — check the evidence before approving"
-                        : "Ready for your approval"}
+                        : abroad
+                          ? "Ready for your sign-off"
+                          : "Ready for your approval"}
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
@@ -652,6 +717,75 @@ export function ClientDashboard({
 
       {section === "money" ? (
         <div className="space-y-5">
+          <Panel title="Client account" subtitle="Deposit funds, check your balance and see where it sits">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-ink/10 bg-cream p-4">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Available balance</p>
+                <p className="mt-3 font-display text-[2rem] leading-none text-maroon">{kes(walletBalance)}</p>
+              </div>
+              <div className="rounded-2xl border border-ink/10 bg-cream p-4">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Available for spends</p>
+                <p className="mt-3 font-display text-[2rem] leading-none text-maroon">{kes(availableWallet)}</p>
+              </div>
+              <div className="rounded-2xl border border-ink/10 bg-cream p-4">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Held in retention</p>
+                <p className="mt-3 font-display text-[2rem] leading-none text-maroon">{kes(b.retentionHeld)}</p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="rounded-2xl border border-ink/10 bg-paper p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">Add funds</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_180px]">
+                  <div>
+                    <Label htmlFor="wallet-amount">Amount</Label>
+                    <Input
+                      id="wallet-amount"
+                      type="number"
+                      min="1000"
+                      step="1000"
+                      value={depositAmount}
+                      onChange={(event) => setDepositAmount(event.target.value)}
+                      placeholder="50000"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="wallet-method">Method</Label>
+                    <Select
+                      id="wallet-method"
+                      value={depositMethod}
+                      onChange={(event) => setDepositMethod(event.target.value)}
+                    >
+                      <option value="M-Pesa">M-Pesa</option>
+                      <option value="Bank transfer">Bank transfer</option>
+                      <option value="Debit card">Debit card</option>
+                    </Select>
+                  </div>
+                </div>
+                <Button className="mt-4" onClick={handleWalletDeposit} type="button">
+                  Deposit into my account
+                </Button>
+              </div>
+
+              <div className="rounded-2xl border border-ink/10 bg-paper p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">Recent account activity</p>
+                <ul className="mt-4 space-y-3">
+                  {walletActivity.map((item) => (
+                    <li key={item.id} className="flex items-start justify-between gap-3 border-b border-ink/8 pb-2 last:border-0 last:pb-0">
+                      <div>
+                        <p className="text-[13px] text-maroon">{item.label}</p>
+                        <p className="text-[11px] text-ink/50">{item.method} · {new Date(item.date).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" })}</p>
+                      </div>
+                      <span className={cn("text-[12px] font-medium", item.direction === "in" ? "text-emerald-700" : "text-ink/65")}>
+                        {item.direction === "in" ? "+" : "-"}{kes(item.amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </Panel>
+
           <div className="grid min-w-0 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
             <Panel title="Your budget" subtitle="Open book — every line is inspectable">
               <dl className="space-y-3">

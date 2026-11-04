@@ -101,12 +101,12 @@ function ContactPage() {
             </span>
           </div>
 
-          <h1 className="reveal reveal-delay-1 font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-paper max-w-5xl mx-auto leading-[0.95]">
+          <h1 className="reveal reveal-delay-1 mx-auto max-w-5xl font-display text-[2.4rem] leading-[0.94] tracking-[-0.05em] text-paper sm:text-[3rem] md:text-[4rem] lg:text-[4.8rem]">
             Let's build something{" "}
             <span className="text-gradient-gold italic">remarkable.</span>
           </h1>
 
-          <p className="reveal reveal-delay-2 mt-8 text-xl text-paper/70 max-w-2xl mx-auto">
+          <p className="reveal reveal-delay-2 mx-auto mt-8 max-w-2xl text-base text-paper/70 sm:text-lg md:text-xl">
             Call, message, or visit us. We're based in Nairobi and serve businesses and homeowners across Kenya.
           </p>
         </div>
@@ -131,31 +131,31 @@ function ContactPage() {
       {/* Contact cards */}
       <section className="py-16 md:py-24">
         <div ref={cardsRef} className={cn("mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 reveal-on-scroll", cardsRevealed && "revealed")}>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-6">
             {contactMethods.map((method, i) => (
               <ScrollRevealText key={method.title} delay={i * 100}>
                 <a
                   href={method.href}
-                  className="group block p-8 bg-cream border border-line/50 rounded-2xl text-center hover:shadow-card-hover hover:border-gold/30 card-lift transition-all duration-300"
+                  className="group block rounded-xl border border-line/50 bg-cream p-3 text-center transition-all duration-300 hover:border-gold/30 hover:shadow-card-hover card-lift sm:rounded-2xl sm:p-5 md:p-8"
                 >
                   <div className={cn(
-                    "size-16 mx-auto rounded-2xl flex items-center justify-center mb-6 transition-colors duration-300",
+                    "mx-auto mb-3 flex size-10 items-center justify-center rounded-xl transition-colors duration-300 sm:mb-5 sm:size-14 sm:rounded-2xl md:mb-6 md:size-16",
                     method.color === "maroon" && "bg-maroon/10 text-maroon group-hover:bg-maroon group-hover:text-paper",
                     method.color === "whatsapp" && "bg-whatsapp/10 text-whatsapp group-hover:bg-whatsapp group-hover:text-paper",
                     method.color === "burgundy" && "bg-burgundy/10 text-burgundy group-hover:bg-burgundy group-hover:text-paper",
                   )}>
                     {method.icon}
                   </div>
-                  <h3 className="font-display text-xl text-maroon">{method.title}</h3>
+                  <h3 className="font-display text-sm text-maroon sm:text-lg md:text-xl">{method.title}</h3>
                   <p className={cn(
-                    "mt-2 text-lg font-medium transition-colors duration-300",
+                    "mt-1 break-words text-xs font-medium transition-colors duration-300 sm:mt-2 sm:text-base md:text-lg",
                     method.color === "maroon" && "text-burgundy group-hover:text-maroon",
                     method.color === "whatsapp" && "text-whatsapp group-hover:text-whatsapp",
                     method.color === "burgundy" && "text-burgundy group-hover:text-maroon",
                   )}>
                     {method.value}
                   </p>
-                  <p className="mt-2 text-sm text-muted">{method.subtitle}</p>
+                  <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted sm:mt-2 sm:text-xs md:text-sm">{method.subtitle}</p>
                 </a>
               </ScrollRevealText>
             ))}
@@ -169,10 +169,10 @@ function ContactPage() {
           <div className="grid lg:grid-cols-2 gap-12 items-start">
             {/* Left: details */}
             <div>
-              <h2 className="font-display text-4xl md:text-5xl text-maroon">
+              <h2 className="font-display text-[1.8rem] text-maroon sm:text-3xl md:text-4xl lg:text-5xl">
                 Our workshop
               </h2>
-              <p className="mt-5 text-ink/70 text-lg max-w-xl">
+              <p className="mt-5 max-w-xl text-base text-ink/70 sm:text-lg">
                 Drop by, call ahead, or send a message. We're in Nairobi and we build across Kenya.
               </p>
 

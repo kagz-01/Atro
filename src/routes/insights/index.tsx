@@ -24,18 +24,18 @@ function InsightsPage() {
         title="Useful pages. Not a newsroom."
         lede="How costing, geography and remote clients actually behave on Kenyan sites."
       />
-      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-20 grid md:grid-cols-3 gap-8">
+      <section className="mx-auto grid max-w-[1400px] grid-cols-2 gap-3 px-6 pb-12 sm:gap-5 sm:px-8 md:grid-cols-3 md:px-12 md:pb-20 lg:px-16">
         {ARTICLES.map((a) => (
           <Link key={a.slug} to="/insights/$slug" params={{ slug: a.slug }} className="group border border-line bg-cream rounded-sm overflow-hidden hover:border-burgundy">
             <div className="aspect-[16/10] overflow-hidden">
               <img src={a.image} alt="" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
             </div>
-            <div className="p-5">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-muted">
+            <div className="p-3 sm:p-5">
+              <p className="line-clamp-1 text-[8px] uppercase tracking-[0.08em] text-muted sm:text-[11px] sm:tracking-[0.16em]">
                 {a.kicker} · {a.date} · {a.read}
               </p>
-              <h2 className="mt-2 font-display text-2xl text-maroon group-hover:text-burgundy">{a.title}</h2>
-              <p className="mt-2 text-sm text-ink/70">{a.excerpt}</p>
+              <h2 className="mt-2 font-display text-sm leading-tight text-maroon group-hover:text-burgundy sm:text-xl md:text-2xl">{a.title}</h2>
+              <p className="mt-2 line-clamp-3 text-[10px] leading-snug text-ink/70 sm:text-sm sm:leading-normal">{a.excerpt}</p>
             </div>
           </Link>
         ))}

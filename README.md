@@ -95,7 +95,9 @@ profile settings.
    start a project record in the portal; generated planning information should
    be checked and confirmed with the studio before it is treated as an agreed
    scope or commercial commitment.
-4. **The client signs in.** Phone one-time-code sign-in identifies the client.
+4. **The client signs in.** The client can use Google, a passwordless email
+   code, or a phone one-time code. The verified email or phone must match the
+   contact details ATRO has on the project so the portal can find and claim it.
    Project reads and writes are checked against project ownership on the server.
    An owner may separately invite a trusted representative to a single project.
    The invitation must be accepted by a signed-in account with the matching
@@ -163,11 +165,40 @@ This file is for build flags, not secrets.
 
 ### Authentication and database configuration
 
-Phone one-time-code authentication is provided by Supabase. Configure
-`SUPABASE_URL` and `SUPABASE_ANON_KEY` for the server and the corresponding
-`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` values for the browser when
-enabling sign-in. The Supabase project must be configured to deliver phone
-verification codes.
+Phone one-time-code, passwordless email-code, and Google sign-in are provided
+through Supabase Auth. Configure `SUPABASE_URL` and `SUPABASE_ANON_KEY` for the
+server and the corresponding `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+values for the browser. Enable Phone and Email providers in Supabase Auth and
+configure the project to deliver phone and email verification codes. The email
+OTP template must include Supabase's `{{ .Token }}` value.
+
+To enable Google sign-in, enable the Google provider under Supabase Auth and
+enter the OAuth client ID and secret there. In Google Cloud, register the
+Supabase project's Auth callback URL as an authorized redirect URI. Add the
+app's local and deployed `/login` URLs to Supabase's redirect URL allowlist so
+OAuth can return to the portal.
+
+For local development, copy `.env.example` to `.env` and fill in the values.
+The local `.env` file is loaded by the `dev`, `build`, and `preview` wrapper and
+is ignored by Git. Never add service-role keys, database passwords, or provider
+secrets to `VITE_` variables; Vite exposes those values to the browser.
+
+Paystack is not currently integrated. Add its credentials only with the
+server-side payment and webhook-verification flow: the secret key must stay
+server-only, and any public key exposed to the browser must be used only for
+checkout initiation—not trusted as proof of payment.
+
+Project-message attachments use a private Supabase Storage bucket, created by
+the server on the first upload. They support JPEG, PNG, WebP, PDF, DOCX, XLSX,
+MP4, and WebM files, up to 5 files per message and 10 MB per file. Configure
+`SUPABASE_SERVICE_ROLE_KEY` on the server for signed uploads and private file
+access. Never expose this key with a `VITE_` prefix. Files are uploaded directly
+to private storage; project ownership or staff access is checked before signed
+upload/download links are issued. Local development without Supabase can still
+use text messaging, but file attachments require Supabase configuration.
+Users can delete their own messages; the thread keeps a “Message deleted”
+record marker and stored attachment bytes are removed. A small emoji picker is
+available in both client and staff composers.
 
 For a persistent PostgreSQL database, set `DATABASE_URL` to the database
 connection string. The app uses Neon/PostgreSQL when it is set; otherwise it

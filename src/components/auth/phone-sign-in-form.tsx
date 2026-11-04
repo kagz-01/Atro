@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowRight, Loader2, MessageSquareText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/field";
+import { authAvailable } from "@/lib/auth/client";
 
 /**
  * Phone sign-in: a number, then a one-time code.
@@ -13,7 +14,13 @@ import { Input, Label } from "@/components/ui/field";
 
 type Stage = "phone" | "code";
 
-export function PhoneSignInForm({ onDone }: { onDone: () => void }) {
+export function PhoneSignInForm({
+  onDone,
+  onGuestPreview,
+}: {
+  onDone: () => void;
+  onGuestPreview: () => void;
+}) {
   const [stage, setStage] = useState<Stage>("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -23,6 +30,10 @@ export function PhoneSignInForm({ onDone }: { onDone: () => void }) {
 
   async function sendCode() {
     setError(null);
+    if (!authAvailable()) {
+      onGuestPreview();
+      return;
+    }
     setBusy(true);
     try {
       const { sendPhoneCode } = await import("@/lib/auth/client");
@@ -64,7 +75,7 @@ export function PhoneSignInForm({ onDone }: { onDone: () => void }) {
         className="mt-4 max-w-md"
         noValidate
       >
-        <h2 className="font-display text-3xl text-maroon">Sign in</h2>
+        <h2 className="font-display text-[2.1rem] leading-none text-maroon">Sign in</h2>
         <p className="mt-2 text-[15px] leading-relaxed text-ink/65">
           Enter the phone number you gave the studio. We will text you a code — no
           password to remember, and it works whether you are in Nairobi or abroad.
@@ -107,7 +118,7 @@ export function PhoneSignInForm({ onDone }: { onDone: () => void }) {
         className="mt-4 max-w-md"
         noValidate
       >
-        <h2 className="font-display text-3xl text-maroon">Enter your code</h2>
+        <h2 className="font-display text-[2.1rem] leading-none text-maroon">Enter your code</h2>
         <p className="mt-2 text-[15px] leading-relaxed text-ink/65">
           {sent ? (
             <>

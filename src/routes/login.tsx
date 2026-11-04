@@ -1,19 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Globe, Lock, Shield } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
-import { authAvailable, startAuthCookieSync } from "@/lib/auth/client";
+import { authAvailable, continueAsGuest, startAuthCookieSync } from "@/lib/auth/client";
 import { PhoneSignInForm } from "@/components/auth/phone-sign-in-form";
+import { EmailSignInForm } from "@/components/auth/email-sign-in-form";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { getMyAccess } from "@/lib/staff-access";
+import { resolveDashboardRoute } from "@/lib/dashboard-routing";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 
 export const Route = createFileRoute("/login")({
   component: Login,
   head: () => ({
     meta: [
-      { title: "Sign in — ATRO client portal" },
+      { title: "Sign in — ATRO project portal" },
       {
         name: "description",
         content:
@@ -44,22 +48,68 @@ const PERKS = [
 function Login() {
   const { user, isPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
+  const { data: access } = useQuery({
+    queryKey: ["my-access"],
+    queryFn: () => getMyAccess({ data: undefined }),
+    enabled: Boolean(user && !user.isDevFallback),
+  });
+  const [method, setMethod] = useState<"phone" | "email">("phone");
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleError, setGoogleError] = useState("");
+
+  const dashboardDestination = resolveDashboardRoute({
+    user,
+    accessRole: access?.role ?? null,
+  });
 
   /**
-   * Email sign-in creates the session server-side, but this page already
-   * resolved its own session as "signed out". A real navigation is the honest
-   * fix — the client session store has no invalidation hook, and guessing with
-   * one would render the portal against a stale signed-out state.
+   * Signed-in users land in the workspace that matches their role instead of a
+   * generic client portal toggle; staff keep the office dashboard while clients
+   * keep their project portal.
    */
-  const goToPortal = () => {
+  const goToDashboard = () => {
     if (typeof window === "undefined") return;
-    const returnTo = new URLSearchParams(window.location.search).get("returnTo");
-    const destination =
-      returnTo?.startsWith("/portal/") && !returnTo.startsWith("//") && !returnTo.includes("\\")
-        ? returnTo
-        : "/portal";
-    window.location.assign(destination);
+    window.location.assign(dashboardDestination);
   };
+
+  async function continueWithGoogle() {
+    if (!authAvailable()) {
+      continueAsGuest(getPortalDestination());
+      return;
+    }
+    setGoogleBusy(true);
+    setGoogleError("");
+    const callback = new URL("/login", window.location.origin);
+    const destination = getPortalDestination();
+    if (destination !== "/portal") callback.searchParams.set("returnTo", destination);
+    try {
+      const { signInWithGoogle } = await import("@/lib/auth/client");
+      const result = await signInWithGoogle(callback.toString());
+      if (result.error) {
+        setGoogleError(result.error);
+        setGoogleBusy(false);
+      }
+    } catch (cause) {
+      setGoogleError(cause instanceof Error ? cause.message : "Could not start Google sign-in.");
+      setGoogleBusy(false);
+    }
+  }
+
+  function getPortalDestination(): string {
+    const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+    const safeReturnTo =
+      returnTo &&
+      (returnTo.startsWith("/portal") || returnTo.startsWith("/admin")) &&
+      !returnTo.startsWith("//") &&
+      !returnTo.includes("\\")
+        ? returnTo
+        : null;
+    return safeReturnTo ?? dashboardDestination;
+  }
+
+  function continueToGuestPreview() {
+    continueAsGuest(getPortalDestination());
+  }
 
   // Keep the server-visible session cookie in step with the Supabase session.
   useEffect(() => startAuthCookieSync(), []);
@@ -83,7 +133,7 @@ function Login() {
 
             <div className="relative">
               <Badge />
-              <h1 className="mt-6 font-display text-4xl leading-tight text-paper sm:text-5xl">
+              <h1 className="mt-6 font-display text-[2.4rem] leading-[0.92] tracking-[-0.05em] text-paper sm:text-[3.2rem]">
                 Your build,
                 <br />
                 <span className="text-gold">wherever you are.</span>
@@ -121,37 +171,20 @@ function Login() {
             <div className="flex items-center justify-between gap-4">
               <Logo />
               <span className="rounded-full bg-maroon/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-maroon">
-                Client portal
+                Project portal
               </span>
             </div>
 
-            {!authAvailable() ? (
-              <div className="mt-10">
-                <h2 className="font-display text-3xl text-maroon">Sign in</h2>
-                <p className="mt-3 text-[15px] leading-relaxed text-ink/65">
-                  Sign-in is not configured on this deployment yet, so accounts cannot be created or
-                  verified here.
-                </p>
-                <p className="mt-3 text-[13px] leading-relaxed text-ink/50">
-                  It needs <code className="font-mono">VITE_SUPABASE_URL</code> and{" "}
-                  <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> set on the server that
-                  served this page.
-                </p>
-                <p className="mt-4 text-[14px] text-ink/65">
-                  In the meantime, call or WhatsApp the studio and we will open your project for
-                  you.
-                </p>
-              </div>
-            ) : isPending || !hydrated ? (
+            {isPending || !hydrated ? (
               <div className="mt-10 space-y-4" aria-busy="true">
                 <div className="h-8 w-2/3 animate-pulse rounded-lg bg-ink/8" />
                 <div className="h-4 w-1/2 animate-pulse rounded-lg bg-ink/8" />
                 <div className="h-12 w-full animate-pulse rounded-xl bg-ink/8" />
                 <div className="h-12 w-full animate-pulse rounded-xl bg-ink/8" />
               </div>
-            ) : user ? (
+            ) : user && !user.isDevFallback ? (
               <div className="mt-10">
-                <h2 className="font-display text-3xl text-maroon">You are signed in</h2>
+                <h2 className="font-display text-[2.1rem] leading-none text-maroon">You are signed in</h2>
                 <p className="mt-3 text-[15px] leading-relaxed text-ink/65">
                   {user.displayName ?? user.primaryEmail ?? "Your account"} — your projects,
                   milestones and documents are one click away.
@@ -162,21 +195,101 @@ function Login() {
                   <UserButton />
                 </div>
 
-                <Button variant="primary" size="lg" className="mt-6 w-full" onClick={goToPortal}>
-                  Open the portal
+                <Button variant="primary" size="lg" className="mt-6 w-full" onClick={goToDashboard}>
+                  {dashboardDestination === "/admin" ? "Open the office dashboard" : "Open the portal"}
                   <ArrowRight className="size-4" />
                 </Button>
               </div>
             ) : (
               <div className="mt-10">
-                <h2 className="font-display text-3xl text-maroon">Sign in</h2>
+                <h2 className="font-display text-[2.1rem] leading-none text-maroon">Sign in</h2>
                 <p className="mt-3 text-[15px] leading-relaxed text-ink/65">
                   Use the account you already have. Your portal stays private to you — projects,
                   evidence, payments and documents are scoped to your sign-in.
                 </p>
+                <p className="mt-2 text-[13px] leading-relaxed text-ink/55">
+                  Use the email address or phone number you shared with ATRO so your project can be
+                  matched to your account.
+                </p>
 
                 <div className="mt-8">
-                  <PhoneSignInForm onDone={goToPortal} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="w-full normal-case tracking-normal"
+                    onClick={() => void continueWithGoogle()}
+                    disabled={googleBusy}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="grid size-5 place-items-center rounded-full bg-white font-semibold text-[#4285f4]"
+                    >
+                      G
+                    </span>
+                    {googleBusy ? "Connecting to Google..." : "Continue with Google"}
+                  </Button>
+
+                  {googleError ? (
+                    <p
+                      role="alert"
+                      className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-800"
+                    >
+                      {googleError}
+                    </p>
+                  ) : null}
+
+                  <div className="my-6 flex items-center gap-3 text-[11px] uppercase tracking-[0.14em] text-ink/40">
+                    <span className="h-px flex-1 bg-ink/10" />
+                    Or use a one-time code
+                    <span className="h-px flex-1 bg-ink/10" />
+                  </div>
+
+                  <div
+                    role="group"
+                    aria-label="Choose sign-in method"
+                    className="grid grid-cols-2 gap-2 rounded-xl bg-cream p-1"
+                  >
+                    {(["phone", "email"] as const).map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        aria-pressed={method === option}
+                        onClick={() => setMethod(option)}
+                        className={`rounded-lg px-4 py-2.5 text-sm font-medium capitalize transition-colors ${
+                          method === option
+                            ? "bg-white text-maroon shadow-sm"
+                            : "text-ink/60 hover:text-maroon"
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                  {method === "phone" ? (
+                    <PhoneSignInForm onDone={goToPortal} onGuestPreview={continueToGuestPreview} />
+                  ) : (
+                    <EmailSignInForm onDone={goToPortal} onGuestPreview={continueToGuestPreview} />
+                  )}
+
+                  <div className="mt-6 border-t border-ink/10 pt-5">
+                    <p className="text-center text-[13px] text-ink/55">
+                      Just looking around?
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="lg"
+                      className="mt-3 w-full"
+                      onClick={continueToGuestPreview}
+                    >
+                      Continue as guest
+                      <ArrowRight className="size-4" />
+                    </Button>
+                    <p className="mt-2 text-center text-xs text-ink/45">
+                      Preview the sample portal. Account actions are available after sign-in.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="mt-7 border-t border-ink/10 pt-5">

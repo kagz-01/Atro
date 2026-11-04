@@ -14,12 +14,14 @@ export { CONSTRUCTION_KB } from "./construction";
 export { CONSULTANCY_KB } from "./consultancy";
 export { REFERENCE_KB } from "./reference";
 export { DIASPORA_KB } from "./diaspora";
+export { AGENT_OPERATING_MANUAL } from "./operating-manual";
 
 import { DESIGN_KB } from "./design";
 import { CONSTRUCTION_KB } from "./construction";
 import { CONSULTANCY_KB } from "./consultancy";
 import { REFERENCE_KB } from "./reference";
 import { DIASPORA_KB } from "./diaspora";
+import { AGENT_OPERATING_MANUAL } from "./operating-manual";
 
 /**
  * Unified knowledge base.
@@ -37,6 +39,92 @@ export const KB = {
   consultancy: CONSULTANCY_KB,
   reference: REFERENCE_KB,
   diaspora: DIASPORA_KB,
+  operatingManual: AGENT_OPERATING_MANUAL,
+  serviceIndex: [
+    ...DESIGN_KB.services.map((s) => ({
+      id: s.id,
+      category: "design",
+      name: s.name,
+      summary: s.description,
+      tags: ["design", s.name.toLowerCase(), ...s.deliverables.map((d) => d.toLowerCase())],
+      terms: [s.name, "design", s.description.toLowerCase()],
+    })),
+    ...CONSTRUCTION_KB.phases.map((p) => ({
+      id: p.id,
+      category: "construction",
+      name: p.name,
+      summary: p.description,
+      tags: ["construction", p.name.toLowerCase(), ...p.activities.map((a) => a.toLowerCase())],
+      terms: [p.name, "construction", p.description.toLowerCase()],
+    })),
+    ...CONSULTANCY_KB.services.map((s) => ({
+      id: s.id,
+      category: "consultancy",
+      name: s.name,
+      summary: s.description,
+      tags: ["consultancy", s.name.toLowerCase(), ...s.deliverables.map((d) => d.toLowerCase())],
+      terms: [s.name, "consultancy", s.description.toLowerCase()],
+    })),
+    {
+      id: "cost-calculator",
+      category: "tool",
+      name: "Cost Calculator",
+      summary: "Indicative cost range for a project using type, zone, size and finish inputs.",
+      tags: ["cost", "calculator", "estimate", "budget", "range", "planning"],
+      terms: ["cost calculator", "estimate", "budget", "range", "tender", "planning"],
+    },
+    {
+      id: "zone-map",
+      category: "tool",
+      name: "Zone Map",
+      summary: "Delivery and coverage status across Kenyan counties and remote service access.",
+      tags: ["zone", "map", "coverage", "county", "delivery", "service area"],
+      terms: ["zone map", "coverage", "county", "service area", "where we build"],
+    },
+    {
+      id: "material-prices",
+      category: "tool",
+      name: "Material Prices",
+      summary: "Reference material ranges for planning, not live supplier prices.",
+      tags: ["materials", "prices", "price reference", "cement", "tiles", "steel", "build package"],
+      terms: ["material price", "materials", "price reference", "cement", "tiles", "steel"],
+    },
+    {
+      id: "boq-generator",
+      category: "tool",
+      name: "BOQ Worksheet",
+      summary: "Preliminary quantities and totals to support early planning and cost discussions.",
+      tags: ["boq", "quantities", "worksheet", "bill of quantities", "cost plan"],
+      terms: ["boq", "bill of quantities", "quantities", "worksheet", "cost plan"],
+    },
+  ],
+  decisionModel: {
+    defaultApproach: "Start with scope, zone, finish level and budget comfort. Use indicative tools to narrow the question, then move to a project-specific briefing or site review.",
+    routeToHuman: [
+      "The client wants a fixed price or a signed quotation",
+      "The project requires a measured BOQ before commitment",
+      "The site has unusual ground or service conditions",
+      "A county, authority or professional registration issue needs clarity",
+      "The brief is outside standard ATRO service offerings",
+    ],
+  },
 } as const;
 
 export type KBType = typeof KB;
+export const KB_SEARCH_TERMS = [
+  "design",
+  "construction",
+  "consultancy",
+  "cost calculator",
+  "material prices",
+  "zone map",
+  "boq",
+  "diaspora",
+  "project management",
+  "feasibility",
+  "site supervision",
+  "NCA",
+  "NEMA",
+  "county approval",
+  "project lifecycle",
+] as const;

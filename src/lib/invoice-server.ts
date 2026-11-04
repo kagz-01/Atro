@@ -7,7 +7,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { COMPANY } from "@/lib/site";
 import {
@@ -327,6 +327,7 @@ export const listProjectDocuments = createServerFn({ method: "GET" })
 
 export const issueStatement = createServerFn({ method: "POST" })
   .validator(z.object({ projectId: z.string().min(1) }))
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("@/lib/staff-session.server");
     const staff = await requireAdmin("issue-statement");
@@ -339,6 +340,7 @@ export const issueStatement = createServerFn({ method: "POST" })
 /** A void never edits history — the document stays, marked, and a new one is issued. */
 export const voidDocument = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().min(1), reason: z.string().trim().min(3).max(200) }))
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("@/lib/staff-session.server");
     const staff = await requireAdmin("void-document");

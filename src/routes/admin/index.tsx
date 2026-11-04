@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -39,10 +39,12 @@ import { SelectionsPanel } from "@/components/admin/selections-panel";
 import { ApprovalsPanel } from "@/components/admin/approvals-panel";
 import { EvidenceUploader } from "@/components/admin/evidence-uploader";
 import { StudioMessagesPanel } from "@/components/admin/messages-panel";
+import { CommunicationsInbox } from "@/components/admin/communications-inbox";
+import { needsStudioReply } from "@/lib/messages";
 import { AfterHandoverPanel } from "@/components/admin/after-handover-panel";
 import { VariationsPanel } from "@/components/admin/variations-panel";
 import { PresencePanel } from "@/components/admin/presence-panel";
-import { readMessagesForStaff } from "@/lib/messages-server";
+import { listStaffMessageThreads, readMessagesForStaff } from "@/lib/messages-server";
 import { listPresenceForStaff } from "@/lib/presence-server";
 import { isOpen } from "@/lib/presence";
 import { getOpsOverview, getStaffToday, type GroupRow, type StaffTodayOverview } from "@/lib/ops";
@@ -91,6 +93,8 @@ import {
   portfolioLifecycleLabel,
   PROJECT_LIFECYCLE_LABEL,
 } from "@/lib/project-lifecycle";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { resolveDashboardRoute } from "@/lib/dashboard-routing";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminConsole,
@@ -127,10 +131,10 @@ function StaffWall() {
         <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-maroon/10 text-maroon">
           <Lock className="size-6" />
         </span>
-        <h1 className="mt-6 font-display text-2xl text-maroon">Studio console</h1>
+        <h1 className="mt-6 font-display text-[1.75rem] leading-none text-maroon">Office dashboard</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          This area is for ATRO staff. Sign in with the account ATRO has listed, or ask the studio
-          to add your address.
+          This is the ATRO office view. Sign in with the account ATRO has listed, or ask the team to
+          add your address.
         </p>
         <Button asChild className="mt-6 w-full">
           <Link to="/login">Sign in</Link>
@@ -139,7 +143,7 @@ function StaffWall() {
           to="/portal"
           className="mt-4 inline-block text-[13px] text-burgundy underline decoration-gold decoration-2 underline-offset-4"
         >
-          Client portal instead
+          Project portal instead
         </Link>
       </div>
     </main>
@@ -436,6 +440,7 @@ function ProjectDetail({
   isAdmin,
   onBack,
   onChanged,
+  onOpenMessages,
 }: {
   projectId: string;
   /** From the list row that opened this project — the profile's own flag. */
@@ -449,6 +454,7 @@ function ProjectDetail({
   isAdmin: boolean;
   onBack: () => void;
   onChanged: () => void;
+  onOpenMessages: () => void;
 }) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["staff-project", projectId],
@@ -649,7 +655,7 @@ function ProjectDetail({
                 <ArrowLeft className="size-4" />
                 All projects
               </Button>
-              <h2 className="mt-3 font-display text-2xl text-maroon">{p.title}</h2>
+              <h2 className="mt-3 font-display text-[1.6rem] leading-none text-maroon">{p.title}</h2>
               <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
                 <span className="font-mono">{p.reference}</span>
                 <span>{p.clientLabel}</span>
@@ -669,9 +675,17 @@ function ProjectDetail({
                 ) : null}
               </p>
             </div>
-            <div className="text-right">
-              <p className="font-display text-3xl text-maroon">{p.progress}%</p>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
+            <div className="flex flex-wrap items-center justify-end gap-4">
+              {!p.isSample ? (
+                <Button size="sm" variant="outline" onClick={onOpenMessages}>
+                  <MessageSquare className="size-4" />
+                  Open conversation
+                </Button>
+              ) : null}
+              <div className="text-right">
+                <p className="font-display text-[1.8rem] leading-none text-maroon">{p.progress}%</p>
+                <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
+              </div>
             </div>
           </div>
 
@@ -716,8 +730,8 @@ function ProjectDetail({
 
           <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
             <Panel
-              title="Needs attention"
-              subtitle="Open items from the project record—not a substitute for a site inspection."
+              title="Needs your attention"
+              subtitle="Open items from the project record — not a substitute for a site inspection."
             >
               {ownerActions.length === 0 ? (
                 <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
@@ -825,7 +839,7 @@ function ProjectDetail({
               <ArrowLeft className="size-4" />
               All projects
             </Button>
-            <h2 className="mt-3 font-display text-2xl text-maroon">{p.title}</h2>
+            <h2 className="mt-3 font-display text-[1.6rem] leading-none text-maroon">{p.title}</h2>
             <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
               <span className="font-mono">{p.reference}</span>
               <span>{p.clientLabel}</span>
@@ -846,7 +860,7 @@ function ProjectDetail({
             </p>
           </div>
           <div className="text-right">
-            <p className="font-display text-3xl text-maroon">{p.progress}%</p>
+            <p className="font-display text-[1.8rem] leading-none text-maroon">{p.progress}%</p>
             <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
           </div>
         </section>
@@ -1710,11 +1724,21 @@ function ProjectsTable({
   const pageProjects = sorted.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
   const firstVisible = sorted.length === 0 ? 0 : currentPage * pageSize + 1;
   const lastVisible = Math.min((currentPage + 1) * pageSize, sorted.length);
+  const activeAttention = visibleProjects.filter((project) => project.blockedStages > 0 || project.openDecisions > 0).length;
+  const portfolioRisk = visibleProjects.reduce(
+    (sum, project) => sum + project.blockedStages + project.openDecisions,
+    0,
+  );
+  const pendingRelease = visibleProjects.reduce(
+    (sum, project) => sum + project.currentlyCertified,
+    0,
+  );
+  const offTrack = visibleProjects.filter((project) => !project.onTrack).length;
 
   return (
     <Panel
-      title="Project portfolio"
-      subtitle="Build complete means every tracked milestone is complete. Closed and archived projects have separate views. Follow-up stays admin-owned; no per-project coordinator is assigned."
+      title="Live jobs"
+      subtitle="A project is live until it is complete, closed or archived. Follow-up stays with the studio so the next action is always clear."
       className="min-w-0"
       bodyClassName="p-0"
     >
@@ -1750,7 +1774,7 @@ function ProjectsTable({
       ) : projects.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-12 text-center">
           <FolderKanban className="size-8 text-ink/25" aria-hidden />
-          <h3 className="mt-4 font-display text-xl text-maroon">
+          <h3 className="mt-4 font-display text-[1.35rem] leading-none text-maroon">
             {query ? "No projects match your search" : "Your live portfolio is clear"}
           </h3>
           <p className="mt-2 max-w-md text-[13px] leading-relaxed text-ink/55">
@@ -1790,6 +1814,42 @@ function ProjectsTable({
               ) : null}
             </div>
           ) : null}
+          <div className="grid gap-3 border-b border-ink/8 bg-cream/40 px-5 py-4 md:grid-cols-4">
+            <div className="rounded-2xl border border-ink/10 bg-white p-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">In view</p>
+              <p className="mt-2 font-display text-[1.5rem] leading-none text-maroon">
+                {visibleProjects.length}
+              </p>
+              <p className="mt-1 text-[11px] text-ink/55">projects in this portfolio slice</p>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-900">
+                Needs follow-up
+              </p>
+              <p className="mt-2 font-display text-[1.5rem] leading-none text-amber-900">
+                {activeAttention}
+              </p>
+              <p className="mt-1 text-[11px] text-amber-800">
+                {portfolioRisk} open actions across the current view
+              </p>
+            </div>
+            <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-900">
+                Certified waiting
+              </p>
+              <p className="mt-2 font-display text-[1.4rem] leading-none text-sky-900">
+                {kesShort(pendingRelease)}
+              </p>
+              <p className="mt-1 text-[11px] text-sky-800">not yet released to clients</p>
+            </div>
+            <div className="rounded-2xl border border-ink/10 bg-white p-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                Off track
+              </p>
+              <p className="mt-2 font-display text-[1.5rem] leading-none text-maroon">{offTrack}</p>
+              <p className="mt-1 text-[11px] text-ink/55">projects needing programme review</p>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/8 px-5 py-3">
             <div className="flex flex-wrap gap-2" aria-label="Filter project portfolio">
               {views.map((view) => (
@@ -1822,7 +1882,7 @@ function ProjectsTable({
                 }}
                 className="h-9 rounded-lg border border-ink/10 bg-white px-2.5 text-[12px] text-maroon outline-none focus:border-gold"
               >
-                <option value="attention">Needs attention</option>
+                <option value="attention">Needs follow-up</option>
                 <option value="newest">Newest</option>
                 <option value="largest">Largest contract</option>
               </select>
@@ -2077,8 +2137,8 @@ function StaffProjectsDirectory({
 
   return (
     <Panel
-      title="Project directory"
-      subtitle="Find a project by client or reference, then open its record to coordinate the next step."
+      title="Project register"
+      subtitle="Search by client, reference or stage and open the job record to see the next step."
       className="min-w-0"
       bodyClassName="p-0"
     >
@@ -2321,9 +2381,49 @@ function StaffToday({
   const attentionItems = (today?.attention ?? []).filter((item) =>
     liveProjectIds.has(item.projectId),
   );
+  const flaggedProjects = liveProjects.filter(
+    (project) => project.blockedStages > 0 || project.openDecisions > 0 || !project.onTrack,
+  ).length;
+  const healthyProjects = liveProjects.filter(
+    (project) => project.blockedStages === 0 && project.openDecisions === 0 && project.onTrack,
+  ).length;
 
   return (
     <div className="space-y-5">
+      <Panel
+        title="Office overview"
+        subtitle="The office needs a quick view of risk, follow-up and delivery health before a decision is made."
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-900">
+              Need attention
+            </p>
+            <p className="mt-2 font-display text-[1.8rem] leading-none text-amber-900">
+              {flaggedProjects}
+            </p>
+            <p className="mt-1 text-[11px] text-amber-800">projects with blocked work or open decisions</p>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-900">
+              Running clean
+            </p>
+            <p className="mt-2 font-display text-[1.8rem] leading-none text-emerald-900">
+              {healthyProjects}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-800">projects without active blockers</p>
+          </div>
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-900">
+              Follow-up today
+            </p>
+            <p className="mt-2 font-display text-[1.8rem] leading-none text-sky-900">
+              {attentionItems.length}
+            </p>
+            <p className="mt-1 text-[11px] text-sky-800">items waiting for review in the studio queue</p>
+          </div>
+        </div>
+      </Panel>
       {projectsError ? (
         <div
           role="alert"
@@ -2331,8 +2431,8 @@ function StaffToday({
         >
           <p>
             {projectsError instanceof Error
-              ? `Could not load the project directory: ${projectsError.message}`
-              : "Could not load the project directory."}
+              ? `Could not load the project register: ${projectsError.message}`
+              : "Could not load the project register."}
           </p>
           <Button className="mt-3" size="sm" variant="outline" onClick={onRetryProjects}>
             Try again
@@ -2343,7 +2443,7 @@ function StaffToday({
         <button
           type="button"
           onClick={onGoProjects}
-          aria-label="Open the project directory"
+          aria-label="Open the project register"
           className="block w-full rounded-2xl text-left transition-shadow hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
         >
           <StatCard
@@ -2410,8 +2510,8 @@ function StaffToday({
 
       <div className="grid min-w-0 gap-5 xl:grid-cols-[1.2fr_1fr]">
         <Panel
-          title="Studio follow-up"
-          subtitle="Items needing a human response, sorted by how long they have waited."
+          title="Follow-up list"
+          subtitle="Things waiting for a human response, sorted by how long they have been open."
           actions={
             <Button size="sm" variant="ghost" onClick={onGoProjects}>
               All projects <ArrowRight className="size-3.5" />
@@ -2439,7 +2539,7 @@ function StaffToday({
           ) : projectsError && projects.length === 0 ? (
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-[13px] leading-relaxed text-amber-900">
               Project records could not be loaded, so this queue cannot verify which follow-ups are
-              for live projects. Retry the project directory above.
+              for live projects. Retry the project register above.
             </p>
           ) : attentionItems.length === 0 ? (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-5 text-center">
@@ -2518,8 +2618,8 @@ function StaffToday({
           </Panel>
 
           <Panel
-            title="Project directory"
-            subtitle="Find a project and review its current record."
+            title="Project register"
+            subtitle="See the project record and check what needs to happen next."
             actions={
               <Button size="sm" variant="outline" onClick={onGoProjects}>
                 Browse projects <ArrowRight className="size-3.5" />
@@ -2536,7 +2636,7 @@ function StaffToday({
 
       <section aria-labelledby="my-work-heading">
         <div className="mb-3">
-          <h2 id="my-work-heading" className="font-display text-xl text-maroon">
+          <h2 id="my-work-heading" className="font-display text-[1.35rem] leading-none text-maroon">
             My work
           </h2>
           <p className="mt-1 text-[12px] text-muted">
@@ -2631,6 +2731,13 @@ function Overview({
       project.lifecycleState !== "closed" &&
       project.lifecycleState !== "archived",
   ).length;
+  const inFocusCount = projects.filter(
+    (project) =>
+      project.source !== "sample" &&
+      project.lifecycleState !== "closed" &&
+      project.lifecycleState !== "archived" &&
+      (project.blockedStages > 0 || project.openDecisions > 0 || !project.onTrack),
+  ).length;
 
   return (
     <div className="space-y-5">
@@ -2650,6 +2757,41 @@ function Overview({
           </p>
         </Panel>
       ) : null}
+
+      <Panel
+        title="Owner dashboard"
+        subtitle="The owner needs to see the live jobs, open decisions and money movement without digging through the details."
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-ink/10 bg-cream/60 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Live projects</p>
+            <p className="mt-2 font-display text-[1.9rem] leading-none text-maroon">
+              {liveProjectCount}
+            </p>
+            <p className="mt-1 text-[11px] text-ink/55">active sites currently in the portfolio</p>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-900">
+              In focus
+            </p>
+            <p className="mt-2 font-display text-[1.9rem] leading-none text-amber-900">
+              {inFocusCount}
+            </p>
+            <p className="mt-1 text-[11px] text-amber-800">need a decision, review, or unblock</p>
+          </div>
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-900">
+              Cash to release
+            </p>
+            <p className="mt-2 font-display text-[1.9rem] leading-none text-sky-900">
+              {kesShort(money.certifiedUnreleased)}
+            </p>
+            <p className="mt-1 text-[11px] text-sky-800">
+              {kes(money.certifiedUnreleased)} certified but waiting to move
+            </p>
+          </div>
+        </div>
+      </Panel>
 
       {/* headline numbers */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -3058,7 +3200,7 @@ function RequestAccessCard() {
         <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-maroon/10 text-maroon">
           <Lock className="size-6" />
         </span>
-        <h1 className="mt-6 font-display text-2xl text-maroon">Request studio access</h1>
+        <h1 className="mt-6 font-display text-[1.75rem] leading-none text-maroon">Request studio access</h1>
         <p className="mt-3 text-[14px] leading-relaxed text-ink/65">
           You are signed in as <strong>{me?.email || "this account"}</strong>, which is not on the
           studio access list. Ask below and an existing admin approves it — usually the same day.
@@ -3484,13 +3626,24 @@ const TABS = [
     body: "Calls, site visits, and walkthroughs",
   },
   {
+    id: "communications",
+    label: "Communications",
+    title: "Communications",
+    body: "Project conversations with clients",
+  },
+  {
     id: "projects",
     label: "Projects",
     title: "Projects",
     body: "Everything the studio is running",
   },
   { id: "enquiries", label: "Enquiries", title: "Enquiries", body: "People who asked us to build" },
-  { id: "profile", label: "My profile", title: "My profile", body: "Your studio identity and work context" },
+  {
+    id: "profile",
+    label: "My profile",
+    title: "My profile",
+    body: "Your studio identity and work context",
+  },
   { id: "access", label: "Access", title: "Access", body: "Who can open the console" },
 ] as const;
 
@@ -3505,11 +3658,27 @@ const NO_ROLE: RoleState = { role: null, userId: null, email: null, invite: null
 
 function AdminConsole() {
   const hydrated = useIsHydrated();
+  const user = useCurrentUser();
+  const { data: access } = useQuery({
+    queryKey: ["my-access"],
+    queryFn: () => getMyAccess({ data: undefined }),
+    enabled: Boolean(user),
+  });
+  const dashboardRoute = resolveDashboardRoute({
+    user,
+    accessRole: access?.role ?? null,
+  });
   const [roleState, setRoleState] = useState<RoleState | null>(null);
+  if (user && access && dashboardRoute === "/portal") {
+    return <Navigate to="/portal" replace />;
+  }
   // Bumped after an invitation is accepted, which re-runs the role fetch —
   // the accept card's whole job is to make that fetch return staff.
   const [roleNonce, setRoleNonce] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
+  const [selectedCommunicationProjectId, setSelectedCommunicationProjectId] = useState<
+    string | null
+  >(null);
   const [filter, setFilter] = useState<"all" | "local" | "diaspora" | "attention" | "sample">(
     "all",
   );
@@ -3532,7 +3701,8 @@ function AdminConsole() {
     roleState?.role === "staff" ||
     roleState?.role === "office_manager" ||
     roleState?.role === "admin";
-  const isAdmin = roleState?.role === "admin";
+  const isOwner = roleState?.role === "admin";
+  const isAdmin = isOwner;
   const canViewCalendar = isStaff;
   const { data: myStaffProfile } = useQuery({
     queryKey: ["my-staff-profile"],
@@ -3552,6 +3722,19 @@ function AdminConsole() {
     queryKey: ["staff-projects"],
     queryFn: () => listStaffProjects({ data: undefined }),
     enabled: isStaff,
+  });
+
+  const {
+    data: messageThreads,
+    isLoading: messageThreadsLoading,
+    error: messageThreadsError,
+    refetch: refetchMessageThreads,
+  } = useQuery({
+    queryKey: ["staff-message-threads"],
+    queryFn: () => listStaffMessageThreads(),
+    enabled: isStaff,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: overview } = useQuery({
@@ -3639,49 +3822,48 @@ function AdminConsole() {
     setSelected(id);
     setTab("projects");
   };
+  const openCommunication = (id: string) => {
+    setSelectedCommunicationProjectId(id);
+    setSelected(null);
+    setTab("communications");
+  };
+
+  const shellGroups = isOwner
+    ? [
+        {
+          title: "Executive view",
+          items: [
+            { id: "work", label: "Owner priorities", icon: ClipboardList },
+            { id: "overview", label: "Portfolio", icon: LayoutDashboard },
+            { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
+            { id: "enquiries", label: "New leads", icon: Inbox, badge: overview?.funnel.enquiriesNew || undefined },
+          ],
+        },
+        {
+          title: "Controls",
+          items: [
+            { id: "communications", label: "Client updates", icon: MessageSquare, badge: messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole)).length || undefined },
+            { id: "access", label: "Access", icon: Users },
+          ],
+        },
+      ]
+    : [
+        {
+          title: "Operations",
+          items: [
+            { id: "overview", label: "Today", icon: LayoutDashboard },
+            { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
+            ...(canViewCalendar ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }] : []),
+            { id: "communications", label: "Client updates", icon: MessageSquare, badge: messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole)).length || undefined },
+            { id: "profile", label: "My profile", icon: UserRound },
+            { id: "enquiries", label: "New leads", icon: Inbox, badge: staffToday?.newEnquiries || undefined },
+          ],
+        },
+      ];
 
   return (
     <DashboardShell
-      groups={[
-        {
-          title: "Studio",
-          items: [
-            ...(isAdmin ? [{ id: "work", label: "My work", icon: ClipboardList }] : []),
-            {
-              id: "overview",
-              label: isAdmin ? "Portfolio" : "Today",
-              icon: LayoutDashboard,
-            },
-            {
-              id: "projects",
-              label: "Projects",
-              icon: FolderKanban,
-              badge: all.length || undefined,
-            },
-            ...(canViewCalendar
-              ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }]
-              : []),
-            ...(isStaff ? [{ id: "profile", label: "My profile", icon: UserRound }] : []),
-            {
-              id: "enquiries",
-              label: "Enquiries",
-              icon: Inbox,
-              badge:
-                (isAdmin ? overview?.funnel.enquiriesNew : staffToday?.newEnquiries) || undefined,
-            },
-          ],
-        },
-        // Seats decide what you see before you decide anything: Access is the
-        // owner's lever, so staff never meet it.
-        ...(isAdmin
-          ? [
-              {
-                title: "Administration",
-                items: [{ id: "access", label: "Access", icon: Users }],
-              },
-            ]
-          : []),
-      ]}
+      groups={shellGroups}
       active={view}
       onSelect={(id) => {
         setTab(id as (typeof TABS)[number]["id"]);
@@ -3706,13 +3888,17 @@ function AdminConsole() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="font-display text-lg leading-tight text-maroon">
-              {view === "overview" ? (isAdmin ? "Owner portfolio" : "Today") : activeTab.title}
+              {view === "overview"
+                ? isOwner
+                  ? "Owner dashboard"
+                  : "Office dashboard"
+                : activeTab.title}
             </h1>
             <p className="text-[12px] text-muted">
-              {view === "overview" && isAdmin
-                ? "Business health, active delivery, and completed builds"
+              {view === "overview" && isOwner
+                ? "Project performance, money, approvals and the actions that matter most"
                 : view === "overview"
-                  ? "Studio follow-up, new enquiries, and the work you own"
+                  ? "Today’s delivery flow, client updates and the work the team is closing"
                   : activeTab.body}
             </p>
           </div>
@@ -3724,7 +3910,7 @@ function AdminConsole() {
                   ["all", "All"],
                   ["local", "At home"],
                   ["diaspora", "From abroad"],
-                  ["attention", "Needs attention"],
+                  ["attention", "Needs follow-up"],
                   ["sample", "Sample"],
                 ] as const
               ).map(([id, label]) => (
@@ -3766,6 +3952,18 @@ function AdminConsole() {
         <CoordinationCalendar
           canSchedule={canScheduleProjectCalls(roleState?.role ?? null)}
           onOpenProject={openProject}
+        />
+      ) : null}
+
+      {view === "communications" && isStaff ? (
+        <CommunicationsInbox
+          threads={messageThreads ?? []}
+          isLoading={messageThreadsLoading}
+          error={messageThreadsError instanceof Error ? messageThreadsError : null}
+          selectedProjectId={selectedCommunicationProjectId}
+          onSelectProject={setSelectedCommunicationProjectId}
+          onBack={() => setSelectedCommunicationProjectId(null)}
+          onRetry={() => void refetchMessageThreads()}
         />
       ) : null}
 
@@ -3833,6 +4031,7 @@ function AdminConsole() {
           isAdmin={isAdmin}
           onBack={() => setSelected(null)}
           onChanged={() => void refetch()}
+          onOpenMessages={() => openCommunication(selected)}
         />
       ) : view === "projects" && projectsError ? (
         <div
@@ -3844,7 +4043,7 @@ function AdminConsole() {
           <p className="mx-auto mt-2 max-w-lg text-[13px] leading-relaxed text-red-800">
             {projectsError instanceof Error
               ? projectsError.message
-              : "The project directory is unavailable right now."}
+              : "The project register is unavailable right now."}
           </p>
           <Button
             className="mt-4"
@@ -3874,7 +4073,7 @@ function AdminConsole() {
             {q
               ? `No project, client or reference contains “${search.trim()}”.`
               : filter !== "all"
-                ? `No projects currently match the ${filter === "local" ? "At home" : filter === "diaspora" ? "From abroad" : filter === "attention" ? "Needs attention" : "Sample"} filter. Try All to review the full register.`
+                ? `No projects currently match the ${filter === "local" ? "At home" : filter === "diaspora" ? "From abroad" : filter === "attention" ? "Needs follow-up" : "Sample"} filter. Try All to review the full register.`
                 : "New projects appear here when a client opens their portal or the studio creates a project from an enquiry."}
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">

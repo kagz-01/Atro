@@ -11,7 +11,7 @@ export const Route = createFileRoute("/tools/")({
       { title: `Tools | ${COMPANY.name}` },
       {
         name: "description",
-        content: "Interactive tools for construction planning — cost calculator, zone map, material prices and BOQ generator.",
+        content: "Construction planning tools: an indicative cost calculator, coverage search for all 47 Kenyan counties, dated material-price references and a preliminary BOQ worksheet.",
       },
     ],
   }),
@@ -21,68 +21,83 @@ const TOOLS = [
   {
     icon: Calculator,
     title: "Cost Calculator",
-    desc: "Get an instant indicative range for your project. Select type, zone, area and finish level — see where your money goes.",
+    desc: "Estimates a broad planning range for residential, commercial and institutional work based on live project inputs.",
+    longDesc: "Use this when you need to understand the shape of the budget before a site visit, briefing or design conversation.",
     link: "/tools/cost-calculator",
-    badge: "Popular",
+    badge: "Planning",
     badgeTone: "gold" as const,
-    stats: "5 steps · Instant result",
+    stats: "6 project types · 4 finish levels",
+    useCase: "Budget direction",
+    output: "Indicative cost range + rough timeline",
+    limit: "Not a quotation or measured estimate",
   },
   {
     icon: MapPin,
     title: "Zone Map",
-    desc: "Interactive coverage map. See where ATRO builds, availability, logistics and FAQs for each county.",
+    desc: "Checks where ATRO is actively delivering, where availability is limited, and where a conversation is still required.",
+    longDesc: "This is the location filter for the larger decision: can the project be supported in your county and what is the likely route to service?",
     link: "/tools/zone-map",
-    badge: "Updated",
+    badge: "Coverage",
     badgeTone: "maroon" as const,
-    stats: "8 zones · Real map",
+    stats: "47 counties · Enquiry first",
+    useCase: "Service fit",
+    output: "County-by-county delivery status",
+    limit: "Not a legal or boundary map",
   },
   {
     icon: TrendingUp,
     title: "Material Prices",
-    desc: "Current cement, steel, aggregates, timber, tiles and paint prices. Verified from KNBS data — Q1 2026.",
+    desc: "Brings together dated, indicative material ranges so you can sense-check the likely cost of the building package.",
+    longDesc: "Useful when you want to understand the cost pressure points and compare materials before a detailed estimate is prepared.",
     link: "/tools/material-prices",
-    badge: "New",
+    badge: "Reference",
     badgeTone: "maroon" as const,
-    stats: "35 materials · 10 categories",
+    stats: "10 categories · Dated records",
+    useCase: "Build package review",
+    output: "Material ranges and supplier context",
+    limit: "Not a live supplier quote or order sheet",
   },
   {
     icon: FileText,
-    title: "BOQ Generator",
-    desc: "Generate a preliminary Bill of Quantities from templates or scratch. SMM2-compliant, auto-totals, export.",
+    title: "BOQ Worksheet",
+    desc: "Creates a preliminary quantities worksheet for early planning, not a final tender or payment schedule.",
+    longDesc: "Use it to frame quantities, sections and budgets in a way that can be refined into a measured cost plan with a QS.",
     link: "/tools/boq-generator",
-    badge: "New",
+    badge: "Draft",
     badgeTone: "maroon" as const,
-    stats: "11 categories · 3 templates",
+    stats: "11 work sections · Editable templates",
+    useCase: "Quantity framing",
+    output: "Preliminary BOQ lines and totals",
+    limit: "Requires measurement review before commitment",
   },
 ];
 
 const TRUST = [
-  { icon: BarChart3, label: "Verified rates", desc: "KNBS CIPI Q4 2025" },
-  { icon: Clock, label: "Q1 2026 data", desc: "Last verified Jan 2026" },
-  { icon: Shield, label: "Indicative only", desc: "Not a quotation" },
+  { icon: BarChart3, label: "Early planning", desc: "Use ranges to frame questions" },
+  { icon: Clock, label: "Check the date", desc: "Reference prices are dated" },
+  { icon: Shield, label: "Human review", desc: "Call before any commitment" },
 ];
 
 function ToolsIndex() {
   return (
-    <main className="pt-32 pb-24">
+    <main className="pt-24 pb-16 md:pt-32 md:pb-24">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         {/* Hero */}
-        <div className="max-w-3xl mb-16">
-          <Badge tone="maroon" className="mb-4">Tools</Badge>
-          <h1 className="font-display text-4xl md:text-5xl text-maroon">
+        <div className="mb-8 max-w-3xl md:mb-16">
+          <Badge tone="maroon" className="mb-3 md:mb-4">Tools</Badge>
+          <h1 className="font-display text-[2.5rem] md:text-[3.3rem] leading-[0.92] tracking-[-0.05em] text-maroon">
             Plan smarter. Build better.
           </h1>
-          <p className="mt-5 text-ink/70 text-lg max-w-xl">
-            Interactive tools to help you understand costs, coverage and timelines before you commit.
-            All rates verified against Kenya market data.
+          <p className="mt-4 max-w-xl text-sm text-ink/70 sm:text-base md:mt-5 md:text-lg">
+            Use these tools to frame an early conversation about costs, location and scope. They do not confirm project acceptance, live prices or a tender-ready budget.
           </p>
 
           {/* Trust strip */}
-          <div className="mt-8 flex flex-wrap gap-6">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-6 md:mt-8">
             {TRUST.map((t) => (
-              <div key={t.label} className="flex items-center gap-2.5">
-                <div className="size-9 rounded-xl bg-maroon/10 flex items-center justify-center text-maroon">
-                  <t.icon className="size-4" />
+              <div key={t.label} className="flex min-w-0 items-center gap-2">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-maroon/10 text-maroon sm:size-9">
+                  <t.icon className="size-3.5 sm:size-4" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-maroon">{t.label}</p>
@@ -93,36 +108,75 @@ function ToolsIndex() {
           </div>
         </div>
 
+        <div className="mb-6 rounded-2xl border border-[#d7c7a8] bg-[#f8f1e5] p-4 sm:mb-10 sm:rounded-[1.8rem] sm:p-6 md:p-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">Materials support</p>
+              <h2 className="mt-2 font-display text-xl leading-tight text-maroon sm:text-2xl md:text-[2.5rem]">
+                Need product comparison or sourcing help?
+              </h2>
+              <p className="mt-2 text-xs leading-relaxed text-ink/70 sm:text-sm md:mt-3 md:text-base">
+                MyHardware is a complementary materials platform for clients who want a simpler route to product comparison, suppliers and build-package checks alongside ATRO project planning.
+              </p>
+            </div>
+            <a
+              href="https://myhardware.co.ke"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-maroon px-3 py-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-paper transition-colors hover:bg-[#5b1c26] sm:gap-2 sm:px-5 sm:text-[11px] sm:tracking-[0.14em]"
+            >
+              Open MyHardware
+              <ArrowRight className="size-4" />
+            </a>
+          </div>
+        </div>
+
         {/* Tool cards — 2x2 grid */}
-        <div className="grid sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5">
           {TOOLS.map((tool) => (
             <Link
               key={tool.title}
               to={tool.link}
-              className="group relative p-7 border border-line/50 bg-cream rounded-2xl hover:border-burgundy/30 hover:shadow-card-hover card-lift transition-all duration-300 overflow-hidden"
+              className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line/60 bg-cream p-3 transition-all duration-300 hover:border-burgundy/35 hover:shadow-card-hover sm:rounded-[1.8rem] sm:p-5 lg:p-7"
             >
-              {/* Subtle gradient on hover */}
-              <div className="absolute inset-0 bg-gradient-to-br from-maroon/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-br from-maroon/5 via-transparent to-gold/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-              <div className="relative">
-                <div className="flex items-start justify-between mb-5">
-                  <div className="size-12 rounded-2xl bg-maroon/10 flex items-center justify-center text-maroon group-hover:bg-maroon/15 transition-colors">
-                    <tool.icon className="size-5" />
+              <div className="relative flex h-full flex-col">
+                <div className="mb-3 flex items-start justify-between gap-2 sm:mb-5 sm:gap-4">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-maroon/10 text-maroon transition-colors group-hover:bg-maroon/15 sm:size-12 sm:rounded-2xl">
+                    <tool.icon className="size-4 sm:size-5" />
                   </div>
-                  <Badge tone={tool.badgeTone}>{tool.badge}</Badge>
+                  <Badge tone={tool.badgeTone} className="px-2 py-1 text-[8px] sm:text-[10px]">{tool.badge}</Badge>
                 </div>
 
-                <h2 className="font-display text-xl text-maroon group-hover:text-burgundy transition-colors">
-                  {tool.title}
-                </h2>
-                <p className="mt-2 text-sm text-ink/60 leading-relaxed">{tool.desc}</p>
+                <div className="mb-2 flex items-center justify-between gap-2 sm:mb-4 sm:gap-4">
+                  <h2 className="font-display text-sm leading-tight text-maroon sm:text-2xl sm:leading-none">{tool.title}</h2>
+                </div>
 
-                <div className="mt-5 flex items-center justify-between">
-                  <span className="text-[10px] text-muted">{tool.stats}</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] text-burgundy group-hover:text-maroon transition-colors">
-                    Open tool
-                    <ArrowRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </span>
+                <p className="line-clamp-3 text-[10px] leading-snug text-ink/70 sm:text-sm sm:leading-relaxed">{tool.desc}</p>
+
+                <div className="mt-3 rounded-xl border border-line/50 bg-paper/60 p-2 sm:mt-5 sm:rounded-2xl sm:p-3">
+                  <p className="text-[8px] font-medium uppercase tracking-[0.12em] text-muted sm:text-[9px] sm:tracking-[0.16em]">Best used for</p>
+                  <p className="mt-1 text-[10px] font-medium leading-tight text-maroon sm:mt-2 sm:text-sm">{tool.useCase}</p>
+                </div>
+
+                <div className="mt-3 space-y-1 text-[9px] leading-snug text-ink/60 sm:mt-5 sm:space-y-2 sm:text-sm">
+                  <p className="hidden sm:block">
+                    <span className="font-medium text-ink">Output:</span> {tool.output}
+                  </p>
+                  <p className="line-clamp-2">
+                    <span className="font-medium text-ink">Limit:</span> {tool.limit}
+                  </p>
+                </div>
+
+                <div className="mt-auto pt-3 sm:pt-5">
+                  <div className="flex items-center justify-between gap-2 border-t border-line/40 pt-3 sm:gap-4 sm:pt-4">
+                    <span className="hidden text-[10px] uppercase leading-tight tracking-[0.16em] text-muted sm:block">{tool.stats}</span>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-[8px] uppercase tracking-[0.08em] text-burgundy sm:text-[11px] sm:tracking-[0.14em]">
+                      Open tool
+                      <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </div>
                 </div>
               </div>
             </Link>
@@ -130,15 +184,15 @@ function ToolsIndex() {
         </div>
 
         {/* CTA */}
-        <div className="mt-16 p-8 md:p-12 bg-maroon text-paper rounded-2xl">
+        <div className="mt-8 rounded-2xl bg-maroon p-4 text-paper sm:mt-16 sm:p-8 md:p-12">
           <div className="max-w-xl">
-            <h2 className="font-display text-3xl text-paper">Need a real quote?</h2>
-            <p className="mt-3 text-paper/70">
-              These tools give indicative ranges. For a proper BOQ and a number you can build to, talk to a person.
+            <h2 className="font-display text-xl text-paper sm:text-3xl">Ready to discuss a project?</h2>
+            <p className="mt-2 text-sm text-paper/70 sm:mt-3">
+              Send an enquiry and ATRO will contact you to discuss the site, capacity and next steps. A project does not start from a tool result.
             </p>
             <Button asChild variant="gold" className="mt-6">
               <Link to="/start">
-                Start a project
+                Request a call
                 <ArrowRight className="size-4 ml-2" />
               </Link>
             </Button>

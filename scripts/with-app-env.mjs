@@ -20,7 +20,7 @@
  * `process.env`, which is why the merge has to happen before Vite starts.
  */
 import { spawn } from "node:child_process";
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { constants as osConstants } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,6 +58,12 @@ export function readAppEnv(root) {
   } catch {
     return {};
   }
+}
+
+/** Load the local secrets/config file into this process before spawning Vite. */
+export function loadProjectEnv(root) {
+  const envFile = join(root, ".env");
+  if (existsSync(envFile)) process.loadEnvFile(envFile);
 }
 
 /** File values under the process environment: an explicit override wins. */
@@ -110,7 +116,9 @@ function main(argv) {
     console.error("usage: node scripts/with-app-env.mjs <command> [args…]");
     process.exit(2);
   }
-  const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
+  const root = projectRoot();
+  loadProjectEnv(root);
+  const env = mergeAppEnv(readAppEnv(root), process.env);
   const runViteWithNode = process.platform === "win32" && command === "vite";
   const child = spawn(
     runViteWithNode ? process.execPath : command,

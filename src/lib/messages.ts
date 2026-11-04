@@ -16,6 +16,13 @@
 export const ROLES = ["client", "studio"] as const;
 export type MessageRole = (typeof ROLES)[number];
 
+export type MessageAttachment = {
+  id: string;
+  filename: string;
+  mime: string;
+  sizeBytes: number;
+};
+
 export type Message = {
   id: string;
   projectId: string;
@@ -29,6 +36,9 @@ export type Message = {
   createdAt: string;
   /** When the other side opened it. Null means still unread. */
   readAt: string | null;
+  /** Deleted messages remain as an auditable tombstone. */
+  deletedAt: string | null;
+  attachments: MessageAttachment[];
 };
 
 export const MESSAGE_MIN = 2;
@@ -46,7 +56,10 @@ export const MESSAGE_MAX = 2000;
 export function validateMessage(
   body: string,
 ): { ok: true; body: string } | { ok: false; reason: string } {
-  const trimmed = body.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  const trimmed = body
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   if (trimmed.length < MESSAGE_MIN) {
     return { ok: false, reason: "Write a message first." };
   }
@@ -68,7 +81,12 @@ export function authorLabel(message: Pick<Message, "authorRole" | "authorLabel">
 
 /** Messages the given role has not opened yet — that is, written by the other side. */
 export function unreadFor(messages: Message[], role: MessageRole): number {
-  return messages.filter((m) => m.authorRole !== role && m.readAt === null).length;
+  return messages.filter((m) => !m.deletedAt && m.authorRole !== role && m.readAt === null).length;
+}
+
+/** A client is waiting for a reply until the latest message is from the studio. */
+export function needsStudioReply(latestAuthorRole: MessageRole | null | undefined): boolean {
+  return latestAuthorRole === "client";
 }
 
 export type ThreadSummary = {

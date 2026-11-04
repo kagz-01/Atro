@@ -1,13 +1,32 @@
+export const VOICE_GUIDE = {
+  preferred: [
+    "clear",
+    "practical",
+    "straightforward",
+    "project record",
+    "next steps",
+    "what is happening",
+    "what needs your decision",
+  ],
+  avoid: [
+    "portfolio",
+    "directory",
+    "brochure language",
+    "generic updates",
+    "confusing progress",
+  ],
+} as const;
+
 export const COMPANY = {
   name: "ATRO Design & Construction",
   short: "ATRO",
-  tagline: "Designing & Building Better Structures",
-  lede: "Integrated design, construction and consultancy for residential, commercial and institutional projects.",
+  tagline: "Clear design. Practical building. Trust you can follow.",
+  lede: "Design, planning, construction and project support for homes, offices and institutions across Kenya.",
   support:
-    "From concept to construction, ATRO brings design thinking, technical expertise and practical project delivery together.",
+    "From the first idea to the final handover, we keep the process clear, practical and easier to trust.",
   /** The studio's own words for what it does — used where a summary is needed. */
   description:
-    "ATRO Construction & Design delivers innovative, high-quality and cost-effective building solutions for residential, commercial and institutional projects. From concept to completion we combine expert design, precision and quality craftsmanship — reliable service, transparent communication, timely delivery, and spaces built to last.",
+    "ATRO Design & Construction delivers practical design and building solutions for homes, offices and institutions across Kenya. We combine clear planning, cost-conscious decisions and reliable delivery so each project stays understandable from first concept to final handover.",
   email: "hello@atro.ke",
   phoneDisplay: "+254 799 034 712",
   phoneTel: "+254799034712",
@@ -50,7 +69,12 @@ export type ProjectType =
   | "School"
   | "Renovation";
 
-export type ProjectStatus = "Completed" | "Ongoing" | "Proposed";
+export type ProjectStatus =
+  | "Completed"
+  | "Ongoing"
+  | "Proposed"
+  | "In design"
+  | "Illustrative";
 
 export type ZoneStatus = "active" | "limited" | "request" | "diaspora";
 
@@ -284,250 +308,394 @@ export type Project = {
   slug: string;
   name: string;
   location: string;
-  zone: string;
+  zone?: string;
   type: ProjectType;
   status: ProjectStatus;
-  year: string;
-  area: string;
-  duration: string;
+  year?: string;
+  area?: string;
+  duration?: string;
   scope: string;
   excerpt: string;
-  challenge: string;
-  role: string;
-  solution: string;
+  challenge?: string;
+  role?: string;
+  solution?: string;
+  description?: string;
+  keyFacts?: string[];
+  client?: string;
+  projectContact?: { name: string; role: string };
+  serviceSlugs?: string[];
   image: string;
-  gallery: { src: string; alt: string }[];
+  gallery: { src: string; alt: string; fit?: "cover" | "contain" }[];
   featured: boolean;
   timeline?: { date: string; title: string; caption: string; image: string }[];
 };
 
 export const PROJECTS: Project[] = [
   {
-    slug: "karen-courtyard-house",
-    name: "Karen Courtyard House",
-    location: "Karen, Nairobi",
-    zone: "nairobi",
+    slug: "sigona-villa",
+    name: "Sigona Villa",
+    location: "Sigona, Limuru",
+    zone: "kiambu",
     type: "Residential",
-    status: "Completed",
-    year: "2025",
-    area: "420 m²",
-    duration: "14 months",
-    scope: "Design, cost planning, construction",
+    status: "Ongoing",
+    year: "2026",
+    scope: "Architectural drawings, structural drawings, project management",
+    serviceSlugs: ["architectural-design", "structural-design", "project-management"],
     excerpt:
-      "A courtyard house organised around light, a mature garden and a quiet street edge.",
-    challenge:
-      "The existing trees and a long, narrow plot made a conventional front-and-back house clumsy. The client wanted privacy from the road without turning the garden into leftover space.",
-    role: "Full design-and-build. ATRO held concept, quantities and construction as one sequence.",
-    solution:
-      "A single-storey courtyard plan with a stone and plaster outer wall, timber screens to the west, and rooms that look inward to a planted court. Structure and finishes were locked against a BOQ before breaking ground.",
-    image: "/images/karen.webp",
+      "A contemporary five-bedroom villa with a family room, rooftop terrace and landscaped, walled compound.",
+    description:
+      "A contemporary five-bedroom villa with an additional family room, designed and managed by ATro from drawings through to site. White rendered volumes meet dark-framed glazing, stone-clad accents and glass balustrades, and the house is crowned by a rooftop terrace. The villa sits within a walled compound with paved parking and landscaped grounds, creating a private and secure family home.",
+    keyFacts: [
+      "Five bedrooms plus a family room",
+      "Rooftop terrace",
+      "Walled compound with paved parking and landscaping",
+      "Foundation stage documented on site, 23 September 2026",
+    ],
+    projectContact: {
+      name: "Samuel Nderitu",
+      role: "Architectural and Structural Designer",
+    },
+    image: "/catalog/images/sigona-villa-front-view.webp",
     gallery: [
-      { src: "/images/karen.webp", alt: "Garden elevation of the Karen courtyard house" },
-      { src: "/images/interior.webp", alt: "Living room opening to the garden" },
-      { src: "/images/detail.webp", alt: "Stone and concrete junction" },
-      { src: "/images/hero.webp", alt: "Evening view of the courtyard" },
+      { src: "/catalog/images/sigona-villa-front-view.webp", alt: "Architectural render of Sigona Villa, front view" },
+      { src: "/catalog/images/sigona-villa-night-aerial.webp", alt: "Architectural render of Sigona Villa at night, aerial view" },
+      { src: "/catalog/images/sigona-villa-rooftop-terrace.webp", alt: "Architectural render of the Sigona Villa rooftop terrace, aerial view" },
+      { src: "/catalog/images/sigona-villa-foundation-progress-01.webp", alt: "Sigona Villa foundation-stage site progress, 23 September 2026, view 1" },
+      { src: "/catalog/images/sigona-villa-foundation-progress-02.webp", alt: "Sigona Villa foundation-stage site progress, 23 September 2026, view 2" },
+      { src: "/catalog/images/sigona-villa-foundation-progress-03.webp", alt: "Sigona Villa foundation-stage site progress, 23 September 2026, view 3" },
+    ],
+    featured: true,
+  },
+  {
+    slug: "ruiru-mugutha-town-house",
+    name: "Ruiru Mugutha Town House",
+    location: "Ruiru Mugutha",
+    zone: "kiambu",
+    type: "Residential",
+    status: "In design",
+    year: "2026",
+    scope: "Architectural drawings, structural drawings",
+    serviceSlugs: ["architectural-design", "structural-design"],
+    excerpt:
+      "A two-storey town house with a stone-clad feature wall, generous glazing and a first-floor balcony.",
+    description:
+      "A modern two-storey town house in Ruiru Mugutha, designed by ATro with full architectural and structural drawings. A stone-clad feature wall anchors the facade against dark and white rendered volumes. Large glazed living areas fill the interiors with light, and a first-floor balcony with a glass balustrade adds private outdoor space. A paved forecourt and landscaped frontage complete the compact family plot.",
+    keyFacts: [
+      "Two-storey modern town house",
+      "Stone-clad feature wall",
+      "Large glazed living areas",
+      "First-floor balcony",
+      "Paved forecourt and landscaped frontage",
+    ],
+    projectContact: {
+      name: "Samuel Nderitu",
+      role: "Architectural and Structural Designer",
+    },
+    image: "/catalog/images/ruiru-mugutha-town-house-front.webp",
+    gallery: [
+      {
+        src: "/catalog/images/ruiru-mugutha-town-house-front.webp",
+        alt: "Architectural render of the Ruiru Mugutha town house, front view",
+      },
+    ],
+    featured: true,
+  },
+  {
+    slug: "kabete-seven-storey-apartment-block",
+    name: "Seven-Storey Apartment Block",
+    location: "Kabete, Plot 4715",
+    zone: "kiambu",
+    type: "Residential",
+    status: "In design",
+    year: "2026",
+    scope: "Architectural drawings, architectural renders",
+    serviceSlugs: ["architectural-design"],
+    excerpt:
+      "A 27-unit apartment block arranged around a ground-floor parking podium, central lift and glazed stair core.",
+    description:
+      "A seven-storey residential block of 27 units, made up of 26 two-bedroom apartments and one studio, set over a ground-floor parking podium. Floors one to six each carry four two-bedroom units with ensuite master bedrooms, while the seventh floor adds two all-ensuite two-bedroom units with laundry areas, a studio and two roof terraces. A central lift and glazed stair core organises the plan.",
+    keyFacts: [
+      "Seven storeys over a ground-floor parking podium",
+      "27 units: 26 two-bedroom apartments and one studio",
+      "28 ensuite bedrooms",
+      "Central lift and glazed stair core",
+      "Two roof terraces on the seventh floor",
+      "Typical floors 1–6: four two-bedroom units per floor, each with a master ensuite, second bedroom, common washroom, utility area, open-plan kitchen, dining and lounge, and private balcony",
+      "Seventh floor: two all-ensuite two-bedroom units with laundry areas, a studio with its own washroom, and two roof terraces with timber decking",
+      "Typical kitchen: taupe flat-panel cabinets, brushed steel handles, light stone-effect worktops, L-shaped layout, breakfast counter, gas hob and chimney hood",
+      "Typical living-area floors: polished beige porcelain tiles",
+      "Typical walls and ceilings: warm neutral paint, an ochre feature wall and recessed downlights",
+      "Typical glazing: full-height aluminium sliding doors from the lounge to the balcony, plus large dark-framed windows",
+    ],
+    client: "John and Jedidiah Kariuki",
+    projectContact: {
+      name: "Samuel Nderitu",
+      role: "Architectural and Structural Designer",
+    },
+    image: "/catalog/images/kabete-apartment-front.webp",
+    gallery: [
+      { src: "/catalog/images/kabete-apartment-front.webp", alt: "Architectural render of the Kabete apartment block, front elevation" },
+      { src: "/catalog/images/kabete-apartment-side.webp", alt: "Architectural render of the Kabete apartment block, side perspective" },
+      { src: "/catalog/images/kabete-apartment-rear.webp", alt: "Architectural render of the Kabete apartment block, rear perspective" },
+      { src: "/catalog/images/kabete-apartment-kitchen-dining.webp", alt: "Typical apartment interior render, open-plan kitchen and dining" },
+      { src: "/catalog/images/kabete-apartment-lounge-dining.webp", alt: "Typical apartment interior render, lounge and dining" },
+      { src: "/catalog/images/kabete-apartment-typical-floor-plan.webp", alt: "Typical floor plan for floors one to six, with four two-bedroom apartments", fit: "contain" },
+      { src: "/catalog/images/kabete-apartment-seventh-floor-plan.webp", alt: "Seventh-floor plan showing two apartments, a studio and two roof terraces", fit: "contain" },
+    ],
+    featured: true,
+  },
+  {
+    slug: "pcea-baraka-church",
+    name: "PCEA Baraka Church",
+    location: "Ruiru Mugutha",
+    zone: "kiambu",
+    type: "Church",
+    status: "Ongoing",
+    year: "2026",
+    scope: "Architectural drawings, architectural renders",
+    serviceSlugs: ["architectural-design"],
+    excerpt:
+      "A contemporary church designed for 785 congregants, with a glazed gable, stone-clad columns and landscaped grounds.",
+    description:
+      "A modern church in Ruiru Mugutha with seating for 785 congregants. Tall gabled glazing, stone-clad columns and white rendered walls give the building a bright, contemporary presence, while the large glazed frontage fills the worship space with natural light. Landscaped grounds, paved walkways and parking frame the approach to the entrance.",
+    keyFacts: [
+      "Seating for 785 congregants",
+      "Tall gabled glazing and stone-clad columns",
+      "Landscaped grounds, paved walkways and parking",
+      "Site progress documented from 1 August to 29 October 2026",
+    ],
+    projectContact: {
+      name: "Samuel Nderitu",
+      role: "Architectural and Structural Designer",
+    },
+    image: "/catalog/images/pcea-baraka-church-front.webp",
+    gallery: [
+      { src: "/catalog/images/pcea-baraka-church-front.webp", alt: "Architectural render of PCEA Baraka Church, front view" },
+      { src: "/catalog/images/pcea-baraka-church-corner.webp", alt: "Architectural render of PCEA Baraka Church, corner view" },
+      { src: "/catalog/images/pcea-baraka-church-entrance-gable.webp", alt: "Architectural render of the PCEA Baraka Church entrance gable" },
+      { src: "/catalog/images/pcea-baraka-church-excavation-2026-08.webp", alt: "PCEA Baraka Church site progress, excavation, 1 August 2026" },
+      { src: "/catalog/images/pcea-baraka-church-foundations-2026-09.webp", alt: "PCEA Baraka Church site progress, foundations, 1 September 2026" },
+      { src: "/catalog/images/pcea-baraka-church-slab-reinforcement-2026-10.webp", alt: "PCEA Baraka Church site progress, slab reinforcement, 12 October 2026" },
+      { src: "/catalog/images/pcea-baraka-church-slab-and-walling-2026-10.webp", alt: "PCEA Baraka Church site progress, slab complete and walling started, 29 October 2026" },
+    ],
+    featured: true,
+    timeline: [
+      {
+        date: "1 Aug 2026",
+        title: "Excavation",
+        caption: "Site progress documented in the project catalogue.",
+        image: "/catalog/images/pcea-baraka-church-excavation-2026-08.webp",
+      },
+      {
+        date: "1 Sep 2026",
+        title: "Foundations",
+        caption: "Site progress documented in the project catalogue.",
+        image: "/catalog/images/pcea-baraka-church-foundations-2026-09.webp",
+      },
+      {
+        date: "12 Oct 2026",
+        title: "Slab reinforcement",
+        caption: "Site progress documented in the project catalogue.",
+        image: "/catalog/images/pcea-baraka-church-slab-reinforcement-2026-10.webp",
+      },
+      {
+        date: "29 Oct 2026",
+        title: "Slab complete, walling started",
+        caption: "Site progress documented in the project catalogue.",
+        image: "/catalog/images/pcea-baraka-church-slab-and-walling-2026-10.webp",
+      },
+    ],
+  },
+  {
+    slug: "gikomba-five-storey-commercial-building",
+    name: "5-Storey Commercial Building",
+    location: "Gikomba, Nairobi",
+    zone: "nairobi",
+    type: "Commercial",
+    status: "In design",
+    year: "2026",
+    scope: "Architectural drawings, structural drawings, architectural renders",
+    serviceSlugs: ["architectural-design", "structural-design"],
+    excerpt:
+      "A five-storey commercial building with continuous glazed frontages, glass-balustrade balconies and an open central stair.",
+    description:
+      "A five-storey commercial building in Gikomba, designed by ATro with full architectural and structural drawings. White rendered floor slabs wrap continuous glazed frontages, each floor opening onto a balcony with a glass balustrade. A dark stone-clad feature wall marks one end of the facade, and an open central staircase breaks up the long elevation. A paved forecourt with parking sits within a walled, landscaped plot.",
+    keyFacts: [
+      "Five storeys",
+      "Continuous glazed frontage with glass-balustrade balconies on every floor",
+      "Open central staircase",
+      "Paved forecourt with parking",
+      "Walled and landscaped plot",
+      "Architectural drawings, structural drawings and architectural renders",
+    ],
+    projectContact: {
+      name: "Samuel Nderitu",
+      role: "Architectural and Structural Designer",
+    },
+    image: "/catalog/images/gikomba-five-storey-commercial-corner.webp",
+    gallery: [
+      {
+        src: "/catalog/images/gikomba-five-storey-commercial-corner.webp",
+        alt: "Architectural render of the Gikomba five-storey commercial building, corner view",
+      },
+      {
+        src: "/catalog/images/gikomba-five-storey-commercial-side-aerial.webp",
+        alt: "Architectural render of the Gikomba five-storey commercial building, side aerial view at sunset",
+      },
+      {
+        src: "/catalog/images/gikomba-five-storey-commercial-front.webp",
+        alt: "Architectural render of the Gikomba five-storey commercial building, front elevation at sunset",
+      },
+    ],
+    featured: true,
+  },
+  {
+    slug: "karen-courtyard-house",
+    name: "Courtyard House Concept",
+    location: "Illustrative setting",
+    type: "Residential",
+    status: "Illustrative",
+    scope: "Illustrative design study",
+    excerpt:
+      "An illustrative courtyard-home study exploring inward-facing rooms, a planted garden and a quieter street edge.",
+    description:
+      "This concept study explores a courtyard home that turns everyday rooms toward a planted inner garden while using a more solid outer edge for privacy. Stone, plaster and timber screens suggest a restrained material direction. It is an illustrative design example, not a record of a completed or active ATRO project.",
+    image: "/catalog/images/karen.webp",
+    gallery: [
+      { src: "/catalog/images/karen.webp", alt: "Illustrative garden-facing house concept" },
+      { src: "/catalog/images/interior.webp", alt: "Illustrative living-room interior reference" },
+      { src: "/catalog/images/detail.webp", alt: "Illustrative stone and concrete material detail" },
     ],
     featured: true,
   },
   {
     slug: "kiambu-ridge-residence",
-    name: "Kiambu Ridge Residence",
-    location: "Kiambu",
-    zone: "kiambu",
+    name: "Sloping-Site Home Concept",
+    location: "Illustrative setting",
     type: "Residential",
-    status: "Completed",
-    year: "2025",
-    area: "280 m²",
-    duration: "11 months",
-    scope: "Architecture, BOQ, construction",
+    status: "Illustrative",
+    scope: "Illustrative design study",
     excerpt:
-      "A two-storey family house on a sloping Kiambu plot, built to a locked budget.",
-    challenge:
-      "A cross-fall site and a hard cost ceiling. The first sketch the family loved would have blown the budget on retaining and a long driveway.",
-    role: "Design, quantities and construction. Cost planning ran in parallel with concept, not after it.",
-    solution:
-      "The house steps with the land. Brick and render, a dark metal roof, and a short access that does not fight the contour. The BOQ was the document the family used to choose finishes — not a surprise at the end.",
-    image: "/images/kiambu.webp",
+      "A concept for a family home that follows a sloping site with stepped massing and a compact footprint.",
+    description:
+      "This illustrative study looks at how a two-storey family home might respond to a sloping site. Stepped massing, a simple roof line and a compact approach are presented as design ideas rather than a verified site solution. The images are visual references, not documentation of an ATRO commission.",
+    image: "/catalog/images/kiambu.webp",
     gallery: [
-      { src: "/images/kiambu.webp", alt: "Street elevation of the Kiambu residence" },
-      { src: "/images/interior.webp", alt: "Interior with garden light" },
-      { src: "/images/detail.webp", alt: "Masonry detail" },
+      { src: "/catalog/images/kiambu.webp", alt: "Illustrative two-storey family-home reference" },
+      { src: "/catalog/images/interior.webp", alt: "Illustrative interior reference" },
+      { src: "/catalog/images/detail.webp", alt: "Illustrative masonry material detail" },
     ],
     featured: true,
   },
   {
     slug: "nyali-veranda-house",
-    name: "Nyali Veranda House",
-    location: "Nyali, Mombasa",
-    zone: "coast",
+    name: "Coastal Veranda House Concept",
+    location: "Illustrative setting",
     type: "Residential",
-    status: "Completed",
-    year: "2024",
-    area: "310 m²",
-    duration: "13 months",
-    scope: "Design revision, coastal specification, construction",
+    status: "Illustrative",
+    scope: "Illustrative design study",
     excerpt:
-      "A coral-stone house rewritten for salt air, deep shade and monsoon rain.",
-    challenge:
-      "An inland specification had already been drawn. Left unchanged it would have failed in three years: unprotected steel, tight eaves, and finishes that do not like salt.",
-    role: "We rebuilt the specification, quantities and construction plan for the coast.",
-    solution:
-      "Coral stone, deep verandas, a roof that actually throws water, and a protection schedule for every piece of metal. The house is slower in the heat and quieter in the rain.",
-    image: "/images/coast.webp",
+      "A coastal-home concept built around deep shade, sheltered outdoor space and a natural-material palette.",
+    description:
+      "This illustrative coastal-home study uses a deep veranda and shaded openings to explore a more sheltered relationship between indoors and outdoors. Stone and a protective roof edge suggest a material direction for a coastal setting. It does not claim to be a built project or a site-specific coastal specification.",
+    image: "/catalog/images/coast.webp",
     gallery: [
-      { src: "/images/coast.webp", alt: "Deep veranda of the Nyali house" },
-      { src: "/images/interior.webp", alt: "Shaded interior" },
-      { src: "/images/detail.webp", alt: "Stonework in raking light" },
+      { src: "/catalog/images/coast.webp", alt: "Illustrative shaded veranda reference" },
+      { src: "/catalog/images/interior.webp", alt: "Illustrative shaded interior reference" },
+      { src: "/catalog/images/detail.webp", alt: "Illustrative stone material reference" },
     ],
     featured: true,
   },
   {
     slug: "westlands-atelier",
-    name: "Westlands Atelier",
-    location: "Westlands, Nairobi",
-    zone: "nairobi",
+    name: "Urban Workplace Concept",
+    location: "Illustrative setting",
     type: "Commercial",
-    status: "Completed",
-    year: "2025",
-    area: "640 m²",
-    duration: "9 months",
-    scope: "Design, construction, interiors",
+    status: "Illustrative",
+    scope: "Illustrative design study",
     excerpt:
-      "A small commercial building with a terracotta screen — shade, grain and a calm street face.",
-    challenge:
-      "A noisy road and a west-facing elevation. Glass-forward would have cooked the rooms and advertised every interior to the street.",
-    role: "Architecture, interiors and construction of a two-level workplace.",
-    solution:
-      "A clay screen that shades and grain-filters the west light, deep-set openings, and a simple plan that can be let as one or two tenancies without rebuilding walls.",
-    image: "/images/commercial.webp",
+      "A compact workplace concept using a screened facade to balance daylight, privacy and a calm street presence.",
+    description:
+      "This illustrative workplace study explores a screened facade, recessed openings and a flexible interior arrangement. The design direction considers how a commercial frontage can admit light while moderating views from the street. The image is a concept reference, not a completed ATRO project.",
+    image: "/catalog/images/commercial.webp",
     gallery: [
-      { src: "/images/commercial.webp", alt: "Terracotta screen facade in Westlands" },
-      { src: "/images/detail.webp", alt: "Facade detail" },
-      { src: "/images/interior.webp", alt: "Workplace interior" },
+      { src: "/catalog/images/commercial.webp", alt: "Illustrative screened workplace facade" },
+      { src: "/catalog/images/detail.webp", alt: "Illustrative facade material detail" },
+      { src: "/catalog/images/interior.webp", alt: "Illustrative workplace interior reference" },
     ],
     featured: true,
   },
   {
     slug: "nakuru-parish-hall",
-    name: "Nakuru Parish Hall",
-    location: "Nakuru",
-    zone: "nakuru",
-    type: "Church",
-    status: "Completed",
-    year: "2024",
-    area: "480 m²",
-    duration: "10 months",
-    scope: "Concept, cost planning, construction",
+    name: "Community Hall Concept",
+    location: "Illustrative setting",
+    type: "Institutional",
+    status: "Illustrative",
+    scope: "Illustrative design study",
     excerpt:
-      "A parish hall with a high timber nave, built to be used all week, not only on Sunday.",
-    challenge:
-      "The congregation needed a hall that could take worship, a school feeding programme and evening meetings — on a budget that could not absorb a cathedral.",
-    role: "We designed a robust, well-lit hall and built it against a public BOQ the building committee could follow.",
-    solution:
-      "A simple masonry volume, a timber-lined roof, clerestory light, and a floor that survives chairs, feet and cleaning. No decorative structure. The money went into the roof, the light and the floor.",
-    image: "/images/church.webp",
+      "A community-gathering-space concept focused on a clear, adaptable interior and generous natural light.",
+    description:
+      "This illustrative community hall study considers a straightforward, welcoming gathering space with a durable material palette and daylight from above. Its image is an architectural reference only; it is not evidence of a completed church or hall by ATRO.",
+    image: "/catalog/images/church.webp",
     gallery: [
-      { src: "/images/church.webp", alt: "Nave and courtyard of the parish hall" },
-      { src: "/images/detail.webp", alt: "Masonry and timber junction" },
-      { src: "/images/school.webp", alt: "Covered edge of the compound" },
+      { src: "/catalog/images/church.webp", alt: "Illustrative contemporary worship-space reference" },
+      { src: "/catalog/images/detail.webp", alt: "Illustrative masonry and timber material reference" },
     ],
     featured: false,
   },
   {
     slug: "jacaranda-primary-wing",
-    name: "Jacaranda Primary Wing",
-    location: "Kiambu",
-    zone: "kiambu",
+    name: "Classroom Wing Concept",
+    location: "Illustrative setting",
     type: "School",
-    status: "Completed",
-    year: "2025",
-    area: "720 m²",
-    duration: "8 months",
-    scope: "Design, construction",
+    status: "Illustrative",
+    scope: "Illustrative design study",
     excerpt:
-      "A new classroom wing and covered walkway, planned around a jacaranda court.",
-    challenge:
-      "The school could not close. Construction had to happen around a live timetable, with dust, noise and child movement designed, not improvised.",
-    role: "Phased construction with a locked programme the headteacher could publish to parents.",
-    solution:
-      "A linear classroom block, a covered walk, and a court that was kept open throughout. Phases were sized so a class never lost two rooms at once.",
-    image: "/images/school.webp",
+      "A school-building concept that pairs a simple classroom wing with a sheltered walkway and shared outdoor space.",
+    description:
+      "This illustrative school concept pairs a straightforward classroom wing with a covered walkway and a planted shared court. The arrangement is presented as a design direction for circulation and outdoor learning, not as a record of a built school or an active construction site.",
+    image: "/catalog/images/school.webp",
     gallery: [
-      { src: "/images/school.webp", alt: "Classroom wing and jacaranda court" },
-      { src: "/images/detail.webp", alt: "Painted masonry in sunlight" },
-      { src: "/images/site.webp", alt: "Earlier construction stage" },
+      { src: "/catalog/images/school.webp", alt: "Illustrative classroom and covered-walkway reference" },
+      { src: "/catalog/images/detail.webp", alt: "Illustrative painted masonry material detail" },
     ],
     featured: false,
   },
   {
     slug: "lavington-frame",
-    name: "Lavington Frame",
-    location: "Lavington, Nairobi",
-    zone: "nairobi",
+    name: "Two-Storey Home Concept",
+    location: "Illustrative setting",
     type: "Residential",
-    status: "Ongoing",
-    year: "2026",
-    area: "360 m²",
-    duration: "In progress",
-    scope: "Design, BOQ, construction",
+    status: "Illustrative",
+    scope: "Illustrative design study",
     excerpt:
-      "A two-level house in frame. Structure is up; finishes are being locked against the remaining BOQ.",
-    challenge:
-      "The family is split between Nairobi and London. Decisions have to travel. The site cannot wait for a monthly call.",
-    role: "Design-and-build with a living photo timeline and a written decision log.",
-    solution:
-      "Frame first, finishes second, each choice priced before it is made. The family sees the site weekly. Ongoing work is labelled as ongoing — it is not a completed house.",
-    image: "/images/site.webp",
+      "A residential concept study exploring a compact two-storey form, clear structural rhythm and warm interior materials.",
+    description:
+      "This illustrative residential study explores the relationship between a simple structural frame, a compact two-storey plan and warm interior finishes. The images are design references, not current site photographs. No construction status or client story is implied.",
+    image: "/catalog/images/hero.webp",
     gallery: [
-      { src: "/images/site.webp", alt: "Reinforced concrete frame on the Lavington site" },
-      { src: "/images/detail.webp", alt: "Concrete and formwork" },
-      { src: "/images/hero.webp", alt: "Reference for the intended courtyard" },
+      { src: "/catalog/images/hero.webp", alt: "Illustrative two-storey residential design reference" },
+      { src: "/catalog/images/interior.webp", alt: "Illustrative residential interior reference" },
+      { src: "/catalog/images/detail.webp", alt: "Illustrative construction-material detail" },
     ],
     featured: true,
-    timeline: [
-      {
-        date: "Jan 2026",
-        title: "Foundations",
-        caption: "Ground beams and pads, inspected before backfill.",
-        image: "/images/site.webp",
-      },
-      {
-        date: "Mar 2026",
-        title: "Ground floor slab",
-        caption: "Services cast in. Setting-out checked against the locked drawings.",
-        image: "/images/detail.webp",
-      },
-      {
-        date: "Jun 2026",
-        title: "First-floor frame",
-        caption: "Columns and beams in. The house is now a structure, not a drawing.",
-        image: "/images/site.webp",
-      },
-    ],
   },
   {
     slug: "ruiru-garden-house",
-    name: "Ruiru Garden House",
-    location: "Ruiru, Kiambu",
-    zone: "kiambu",
+    name: "Compact Garden Home Concept",
+    location: "Illustrative setting",
     type: "Residential",
-    status: "Proposed",
-    year: "2026",
-    area: "240 m²",
-    duration: "Proposed",
-    scope: "Concept & cost planning",
+    status: "Illustrative",
+    scope: "Illustrative design study",
     excerpt:
-      "A compact garden house for a diaspora client. Concept and cost range agreed; construction not yet started.",
-    challenge:
-      "A 50 × 100 plot and a budget that has to include a boundary, a septic and a small rental wing — or not. The first job is to decide that, on paper.",
-    role: "Concept, site assessment and a BOQ-led cost range. No construction until the family chooses a scope they can fund.",
-    solution:
-      "Two options: a single house with a generous garden, or a house plus a one-bedroom rental. Each has a range, not a hopeful number.",
-    image: "/images/hero.webp",
+      "A small-home concept study considering how a compact footprint can leave useful space for a garden.",
+    description:
+      "This illustrative small-home study explores a compact house set within a usable garden. It is a starting point for discussing priorities such as footprint, outdoor space and future phasing; it does not represent a brief, cost plan or proposal for a real client.",
+    image: "/catalog/images/hero.webp",
     gallery: [
-      { src: "/images/hero.webp", alt: "Reference courtyard for the Ruiru proposal" },
-      { src: "/images/interior.webp", alt: "Interior direction" },
-      { src: "/images/kiambu.webp", alt: "Comparable Kiambu house" },
+      { src: "/catalog/images/hero.webp", alt: "Illustrative compact-home exterior reference" },
+      { src: "/catalog/images/interior.webp", alt: "Illustrative small-home interior reference" },
+      { src: "/catalog/images/kiambu.webp", alt: "Illustrative family-home design reference" },
     ],
     featured: false,
   },
@@ -549,6 +717,7 @@ export type Service = {
   included: string[];
   types: string[];
   inputs: string[];
+  projectSlugs?: string[];
   category: ServiceCategory;
   note?: string;
 };
@@ -588,14 +757,22 @@ export const SERVICES: Service[] = [
     title: "Architectural Design",
     kicker: "From brief to a building that can actually be built",
     lede: "Plans, sections, elevations and a material direction that survive contact with a site, a BOQ and a contractor — because in our case the contractor is us.",
-    image: "/images/hero.webp",
+    image: "/catalog/images/hero.webp",
     category: "design",
     included: [
       "Briefing and site reading",
       "Concept options with a cost-aware filter",
       "Developed drawings for pricing and construction",
+      "Architectural renders and visualisations where required",
       "Material and opening schedules",
       "Coordination with structural and services input",
+    ],
+    projectSlugs: [
+      "sigona-villa",
+      "ruiru-mugutha-town-house",
+      "kabete-seven-storey-apartment-block",
+      "pcea-baraka-church",
+      "gikomba-five-storey-commercial-building",
     ],
     types: ["Houses", "Extensions", "Commercial shells", "Institutional buildings"],
     inputs: [
@@ -610,7 +787,7 @@ export const SERVICES: Service[] = [
     title: "Structural Design",
     kicker: "The frame that makes the drawing stand up",
     lede: "We coordinate structural design as part of an integrated project — so the architecture, the quantities and the frame are one conversation, not three files that disagree.",
-    image: "/images/site.webp",
+    image: "/catalog/images/site.webp",
     category: "design",
     included: [
       "Structural concept with the architectural plan",
@@ -618,7 +795,12 @@ export const SERVICES: Service[] = [
       "Foundation and frame intent aligned to soil and programme",
       "Buildability review before steel is ordered",
     ],
-    types: ["Residential frames", "Institutional halls", "Low-rise commercial"],
+    projectSlugs: [
+      "sigona-villa",
+      "ruiru-mugutha-town-house",
+      "gikomba-five-storey-commercial-building",
+    ],
+    types: ["Residential", "Commercial", "Institutional"],
     inputs: ["Architectural drawings", "Soil information where available", "Intended loads and use"],
     note: "Statutory structural sign-off is carried by the licensed professional appointed on the project. ATRO coordinates; we do not imply a registration we have not stated.",
   },
@@ -627,7 +809,7 @@ export const SERVICES: Service[] = [
     title: "Interior / Spatial Design",
     kicker: "The rooms, not only the envelope",
     lede: "Joinery, light, floors and the way a house is actually used — designed with the structure, not stuck on at the end as a moodboard.",
-    image: "/images/interior.webp",
+    image: "/catalog/images/interior.webp",
     category: "design",
     included: [
       "Furniture and joinery intent",
@@ -643,7 +825,7 @@ export const SERVICES: Service[] = [
     title: "Landscape Architecture",
     kicker: "The grounds that complete the building",
     lede: "Outdoor spaces designed with the same rigour as the building — hardscape, planting, drainage and lighting as part of the project, not an afterthought.",
-    image: "/images/hero.webp",
+    image: "/catalog/images/hero.webp",
     category: "design",
     included: [
       "Site grading and drainage strategy",
@@ -659,7 +841,7 @@ export const SERVICES: Service[] = [
     title: "Master Planning",
     kicker: "The big picture before the first drawing",
     lede: "For estates, campuses and multi-building developments: land use, phasing, infrastructure and financial viability — so the individual buildings make sense together.",
-    image: "/images/site.webp",
+    image: "/catalog/images/site.webp",
     category: "design",
     included: [
       "Site analysis and opportunities mapping",
@@ -677,7 +859,7 @@ export const SERVICES: Service[] = [
     title: "Construction & Project Execution",
     kicker: "The building, on the ground, against a locked scope",
     lede: "Site set-up, structure, envelope and finishes — run from a programme, a BOQ and a weekly communication rhythm. Not from a WhatsApp argument.",
-    image: "/images/site.webp",
+    image: "/catalog/images/site.webp",
     category: "construction",
     included: [
       "Site establishment and safety set-up",
@@ -694,7 +876,7 @@ export const SERVICES: Service[] = [
     title: "Renovation & Adaptive Reuse",
     kicker: "What exists, reworked with intent",
     lede: "Structural restoration, space reconfiguration and interior upgrades — sequenced to minimise disruption and maximise the value of what is already standing.",
-    image: "/images/detail.webp",
+    image: "/catalog/images/detail.webp",
     category: "construction",
     included: [
       "Condition assessment and structural review",
@@ -710,7 +892,7 @@ export const SERVICES: Service[] = [
     title: "Precast & Modern Methods",
     kicker: "Where a faster, cleaner method actually helps",
     lede: "Precast, modular and other modern methods — used when they save time or waste, not as a slogan. If in-situ is the honest answer, we say so.",
-    image: "/images/detail.webp",
+    image: "/catalog/images/detail.webp",
     category: "construction",
     included: [
       "Method review at concept",
@@ -728,7 +910,7 @@ export const SERVICES: Service[] = [
     title: "Bill of Quantities / Cost Planning",
     kicker: "A number you can make a decision with",
     lede: "Quantities, rates and options — so you choose a roof, a floor and a window because you understand what they cost, not because a contractor smiled.",
-    image: "/images/detail.webp",
+    image: "/catalog/images/detail.webp",
     category: "advisory",
     included: [
       "Measured quantities from drawings",
@@ -744,7 +926,7 @@ export const SERVICES: Service[] = [
     title: "Project Management & Site Consultancy",
     kicker: "Someone on the site who can read a drawing",
     lede: "For clients who already have a contractor, or who are building from abroad: a site-based eye, a written log, and decisions that do not evaporate.",
-    image: "/images/site.webp",
+    image: "/catalog/images/site.webp",
     category: "advisory",
     included: [
       "Site inspections against drawings",
@@ -752,6 +934,7 @@ export const SERVICES: Service[] = [
       "Programme and cost checkpoints",
       "Snagging and handover support",
     ],
+    projectSlugs: ["sigona-villa"],
     types: ["Owner-builder sites", "Diaspora projects", "Institutional clients"],
     inputs: ["Drawings", "Contract or contractor details", "What you want us to hold you to"],
   },
@@ -760,7 +943,7 @@ export const SERVICES: Service[] = [
     title: "Feasibility Studies & Due Diligence",
     kicker: "Know before you commit",
     lede: "Site analysis, financial viability and risk assessment — so you invest with clarity, not hope. Essential for diaspora clients and institutional investors.",
-    image: "/images/detail.webp",
+    image: "/catalog/images/detail.webp",
     category: "advisory",
     included: [
       "Site physical and legal assessment",
@@ -776,7 +959,7 @@ export const SERVICES: Service[] = [
     title: "Real Estate Advisory",
     kicker: "Investment guidance rooted in construction reality",
     lede: "Market analysis, development strategy and procurement advice — for clients who need a builder's perspective on an investment decision.",
-    image: "/images/hero.webp",
+    image: "/catalog/images/hero.webp",
     category: "advisory",
     included: [
       "Market and location analysis",
@@ -792,7 +975,7 @@ export const SERVICES: Service[] = [
     title: "Project Financing Support",
     kicker: "Structure the money before you structure the building",
     lede: "Budget structuring, cash flow planning and lender documentation — so your project is fundable, not just drawable.",
-    image: "/images/detail.webp",
+    image: "/catalog/images/detail.webp",
     category: "advisory",
     included: [
       "Project budget development",
@@ -810,7 +993,7 @@ export const SERVICES: Service[] = [
     title: "Sustainability & Green Building",
     kicker: "Buildings that cost less to run and leave less behind",
     lede: "Energy modeling, material selection and certification guidance — making sustainability practical, not performative. EDGE, LEED and Kenya Green Star aligned.",
-    image: "/images/hero.webp",
+    image: "/catalog/images/hero.webp",
     category: "specialist",
     included: [
       "Energy and water efficiency analysis",
@@ -826,7 +1009,7 @@ export const SERVICES: Service[] = [
     title: "Smart Home & Building Technology",
     kicker: "Intelligence in the walls, not just on the walls",
     lede: "Automation, security, energy management and connectivity — designed into the building from concept, not cable-tied on after handover.",
-    image: "/images/interior.webp",
+    image: "/catalog/images/interior.webp",
     category: "specialist",
     included: [
       "Smart home system design and specification",
@@ -842,7 +1025,7 @@ export const SERVICES: Service[] = [
     title: "Construction Technology / BIM",
     kicker: "Digital precision before physical execution",
     lede: "Building Information Modeling, clash detection and digital twins — reducing errors, saving time and giving you visibility before a single brick is laid.",
-    image: "/images/site.webp",
+    image: "/catalog/images/site.webp",
     category: "specialist",
     included: [
       "3D BIM modeling and coordination",
@@ -858,7 +1041,7 @@ export const SERVICES: Service[] = [
     title: "Environmental Impact Assessment",
     kicker: "NEMA compliance from day one",
     lede: "EIA reports, environmental audits and compliance management — ensuring your project meets regulatory requirements and community expectations.",
-    image: "/images/detail.webp",
+    image: "/catalog/images/detail.webp",
     category: "specialist",
     included: [
       "Scoping and baseline studies",
@@ -876,7 +1059,7 @@ export const SERVICES: Service[] = [
     title: "Post-Construction Maintenance",
     kicker: "The building after you move in",
     lede: "Annual inspections, warranty management and planned maintenance — because a building is a long-term asset, not a handover moment.",
-    image: "/images/hero.webp",
+    image: "/catalog/images/hero.webp",
     category: "post-construction",
     included: [
       "Annual structural and envelope inspections",
@@ -892,7 +1075,7 @@ export const SERVICES: Service[] = [
     title: "FF&E Procurement & Styling",
     kicker: "Furniture, fixtures and the finishing touch",
     lede: "Sourcing, procurement and styling of furniture, fixtures and equipment — so the building is ready to use, not just ready to show.",
-    image: "/images/interior.webp",
+    image: "/catalog/images/interior.webp",
     category: "post-construction",
     included: [
       "FF&E specification and sourcing",
@@ -909,7 +1092,7 @@ export const SERVICES: Service[] = [
     title: "Building from Abroad",
     kicker: "Your project in Kenya, run from wherever you are",
     lede: "Design, due diligence, construction and handover for clients overseas — with milestone payments, a private project portal, weekly written reports and a named project manager, so you are never guessing from photographs.",
-    image: "/images/site.webp",
+    image: "/catalog/images/site.webp",
     category: "construction",
     included: [
       "Land due diligence and surveyor verification",
@@ -928,7 +1111,7 @@ export const SERVICES: Service[] = [
     title: "Construction Training & Workshops",
     kicker: "Knowledge transfer for owner-builders",
     lede: "Practical workshops for clients who want to understand what they are building — BOQ reading, site supervision basics and decision-making frameworks.",
-    image: "/images/site.webp",
+    image: "/catalog/images/site.webp",
     category: "post-construction",
     included: [
       "BOQ and cost planning basics",
@@ -1004,7 +1187,7 @@ export const ARTICLES: Article[] = [
     read: "6 min",
     excerpt:
       "A bill of quantities is not bureaucracy. It is the difference between choosing a floor and discovering you cannot afford a roof.",
-    image: "/images/detail.webp",
+    image: "/catalog/images/detail.webp",
     body: [
       {
         p: "Most construction arguments in Kenya are not about taste. They are about a number that was never measured. A contractor names a figure for “a four-bedroom house.” A family agrees. Then the windows change, the soil is black cotton, the septic was never in the price, and everyone is suddenly a negotiator.",
@@ -1030,7 +1213,7 @@ export const ARTICLES: Article[] = [
     read: "7 min",
     excerpt:
       "The plot is in Kiambu. You are in Doha. Here is what actually breaks — and what to put in writing before anyone digs.",
-    image: "/images/kiambu.webp",
+    image: "/catalog/images/kiambu.webp",
     body: [
       {
         p: "Kenyans abroad build some of the most ambitious houses in the country, and some of the most stranded. The pattern is familiar: a relative on the ground, a contractor with a van, photographs that always look like progress, and a budget that quietly doubled.",
@@ -1065,7 +1248,7 @@ export const ARTICLES: Article[] = [
     read: "5 min",
     excerpt:
       "Twenty kilometres can change soil, water, labour and the county desk you will sit at. Here is the honest version.",
-    image: "/images/school.webp",
+    image: "/catalog/images/school.webp",
     body: [
       {
         p: "Clients often ask for a Nairobi rate on a Kiambu plot, or the reverse. The buildings can look similar. The ground does not.",

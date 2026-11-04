@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowRight, Building2, CheckCircle2, MapPin, Truck } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, ChevronDown, MapPin, Truck } from "lucide-react";
 import { KenyaMap } from "@/components/kenya-map";
 import { PageHero } from "@/components/page-hero";
 import { ZoneTable } from "@/components/zone-table";
@@ -70,7 +70,7 @@ function AvailabilityBadge({ availability }: { availability: Availability }) {
   return (
     <span
       className={cn(
-        "inline-flex h-7 items-center rounded-full border px-3 text-[10px] font-bold uppercase tracking-[0.14em]",
+        "inline-flex h-6 shrink-0 items-center rounded-full border px-2 text-[8px] font-bold uppercase tracking-[0.08em] sm:h-7 sm:px-3 sm:text-[10px] sm:tracking-[0.14em]",
         availability.tone === "green" && "bg-emerald-50 text-emerald-800 border-emerald-200",
         availability.tone === "amber" && "bg-amber-50 text-amber-900 border-amber-300",
         availability.tone === "slate" && "bg-stone-100 text-stone-700 border-stone-300",
@@ -84,46 +84,55 @@ function AvailabilityBadge({ availability }: { availability: Availability }) {
 function ZoneCard({ funnel }: { funnel: ZoneFunnel }) {
   const { zone, availability } = funnel;
   return (
-    <li className="flex flex-col rounded-3xl border border-ink/10 bg-white p-6 transition-colors hover:border-burgundy/40">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-display text-2xl text-maroon">{zone.name}</h3>
-          <p className="mt-1 text-[12px] text-muted">{zone.region}</p>
+    <li className="min-w-0 rounded-2xl border border-ink/10 bg-white transition-colors hover:border-burgundy/40 sm:rounded-3xl">
+      <details className="group">
+        <summary className="list-none cursor-pointer p-3 marker:hidden sm:p-5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="font-display text-base leading-tight text-maroon sm:text-2xl">{zone.name}</h3>
+              <p className="mt-1 text-[9px] leading-tight text-muted sm:text-[12px]">{zone.region}</p>
+            </div>
+            <AvailabilityBadge availability={availability} />
+          </div>
+          <p className="mt-2 line-clamp-2 text-[10px] leading-snug text-ink/65 group-open:line-clamp-none sm:mt-4 sm:text-[14px] sm:leading-relaxed">
+            {funnel.localNote}
+          </p>
+          <div className="mt-3 flex items-center justify-between gap-2 border-t border-ink/8 pt-2.5 sm:mt-5 sm:pt-4">
+            <span className="text-[8px] leading-tight text-muted sm:text-[12px]">Indicative · 220 m² house</span>
+            <span className="text-right text-[10px] font-medium leading-tight text-maroon sm:text-[12px]">
+              {formatBand(funnel.indicativeMin, funnel.indicativeMax)}
+            </span>
+          </div>
+          <span className="mt-2 flex items-center justify-between text-[8px] font-semibold uppercase tracking-[0.1em] text-burgundy sm:text-[10px] sm:tracking-[0.14em]">
+            More about {zone.name}
+            <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+          </span>
+        </summary>
+
+        <div className="border-t border-ink/8 px-3 pb-3 pt-2.5 sm:px-5 sm:pb-5 sm:pt-4">
+          <dl className="space-y-2 text-[10px] sm:text-[12px]">
+            <div>
+              <dt className="text-muted">Typical work</dt>
+              <dd className="text-ink/70">{zone.typical}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 rounded-xl bg-cream p-2.5 text-[10px] leading-snug text-ink/60 sm:mt-4 sm:p-3.5 sm:text-[12px] sm:leading-relaxed">
+            {availability.promise}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2 sm:mt-5 sm:gap-2.5">
+            <Button asChild size="sm">
+              <Link to="/start" search={{ zone: zone.slug }}>
+                {availability.cta}
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/zones/$slug" params={{ slug: zone.slug }}>
+                Coverage detail
+              </Link>
+            </Button>
+          </div>
         </div>
-        <AvailabilityBadge availability={availability} />
-      </div>
-
-      <p className="mt-4 flex-1 text-[14px] leading-relaxed text-ink/65">
-        {funnel.localNote}
-      </p>
-
-      <dl className="mt-5 space-y-2 border-t border-ink/8 pt-4 text-[12px]">
-        <div className="flex justify-between gap-3">
-          <dt className="text-muted">Indicative, 220 m² house</dt>
-          <dd className="text-right text-maroon">{formatBand(funnel.indicativeMin, funnel.indicativeMax)}</dd>
-        </div>
-        <div className="flex justify-between gap-3">
-          <dt className="text-muted">Typical work</dt>
-          <dd className="text-right text-ink/70">{zone.typical}</dd>
-        </div>
-      </dl>
-
-      <p className="mt-4 rounded-xl bg-cream p-3.5 text-[12px] leading-relaxed text-ink/60">
-        {availability.promise}
-      </p>
-
-      <div className="mt-5 flex flex-wrap gap-2.5">
-        <Button asChild size="sm">
-          <Link to="/start" search={{ zone: zone.slug }}>
-            {availability.cta}
-          </Link>
-        </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link to="/zones/$slug" params={{ slug: zone.slug }}>
-            Coverage detail
-          </Link>
-        </Button>
-      </div>
+      </details>
     </li>
   );
 }
@@ -139,7 +148,7 @@ function ZonesPage() {
         kicker="Zone coverage"
         title="Where we build, and what that means for your money"
         lede="Kenya is not one market. Soil, haulage, county desks and salt air all change the building — and whether we can take your project at all. This page says both, plainly."
-        image="/images/school.webp"
+        image="/catalog/images/school.webp"
       />
 
       {/* Map first: pick where you are */}
@@ -147,10 +156,10 @@ function ZonesPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-gold">
-              Pick your county
+              Current delivery areas
             </p>
             <h2 className="mt-2 font-display text-3xl text-maroon md:text-4xl">
-              Start where the site is
+              Explore our published coverage
             </h2>
           </div>
           {local ? (
@@ -175,6 +184,17 @@ function ZonesPage() {
               setZone(slug);
             }}
           />
+        </div>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-cream p-5">
+          <p className="max-w-2xl text-sm leading-relaxed text-ink/70">
+            The map shows ATRO's published delivery areas, not county boundaries. Search any of Kenya's 47 counties in the coverage tool; new enquiries are reviewed before availability is confirmed.
+          </p>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/tools/zone-map">
+              Search all 47 counties
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
         </div>
 
         {local ? (
@@ -205,12 +225,12 @@ function ZonesPage() {
       </section>
 
       {/* Coverage by availability, honestly grouped */}
-      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16">
+      <section className="mx-auto max-w-[1400px] px-6 py-10 sm:px-8 md:px-12 md:py-16 lg:px-16">
         {AVAILABILITY_ORDER.map((status) => {
           const rows = funnelsByStatus(status);
           if (rows.length === 0) return null;
           return (
-            <div key={status} className="mb-14 last:mb-0">
+            <div key={status} className="mb-9 last:mb-0 md:mb-14">
               <div className="max-w-3xl">
                 <h2 className="font-display text-3xl text-maroon md:text-4xl">
                   {STATUS_HEADING[status]}
@@ -219,7 +239,7 @@ function ZonesPage() {
                   {STATUS_INTRO[status]}
                 </p>
               </div>
-              <ul className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              <ul className="mt-5 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-5 xl:grid-cols-3">
                 {rows.map((funnel) => (
                   <ZoneCard key={funnel.zone.slug} funnel={funnel} />
                 ))}
@@ -241,14 +261,14 @@ function ZonesPage() {
             </h2>
           </div>
 
-          <ul className="mt-10 grid gap-5 md:grid-cols-3">
+          <ul className="mt-6 grid grid-cols-2 gap-3 sm:mt-10 sm:gap-5 lg:grid-cols-3">
             {LOCAL_EDGE.map((edge) => (
-              <li key={edge.title} className="rounded-3xl border border-ink/10 bg-white p-6">
-                <span className="flex size-11 items-center justify-center rounded-2xl bg-maroon/10 text-maroon">
-                  <edge.icon className="size-5" />
+              <li key={edge.title} className="rounded-2xl border border-ink/10 bg-white p-3 sm:rounded-3xl sm:p-6">
+                <span className="flex size-8 items-center justify-center rounded-xl bg-maroon/10 text-maroon sm:size-11 sm:rounded-2xl">
+                  <edge.icon className="size-4 sm:size-5" />
                 </span>
-                <h3 className="mt-5 font-display text-lg text-maroon">{edge.title}</h3>
-                <p className="mt-2 text-[14px] leading-relaxed text-ink/65">{edge.body}</p>
+                <h3 className="mt-3 font-display text-xs leading-tight text-maroon sm:mt-5 sm:text-lg">{edge.title}</h3>
+                <p className="mt-2 line-clamp-4 text-[10px] leading-snug text-ink/65 sm:text-[14px] sm:leading-relaxed">{edge.body}</p>
               </li>
             ))}
           </ul>

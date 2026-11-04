@@ -28,10 +28,10 @@ function GuidesIndex() {
           <p className="text-[11px] uppercase tracking-[0.2em] text-gold">
             For Kenyans building from abroad
           </p>
-          <h1 className="reveal mt-4 max-w-4xl font-display text-5xl text-paper sm:text-6xl md:text-7xl">
+          <h1 className="reveal mt-4 max-w-4xl font-display text-[2.3rem] leading-[0.96] text-paper sm:text-5xl md:text-6xl lg:text-7xl">
             Everything to know before you build
           </h1>
-          <p className="reveal reveal-delay-1 mt-6 max-w-2xl text-lg text-paper/75">
+          <p className="reveal reveal-delay-1 mt-6 max-w-2xl text-base text-paper/75 sm:text-lg">
             Written to be read before money moves, not after it has. No pitch, no
             gated download — just how the process actually works, where it goes
             wrong, and what to check yourself.
@@ -55,14 +55,14 @@ function GuidesIndex() {
       </section>
 
       {/* Journey teaser */}
-      <section className="bg-paper py-14 md:py-16">
+      <section className="bg-paper py-9 md:py-16">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-[11px] uppercase tracking-[0.2em] text-gold">
                 The full sequence
               </p>
-              <h2 className="mt-3 font-display text-4xl text-maroon md:text-5xl">
+              <h2 className="mt-3 font-display text-[1.85rem] text-maroon sm:text-3xl md:text-4xl lg:text-5xl">
                 Ten stages, start to handover
               </h2>
             </div>
@@ -74,21 +74,21 @@ function GuidesIndex() {
             </Link>
           </div>
 
-          <ol className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <ol className="mt-5 grid grid-cols-2 gap-2 sm:mt-9 sm:gap-3 lg:grid-cols-5">
             {JOURNEY.map((s) => (
               <li key={s.id}>
                 <Link
                   to="/guides/journey"
-                  className="group flex h-full items-start gap-4 rounded-2xl border border-ink/10 bg-white p-5 transition-all hover:border-gold/60 hover:shadow-[0_8px_30px_rgb(201_146_79/0.15)]"
+                  className="group flex h-full items-start gap-2 rounded-xl border border-ink/10 bg-white p-3 transition-all hover:border-gold/60 hover:shadow-[0_8px_30px_rgb(201_146_79/0.15)] sm:gap-4 sm:rounded-2xl sm:p-5"
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-maroon font-display text-base text-paper">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-maroon font-display text-xs text-paper sm:size-9 sm:text-base">
                     {s.order}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[15px] font-medium text-maroon transition-colors group-hover:text-burgundy">
+                    <span className="block text-xs font-medium leading-tight text-maroon transition-colors group-hover:text-burgundy sm:text-[15px]">
                       {s.name}
                     </span>
-                    <span className="mt-1.5 block text-[12px] text-ink/50">
+                    <span className="mt-1 block text-[9px] leading-tight text-ink/50 sm:mt-1.5 sm:text-[12px]">
                       {s.duration} · {s.costShare}
                     </span>
                   </span>
@@ -106,27 +106,27 @@ function GuidesIndex() {
         return (
           <section
             key={cat}
-            className="bg-stone/50 py-14 md:py-16"
+            className="bg-stone/50 py-9 md:py-16"
           >
             <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
               <p className="text-[11px] uppercase tracking-[0.2em] text-gold">
                 {cat}
               </p>
-              <div className="mt-6 grid gap-5 md:grid-cols-2">
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-5">
                 {items.map((g) => (
                   <Link
                     key={g.slug}
                     to="/guides/$slug"
                     params={{ slug: g.slug }}
-                    className="group flex flex-col rounded-3xl border border-ink/10 bg-white p-7 transition-all hover:border-gold/60 hover:shadow-[0_10px_40px_rgb(201_146_79/0.16)]"
+                    className="group flex flex-col rounded-xl border border-ink/10 bg-white p-3 transition-all hover:border-gold/60 hover:shadow-[0_10px_40px_rgb(201_146_79/0.16)] sm:rounded-3xl sm:p-5 md:p-7"
                   >
-                    <h3 className="font-display text-2xl leading-snug text-maroon transition-colors group-hover:text-burgundy">
+                    <h3 className="font-display text-sm leading-tight text-maroon transition-colors group-hover:text-burgundy sm:text-xl md:text-2xl sm:leading-snug">
                       {g.title}
                     </h3>
-                    <p className="mt-3 flex-1 text-[14px] leading-relaxed text-ink/65">
+                    <p className="mt-2 line-clamp-3 flex-1 text-[10px] leading-snug text-ink/65 sm:mt-3 sm:text-[14px] sm:leading-relaxed">
                       {g.summary}
                     </p>
-                    <p className="mt-5 border-t border-ink/8 pt-4 text-[11px] uppercase tracking-[0.14em] text-ink/45">
+                    <p className="mt-3 border-t border-ink/8 pt-2 text-[8px] uppercase tracking-[0.1em] text-ink/45 sm:mt-5 sm:pt-4 sm:text-[11px] sm:tracking-[0.14em]">
                       {g.readMinutes} min read →
                     </p>
                   </Link>

@@ -2,6 +2,31 @@
 // Rates, zones, regulations, contact info — the numbers the agent reaches for first
 
 export const REFERENCE_KB = {
+  // ─── Dynamic pricing policy ───
+  pricingPolicy: {
+    principle: "Material, labour and utility prices are planning references, not fixed quotations. They must be refreshed against live market conditions before a figure is treated as current.",
+    updateCadence: {
+      materials: "Every 30-90 days, or sooner if supply conditions change",
+      labour: "Quarterly review with site conditions and productivity assumptions",
+      utilityConnections: "As county or utility tariffs change",
+      professionalFees: "Review at each project and annually as standards update",
+    },
+    sourceHierarchy: [
+      "Current supplier quotations and delivery notes",
+      "ATRO market pricing files and recent project cost data",
+      "Kenya market benchmarks (KNBS, industry publications, local price lists)",
+      "Earlier ATRO history only as a baseline, never as a current quote",
+    ],
+    updateTriggers: [
+      "Supplier price movement or material shortages",
+      "Fuel, transport or logistics shifts",
+      "County permit or utility tariff changes",
+      "A change in project specification or finish level",
+      "New site conditions, geotechnical findings or remote delivery constraints",
+    ],
+    decisionRule: "Use indicative rates for early planning, then replace them with project-specific quantities, supplier quotes and site conditions before commitment.",
+  },
+
   // ─── Construction Rates (Q1 2026) ───
   rates: {
     note: "Indicative rates for Nairobi. Outside Nairobi, apply zone multipliers.",

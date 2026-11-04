@@ -7,7 +7,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { requireStaff } from "@/lib/staff-session.server";
 import { getSql, type Sql } from "@/lib/db";
 import {
@@ -179,7 +179,7 @@ export const addEvidencePhoto = createServerFn({ method: "POST" })
       dataUrl: z.string().min(32).max(Math.ceil(MAX_BYTES * 1.5)),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
@@ -224,7 +224,7 @@ export const addEvidencePhoto = createServerFn({ method: "POST" })
 
 export const deleteEvidencePhoto = createServerFn({ method: "POST" })
   .validator(z.object({ photoId: z.string().min(1) }))
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();

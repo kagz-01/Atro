@@ -14,8 +14,15 @@ import {
 } from "@/lib/cost";
 import { saveEnquiry } from "@/lib/enquiry";
 import { saveEnquiryToDb } from "@/lib/enquiry-server";
+import { uploadEnquiryFile } from "@/lib/enquiry-upload";
 import { ZONES } from "@/lib/site";
 import { KENYA_COUNTIES } from "@/lib/counties";
+import {
+  ENQUIRY_ATTACHMENT_ACCEPT,
+  formatMessageFileSize,
+  MAX_ENQUIRY_ATTACHMENTS,
+  validateMessageAttachmentMetadata,
+} from "@/lib/enquiry-attachments";
 import { useSiteStore } from "@/lib/store";
 import { formatKes, cn } from "@/lib/utils";
 import { whatsappHref } from "@/lib/whatsapp";
@@ -38,6 +45,7 @@ import {
   Clock,
   Users,
   Plane,
+  Paperclip,
 } from "lucide-react";
 
 const STEPS_BASE = [
@@ -45,6 +53,7 @@ const STEPS_BASE = [
   { id: "place", label: "Place", icon: MapPin },
   { id: "scale", label: "Scale", icon: Ruler },
   { id: "you", label: "You", icon: User },
+  { id: "review", label: "Review", icon: CheckCircle2 },
 ] as const;
 
 const DIASPORA_STEPS = [
@@ -53,6 +62,7 @@ const DIASPORA_STEPS = [
   { id: "scale", label: "Scale", icon: Ruler },
   { id: "you", label: "You", icon: User },
   { id: "abroad", label: "Abroad", icon: Globe },
+  { id: "review", label: "Review", icon: CheckCircle2 },
 ] as const;
 
 const DIASPORA_COUNTRIES = [
@@ -178,6 +188,12 @@ export function EnquiryWizard({
   const [email, setEmail] = useState("");
   const [startDate, setStartDate] = useState("");
   const [description, setDescription] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadedFileIndexes, setUploadedFileIndexes] = useState<number[]>([]);
+  const [enquiryId, setEnquiryId] = useState("");
+  const [uploadToken, setUploadToken] = useState("");
+  const [attachmentError, setAttachmentError] = useState("");
+  const [attachmentsSkipped, setAttachmentsSkipped] = useState(false);
   const [diasporaCountry, setDiasporaCountry] = useState("");
   const [diasporaTimezone, setDiasporaTimezone] = useState("");
   const [diasporaKenyaContact, setDiasporaKenyaContact] = useState("");
@@ -219,7 +235,75 @@ export function EnquiryWizard({
       toast.error("Tell us a little about the project so we can review the scope.");
       return;
     }
+    if (step === 3) {
+      if (!name.trim() || !phone.trim() || !email.trim()) {
+        toast.error("Add your name, phone and email before reviewing the enquiry.");
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        toast.error("Enter a valid email address so we can reply to you.");
+        return;
+      }
+    }
     setStep((current) => current + 1);
+  }
+
+  function addFiles(files: FileList | null) {
+    if (!files?.length) return;
+    const remaining = MAX_ENQUIRY_ATTACHMENTS - selectedFiles.length;
+    if (files.length > remaining) {
+      toast.error(`You can attach up to ${MAX_ENQUIRY_ATTACHMENTS} files.`);
+    }
+
+    const accepted: File[] = [];
+    for (const file of Array.from(files).slice(0, Math.max(remaining, 0))) {
+      const metadata = validateMessageAttachmentMetadata(file.name, file.type, file.size);
+      if (!metadata.ok) {
+        toast.error(`${file.name}: ${metadata.reason}`);
+        continue;
+      }
+      if (
+        selectedFiles.some(
+          (existing) =>
+            existing.name === file.name &&
+            existing.size === file.size &&
+            existing.lastModified === file.lastModified,
+        )
+      ) {
+        continue;
+      }
+      accepted.push(file);
+    }
+    if (accepted.length) setSelectedFiles((current) => [...current, ...accepted]);
+  }
+
+  function removeFile(index: number) {
+    setSelectedFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
+    setUploadedFileIndexes((current) =>
+      current
+        .filter((fileIndex) => fileIndex !== index)
+        .map((fileIndex) => (fileIndex > index ? fileIndex - 1 : fileIndex)),
+    );
+  }
+
+  async function uploadSelectedFiles(targetEnquiryId: string, token: string): Promise<boolean> {
+    setAttachmentError("");
+    const uploaded = new Set(uploadedFileIndexes);
+    for (let index = 0; index < selectedFiles.length; index += 1) {
+      if (uploaded.has(index)) continue;
+      try {
+        await uploadEnquiryFile(targetEnquiryId, token, selectedFiles[index]);
+        uploaded.add(index);
+        setUploadedFileIndexes([...uploaded]);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "The file upload could not be completed.";
+        setAttachmentError(message);
+        toast.error(`Your enquiry is saved, but ${selectedFiles[index].name} did not upload.`);
+        return false;
+      }
+    }
+    return true;
   }
 
   async function submit() {
@@ -239,52 +323,69 @@ export function EnquiryWizard({
     }
     setSubmitting(true);
 
-    const payload = {
-      name: name.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-      projectType: type === "Other" ? `Other — ${customProjectName.trim()}` : type,
-      zone,
-      stage,
-      startDate,
-      description: [
-        serviceOfInterest ? `Service of interest: ${serviceOfInterest}` : "",
-        type === "Other" ? `Project brief: ${customBrief.trim()}` : "",
-        description.trim() ? `Additional notes: ${description.trim()}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      ...(type === "Other"
-        ? {}
-        : {
-            sqm,
-            finish,
-            indicativeMin: Math.round(estimate.min),
-            indicativeMax: Math.round(estimate.max),
-          }),
-      diaspora,
-      diasporaCountry: diaspora ? diasporaCountry : "",
-      diasporaTimezone: diaspora ? diasporaTimezone : "",
-      diasporaKenyaContact: diaspora ? diasporaKenyaContact : "",
-      diasporaVisitPlans: diaspora ? diasporaVisitPlans : "",
-    };
+    let targetEnquiryId = enquiryId;
+    let targetUploadToken = uploadToken;
+    if (!enquiryId) {
+      const payload = {
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        projectType: type === "Other" ? `Other — ${customProjectName.trim()}` : type,
+        zone,
+        stage,
+        startDate,
+        description: [
+          serviceOfInterest ? `Service of interest: ${serviceOfInterest}` : "",
+          type === "Other" ? `Project brief: ${customBrief.trim()}` : "",
+          description.trim() ? `Additional notes: ${description.trim()}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        ...(type === "Other"
+          ? {}
+          : {
+              sqm,
+              finish,
+              indicativeMin: Math.round(estimate.min),
+              indicativeMax: Math.round(estimate.max),
+            }),
+        diaspora,
+        diasporaCountry: diaspora ? diasporaCountry : "",
+        diasporaTimezone: diaspora ? diasporaTimezone : "",
+        diasporaKenyaContact: diaspora ? diasporaKenyaContact : "",
+        diasporaVisitPlans: diaspora ? diasporaVisitPlans : "",
+      };
 
-    try {
-      await saveEnquiryToDb({ data: payload });
-    } catch (error) {
-      console.error("Enquiry submission failed.", error);
+      try {
+        const saved = await saveEnquiryToDb({ data: payload });
+        if (!saved.id || !saved.uploadToken) {
+          throw new Error("ATRO did not return an upload grant for the enquiry.");
+        }
+        targetEnquiryId = saved.id;
+        targetUploadToken = saved.uploadToken;
+        setEnquiryId(saved.id);
+        setUploadToken(saved.uploadToken);
+        try {
+          saveEnquiry(payload);
+        } catch (error) {
+          console.error("Could not save the local enquiry copy.", error);
+          toast.warning("Your enquiry reached ATRO, but this browser could not save a local copy.");
+        }
+      } catch (error) {
+        console.error("Enquiry submission failed.", error);
+        setSubmitting(false);
+        toast.error("We couldn't send your enquiry. Please retry, or contact ATRO on WhatsApp.");
+        return;
+      }
+    }
+
+    const filesUploaded =
+      selectedFiles.length === 0 ||
+      (await uploadSelectedFiles(targetEnquiryId, targetUploadToken));
+    if (!filesUploaded) {
       setSubmitting(false);
-      toast.error("We couldn't send your enquiry. Please retry, or contact ATRO on WhatsApp.");
       return;
     }
-
-    try {
-      saveEnquiry(payload);
-    } catch (error) {
-      console.error("Could not save the local enquiry copy.", error);
-      toast.warning("Your enquiry reached ATRO, but this browser could not save a local copy.");
-    }
-
     setDone(true);
     setSubmitting(false);
     toast.success("Enquiry received.");
@@ -308,7 +409,7 @@ export function EnquiryWizard({
         <div className="size-16 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center mb-6">
           <CheckCircle2 className="size-8 text-white" />
         </div>
-        <h2 className="font-display text-3xl md:text-4xl text-maroon">We have the brief.</h2>
+        <h2 className="font-display text-[2rem] leading-none text-maroon md:text-[2.6rem]">We have the brief.</h2>
         <p className="mt-4 text-ink/80 max-w-lg text-lg">
           Thank you, {name.split(" ")[0]}. Here is what happens next:
         </p>
@@ -377,6 +478,22 @@ export function EnquiryWizard({
             : COST_CAVEAT}
         </p>
 
+        {selectedFiles.length > 0 ? (
+          <div
+            role={attachmentsSkipped ? "alert" : "status"}
+            className={cn(
+              "mt-4 max-w-lg rounded-xl border p-4 text-sm",
+              attachmentsSkipped
+                ? "border-amber-300 bg-amber-50 text-amber-900"
+                : "border-green-200 bg-green-50 text-green-900",
+            )}
+          >
+            {attachmentsSkipped
+              ? "Your enquiry was received, but the selected files were not attached. Please contact ATRO to share them."
+              : `${selectedFiles.length} file${selectedFiles.length === 1 ? "" : "s"} attached securely to your enquiry.`}
+          </div>
+        ) : null}
+
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild variant="primary" className="rounded-2xl h-12 px-6">
             <a href={whatsappHref(whatsAppMsg)}>
@@ -413,7 +530,8 @@ export function EnquiryWizard({
               <div key={s.id} className="flex items-center">
                 <button
                   type="button"
-                  onClick={() => i < step && setStep(i)}
+                  onClick={() => i < step && !enquiryId && setStep(i)}
+                  disabled={Boolean(enquiryId)}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300",
                     isActive
@@ -807,6 +925,54 @@ export function EnquiryWizard({
                   className="rounded-xl"
                 />
               </div>
+              <div>
+                <Label htmlFor="enquiry-files" className="flex items-center gap-2 mb-2">
+                  <Paperclip className="size-4 text-muted" />
+                  Photos or drawings (optional)
+                </Label>
+                <Input
+                  id="enquiry-files"
+                  type="file"
+                  multiple
+                  accept={ENQUIRY_ATTACHMENT_ACCEPT}
+                  disabled={Boolean(enquiryId)}
+                  onChange={(event) => {
+                    addFiles(event.currentTarget.files);
+                    event.currentTarget.value = "";
+                  }}
+                  className="h-auto rounded-xl py-3 file:mr-3 file:rounded-md file:border-0 file:bg-maroon/5 file:px-3 file:py-2 file:text-xs file:font-medium file:text-maroon"
+                />
+                <p className="mt-2 text-xs text-muted">
+                  Up to {MAX_ENQUIRY_ATTACHMENTS} files, 10 MB each. JPG, PNG, WebP, PDF, DOCX,
+                  XLSX, MP4 or WebM. Files are private and available to ATRO staff handling your
+                  enquiry.
+                </p>
+                {selectedFiles.length > 0 ? (
+                  <ul className="mt-3 space-y-2" aria-label="Selected enquiry files">
+                    {selectedFiles.map((file, index) => (
+                      <li
+                        key={`${file.name}-${file.lastModified}-${index}`}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-line/60 bg-paper px-3 py-2 text-sm"
+                      >
+                        <span className="min-w-0 truncate text-ink">
+                          {file.name}
+                          <span className="ml-2 text-xs text-muted">
+                            {formatMessageFileSize(file.size)}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          disabled={Boolean(enquiryId)}
+                          onClick={() => removeFile(index)}
+                          className="shrink-0 text-xs text-burgundy underline disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
             </div>
 
             <div className="absolute -left-[9999px]" aria-hidden>
@@ -925,6 +1091,209 @@ export function EnquiryWizard({
           </div>
         ) : null}
 
+        {step === totalSteps - 1 ? (
+          <div className="grid gap-6 max-w-2xl">
+            <div>
+              <h2 className="font-display text-2xl md:text-3xl text-maroon mb-2">
+                Review your enquiry
+              </h2>
+              <p className="text-sm text-muted">
+                Check these details before sending. Use Edit to change any section.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-line/60 bg-paper divide-y divide-line/50">
+              <section className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted">Project</p>
+                    <p className="mt-1 font-medium text-maroon">
+                      {type === "Other" ? customProjectName.trim() : type}
+                    </p>
+                    {serviceOfInterest ? (
+                      <p className="mt-1 text-sm text-ink/70">Service: {serviceOfInterest}</p>
+                    ) : null}
+                    {type === "Other" ? (
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-ink/80">
+                        {customBrief.trim()}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm text-ink/70">
+                        Approximately {sqm} m² ·{" "}
+                        {FINISHES.find((item) => item.id === finish)?.label}
+                      </p>
+                    )}
+                  </div>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setStep(0)}>
+                    Edit
+                  </Button>
+                </div>
+              </section>
+
+              <section className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted">Site & timing</p>
+                    <p className="mt-1 font-medium text-maroon">{estimate.zoneName}</p>
+                  </div>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setStep(1)}>
+                    Edit
+                  </Button>
+                </div>
+              </section>
+
+              {type !== "Other" ? (
+                <section className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.14em] text-muted">
+                        Indicative planning range
+                      </p>
+                      <p className="mt-1 font-medium text-maroon">{estimate.label}</p>
+                      <p className="mt-1 text-xs text-muted">
+                        Not a quotation. {estimate.locationNote}
+                      </p>
+                    </div>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setStep(2)}>
+                      Edit
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
+
+              {selectedFiles.length > 0 ? (
+                <section className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-xs uppercase tracking-[0.14em] text-muted">Files</p>
+                      <ul className="mt-2 space-y-2">
+                        {selectedFiles.map((file, index) => (
+                          <li
+                            key={`${file.name}-${file.lastModified}-${index}`}
+                            className="flex items-center gap-2 text-sm text-ink/80"
+                          >
+                            <Paperclip className="size-4 shrink-0 text-muted" />
+                            <span className="truncate">{file.name}</span>
+                            <span className="shrink-0 text-xs text-muted">
+                              {formatMessageFileSize(file.size)}
+                              {uploadedFileIndexes.includes(index) ? " · attached" : ""}
+                            </span>
+                            {!enquiryId ? (
+                              <button
+                                type="button"
+                                onClick={() => removeFile(index)}
+                                className="ml-auto shrink-0 text-xs text-burgundy underline"
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    {!enquiryId ? (
+                      <Button type="button" size="sm" variant="outline" onClick={() => setStep(3)}>
+                        Edit
+                      </Button>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted">Contact</p>
+                    <p className="mt-1 font-medium text-maroon">{name.trim()}</p>
+                    <p className="mt-1 text-sm text-ink/70">{phone.trim()}</p>
+                    <p className="text-sm text-ink/70">{email.trim()}</p>
+                    <p className="mt-2 text-sm text-ink/70">Project stage: {stage}</p>
+                    {startDate ? (
+                      <p className="text-sm text-ink/70">Target start: {startDate}</p>
+                    ) : null}
+                    {description.trim() ? (
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-ink/70">
+                        Additional notes: {description.trim()}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setStep(3)}>
+                    Edit
+                  </Button>
+                </div>
+              </section>
+
+              {diaspora ? (
+                <section className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.14em] text-muted">
+                        Building from abroad
+                      </p>
+                      <p className="mt-1 font-medium text-maroon">
+                        {diasporaCountry || "Country not specified"}
+                      </p>
+                      <p className="mt-1 text-sm text-ink/70">
+                        {TIMEZONES.find((item) => item.value === diasporaTimezone)?.label ??
+                          "Time zone not specified"}
+                      </p>
+                      {diasporaKenyaContact ? (
+                        <p className="mt-1 text-sm text-ink/70">
+                          Kenya contact: {diasporaKenyaContact}
+                        </p>
+                      ) : null}
+                      {diasporaVisitPlans ? (
+                        <p className="mt-1 text-sm text-ink/70">
+                          Visit plans: {diasporaVisitPlans}
+                        </p>
+                      ) : null}
+                    </div>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setStep(4)}>
+                      Edit
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
+            </div>
+
+            {attachmentError ? (
+              <div
+                role="alert"
+                className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+              >
+                <p className="font-medium">Your enquiry is saved, but one or more files are not attached.</p>
+                <p className="mt-1">{attachmentError}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void submit()}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Retrying..." : "Retry file uploads"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setAttachmentsSkipped(true);
+                      setDone(true);
+                    }}
+                  >
+                    Continue without files
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            <p className="text-xs leading-relaxed text-muted">
+              Sending this enquiry asks ATRO to review your brief. It does not confirm availability,
+              create a contract, or commit you to proceed.
+            </p>
+          </div>
+        ) : null}
+
         {/* Navigation */}
         <div className="mt-10 flex items-center justify-between">
           <div>
@@ -933,6 +1302,7 @@ export function EnquiryWizard({
                 type="button"
                 variant="ghost"
                 onClick={() => setStep((s) => s - 1)}
+                disabled={Boolean(enquiryId)}
                 className="rounded-xl"
               >
                 <ArrowLeft className="size-4 mr-2" />
@@ -956,7 +1326,13 @@ export function EnquiryWizard({
                 disabled={submitting}
                 className="rounded-xl px-6 bg-gradient-to-r from-gold to-gold-light text-maroon hover:from-gold-light hover:to-gold"
               >
-                {submitting ? "Sending..." : "Send enquiry"}
+                {submitting
+                  ? enquiryId
+                    ? "Uploading files..."
+                    : "Sending..."
+                  : enquiryId
+                    ? "Retry file uploads"
+                    : "Send project enquiry"}
                 <ArrowRight className="size-4 ml-2" />
               </Button>
             )}

@@ -370,7 +370,7 @@ calendar; admins retain all roles' views and reserved decisions.
 | **Enquiries** | Intake, contact details, status, owner/assignee, next follow-up, and notes | Matches the recurring office lead-management workflow |
 | **Projects** | Searchable project directory with stage, client, next date, and attention indicators | Lets the office locate records quickly without making them the business owner |
 | **Calendar** | Calls, visits, reminders, and coordination appointments | Gives scheduling a clear home instead of burying it in project detail |
-| **Communications** | Client threads, unread/reply queue, delivery status, and routine update sending | Makes communication ownership and waiting states explicit |
+| **Communications** | **Implemented in the studio console**: a project-scoped client inbox for active live jobs, with Reply needed / Conversations / All active jobs filters, client/project search, newest activity and unread counts, and staff replies in the client portal | Keeps the inbox actionable at portfolio scale without mixing different jobs for the same client |
 | **Records** | Project documents and administrative completeness/checklists | Supports reliable records and follow-through |
 | **Team** (optional, confirm scope) | Staff directory, onboarding/access requests, availability, and HR tasks that ATRO actually wants to digitise | Avoids adding sensitive HR functions by assumption |
 
@@ -522,6 +522,12 @@ Client portal interaction follow-through:
   Office managers and admins can additionally schedule or update calls in
   Nairobi time. The server rejects call scheduling by regular staff, and
   schedule changes are recorded in project activity and shown to the client.
+- Staff and admins can open a dedicated Communications view, find a thread by
+  client, project title, or reference, and filter to replies needed, existing
+  conversations, or all active jobs. Threads are project-scoped, so a client
+  with multiple jobs has a separate history for each; a selected project can
+  start its first message from the studio side. The project detail view links
+  directly to the same conversation.
 - Weekly update checklist state persists per project and week; completion
   indicators for documents and blocking approvals match the records shown in
   the project's vault and approval workflows.

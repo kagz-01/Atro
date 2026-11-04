@@ -52,6 +52,8 @@ export function DashboardShell({
   searchPlaceholder = "Search",
   children,
   toolbar,
+  readOnly = false,
+  hideNav = false,
 }: {
   groups: NavGroup[];
   active: string;
@@ -63,6 +65,10 @@ export function DashboardShell({
   searchPlaceholder?: string;
   /** Rendered at the top of the content column, under the topbar. */
   toolbar?: ReactNode;
+  /** Disable actions inside the content area while preserving dashboard navigation. */
+  readOnly?: boolean;
+  /** Use when a dashboard is already a single-purpose view and should not display the nav rail. */
+  hideNav?: boolean;
   children: ReactNode;
 }) {
   const [rail, setRail] = useState(false);
@@ -103,10 +109,10 @@ export function DashboardShell({
       {/* Sidebar — wide screens only */}
       <aside
         className={cn(
-          "fixed left-0 z-30 hidden flex-col border-r border-ink/10 bg-white transition-[width] duration-200 lg:flex",
-          "top-[var(--preview-banner-h,0px)] h-[calc(100dvh-var(--preview-banner-h,0px))]",
-          rail ? "w-[76px]" : "w-[264px]",
+          "fixed left-0 z-30 flex flex-col border-r border-ink/10 bg-white transition-[width] duration-200",
+          "top-0 h-dvh",
         )}
+        style={{ width: rail ? 76 : "clamp(200px, 17vw, 260px)" }}
       >
         <div
           className={cn(
@@ -170,16 +176,14 @@ export function DashboardShell({
 
       {/* Content column */}
       <div
-        className={cn(
-          "transition-[padding] duration-200",
-          rail ? "lg:pl-[76px]" : "lg:pl-[264px]",
-        )}
+        className="transition-[padding] duration-200"
+        style={{ paddingLeft: rail ? 76 : "clamp(200px, 17vw, 260px)" }}
       >
-        <header className="sticky top-[var(--preview-banner-h,0px)] z-20 flex h-16 items-center gap-3 border-b border-ink/10 bg-white/90 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-ink/10 bg-white/90 px-4 backdrop-blur sm:px-6">
           <button
             type="button"
             onClick={() => setDrawer(true)}
-            className="grid size-10 shrink-0 place-items-center rounded-lg border border-ink/10 text-maroon lg:hidden"
+            className="hidden size-10 shrink-0 place-items-center rounded-lg border border-ink/10 text-maroon"
             aria-label="Open navigation"
           >
             <Menu className="size-4" />
@@ -213,7 +217,15 @@ export function DashboardShell({
           <div className="border-b border-ink/10 bg-white px-4 py-3 sm:px-6">{toolbar}</div>
         ) : null}
 
-        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="px-4 py-6 sm:px-6 lg:px-8">
+          {readOnly ? (
+            <fieldset disabled className="min-w-0 border-0 p-0">
+              {children}
+            </fieldset>
+          ) : (
+            children
+          )}
+        </main>
       </div>
     </div>
   );

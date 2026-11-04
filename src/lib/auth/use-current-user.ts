@@ -1,6 +1,11 @@
 import { useSyncExternalStore } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { personaKeyFromCookieHeader, previewPersona } from "@/lib/preview-personas";
+import {
+  GUEST_PREVIEW_COOKIE,
+  GUEST_PREVIEW_USER_ID,
+  personaKeyFromCookieHeader,
+  previewPersona,
+} from "@/lib/preview-personas";
 
 /**
  * Normalized user shape used across the app.
@@ -19,6 +24,8 @@ export type AppUser = {
   profileImageUrl: string | null;
   /** True when Supabase is not configured and the app falls back to a dev user. */
   isDevFallback: boolean;
+  /** Guest preview users can browse sample portal data but cannot make changes. */
+  isGuestPreview: boolean;
 };
 
 /**
@@ -46,6 +53,20 @@ let previewUser: AppUser | null = null;
 
 function previewAppUser(): AppUser {
   if (previewUser) return previewUser;
+  if (document.cookie.split(";").some((cookie) => cookie.trim() === `${GUEST_PREVIEW_COOKIE}=1`)) {
+    previewUser = {
+      id: GUEST_PREVIEW_USER_ID,
+      displayName: "Guest preview",
+      primaryEmail: null,
+      primaryEmailVerified: false,
+      primaryPhone: null,
+      primaryPhoneVerified: false,
+      profileImageUrl: null,
+      isDevFallback: true,
+      isGuestPreview: true,
+    };
+    return previewUser;
+  }
   const key = personaKeyFromCookieHeader(document.cookie);
   const persona = previewPersona(key);
   previewUser = {
@@ -57,6 +78,7 @@ function previewAppUser(): AppUser {
     primaryPhoneVerified: false,
     profileImageUrl: null,
     isDevFallback: true,
+    isGuestPreview: false,
   };
   return previewUser;
 }
@@ -111,15 +133,23 @@ function start() {
   void supabase.auth.getSession().then(({ data }) => {
     const user = data.session?.user;
     set({
-      user: user ? mapUser(user) : null,
+      user: user ? mapUser(user) : guestUserOrNull(),
       isPending: false,
     });
   });
 
   supabase.auth.onAuthStateChange((_event, session) => {
     const user = session?.user;
-    set({ user: user ? mapUser(user) : null, isPending: false });
+    set({ user: user ? mapUser(user) : guestUserOrNull(), isPending: false });
   });
+}
+
+function guestUserOrNull(): AppUser | null {
+  return document.cookie
+    .split(";")
+    .some((cookie) => cookie.trim() === `${GUEST_PREVIEW_COOKIE}=1`)
+    ? previewAppUser()
+    : null;
 }
 
 function mapUser(user: {
@@ -143,6 +173,7 @@ function mapUser(user: {
     primaryPhoneVerified: Boolean(user.phone_confirmed_at),
     profileImageUrl: null,
     isDevFallback: false,
+    isGuestPreview: false,
   };
 }
 

@@ -4,6 +4,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { toE164 } from "@/lib/phone";
 import { requireStaff } from "@/lib/staff-session.server";
+import { newEnquiryUploadGrant } from "@/lib/enquiry-upload-token.server";
 
 const EnquiryInput = z.object({
   name: z.string().min(1),
@@ -44,26 +45,38 @@ export const saveEnquiryToDb = createServerFn({ method: "POST" })
   .validator(EnquiryInput)
   .handler(async ({ data }) => {
     const sql = await getSql();
+    const grant = newEnquiryUploadGrant();
     const rows = await sql<{ id: string; created_at: string }>`
-      insert into enquiries (
-        name, phone, email, project_type, zone, stage, start_date,
-        description, sqm, finish, indicative_min, indicative_max,
-        diaspora, diaspora_country, diaspora_timezone,
-        diaspora_kenya_contact, diaspora_visit_plans
-      ) values (
-        ${data.name}, ${data.phone}, ${data.email}, ${data.projectType},
-        ${data.zone}, ${data.stage}, ${data.startDate},
-        ${data.description}, ${data.sqm ?? null}, ${data.finish ?? null},
-        ${data.indicativeMin ?? null}, ${data.indicativeMax ?? null},
-        ${data.diaspora}, ${data.diasporaCountry}, ${data.diasporaTimezone},
-        ${data.diasporaKenyaContact}, ${data.diasporaVisitPlans}
+      with inserted as (
+        insert into enquiries (
+          name, phone, email, project_type, zone, stage, start_date,
+          description, sqm, finish, indicative_min, indicative_max,
+          diaspora, diaspora_country, diaspora_timezone,
+          diaspora_kenya_contact, diaspora_visit_plans
+        ) values (
+          ${data.name}, ${data.phone}, ${data.email}, ${data.projectType},
+          ${data.zone}, ${data.stage}, ${data.startDate},
+          ${data.description}, ${data.sqm ?? null}, ${data.finish ?? null},
+          ${data.indicativeMin ?? null}, ${data.indicativeMax ?? null},
+          ${data.diaspora}, ${data.diasporaCountry}, ${data.diasporaTimezone},
+          ${data.diasporaKenyaContact}, ${data.diasporaVisitPlans}
+        )
+        returning id, created_at
+      ),
+      upload_session as (
+        insert into enquiry_upload_session (enquiry_id, token_hash, expires_at)
+        select id, ${grant.tokenHash}, now() + interval '24 hours'
+        from inserted
+        returning enquiry_id
       )
-      returning id, created_at
+      select inserted.id, inserted.created_at
+      from inserted join upload_session on upload_session.enquiry_id = inserted.id
     `;
     return {
       ok: true as const,
       id: String(rows[0]?.id ?? ""),
       createdAt: String(rows[0]?.created_at ?? ""),
+      uploadToken: grant.token,
     };
   });
 
@@ -90,6 +103,14 @@ type EnquiryRow = {
   assigned_to: string;
   project_id: string | null;
   created_at: string;
+};
+
+type EnquiryAttachmentRow = {
+  id: string;
+  enquiry_id: string;
+  filename: string;
+  mime: string;
+  size_bytes: number;
 };
 
 /**
@@ -196,9 +217,32 @@ export const listEnquiriesFromDb = createServerFn({ method: "GET" })
         filters,
       ),
     ]);
+    const attachments = rows.length
+      ? await sql.query<EnquiryAttachmentRow>(
+          `select id, enquiry_id, filename, mime, size_bytes
+           from enquiry_attachment
+           where enquiry_id = any($1::uuid[]) and status = 'ready' and deleted_at is null
+           order by created_at, id`,
+          [rows.map((row) => row.id)],
+        )
+      : [];
+    const attachmentsByEnquiry = new Map<string, EnquiryAttachmentRow[]>();
+    for (const attachment of attachments) {
+      const current = attachmentsByEnquiry.get(attachment.enquiry_id) ?? [];
+      current.push(attachment);
+      attachmentsByEnquiry.set(attachment.enquiry_id, current);
+    }
     const total = Number(count[0]?.total ?? 0);
     return {
-      rows,
+      rows: rows.map((row) => ({
+        ...row,
+        attachments: (attachmentsByEnquiry.get(row.id) ?? []).map((attachment) => ({
+          id: attachment.id,
+          filename: attachment.filename,
+          mime: attachment.mime,
+          sizeBytes: attachment.size_bytes,
+        })),
+      })),
       offset: data.offset,
       total,
       hasMore: data.offset + rows.length < total,

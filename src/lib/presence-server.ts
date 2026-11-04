@@ -11,7 +11,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { requireStaff } from "@/lib/staff-session.server";
 import { getSql, type Sql } from "@/lib/db";
 import { notify } from "@/lib/notify";
@@ -93,7 +93,7 @@ export const requestVisit = createServerFn({ method: "POST" })
       note: z.string().max(300).optional(),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     if (!(await ownedProject(sql, data.projectId, context.userId)))
@@ -128,7 +128,7 @@ export const requestWalkthrough = createServerFn({ method: "POST" })
       note: z.string().max(300).optional(),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     if (!(await ownedProject(sql, data.projectId, context.userId)))
@@ -177,7 +177,7 @@ export const respondPresence = createServerFn({ method: "POST" })
       note: z.string().max(600).optional(),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     const staff = await requireStaff();
     const sql = await getSql();

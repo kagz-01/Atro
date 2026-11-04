@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -36,12 +36,14 @@ import {
 } from "@/lib/diaspora/server";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { getMyProjectCircle } from "@/lib/project-circle-server";
+import { getMyAccess } from "@/lib/staff-access";
+import { resolveDashboardRoute } from "@/lib/dashboard-routing";
 
 export const Route = createFileRoute("/portal")({
   component: PortalPage,
   head: () => ({
     meta: [
-      { title: "Client project portal — ATRO Design & Construction" },
+      { title: "Project portal — ATRO Design & Construction" },
       {
         name: "description",
         content:
@@ -89,10 +91,10 @@ function SignInWall() {
             <div className="inline-flex items-center gap-2 rounded-full bg-gold/15 px-4 py-2">
               <span className="size-1.5 rounded-full bg-gold" />
               <p className="text-[10px] uppercase tracking-[0.2em] text-gold">
-                Client project portal
+                Project portal
               </p>
             </div>
-            <h1 className="mt-6 font-display text-5xl leading-tight text-paper sm:text-6xl">
+            <h1 className="mt-6 font-display text-[2.3rem] leading-[0.95] text-paper sm:text-5xl md:text-6xl">
               Your build, from anywhere
             </h1>
             <p className="mt-6 text-lg text-paper/75">
@@ -446,10 +448,16 @@ function PortalPage() {
   const { isPending: sessionPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
   const user = useCurrentUser();
+  const { data: access, isLoading: accessLoading } = useQuery({
+    queryKey: ["my-access"],
+    queryFn: () => getMyAccess({ data: undefined }),
+    enabled: Boolean(user),
+  });
+  const dashboardRoute = resolveDashboardRoute({ user, accessRole: access?.role ?? null });
   const { data: nudges } = useQuery({
     queryKey: ["my-nudges"],
     queryFn: () => getMyNudges({ data: undefined }),
-    enabled: Boolean(user && !isNestedPortalRoute),
+    enabled: Boolean(user && !isNestedPortalRoute && dashboardRoute === "/portal"),
   });
   const { data: sharedProjects } = useQuery({
     queryKey: ["my-project-circle"],
@@ -463,7 +471,7 @@ function PortalPage() {
   const { data: documents } = useQuery({
     queryKey: ["my-documents"],
     queryFn: () => listMyDocuments({ data: undefined }),
-    enabled: Boolean(user && !isNestedPortalRoute),
+    enabled: Boolean(user && !isNestedPortalRoute && dashboardRoute === "/portal"),
   });
   const [pending, setPending] = useState("");
   const firstVisit = useRef<string | null>(null);
@@ -490,10 +498,10 @@ function PortalPage() {
   }
 
   useEffect(() => {
-    if (isNestedPortalRoute) return;
+    if (isNestedPortalRoute || dashboardRoute === "/admin") return;
     void load();
     // Re-check when the account changes (sign-in, sign-out).
-  }, [user?.id, isNestedPortalRoute]);
+  }, [user?.id, isNestedPortalRoute, dashboardRoute]);
 
   async function run(key: string, action: () => Promise<unknown>, done: string) {
     setPending(key);
@@ -529,6 +537,9 @@ function PortalPage() {
     );
   }
 
+  if (user && !accessLoading && dashboardRoute === "/admin") {
+    return <Navigate to="/admin" replace />;
+  }
   if (loading && !data) return <LoadingBlock label="Opening your project" />;
   if (!data) {
     return (
@@ -558,11 +569,30 @@ function PortalPage() {
 
   const p = data.project;
   const isSample = p.isSample;
+  const isGuestPreview = user.isGuestPreview;
 
   return (
     <>
+      {isGuestPreview ? (
+        <div className="border-b border-gold/30 bg-gold/10 px-4 py-4 sm:px-6">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-maroon">
+              <strong>Guest preview.</strong> You are viewing sample project information. Sign in to
+              start a project, message ATRO, approve work, request visits, submit decisions, or
+              change account details.
+            </p>
+            <Button asChild size="sm">
+              <Link to="/login">
+                Create or sign in to an account
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <ClientDashboard
         data={data}
+        readOnly={isGuestPreview}
         documents={documents ?? []}
         nudges={nudges ?? []}
         firstVisit={firstVisit.current}
@@ -603,11 +633,13 @@ function PortalPage() {
               {data.projects.length} projects
             </span>
           ) : null}
-          <Button size="sm" onClick={() => setCreating((v) => !v)}>
-            <Plus className="size-4" />
-            {creating ? "Close" : isSample ? "Open a project" : "Add a project"}
-          </Button>
-          {isSample ? null : (
+          {!isGuestPreview ? (
+            <Button size="sm" onClick={() => setCreating((v) => !v)}>
+              <Plus className="size-4" />
+              {creating ? "Close" : isSample ? "Open a project" : "Add a project"}
+            </Button>
+          ) : null}
+          {isGuestPreview || isSample ? null : (
             <Button
               size="sm"
               variant="outline"

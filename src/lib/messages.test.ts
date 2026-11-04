@@ -5,6 +5,7 @@ import {
   composerHint,
   MESSAGE_MAX,
   MESSAGE_MIN,
+  needsStudioReply,
   newestFirst,
   oldestFirst,
   summariseThread,
@@ -23,6 +24,8 @@ const msg = (over: Partial<Message> = {}): Message => ({
   body: "Has the roof covering arrived?",
   createdAt: "2026-03-10T09:00:00Z",
   readAt: null,
+  deletedAt: null,
+  attachments: [],
   ...over,
 });
 
@@ -73,9 +76,20 @@ describe("validateMessage", () => {
   });
 });
 
+describe("needsStudioReply", () => {
+  it("stays true until the studio sends the latest message", () => {
+    assert.equal(needsStudioReply("client"), true);
+    assert.equal(needsStudioReply("studio"), false);
+    assert.equal(needsStudioReply(null), false);
+  });
+});
+
 describe("authorLabel", () => {
   it("uses the stored name when there is one", () => {
-    assert.equal(authorLabel({ authorRole: "studio", authorLabel: "Nanjala Oduor" }), "Nanjala Oduor");
+    assert.equal(
+      authorLabel({ authorRole: "studio", authorLabel: "Nanjala Oduor" }),
+      "Nanjala Oduor",
+    );
   });
 
   it("falls back to the role when the name is empty", () => {
@@ -100,6 +114,13 @@ describe("unreadFor", () => {
     assert.equal(unreadFor(messages, "studio"), 1);
   });
 
+  it("does not keep a deleted message in the unread count", () => {
+    const messages = [
+      msg({ authorRole: "studio", readAt: null, deletedAt: "2026-03-10T10:00:00Z" }),
+    ];
+    assert.equal(unreadFor(messages, "client"), 0);
+  });
+
   it("is zero on an empty thread", () => {
     assert.equal(unreadFor([], "client"), 0);
     assert.equal(unreadFor([], "studio"), 0);
@@ -119,7 +140,12 @@ describe("summariseThread", () => {
     const messages = [
       msg({ ord: 1, authorRole: "client" }),
       // Already opened by the client, so the thread reads as settled.
-      msg({ ord: 2, authorRole: "studio", body: "Arrives Thursday.", readAt: "2026-03-10T10:00:00Z" }),
+      msg({
+        ord: 2,
+        authorRole: "studio",
+        body: "Arrives Thursday.",
+        readAt: "2026-03-10T10:00:00Z",
+      }),
     ];
     const s = summariseThread(messages, "client");
     assert.equal(s.last?.body, "Arrives Thursday.");
@@ -157,12 +183,18 @@ describe("summariseThread", () => {
 describe("ordering", () => {
   it("reads a conversation oldest first", () => {
     const ordered = oldestFirst([msg({ ord: 3 }), msg({ ord: 1 }), msg({ ord: 2 })]);
-    assert.deepEqual(ordered.map((m) => m.ord), [1, 2, 3]);
+    assert.deepEqual(
+      ordered.map((m) => m.ord),
+      [1, 2, 3],
+    );
   });
 
   it("shows newest first for a badge or list", () => {
     const ordered = newestFirst([msg({ ord: 1 }), msg({ ord: 3 }), msg({ ord: 2 })]);
-    assert.deepEqual(ordered.map((m) => m.ord), [3, 2, 1]);
+    assert.deepEqual(
+      ordered.map((m) => m.ord),
+      [3, 2, 1],
+    );
   });
 
   it("does not mutate the input", () => {

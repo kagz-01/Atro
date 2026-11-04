@@ -15,7 +15,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { requireStaff } from "@/lib/staff-session.server";
 import { getSql, type Sql } from "@/lib/db";
 import { notify } from "@/lib/notify";
@@ -97,7 +97,7 @@ export const decideVariation = createServerFn({ method: "POST" })
       note: z.string().max(400).optional().default(""),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const [owned] = await sql<{ id: string }>`
@@ -204,7 +204,7 @@ const RaiseInput = z.object({
  */
 export const raiseVariation = createServerFn({ method: "POST" })
   .validator(RaiseInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
@@ -272,7 +272,7 @@ export const withdrawVariation = createServerFn({ method: "POST" })
       reason: z.string().max(300).optional().default(""),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();

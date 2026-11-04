@@ -11,7 +11,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { toE164 } from "@/lib/phone";
 import {
@@ -152,7 +152,7 @@ const SaveProfileInput = z.object({
  */
 export const saveMyProfile = createServerFn({ method: "POST" })
   .validator(SaveProfileInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const displayName = cleanProfileText(data.displayName, PROFILE_LIMITS.displayName);
@@ -220,7 +220,7 @@ export const saveMyAvatar = createServerFn({ method: "POST" })
       dataUrl: z.string().min(32).max(Math.ceil(AVATAR_MAX_BYTES * 1.5)),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const base64 = data.dataUrl.split(",")[1] ?? "";
@@ -247,7 +247,7 @@ export const saveMyAvatar = createServerFn({ method: "POST" })
   });
 
 export const deleteMyAvatar = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
     await sql`

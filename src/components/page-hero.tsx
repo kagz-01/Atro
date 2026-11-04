@@ -18,8 +18,8 @@ export function PageHero({
 }) {
   return (
     <section className={cn(
-      "relative pt-28 md:pt-36 pb-12 md:pb-16 overflow-hidden",
-      image && "min-h-[52vh] text-paper"
+      "relative pt-20 pb-10 overflow-hidden sm:pt-28 md:pt-36 md:pb-16",
+      image && "min-h-[48vh] text-paper sm:min-h-[52vh]"
     )}>
       {image ? (
         <>
@@ -43,7 +43,7 @@ export function PageHero({
           </div>
         ) : null}
         <h1 className={cn(
-          "reveal reveal-delay-1 font-display text-5xl sm:text-6xl md:text-7xl max-w-4xl",
+          "reveal reveal-delay-1 max-w-4xl font-display text-[2.4rem] leading-[0.95] sm:text-5xl md:text-6xl lg:text-7xl",
           image ? "text-paper" : "text-maroon"
         )}>
           {title}
@@ -85,15 +85,15 @@ export function CtaBand({
         <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] bg-burgundy/30 rounded-full blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-20 flex flex-col md:flex-row md:items-end gap-8 justify-between">
+      <div className="relative mx-auto flex max-w-[1400px] flex-col justify-between gap-8 px-6 py-16 sm:px-8 md:flex-row md:items-end md:px-12 md:py-20 lg:px-16">
         <div className="max-w-2xl">
-          <h2 className="font-display text-4xl md:text-5xl text-paper">{title}</h2>
-          <p className="mt-4 text-paper/75">{body}</p>
+          <h2 className="font-display text-[1.8rem] text-paper sm:text-3xl md:text-4xl lg:text-5xl">{title}</h2>
+          <p className="mt-4 text-sm text-paper/75 sm:text-base">{body}</p>
         </div>
         <Link
           to={typeof ctaTo === "string" ? ctaTo : ctaTo.to}
           search={typeof ctaTo === "object" ? ctaTo.search : undefined}
-          className="group inline-flex h-14 px-8 items-center gap-3 bg-gradient-to-r from-gold to-gold-light text-maroon text-[12px] uppercase tracking-[0.16em] font-bold rounded-2xl shadow-glow-gold btn-lift overflow-hidden"
+          className="group inline-flex h-12 items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-gold to-gold-light px-5 text-[11px] font-bold uppercase tracking-[0.16em] text-maroon shadow-glow-gold btn-lift sm:h-14 sm:px-8 sm:text-[12px]"
         >
           <span className="relative z-10">{ctaLabel}</span>
           <ArrowRight className="size-5 relative z-10 group-hover:translate-x-1 transition-transform" />

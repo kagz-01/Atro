@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRouterState } from "@tanstack/react-router";
 import { previewIdentity } from "@/lib/supabase/config";
 import {
   personaCookieAssignment,
@@ -6,21 +7,19 @@ import {
   PREVIEW_PERSONAS,
   previewPersona,
   previewPersonaWorkspace,
+  isGuestPreviewCookie,
   type PreviewPersonaKey,
 } from "@/lib/preview-personas";
 
 /**
  * The four-seat switcher for local preview.
  *
- * Deliberately its own component rather than part of the amber notice: the
- * notice is dismissible, and a switcher you can hide is a switcher you can
- * get stuck without — switching seats is how you reach the office console and
- * each side of the client portal at all, so it stays pinned to the viewport
- * no matter what happens to the banner.
+ * The switcher stays pinned to the viewport because switching seats is how
+ * local preview reaches the office console and each side of the client portal.
  *
- * Like the banner, nothing renders until after mount: the active seat comes
- * from `document.cookie`, which the server does not share with this component,
- * so deciding during SSR would guarantee a hydration mismatch.
+ * Nothing renders until after mount: the active seat comes from
+ * `document.cookie`, which the server does not share with this component, so
+ * deciding during SSR would guarantee a hydration mismatch.
  *
  * The cookie is resolved per-request on the server, so a seat change only
  * takes effect after a document reload. Each seat also opens its own
@@ -28,15 +27,16 @@ import {
  */
 export function PreviewPersonaSwitcher() {
   const [active, setActive] = useState<PreviewPersonaKey | null>(null);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   useEffect(() => {
-    // Configured Supabase means no preview identity at all — same switch
-    // that removes the banner removes this, so it cannot linger in production.
-    if (!previewIdentity()) return;
+    // Configured Supabase means no preview identity, so the switcher cannot
+    // linger in production.
+    if (!previewIdentity() || isGuestPreviewCookie(document.cookie)) return;
     setActive(personaKeyFromCookieHeader(document.cookie) ?? previewPersona().key);
   }, []);
 
-  if (!active) return null;
+  if (!active || !(pathname.startsWith("/admin") || pathname.startsWith("/portal"))) return null;
 
   return (
     <div

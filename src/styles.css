@@ -48,8 +48,80 @@
     background: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    font-size: 1.0625rem;
+    font-size: 16px;
     line-height: 1.6;
+    letter-spacing: -0.01em;
+  }
+
+  section {
+    scroll-margin-top: 5rem;
+  }
+
+  h1 {
+    font-size: clamp(2.15rem, 2.9vw, 3.1rem);
+  }
+
+  h2 {
+    font-size: clamp(1.7rem, 2.1vw, 2.3rem);
+  }
+
+  h3 {
+    font-size: clamp(1.3rem, 1.5vw, 1.7rem);
+  }
+
+  h4 {
+    font-size: clamp(1.08rem, 1.2vw, 1.25rem);
+  }
+
+  @media (max-width: 640px) {
+    body {
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 10.5vw, 2.8rem);
+      line-height: 0.96;
+    }
+
+    h2 {
+      font-size: clamp(1.5rem, 7vw, 2rem);
+      line-height: 1.02;
+    }
+
+    h3 {
+      font-size: clamp(1.18rem, 5vw, 1.5rem);
+      line-height: 1.08;
+    }
+
+    h4 {
+      font-size: clamp(1rem, 4vw, 1.12rem);
+      line-height: 1.15;
+    }
+
+    p {
+      font-size: 0.95rem;
+      line-height: 1.62;
+    }
+
+    .text-8xl { font-size: clamp(2.4rem, 14vw, 4rem) !important; }
+    .text-7xl { font-size: clamp(2.1rem, 12vw, 3.6rem) !important; }
+    .text-6xl { font-size: clamp(1.9rem, 10vw, 3.2rem) !important; }
+    .text-5xl { font-size: clamp(1.8rem, 9vw, 2.8rem) !important; }
+    .text-4xl { font-size: clamp(1.6rem, 7.5vw, 2.35rem) !important; }
+    .text-3xl { font-size: clamp(1.45rem, 6.4vw, 2.1rem) !important; }
+    .text-2xl { font-size: clamp(1.26rem, 5.3vw, 1.7rem) !important; }
+    .text-xl { font-size: clamp(1.08rem, 4.2vw, 1.3rem) !important; }
+    .text-lg { font-size: 1.03rem !important; }
+    .text-base { font-size: 0.97rem !important; }
+    .leading-relaxed { line-height: 1.6 !important; }
+
+    button,
+    a[role="button"],
+    [type="button"],
+    [type="submit"] {
+      min-height: 2.75rem;
+    }
   }
 
   /* Wider containers for better horizontal space usage */
@@ -117,14 +189,82 @@
     font-family: var(--font-display);
     font-optical-sizing: auto;
     font-weight: 500;
-    line-height: 1.12;
-    letter-spacing: -0.02em;
+    line-height: 0.98;
+    letter-spacing: -0.03em;
     text-wrap: balance;
     color: var(--color-maroon);
   }
 
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-display.text-5xl,
+  .font-display.text-6xl,
+  .font-display.text-7xl,
+  .font-display.text-8xl,
+  .font-display.sm\:text-5xl,
+  .font-display.sm\:text-6xl,
+  .font-display.md\:text-5xl,
+  .font-display.md\:text-6xl,
+  .font-display.md\:text-7xl,
+  .font-display.md\:text-8xl,
+  .font-display.lg\:text-5xl,
+  .font-display.lg\:text-6xl,
+  .font-display.lg\:text-7xl,
+  .font-display.lg\:text-8xl {
+    font-size: clamp(2rem, 2.6vw, 2.8rem);
+  }
+
+  @media (max-width: 640px) {
+    .font-display.text-4xl,
+    .font-display.text-5xl,
+    .font-display.text-6xl,
+    .font-display.text-7xl,
+    .font-display.text-8xl,
+    .font-display.sm\:text-5xl,
+    .font-display.sm\:text-6xl,
+    .font-display.md\:text-5xl,
+    .font-display.md\:text-6xl,
+    .font-display.md\:text-7xl,
+    .font-display.md\:text-8xl,
+    .font-display.lg\:text-5xl,
+    .font-display.lg\:text-6xl,
+    .font-display.lg\:text-7xl,
+    .font-display.lg\:text-8xl {
+      font-size: clamp(1.9rem, 8.4vw, 2.9rem);
+      line-height: 0.96;
+    }
+  }
+
+  @media (min-width: 640px) {
+    .font-display.sm\:text-5xl,
+    .font-display.sm\:text-6xl {
+      font-size: clamp(2.2rem, 3vw, 3.1rem);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .font-display.md\:text-5xl,
+    .font-display.md\:text-6xl,
+    .font-display.md\:text-7xl,
+    .font-display.md\:text-8xl {
+      font-size: clamp(2.4rem, 3.4vw, 3.5rem);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .font-display.lg\:text-5xl,
+    .font-display.lg\:text-6xl,
+    .font-display.lg\:text-7xl,
+    .font-display.lg\:text-8xl {
+      font-size: clamp(2.6rem, 3.8vw, 4.2rem);
+    }
+  }
+
   p {
     text-wrap: pretty;
+    font-size: 0.98rem;
   }
 
   a {

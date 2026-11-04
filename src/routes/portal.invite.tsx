@@ -125,18 +125,32 @@ function ProjectCircleInvitePage() {
                 <li>• Access lasts 90 days after acceptance and the owner may revoke it sooner.</li>
               </ul>
               <p className="mt-4 text-[11px] text-ink/50">Invitation for {invite.data.email}</p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button
-                  disabled={accept.isPending || Boolean(acceptedProjectId)}
-                  onClick={() => accept.mutate({ data: { token } })}
-                >
-                  {accept.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-                  {accept.isPending ? "Accepting…" : "Accept project access"}
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/portal">Not now</Link>
-                </Button>
-              </div>
+              {user.isGuestPreview ? (
+                <div className="mt-6 rounded-xl border border-gold/30 bg-gold/8 p-4">
+                  <p className="text-[13px] leading-relaxed text-ink/70">
+                    Guest preview is read-only. Sign in or create an account to accept this
+                    invitation.
+                  </p>
+                  <Button asChild className="mt-4">
+                    <a href={`/login?returnTo=${encodeURIComponent(returnTo)}`}>
+                      Sign in to accept
+                    </a>
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Button
+                    disabled={accept.isPending || Boolean(acceptedProjectId)}
+                    onClick={() => accept.mutate({ data: { token } })}
+                  >
+                    {accept.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                    {accept.isPending ? "Accepting…" : "Accept project access"}
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link to="/portal">Not now</Link>
+                  </Button>
+                </div>
+              )}
             </>
           ) : null}
         </Panel>

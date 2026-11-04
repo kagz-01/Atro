@@ -80,7 +80,7 @@ export function KenyaMap({
       </div>
 
       <div className="lg:col-span-5 space-y-2">
-        {ZONES.map((z) => {
+        {ZONES.filter((z) => z.status !== "diaspora").map((z) => {
           const active = current === z.slug;
           return (
             <button

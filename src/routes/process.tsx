@@ -24,7 +24,7 @@ function ProcessPage() {
         kicker="Process"
         title="A journey you can point to, not a fog of site visits."
         lede="Eight steps. If a project skips cost planning or pretends approvals are optional, it is not an ATRO project."
-        image="/images/site.webp"
+        image="/catalog/images/site.webp"
       />
       <section className="mx-auto max-w-3xl px-4 sm:px-6 py-16">
         <ol className="relative border-l border-gold/50 ml-3 space-y-12">

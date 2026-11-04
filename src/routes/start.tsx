@@ -74,13 +74,13 @@ function StartPage() {
             <Badge tone={isDiaspora ? "gold" : "maroon"} className="mb-4">
               {isDiaspora ? "Diaspora enquiry" : "Start a project"}
             </Badge>
-            <h1 className="font-display text-4xl md:text-5xl text-maroon">
-              {isDiaspora ? "Five steps. Then a person." : "Four steps. Then a person."}
+            <h1 className="font-display text-[2.2rem] leading-[0.94] tracking-[-0.05em] text-maroon md:text-[2.9rem]">
+              {isDiaspora ? "Tell us what you need." : "Tell us what you need."}
             </h1>
-            <p className="mt-5 text-ink/70 text-lg">
+            <p className="mt-5 text-base leading-relaxed text-ink/70 sm:text-lg">
               {isDiaspora
-                ? "Type, place, scale, contact details, and your situation abroad. We will schedule around your time zone."
-                : "Tell us what you need, where it is, and how to reach you. Standard building work gets an indicative planning range; custom scopes are reviewed by a person. Neither is a quotation."}
+                ? "Share the brief, where it is, and how to reach you. We review the project and follow up with the next practical step."
+                : "Share the brief, where it is, and how to reach you. We review the project and follow up with the next practical step."}
             </p>
 
             {selectedService ? (
@@ -102,28 +102,37 @@ function StartPage() {
                 {
                   num: "1",
                   title: "Project type",
-                  desc: "Residential, commercial, or institutional.",
+                  desc: "Home, commercial space or institutional project.",
                 },
                 {
                   num: "2",
                   title: "Location",
-                  desc: "Choose from all 47 counties; availability is confirmed in a call.",
+                  desc: "Choose the county or site area.",
                 },
                 {
                   num: "3",
-                  title: "Scale or project brief",
-                  desc: "Area and finish for building work, or details for a custom scope.",
+                  title: "Project brief",
+                  desc: "Scope, size, finishes or the issue to solve.",
                 },
-                { num: "4", title: "Contact details", desc: "Name, phone, email." },
+                {
+                  num: "4",
+                  title: "Contact details",
+                  desc: "Name, phone, email and how soon you need to move.",
+                },
                 ...(isDiaspora
                   ? [
                       {
                         num: "5",
-                        title: "Building from abroad",
-                        desc: "Country, time zone, Kenya contact, visit plans.",
+                        title: "Remote coordination",
+                        desc: "Time zone, country and any Kenya point of contact.",
                       },
                     ]
                   : []),
+                {
+                  num: isDiaspora ? "6" : "5",
+                  title: "Review and send",
+                  desc: "Check the project before it goes to the team.",
+                },
               ].map((s) => (
                 <div key={s.num} className="flex items-start gap-4">
                   <div className="size-10 rounded-full bg-gradient-to-br from-maroon to-burgundy flex items-center justify-center text-white text-sm font-bold shrink-0">

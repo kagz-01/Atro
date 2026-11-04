@@ -24,7 +24,7 @@ function AboutPage() {
         kicker="Studio"
         title="A design-and-build company, not a van with a logo."
         lede="ATRO is a modern design-and-construction company focused on creating well-designed, technically sound and efficiently delivered structures."
-        image="/images/interior.webp"
+        image="/catalog/images/interior.webp"
       />
       <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 grid lg:grid-cols-12 gap-12">
         <div className="lg:col-span-7 space-y-6 text-lg text-ink/80">
@@ -46,21 +46,21 @@ function AboutPage() {
       </section>
       <section className="bg-stone/60 py-16">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <h2 className="font-display text-3xl text-maroon">Values</h2>
-          <div className="mt-8 grid sm:grid-cols-2 gap-6">
+          <h2 className="font-display text-[2.1rem] leading-none text-maroon">Values</h2>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-6">
             {VALUES.map((v) => (
-              <article key={v.title} className="bg-paper border border-line p-6 rounded-sm">
-                <h3 className="font-display text-2xl text-maroon">{v.title}</h3>
-                <p className="mt-2 text-ink/75">{v.body}</p>
+              <article key={v.title} className="rounded-sm border border-line bg-paper p-3 sm:p-6">
+                <h3 className="font-display text-sm leading-tight text-maroon sm:text-[1.5rem] sm:leading-none">{v.title}</h3>
+                <p className="mt-2 text-[10px] leading-snug text-ink/75 sm:text-base sm:leading-relaxed">{v.body}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
       <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 grid md:grid-cols-2 gap-10 items-center">
-        <img src="/images/detail.webp" alt="Concrete and stone junction" className="w-full aspect-[4/3] object-cover" />
+        <img src="/catalog/images/detail.webp" alt="Concrete and stone junction" className="w-full aspect-[4/3] object-cover" />
         <div>
-          <h2 className="font-display text-3xl text-maroon">Philosophy</h2>
+          <h2 className="font-display text-[2.1rem] leading-none text-maroon">Philosophy</h2>
           <p className="mt-4 text-ink/80">
             A building is a set of joints, levels, waterproofing details and decisions. Taste matters. So does the damp proof course. We will not photograph a house we would not hand to our own family.
           </p>

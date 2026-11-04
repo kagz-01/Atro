@@ -52,6 +52,32 @@ export function MaterialPrices() {
 
   return (
     <div>
+      <div className="mb-4 rounded-2xl border border-line/60 bg-paper p-3 shadow-soft sm:mb-6 sm:rounded-[1.75rem] sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between sm:gap-5">
+          <div className="max-w-2xl">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Indicative pricing</p>
+            <h2 className="mt-2 font-display text-lg text-maroon sm:text-2xl">A practical reference, not a commitment</h2>
+            <p className="mt-2 text-xs leading-relaxed text-ink/70 sm:text-sm">
+              Use these ranges to sense-check the likely cost of materials before a project brief, supplier enquiry, or formal quantity take-off.
+            </p>
+          </div>
+          <div className="grid min-w-0 grid-cols-3 gap-2 text-left sm:min-w-[260px] sm:gap-3">
+            <div className="rounded-xl border border-line bg-cream p-2 sm:rounded-2xl sm:p-3">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Categories</p>
+              <p className="mt-2 font-display text-xl text-maroon">{MATERIAL_CATEGORIES.length}</p>
+            </div>
+            <div className="rounded-xl border border-line bg-cream p-2 sm:rounded-2xl sm:p-3">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Items</p>
+              <p className="mt-2 font-display text-xl text-maroon">{MATERIALS.length}</p>
+            </div>
+            <div className="rounded-xl border border-line bg-cream p-2 sm:rounded-2xl sm:p-3">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Refresh rule</p>
+              <p className="mt-2 text-xs font-medium text-ink/75">Price check</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Category pills — horizontal scroll on mobile */}
       <div
         ref={scrollRef}
@@ -118,7 +144,7 @@ export function MaterialPrices() {
       </p>
 
       {/* Material cards */}
-      <div className="grid gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
         {filtered.map((material) => (
           <MaterialCard key={material.id} material={material} />
         ))}
@@ -139,9 +165,7 @@ export function MaterialPrices() {
         <div className="text-xs text-muted leading-relaxed">
           <p className="font-medium text-ink/70">Data sources</p>
           <p className="mt-1">
-            Prices sourced from KNBS Construction Input Price Indices (Q4 2025), IQSK Construction Costs Handbook 2023/2024,
-            and verified market surveys. All prices are KES, VAT excluded unless stated. Actual prices vary by brand, supplier,
-            location, volume and market conditions. Last verified: Q1 2026.
+            These are reference ranges in ATRO's dataset, with item dates shown below; no live supplier quotations are connected to this tool. KNBS Construction Input Price Indices track changes in input prices and are not individual brand or stockist quotations. Prices vary by product, supplier, county, delivery, volume and tax. Confirm a current written quote before relying on a rate.
           </p>
         </div>
       </div>
@@ -161,25 +185,25 @@ function MaterialCard({ material }: { material: MaterialItem }) {
   }, [expanded]);
 
   return (
-    <div className="bg-cream border border-line/50 rounded-2xl overflow-hidden hover:border-burgundy/30 transition-all duration-200">
+    <div className="min-w-0 overflow-hidden rounded-xl border border-line/50 bg-cream transition-all duration-200 hover:border-burgundy/30 sm:rounded-2xl">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full p-5 text-left"
+        className="w-full p-3 text-left sm:p-5"
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1.5">
-              <h3 className="font-display text-base text-maroon truncate">{material.name}</h3>
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+              <h3 className="line-clamp-2 font-display text-sm leading-tight text-maroon sm:text-base">{material.name}</h3>
               <Badge tone="stone" className="shrink-0 text-[9px]">{material.unit}</Badge>
             </div>
-            <p className="text-sm text-ink/50 line-clamp-1">{material.notes}</p>
+            <p className="line-clamp-2 text-[10px] leading-snug text-ink/50 sm:text-sm sm:leading-normal">{material.notes}</p>
           </div>
-          <div className="text-right shrink-0">
-            <p className="font-display text-lg text-maroon tabular-nums">
+          <div className="shrink-0 text-left sm:text-right">
+            <p className="font-display text-sm text-maroon tabular-nums sm:text-lg">
               {formatMaterialRange(material.minPrice, material.maxPrice)}
             </p>
-            <p className="text-[10px] text-muted mt-0.5">per {material.unit}</p>
+            <p className="mt-0.5 text-[9px] text-muted sm:text-[10px]">per {material.unit}</p>
           </div>
         </div>
       </button>
@@ -189,7 +213,7 @@ function MaterialCard({ material }: { material: MaterialItem }) {
         className="overflow-hidden transition-all duration-300 ease-in-out"
         style={{ maxHeight: expanded ? `${contentHeight}px` : "0px" }}
       >
-        <div ref={contentRef} className="px-5 pb-5 border-t border-line/30">
+        <div ref={contentRef} className="border-t border-line/30 px-3 pb-3 sm:px-5 sm:pb-5">
           <div className="pt-4 space-y-4">
             {material.brands.length > 0 && (
               <div>
@@ -219,7 +243,7 @@ function MaterialCard({ material }: { material: MaterialItem }) {
               </div>
               <div className="w-px h-8 bg-line/50" />
               <div>
-                <p className="text-[10px] uppercase tracking-[0.12em] text-muted mb-0.5">Last verified</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-muted mb-0.5">Reference date</p>
                 <p className="text-sm text-ink/70">{material.lastUpdated}</p>
               </div>
             </div>

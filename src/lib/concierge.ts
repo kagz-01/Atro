@@ -8,25 +8,52 @@ function buildKBContext() {
   const c = KB.construction;
   const q = KB.consultancy;
   const di = KB.diaspora;
+  const ref = KB.reference;
+  const manual = KB.operatingManual;
 
   return `
 ## ABOUT ATRO
 ${d.definition}
 Founded: ${d.founded}. Location: ${d.location}.
-We do: Design, Construction, Consultancy — across residential, commercial, institutional, religious, industrial.
+We do: Design, Construction, Consultancy — across residential, commercial, institutional, religious, industrial and diaspora delivery.
 
-## SERVICES
-Design: ${d.services.map((s) => s.name).join(", ")}.
-Construction: Full build from foundations to handover.
-Consultancy: ${q.services.map((s) => s.name).join(", ")}.
+## SERVICE PLATFORM
+Design services: ${d.services.map((s) => s.name).join(", ")}.
+Construction stages: ${c.phases.map((p) => p.name).join(", ")}.
+Consultancy services: ${q.services.map((s) => s.name).join(", ")}.
+Project support tools: Cost Calculator, Zone Map, Material Prices, BOQ Worksheet.
+
+## AGENT OPERATING MANUAL
+### Service decision trees
+${manual.serviceDecisionTrees.map((s) => `- ${s.service}: trigger = ${s.triggers.join(", ")}. Outputs = ${s.outputs.join(", ")}. Handoff = ${s.handoff}`).join("\n")}
+
+### Cost calculator assumptions
+Inputs: ${manual.costCalculatorAssumptions.inputs.join(", ")}. Exclusions: ${manual.costCalculatorAssumptions.exclusions.join(", ")}. Accuracy: ${manual.costCalculatorAssumptions.accuracy}
+
+### Material pricing refresh rules
+Cadence: ${manual.materialPriceRefreshRules.cadence.materials}; ${manual.materialPriceRefreshRules.cadence.labour}; ${manual.materialPriceRefreshRules.cadence.utilities}. Decision rule: ${manual.materialPriceRefreshRules.decisionRule}
+
+### Project lifecycle checkpoints
+${manual.projectLifecycleCheckpoints.map((p) => `- ${p.phase}: ${p.checkpoints.join(", ")}`).join("\n")}
+
+### Diaspora decision flow
+${manual.diasporaClientDecisionFlow.steps.join("; ")}
+Red flags: ${manual.diasporaClientDecisionFlow.redFlags.join("; ")}.
+
+## WHAT THE AGENT SHOULD DO
+- Answer with ATRO-specific, plain-language guidance.
+- Be precise about what is indicative versus what is final.
+- Keep pricing directional unless a project-specific briefing or site assessment exists.
+- Route the client to the right tool or next step instead of inventing a quote.
+- Use the project lifecycle logic: feasibility → concept → design → quantities → procurement → site delivery → handover.
 
 ## WHERE WE BUILD
 Nairobi (hub), Kiambu, Machakos, Kajiado — active.
 Coast, Nakuru — limited.
 Kisumu — by request.
-Diaspora — managed Kenyan projects from abroad.
+Diaspora — remote management for Kenyans building in Kenya from abroad.
 
-## PROCESS (5 phases)
+## DESIGN PROCESS
 ${d.process.map((p) => `${p.phase}. ${p.name}: ${p.description}`).join("\n")}
 
 ## CONSTRUCTION PHASES
@@ -35,18 +62,23 @@ ${c.phases.map((p) => `${p.name}: ${p.description}`).join("\n")}
 ## FINISH LEVELS
 ${d.finishLevels.map((f) => `${f.name}: ${f.costRange} — ${f.description}`).join("\n")}
 
-## RATES (Q1 2026, indicative)
+## PRICING POLICY (dynamic and indicative)
+Pricing principle: ${ref.pricingPolicy.principle}
+Refresh cadence: Materials ${ref.pricingPolicy.updateCadence.materials}; labour ${ref.pricingPolicy.updateCadence.labour}; utility connections ${ref.pricingPolicy.updateCadence.utilityConnections}.
+Source hierarchy: ${ref.pricingPolicy.sourceHierarchy.join("; ")}.
+Update triggers: ${ref.pricingPolicy.updateTriggers.join("; ")}.
+Decision rule: ${ref.pricingPolicy.decisionRule}
+
+## RATES (indicative, not fixed)
 Residential: KES 35,000-120,000/m². Commercial: KES 30,000-180,000/m².
 Zone multipliers: Nairobi 1.10, Kiambu 1.03, Machakos 0.98, Kajiado 0.98, Coast 1.18, Nakuru 0.92, Kisumu 0.90, Diaspora 1.40.
-
-## COST BREAKDOWN (typical)
-Structure 35%, Finishes 25%, Services 18%, External 10%, Professional 7%, Contingency 5%.
+Typical cost split: Structure 35%, Finishes 25%, Services 18%, External 10%, Professional 7%, Contingency 5%.
 
 ## PROFESSIONAL FEES
 Architect 5-8%, QS 0.8-1.5%, Structural 3-5%, MEP 3-5%, PM 3-6% of construction cost.
 
 ## EXCLUSIONS FROM QUOTES
-Land, stamp duty, legal fees, county permits (KES 80K-200K), NEMA (KES 50K-100K), utility connections, FF&E, landscaping, pools/generators/solar (unless specified).
+Land, stamp duty, legal fees, county permits, NEMA, utility connections, FF&E, landscaping, pools/generators/solar (unless specified).
 
 ## REGULATIONS
 NCA registration required for all projects. NEMA EIA for larger projects. County building approval. Professional registration via AAK, BORAQS, EBK.
@@ -61,19 +93,24 @@ Conventional RC+masonry (baseline), Precast (+5-10%), Steel frame (+15-25%), Tim
 3-bed bungalow 6-9 months. 4-bed maisonette 9-14 months. Apartment block G+3 to G+6: 12-18 months. Commercial 12-24 months. Renovation 3-6 months.
 
 ## DIASPORA CLIENTS (Kenyans building from abroad)
-Market: 3M Kenyans abroad. Remittances KES 593B in 2025 (+34.8%). More than half of some developers' units sold to diaspora before completion.
+Market: 3M Kenyans abroad. Remittances KES 593B in 2025 (+34.8%).
 Motivations: Retirement home, family housing, rental income, land banking, return home.
-${di.painPoints.map((p) => `- ${p.title}: ${p.description.substring(0, 100)}...`).join("\n")}
+${di.painPoints.map((p) => `- ${p.title}: ${p.description.substring(0, 110)}...`).join("\n")}
 
 What ATRO does differently for diaspora:
 ${di.differentiators.map((d) => `- ${d.title}: ${d.description.substring(0, 120)}...`).join("\n")}
 
-Communication: Weekly written reports (Friday EAT), scheduled video calls (EAT morning or evening), WhatsApp for quick questions, decision log for every decision.
-Payment: Milestone-based. Pay for done work, not promises. Payment certificate before each release. No advance for unstarted work.
-Trust signals: Registered architects (AAK) and engineers (EBK), NCA-registered, physical office in Nairobi, completed projects, named project manager, open-book costing.
-Red flags to warn about: Large upfront deposits (>15%), no NCA registration, no written contract, no references, pressure to pay quickly, no BOQ, new company with no track record.
+Communication: Weekly written reports, scheduled video calls, WhatsApp updates and a decision log.
+Payment: Milestone-based. No advance for unstarted work.
+Trust signals: Registered professionals, NCA compliance, physical office, named project manager, open-book costing.
 
 ${di.faqs.slice(0, 5).map((f) => `Q: ${f.q}\nA: ${f.a}`).join("\n\n")}
+
+## TOOL routing
+- If the client asks for a quick cost sense-check, use the Cost Calculator.
+- If the question is about service coverage or working area, use the Zone Map.
+- If the issue is material selection or price comparison, use the Material Prices reference tool.
+- If the client wants a preliminary BOQ or quantity framing, use the BOQ Worksheet.
 `;
 }
 

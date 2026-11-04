@@ -8,7 +8,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { requireStaff } from "@/lib/staff-session.server";
 import { getSql, type Sql } from "@/lib/db";
 import type { PaymentInstructions } from "@/lib/how-to-pay";
@@ -66,7 +66,7 @@ const SaveInstructions = z.object({
  */
 export const savePaymentInstructions = createServerFn({ method: "POST" })
   .validator(SaveInstructions)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();

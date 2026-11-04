@@ -6,7 +6,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import type { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { issueReceiptFor } from "@/lib/invoice-server";
 import { leadProfile } from "@/lib/enquiry-lead";
@@ -1289,25 +1289,25 @@ export const getPortal = createServerFn({ method: "GET" })
 
 export const createPortalProject = createServerFn({ method: "POST" })
   .validator(ProjectInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => createProjectFor(await getSql(), context.userId, data));
 
 export const approveMilestone = createServerFn({ method: "POST" })
   .validator(MilestoneActionInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => approveMilestoneFor(await getSql(), context.userId, data));
 
 export const releasePayment = createServerFn({ method: "POST" })
   .validator(PaymentActionInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => releasePaymentFor(await getSql(), context.userId, data));
 
 export const recordDecision = createServerFn({ method: "POST" })
   .validator(DecisionActionInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => recordDecisionFor(await getSql(), context.userId, data));
 
 export const deletePortalProject = createServerFn({ method: "POST" })
   .validator(ProjectRefInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => deleteProjectFor(await getSql(), context.userId, data));

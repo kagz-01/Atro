@@ -44,10 +44,10 @@ function ZoneDetail() {
             <Badge tone="gold">{zone.coverage}</Badge>
             {funnel ? <Badge tone="paper">{funnel.availability.label}</Badge> : null}
           </div>
-          <h1 className="mt-4 font-display text-5xl md:text-7xl text-paper max-w-4xl">
+          <h1 className="mt-4 max-w-4xl font-display text-[2.3rem] leading-[0.96] text-paper sm:text-5xl md:text-6xl lg:text-7xl">
             {zone.name}
           </h1>
-          <p className="mt-6 max-w-2xl text-paper/75 text-lg">{zone.summary}</p>
+          <p className="mt-6 max-w-2xl text-base text-paper/75 sm:text-lg">{zone.summary}</p>
           {funnel ? (
             <p className="mt-6 max-w-2xl rounded-2xl border border-paper/15 bg-paper/5 p-5 text-[14px] leading-relaxed text-paper/75">
               {funnel.availability.promise}
@@ -85,8 +85,8 @@ function ZoneDetail() {
 
       {funnel ? (
         <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-12">
-          <h2 className="font-display text-3xl text-maroon">What building here involves</h2>
-          <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-ink/65">
+          <h2 className="font-display text-[1.7rem] text-maroon sm:text-3xl">What building here involves</h2>
+          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink/65 sm:text-[15px]">
             {funnel.localNote}
           </p>
         </section>
@@ -94,8 +94,8 @@ function ZoneDetail() {
 
       {projects.length ? (
         <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-12">
-          <h2 className="font-display text-3xl text-maroon mb-8">Work in {zone.name}</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <h2 className="mb-8 font-display text-[1.7rem] text-maroon sm:text-3xl">Work in {zone.name}</h2>
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
             {projects.map((p) => (
               <ProjectCard key={p.slug} project={p} />
             ))}
@@ -108,7 +108,7 @@ function ZoneDetail() {
       )}
 
       <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 pb-20">
-        <h2 className="font-display text-3xl text-maroon mb-6">Questions we hear here</h2>
+        <h2 className="mb-6 font-display text-[1.7rem] text-maroon sm:text-3xl">Questions we hear here</h2>
         <div className="space-y-3">
           {zone.faqs.map((f) => (
             <details key={f.q} className="border border-line bg-cream p-5 rounded-sm">

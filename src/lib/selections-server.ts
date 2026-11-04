@@ -12,7 +12,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { requireStaff } from "@/lib/staff-session.server";
 import { getSql, type Sql } from "@/lib/db";
 import { canChoose, type Selection, type SelectionOption } from "@/lib/selections";
@@ -131,7 +131,7 @@ export const chooseSelectionOption = createServerFn({ method: "POST" })
       optionId: z.string().min(1),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const sel = await ownedSelection(sql, context.userId, data.selectionId);
@@ -234,7 +234,7 @@ export const createSelection = createServerFn({ method: "POST" })
       options: z.array(OptionInput).min(1).max(6),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
@@ -272,7 +272,7 @@ export const setSelectionAllowance = createServerFn({ method: "POST" })
       deadline: z.string().max(40).optional(),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
@@ -291,7 +291,7 @@ export const setSelectionAllowance = createServerFn({ method: "POST" })
 
 export const closeSelection = createServerFn({ method: "POST" })
   .validator(z.object({ selectionId: z.string().min(1) }))
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();

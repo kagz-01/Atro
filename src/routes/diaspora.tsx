@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  ArrowLeft,
   ArrowRight,
   BadgeCheck,
   Building,
@@ -14,7 +13,6 @@ import {
   FileText,
   Lock,
   MapPin,
-  MessageCircle,
   Phone,
   User,
 } from "lucide-react";
@@ -25,7 +23,6 @@ import {
   ABROAD_CHANNELS,
   ABROAD_FAQS,
   ABROAD_FEATURES,
-  ABROAD_HERO_STATS,
   ABROAD_INCLUDED,
   ABROAD_NEVER,
   ABROAD_PAYMENT_PHASES,
@@ -33,10 +30,9 @@ import {
   ABROAD_RED_FLAGS,
   abroadService,
 } from "@/lib/diaspora/abroad";
-import { DIASPORA_LINK, SERVICES } from "@/lib/site";
+import { SERVICES } from "@/lib/site";
 import { getDiasporaHome } from "@/lib/diaspora-home";
 import { stampIn } from "@/lib/tz";
-import { whatsappHref, defaultWhatsappText } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/diaspora")({
   component: DiasporaPage,
@@ -94,7 +90,7 @@ function YourProjects() {
           <div>
             <Badge tone="gold">Your projects</Badge>
             <h2 className="mt-3 font-display text-2xl md:text-3xl text-maroon">
-              {first ? `${first}, here is where things stand.` : "Here is where things stand."}
+              {first ? `${first}, this is where your project stands.` : "This is where your project stands."}
             </h2>
           </div>
           <Button asChild>
@@ -144,156 +140,147 @@ function DiasporaPage() {
   const service = abroadService(SERVICES);
 
   return (
-    <main className="pt-28 pb-0">
+    <main className="pt-20 pb-0 md:pt-[4.5rem]">
       {/* ── Hero ── */}
       <section className="relative overflow-hidden bg-maroon text-paper">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-burgundy/50 via-maroon to-maroon" />
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold/8 rounded-full blur-[150px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-burgundy/30 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-0 right-0 size-[360px] bg-gold/8 rounded-full blur-[130px] pointer-events-none" />
 
-        <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-24">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-paper/60 hover:text-paper mb-8"
-          >
-            <ArrowLeft className="size-3.5" />
-            Home
-          </Link>
+        <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-14 md:py-18">
+          <Badge tone="gold" className="mb-5">For Kenyans abroad</Badge>
 
-          <Badge tone="gold" className="mb-6">For Kenyans abroad</Badge>
-
-          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl max-w-4xl text-paper">
-            Build your home. <br />
-            <span className="text-gold">Without the guesswork.</span>
+          <h1 className="max-w-4xl font-display text-[2.2rem] leading-[0.9] tracking-[-0.05em] text-paper sm:text-[2.9rem] md:text-[3.7rem]">
+            Build in Kenya from abroad.
+            <br className="hidden sm:block" />
+            <span className="text-gold">Keep every decision visible.</span>
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg text-paper/75">
-            You are thousands of kilometres away. You cannot be on site every day.
-            That is exactly why you need a system — not a WhatsApp group and a prayer.
+          <p className="mt-5 max-w-2xl text-base leading-relaxed text-paper/75 sm:text-lg">
+            A named project team, clear milestone updates, and a single record of decisions — wherever you are.
           </p>
 
-          <div className="mt-10 flex flex-wrap gap-4">
-            <Button asChild variant="gold" className="h-14 px-8 text-[12px] uppercase tracking-[0.16em]">
-              <Link to="/portal">
-                {DIASPORA_LINK.label === "Abroad" ? "See the client portal" : DIASPORA_LINK.label}
-                <ArrowRight className="size-5 ml-2" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="h-14 px-8 text-[12px] uppercase tracking-[0.16em] border-paper/20 text-paper hover:bg-paper/10">
+          <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <Button asChild variant="gold" className="min-h-12 px-6">
               <Link to="/start" search={{ from: "diaspora" }}>
-                Start a project
+                Tell us about your project
+                <ArrowRight className="size-4" />
               </Link>
             </Button>
-            <a
-              href={whatsappHref(defaultWhatsappText({ zone: "diaspora" }))}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-14 px-8 items-center gap-3 border border-paper/20 text-paper text-[12px] uppercase tracking-[0.16em] font-bold rounded-2xl hover:bg-paper/10 transition-colors"
+            <Button asChild variant="outline" className="min-h-12 border-paper/25 px-6 text-paper hover:bg-paper/10">
+              <a href="#process">
+                How it works
+                <ArrowRight className="size-4" />
+              </a>
+            </Button>
+            <Link
+              to="/login"
+              className="inline-flex min-h-11 items-center gap-2 text-sm text-paper/75 underline decoration-paper/35 underline-offset-4 hover:text-paper"
             >
-              <MessageCircle className="size-5" />
-              WhatsApp
-            </a>
+              Already a client? Sign in
+            </Link>
           </div>
 
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl">
-            {ABROAD_HERO_STATS.map((s) => (
-              <div key={s.label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                <p className="font-display text-2xl text-gold">{s.value}</p>
-                <p className="text-xs text-paper/60 mt-1">{s.label}</p>
-              </div>
-            ))}
+          <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-paper/15 pt-5 text-xs text-paper/65">
+            <span>Weekly written updates</span>
+            <span className="hidden size-1 rounded-full bg-gold sm:block" />
+            <span>Payments tied to verified work</span>
+            <span className="hidden size-1 rounded-full bg-gold sm:block" />
+            <span>One project record, wherever you are</span>
           </div>
         </div>
       </section>
 
       <YourProjects />
 
-      {/* ── The service, as a scope ── */}
-      {service ? (
-        <section className="border-b border-ink/10 bg-cream">
-          <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-14 md:py-16">
-            <div className="grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:items-start">
-              <div>
-                <Badge tone="maroon" className="mb-4">The service</Badge>
-                <h2 className="font-display text-3xl md:text-4xl text-maroon">
-                  {service.title}
-                </h2>
-                <p className="mt-4 text-lg font-display text-burgundy">{service.kicker}</p>
-                <p className="mt-5 text-[15px] leading-relaxed text-ink/70">{service.lede}</p>
-                <Button asChild className="mt-7">
-                  <Link to="/services/$slug" params={{ slug: service.slug }}>
-                    Service detail
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
-              </div>
+      <section className="border-b border-ink/10 bg-[#f7f1e5] py-12 md:py-16">
+        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+          <div className="mb-8 max-w-3xl">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">Choose your path</p>
+            <h2 className="mt-3 font-display text-[2.2rem] leading-none text-maroon md:text-[2.9rem]">
+              Remote project control, without losing clarity.
+            </h2>
+          </div>
 
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-                  What is included
-                </p>
-                <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {service.included.map((item) => (
-                    <li
-                      key={item}
-                      className="flex items-start gap-3 rounded-2xl border border-ink/10 bg-white p-4"
-                    >
-                      <CheckCircle2 className="size-4.5 mt-0.5 shrink-0 text-maroon" />
-                      <span className="text-[14px] leading-relaxed text-ink/75">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-6 grid gap-5 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-ink/10 bg-white p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-                      Who it is for
-                    </p>
-                    <ul className="mt-3 space-y-2">
-                      {service.types.map((t) => (
-                        <li key={t} className="flex items-center gap-2 text-[13px] text-ink/70">
-                          <span className="size-1.5 rounded-full bg-gold" />
-                          {t}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="rounded-2xl border border-ink/10 bg-white p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-                      What we need from you
-                    </p>
-                    <ul className="mt-3 space-y-2">
-                      {service.inputs.map((t) => (
-                        <li key={t} className="flex items-center gap-2 text-[13px] text-ink/70">
-                          <span className="size-1.5 rounded-full bg-gold" />
-                          {t}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            {[
+              {
+                title: "I need a starting plan",
+                body: "We review your brief, site and likely scope before you commit to a direction.",
+                cta: "Start a plan",
+                to: "/start?from=diaspora",
+              },
+              {
+                title: "I need visibility",
+                body: "Track milestone updates, site progress and the project record from anywhere in the world.",
+                cta: "View the portal",
+                to: "/portal",
+              },
+              {
+                title: "I need materials support",
+                body: "Compare suppliers and product options while ATRO handles the project decisions and delivery flow.",
+                cta: "Open MyHardware",
+                to: "https://myhardware.co.ke",
+                external: true,
+              },
+            ].map((item) => (
+              <Link
+                key={item.title}
+                to={item.to as string}
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noreferrer" : undefined}
+                className="group rounded-xl border border-[#d7c8af] bg-white p-3 shadow-[0_18px_30px_-28px_rgba(60,5,8,0.22)] transition-all duration-300 hover:-translate-y-1 hover:border-gold/35 hover:shadow-[0_26px_46px_-28px_rgba(60,5,8,0.24)] sm:rounded-[1.6rem] sm:p-5"
+              >
+                <div className="mb-3 flex items-center justify-between gap-2 sm:mb-5 sm:gap-3">
+                  <span className="flex size-8 items-center justify-center rounded-full bg-gold/12 text-xs font-semibold text-maroon sm:size-10 sm:text-sm">
+                    {String(item.title[0]).toUpperCase()}
+                  </span>
+                  <ArrowRight className="size-4 text-maroon transition-transform duration-300 group-hover:translate-x-1" />
                 </div>
-              </div>
+                <h3 className="font-display text-sm leading-tight text-maroon sm:text-xl md:text-[1.8rem]">{item.title}</h3>
+                <p className="mt-2 line-clamp-3 text-[10px] leading-snug text-ink/70 sm:mt-3 sm:text-sm sm:leading-relaxed">{item.body}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-[8px] font-semibold uppercase tracking-[0.08em] text-burgundy sm:mt-5 sm:text-[10px] sm:tracking-[0.14em]">
+                  {item.cta}
+                  <ArrowRight className="size-3.5" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Service overview ── */}
+      {service ? (
+        <section className="border-b border-ink/10 bg-[#f5efe7] py-10 md:py-12">
+          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-4 px-6 sm:px-8 md:px-12 lg:px-16">
+            <div className="max-w-3xl">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+                One team, from design to handover
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-ink/70 md:text-base">{service.lede}</p>
             </div>
+            <Link
+              to="/services/$slug"
+              params={{ slug: service.slug }}
+              className="inline-flex min-h-11 shrink-0 items-center gap-2 text-sm font-medium text-maroon underline decoration-gold underline-offset-4 hover:text-burgundy"
+            >
+              See what is included
+              <ArrowRight className="size-4" />
+            </Link>
           </div>
         </section>
       ) : null}
 
       {/* ── What you actually get (working features) ── */}
-      <section className="bg-stone/50 py-16 md:py-24">
+      <section className="bg-stone/50 py-12 md:py-16">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
           <div className="max-w-3xl">
-            <Badge tone="maroon" className="mb-4">Not promises — tools</Badge>
-            <h2 className="font-display text-3xl md:text-4xl text-maroon">
-              Everything below is live. Try it before you talk to anyone.
+            <Badge tone="maroon" className="mb-3">Useful tools</Badge>
+            <h2 className="font-display text-[2.2rem] leading-none text-maroon md:text-[2.8rem]">
+              Practical support before the project starts.
             </h2>
-            <p className="mt-5 text-lg text-ink/70">
-              Anyone can promise weekly reports and independent verification. These
-              are the working parts of the system — open them, use them on us, and on
-              anyone else you are considering.
-            </p>
           </div>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-2">
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-7 lg:grid-cols-3">
             {ABROAD_FEATURES.map((f) => {
               const Icon = f.to === "/portal" ? ClipboardCheck
                 : f.to === "/verify" ? BadgeCheck
@@ -306,40 +293,40 @@ function DiasporaPage() {
                 <Link
                   key={f.to}
                   to={f.to}
-                  className={`group flex flex-col rounded-3xl border p-7 transition-all ${
+                  className={`group flex flex-col rounded-xl border p-3 transition-colors sm:rounded-2xl sm:p-5 ${
                     accent
                       ? "border-gold/60 bg-maroon text-paper shadow-[0_12px_50px_rgb(60_5_8/0.25)]"
                       : "border-ink/10 bg-white hover:border-gold/60 hover:shadow-[0_10px_40px_rgb(201_146_79/0.16)]"
                   }`}
                 >
                   <span
-                    className={`flex size-12 items-center justify-center rounded-2xl ${
+                    className={`flex size-8 items-center justify-center rounded-lg sm:size-10 sm:rounded-xl ${
                       accent ? "bg-gold text-maroon" : "bg-maroon/10 text-maroon"
                     }`}
                   >
-                    <Icon className="size-6" />
+                    <Icon className="size-4 sm:size-5" />
                   </span>
                   <p
-                    className={`mt-5 text-[10px] font-bold uppercase tracking-[0.16em] ${
+                    className={`mt-3 text-[8px] font-bold uppercase tracking-[0.1em] sm:mt-4 sm:text-[10px] sm:tracking-[0.16em] ${
                       accent ? "text-gold" : "text-gold"
                     }`}
                   >
                     {f.kicker}
                   </p>
                   <h3
-                    className={`mt-2 font-display text-2xl ${accent ? "text-paper" : "text-maroon"}`}
+                    className={`mt-1 font-display text-sm leading-tight sm:text-xl ${accent ? "text-paper" : "text-maroon"}`}
                   >
                     {f.title}
                   </h3>
                   <p
-                    className={`mt-3 flex-1 text-[15px] leading-relaxed ${
+                    className={`mt-2 flex-1 line-clamp-3 text-[10px] leading-snug sm:text-sm sm:leading-relaxed ${
                       accent ? "text-paper/75" : "text-ink/65"
                     }`}
                   >
                     {f.body}
                   </p>
                   <span
-                    className={`mt-6 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] font-bold ${
+                    className={`mt-3 inline-flex items-center gap-1 text-[8px] uppercase tracking-[0.08em] font-bold sm:mt-4 sm:gap-2 sm:text-[11px] sm:tracking-[0.16em] ${
                       accent ? "text-gold" : "text-burgundy"
                     } group-hover:gap-3 transition-all`}
                   >
@@ -359,317 +346,245 @@ function DiasporaPage() {
         </div>
       </section>
 
-      {/* ── The honest truth ── */}
-      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-24">
-        <div className="max-w-3xl">
-          <Badge tone="maroon" className="mb-4">The honest truth</Badge>
-          <h2 className="font-display text-3xl md:text-4xl text-maroon">
-            Kenyans abroad lose millions every year to construction scams.
-          </h2>
-          <p className="mt-6 text-ink/70 text-lg leading-relaxed">
-            From Dubai to Atlanta, thousands of Kenyans have poured savings into off-plan
-            apartments and gated communities — only to discover the show house was
-            rented, the title deed was forged, or the developer vanished.
-          </p>
-          <p className="mt-4 text-ink/70 text-lg leading-relaxed">
-            The scams start with glossy adverts, flexible payment plans, and developers
-            who call themselves &ldquo;young visionaries building a better Kenya.&rdquo;
-            They send holiday greetings, ask about your family. Then the updates stop.
-            Construction halts. Communication dries up.
-          </p>
-          <p className="mt-4 text-ink/70 text-lg leading-relaxed">
-            <strong className="text-maroon">We are not here to sell you a dream.</strong>{" "}
-            We are here to give you a system that makes sure your money becomes a
-            building — not a WhatsApp story.
-          </p>
-        </div>
-
-        <div className="mt-12 p-6 md:p-8 bg-red-50 border border-red-200 rounded-2xl">
-          <h3 className="font-display text-xl text-red-800 flex items-center gap-2">
-            <AlertTriangle className="size-5" />
-            Red flags to watch for
-          </h3>
-          <p className="mt-2 text-sm text-red-700">
-            If any of these are true, walk away. You will save yourself years of pain.
-          </p>
-          <div className="mt-6 grid sm:grid-cols-2 gap-3">
-            {ABROAD_RED_FLAGS.map((flag) => (
-              <div key={flag} className="flex items-start gap-3 text-sm text-red-800">
-                <AlertTriangle className="size-4 mt-0.5 shrink-0 text-red-500" />
-                <span>{flag}</span>
-              </div>
-            ))}
+      <section className="border-y border-ink/10 bg-[#f6efe7] py-12 md:py-16">
+        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+          <div className="flex flex-col gap-5 rounded-[2rem] border border-[#d8c9ad] bg-[#f3ead9] p-6 md:p-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">Materials support</p>
+              <h2 className="mt-2 font-display text-[2rem] leading-none text-maroon md:text-[2.6rem]">
+                Need product comparison while you are abroad?
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-ink/70 md:text-base">
+                MyHardware helps with supplier supporting materials and product checks while ATRO handles design, planning and delivery oversight in Kenya.
+              </p>
+            </div>
+            <a
+              href="https://myhardware.co.ke"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-maroon px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-paper transition-colors hover:bg-[#5b1c26]"
+            >
+              Explore MyHardware
+              <ArrowRight className="size-4" />
+            </a>
           </div>
         </div>
       </section>
 
       {/* ── Trust signals ── */}
-      <section className="bg-stone/60 py-16 md:py-24">
+      <section className="bg-stone/60 py-12 md:py-16">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <div className="max-w-3xl mb-12">
-            <Badge tone="gold" className="mb-4">How ATRO protects you</Badge>
-            <h2 className="font-display text-3xl md:text-4xl text-maroon">
-              Trust is not a promise. It is a system.
+          <div className="max-w-3xl">
+            <Badge tone="gold" className="mb-3">How we protect your build</Badge>
+            <h2 className="font-display text-[2.1rem] leading-none text-maroon md:text-[2.8rem]">
+              A clear record at every stage.
             </h2>
-            <p className="mt-4 text-ink/70 text-lg">
-              Every one of these is contractual — not optional, not &ldquo;if we have
-              time,&rdquo; not &ldquo;our usual practice.&rdquo; It is in the contract or it
-              does not happen.
-            </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {ABROAD_INCLUDED.map((signal) => {
+          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {ABROAD_INCLUDED.slice(0, 4).map((signal) => {
               const Icon = INCLUDED_ICON[signal.icon] ?? BadgeCheck;
               return (
-                <div
-                  key={signal.title}
-                  className="group p-6 bg-paper border border-line/50 rounded-2xl hover:border-burgundy/30 hover:shadow-card-hover card-lift transition-all duration-300"
-                >
-                  <div className="size-12 rounded-2xl bg-maroon/10 flex items-center justify-center text-maroon mb-4 group-hover:bg-maroon/15 transition-colors">
-                    <Icon className="size-5" />
-                  </div>
-                  <h3 className="font-display text-lg text-maroon">{signal.title}</h3>
-                  <p className="mt-2 text-sm text-ink/60 leading-relaxed">{signal.desc}</p>
-                </div>
+                <article key={signal.title} className="rounded-xl border border-ink/10 bg-paper p-3 sm:rounded-2xl sm:p-4">
+                  <Icon className="size-4 text-maroon sm:size-5" aria-hidden />
+                  <h3 className="mt-2 font-display text-xs leading-tight text-maroon sm:mt-3 sm:text-base">{signal.title}</h3>
+                  <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">
+                    {signal.desc}
+                  </p>
+                </article>
               );
             })}
           </div>
+
+          <details className="group mt-4 rounded-2xl border border-ink/10 bg-paper px-5">
+            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-maroon marker:hidden">
+              See all safeguards, reporting standards and red flags
+              <span className="text-xl text-gold transition-transform group-open:rotate-45" aria-hidden>
+                +
+              </span>
+            </summary>
+            <div className="border-t border-ink/10 py-5">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {ABROAD_INCLUDED.slice(4).map((signal) => {
+                  const Icon = INCLUDED_ICON[signal.icon] ?? BadgeCheck;
+                  return (
+                    <article key={signal.title} className="rounded-xl border border-ink/10 p-3 sm:p-4">
+                      <Icon className="size-4 text-maroon sm:size-5" aria-hidden />
+                      <h3 className="mt-2 text-xs font-medium leading-tight text-maroon sm:text-base">{signal.title}</h3>
+                      <p className="mt-1 line-clamp-3 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">{signal.desc}</p>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <h3 className="mt-7 font-display text-xl text-maroon">How we stay in touch</h3>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {ABROAD_CHANNELS.map((channel) => (
+                  <article key={channel.name} className="rounded-xl border border-ink/10 p-3 sm:p-4">
+                    <h4 className="text-xs font-medium text-maroon sm:text-base">{channel.name}</h4>
+                    <p className="text-[9px] leading-snug text-ink/55 sm:text-xs">
+                      {channel.frequency} · {channel.format}
+                    </p>
+                    <p className="mt-2 line-clamp-3 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">
+                      {channel.contents.join(" · ")}
+                    </p>
+                  </article>
+                ))}
+              </div>
+
+              <div className="mt-7 grid gap-6 md:grid-cols-2">
+                <div>
+                  <h3 className="font-display text-xl text-maroon">Warning signs to check</h3>
+                  <ul className="mt-3 space-y-2">
+                    {ABROAD_RED_FLAGS.map((flag) => (
+                      <li key={flag} className="flex items-start gap-2 text-sm text-ink/70">
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-burgundy" />
+                        {flag}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-display text-xl text-maroon">What we will not do</h3>
+                  <ul className="mt-3 space-y-2">
+                    {ABROAD_NEVER.map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-sm text-ink/70">
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-maroon" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
       </section>
 
       {/* ── Process walkthrough ── */}
-      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-24">
-        <div className="max-w-3xl mb-12">
-          <Badge tone="maroon" className="mb-4">The process</Badge>
-          <h2 className="font-display text-3xl md:text-4xl text-maroon">
-            From first call to keys. Eight steps.
+      <section id="process" className="mx-auto max-w-[1400px] px-6 py-12 sm:px-8 md:px-12 md:py-16 lg:px-16">
+        <div className="max-w-3xl">
+          <Badge tone="maroon" className="mb-3">The process</Badge>
+          <h2 className="font-display text-[2.1rem] leading-none text-maroon md:text-[2.8rem]">
+            From first call to keys.
           </h2>
-          <p className="mt-4 text-ink/70 text-lg">
-            You do not need to be in Kenya for any of this. We adapt to your time zone,
-            your schedule, and your communication preferences.
+          <p className="mt-3 text-sm leading-relaxed text-ink/65 md:text-base">
+            Four clear phases. Detailed checks and decisions stay available when you need them.
           </p>
         </div>
 
-        <div className="space-y-6">
-          {ABROAD_PROCESS.map((step) => {
-            const Icon = PROCESS_ICON[step.icon] ?? ClipboardCheck;
-            return (
-              <div
-                key={step.num}
-                className="group relative p-6 md:p-8 bg-paper border border-line/50 rounded-2xl hover:border-burgundy/30 hover:shadow-card-hover transition-all duration-300"
-              >
-                <div className="flex items-start gap-5">
-                  <div className="size-12 rounded-2xl bg-gradient-to-br from-maroon to-burgundy flex items-center justify-center text-white text-lg font-bold shrink-0 group-hover:scale-105 transition-transform">
+        <ol className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            ["01", "Plan", "Brief, site and land checks before design starts."],
+            ["02", "Design & price", "Drawings and a measured BOQ, aligned to budget."],
+            ["03", "Build with visibility", "Written scope, weekly evidence and certified payments."],
+            ["04", "Handover", "Inspections, keys, manuals and a complete record."],
+          ].map(([number, title, detail]) => (
+            <li key={number} className="rounded-xl border border-ink/10 bg-white p-3 sm:rounded-2xl sm:p-5">
+              <span className="text-xs font-bold tracking-[0.14em] text-gold">{number}</span>
+              <h3 className="mt-2 font-display text-sm leading-tight text-maroon sm:text-xl">{title}</h3>
+              <p className="mt-2 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">{detail}</p>
+            </li>
+          ))}
+        </ol>
+
+        <details className="group mt-4 rounded-2xl border border-ink/10 bg-white px-5">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-maroon">
+            View the full eight-step process
+            <span className="text-xl text-gold transition-transform group-open:rotate-45" aria-hidden>
+              +
+            </span>
+          </summary>
+          <ol className="space-y-3 border-t border-ink/10 py-5">
+            {ABROAD_PROCESS.map((step) => {
+              const Icon = PROCESS_ICON[step.icon] ?? ClipboardCheck;
+              return (
+                <li key={step.num} className="flex gap-4">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-maroon text-sm font-bold text-white">
                     {step.num}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Icon className="size-5 text-maroon" />
-                      <h3 className="font-display text-xl text-maroon">{step.title}</h3>
-                    </div>
-                    <p className="text-ink/70">{step.desc}</p>
-                    <p className="mt-2 text-sm text-ink/50 italic">{step.detail}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── Communication protocol ── */}
-      <section className="bg-stone/60 py-16 md:py-24">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <div className="max-w-3xl mb-12">
-            <Badge tone="gold" className="mb-4">Communication</Badge>
-            <h2 className="font-display text-3xl md:text-4xl text-maroon">
-              You will never be guessing.
-            </h2>
-            <p className="mt-4 text-ink/70 text-lg">
-              We communicate on a schedule, not when something goes wrong. Every channel
-              has a purpose. Every decision is documented.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-5">
-            {ABROAD_CHANNELS.map((ch) => (
-              <div
-                key={ch.name}
-                className="p-6 bg-paper border border-line/50 rounded-2xl hover:border-burgundy/30 hover:shadow-card-hover transition-all duration-300"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="size-10 rounded-xl bg-maroon/10 flex items-center justify-center text-maroon">
-                    <FileText className="size-5" />
-                  </div>
+                  </span>
                   <div>
-                    <h3 className="font-display text-lg text-maroon">{ch.name}</h3>
-                    <p className="text-xs text-muted">
-                      {ch.frequency} · {ch.format}
-                    </p>
+                    <h3 className="flex items-center gap-2 font-medium text-maroon">
+                      <Icon className="size-4" aria-hidden />
+                      {step.title}
+                    </h3>
+                    <p className="mt-1 text-sm leading-relaxed text-ink/65">{step.desc}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-ink/55">{step.detail}</p>
                   </div>
-                </div>
-                <ul className="space-y-2">
-                  {ch.contents.map((item) => (
-                    <li key={item} className="flex items-start gap-2 text-sm text-ink/70">
-                      <CheckCircle2 className="size-4 mt-0.5 shrink-0 text-maroon/60" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
+                </li>
+              );
+            })}
+          </ol>
+        </details>
       </section>
 
       {/* ── Payment protection ── */}
-      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-24">
-        <div className="grid lg:grid-cols-2 gap-12 items-start">
-          <div>
-            <Badge tone="maroon" className="mb-4">Payment protection</Badge>
-            <h2 className="font-display text-3xl md:text-4xl text-maroon">
-              Pay for done work. Not promises.
-            </h2>
-            <p className="mt-4 text-ink/70 text-lg">
-              Every payment is certified against verified progress. You never pay for
-              work that has not been completed and inspected. This is contractual, not a
-              favour.
-            </p>
-            <Button asChild variant="outline" className="mt-7">
+      <section className="bg-cream py-12 md:py-16">
+        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-2xl">
+              <Badge tone="maroon" className="mb-3">Payment protection</Badge>
+              <h2 className="font-display text-3xl text-maroon md:text-4xl">
+                Pay for completed work.
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-ink/65">
+                Payments follow agreed deliverables, inspection and written approval.
+              </p>
+            </div>
+            <Button asChild variant="outline" className="min-h-11">
               <Link to="/fees">
-                Fees and payment terms
+                Fees and terms
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
           </div>
 
-          <div className="space-y-4">
-            {ABROAD_PAYMENT_PHASES.map((item) => (
-              <div key={item.phase} className="p-5 bg-paper border border-line/50 rounded-2xl">
-                <div className="flex items-start gap-4">
-                  <div className="size-8 rounded-lg bg-maroon/10 flex items-center justify-center text-maroon shrink-0 mt-0.5">
-                    <CreditCard className="size-4" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-maroon">{item.phase}</p>
-                    <p className="text-sm text-ink/60 mt-1">{item.pay}</p>
-                    <p className="text-xs text-maroon/70 mt-1 italic">{item.protect}</p>
-                  </div>
-                </div>
-              </div>
+          <ol className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {ABROAD_PAYMENT_PHASES.map((item, index) => (
+              <li key={item.phase} className="rounded-2xl border border-ink/10 bg-white p-4">
+                <span className="text-xs font-bold tracking-[0.14em] text-gold">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <h3 className="mt-2 font-medium text-maroon">{item.phase}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-ink/65">{item.pay}</p>
+                <p className="mt-2 text-xs leading-relaxed text-ink/55">{item.protect}</p>
+              </li>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── What we will NOT do ── */}
-      <section className="bg-stone/60 py-16 md:py-24">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <div className="max-w-3xl">
-            <Badge tone="maroon" className="mb-4">Transparency</Badge>
-            <h2 className="font-display text-3xl md:text-4xl text-maroon">
-              What we will not do.
-            </h2>
-            <p className="mt-4 text-ink/70 text-lg">
-              If any of these happen, you have the wrong builder. Not us.
-            </p>
-          </div>
-
-          <div className="mt-10 grid sm:grid-cols-2 gap-4">
-            {ABROAD_NEVER.map((item) => (
-              <div key={item} className="flex items-start gap-3 p-4 bg-paper border border-line/50 rounded-xl">
-                <CheckCircle2 className="size-5 shrink-0 text-maroon" />
-                <span className="text-sm text-ink/80">{item}</span>
-              </div>
-            ))}
-          </div>
+          </ol>
         </div>
       </section>
 
       {/* ── FAQs ── */}
-      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 md:py-24">
-        <div className="max-w-3xl mb-12">
-          <Badge tone="gold" className="mb-4">Common questions</Badge>
-          <h2 className="font-display text-3xl md:text-4xl text-maroon">
+      <section className="mx-auto max-w-[1400px] px-6 py-12 sm:px-8 md:px-12 md:py-16 lg:px-16">
+        <div className="max-w-3xl mb-6">
+          <Badge tone="gold" className="mb-3">Common questions</Badge>
+          <h2 className="font-display text-3xl text-maroon md:text-4xl">
             What diaspora clients ask.
           </h2>
         </div>
 
-        <div className="max-w-3xl space-y-4">
+        <div className="max-w-3xl space-y-2">
           {ABROAD_FAQS.map((faq) => (
-            <details key={faq.q} className="group p-6 bg-paper border border-line/50 rounded-2xl hover:border-burgundy/30 transition-colors">
-              <summary className="font-display text-lg text-maroon cursor-pointer list-none flex items-center justify-between gap-4">
+            <details key={faq.q} className="group rounded-xl border border-ink/10 bg-paper px-4">
+              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 font-medium text-maroon marker:hidden">
                 {faq.q}
-                <span className="text-ink/30 group-open:rotate-180 transition-transform shrink-0">
-                  <svg className="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                    <path
-                      fillRule="evenodd"
-                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                <span className="shrink-0 text-xl text-gold transition-transform group-open:rotate-45" aria-hidden>
+                  +
                 </span>
               </summary>
-              <p className="mt-4 text-ink/70 leading-relaxed">{faq.a}</p>
+              <p className="border-t border-ink/10 py-4 text-sm leading-relaxed text-ink/70">
+                {faq.a}
+              </p>
             </details>
           ))}
         </div>
       </section>
 
-      {/* ── Two ways forward: an account, or a conversation ── */}
-      <section className="bg-cream py-14 md:py-16">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-gold/40 bg-white p-7 md:p-8">
-              <Badge tone="gold" className="mb-4">Already a client</Badge>
-              <h3 className="font-display text-2xl text-maroon">
-                Open your project
-              </h3>
-              <p className="mt-3 text-[15px] leading-relaxed text-ink/70">
-                Your portal holds the live milestones, the payment ledger and every
-                document. One click with the account you already have.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button asChild>
-                  <Link to="/login">
-                    Sign in
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/portal">Go to the portal</Link>
-                </Button>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-ink/10 bg-white p-7 md:p-8">
-              <Badge tone="maroon" className="mb-4">Not a client yet</Badge>
-              <h3 className="font-display text-2xl text-maroon">
-                Start with a conversation
-              </h3>
-              <p className="mt-3 text-[15px] leading-relaxed text-ink/70">
-                Tell us the plot, the programme and the budget band. We will give you
-                an indicative range and say whether we are the right studio.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button asChild>
-                  <Link to="/start" search={{ from: "diaspora" }}>
-                    Start a project
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <CtaBand
-        title="Ready to build with confidence?"
-        body="Tell us about your project. We will give you an indicative range, a realistic programme, and a system that keeps you informed — not guessing."
+        title="Planning a build in Kenya?"
+        body="Share the brief and we will tell you the next practical step."
         ctaTo={{ to: "/start", search: { from: "diaspora" } }}
-        ctaLabel="Start a project"
+        ctaLabel="Tell us about your project"
       />
     </main>
   );

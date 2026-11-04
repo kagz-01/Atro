@@ -86,7 +86,10 @@ function smsConfig(): ChannelConfig {
   // Their API rejects an unregistered sender id outright, so say which value is
   // missing rather than letting every send fail with an opaque 400.
   if (!process.env.AT_SENDER?.trim()) {
-    return { configured: false, reason: "AT_SENDER not set (a sender id registered with Africa’s Talking)" };
+    return {
+      configured: false,
+      reason: "AT_SENDER not set (a sender id registered with Africa’s Talking)",
+    };
   }
   return { configured: true, reason: "" };
 }
@@ -239,7 +242,10 @@ async function sendEmail(
     }),
   });
   if (!res.ok) {
-    return { ok: false as const, detail: `resend ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    return {
+      ok: false as const,
+      detail: `resend ${res.status}: ${(await res.text()).slice(0, 200)}`,
+    };
   }
   return { ok: true as const, detail: `resend ${res.status}` };
 }
@@ -249,12 +255,7 @@ async function sendEmail(
  * Meta has approved — a plain text body will be rejected outside the 24-hour
  * customer service window. Templates are named below so they can be registered.
  */
-async function sendWhatsApp(
-  to: string,
-  title: string,
-  body: string,
-  template: string,
-) {
+async function sendWhatsApp(to: string, title: string, body: string, template: string) {
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const token = process.env.WHATSAPP_TOKEN;
   const version = process.env.WHATSAPP_API_VERSION ?? "v21.0";
@@ -274,14 +275,20 @@ async function sendWhatsApp(
         components: [
           {
             type: "body",
-            parameters: [{ type: "text", text: title }, { type: "text", text: body }],
+            parameters: [
+              { type: "text", text: title },
+              { type: "text", text: body },
+            ],
           },
         ],
       },
     }),
   });
   if (!res.ok) {
-    return { ok: false as const, detail: `whatsapp ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    return {
+      ok: false as const,
+      detail: `whatsapp ${res.status}: ${(await res.text()).slice(0, 200)}`,
+    };
   }
   return { ok: true as const, detail: `whatsapp ${res.status}` };
 }
@@ -333,8 +340,7 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
   const body = input.body ?? "";
   const audience = input.audience ?? "client";
   // The studio audience fans out to every active contact; a client is one.
-  const clientRecipient =
-    audience === "client" ? await resolveClient(sql, input.projectId) : null;
+  const clientRecipient = audience === "client" ? await resolveClient(sql, input.projectId) : null;
   const recipients =
     audience === "studio" ? await resolveStudio(sql) : clientRecipient ? [clientRecipient] : [];
   const recipient = recipients[0] ?? null;
@@ -343,8 +349,7 @@ export async function notify(input: NotificationInput): Promise<NotifyResult> {
   // firing into their night. The studio's own audience never holds, and an
   // unreadable zone resolves to the site's clock rather than being guessed.
   const zone = recipient?.timezone?.trim() || "Africa/Nairobi";
-  const holdUntil =
-    audience === "client" ? quietHoldUntil(new Date().toISOString(), zone) : null;
+  const holdUntil = audience === "client" ? quietHoldUntil(new Date().toISOString(), zone) : null;
   // The portal feed is always on; everything else follows consent for a client,
   // and for the studio whichever transports have credentials. A channel with
   // no credentials is not silently omitted — it is recorded as skipped, so the
@@ -532,17 +537,26 @@ async function attemptSend(
   let ok = true;
   const details: string[] = [];
   for (const target of targets) {
-    const result =
-      channel === "email"
-        ? await sendEmail(target, row.title, row.body, projectRef, row.document_url ?? undefined)
-        : channel === "whatsapp"
-          ? await sendWhatsApp(
-              target,
-              row.title,
-              row.body,
-              TEMPLATE_FOR[row.kind] ?? TEMPLATE_FOR.update,
-            )
-          : await sendSms(target, row.title, row.body);
+    let result: { ok: boolean; detail: string };
+    try {
+      result =
+        channel === "email"
+          ? await sendEmail(target, row.title, row.body, projectRef, row.document_url ?? undefined)
+          : channel === "whatsapp"
+            ? await sendWhatsApp(
+                target,
+                row.title,
+                row.body,
+                TEMPLATE_FOR[row.kind] ?? TEMPLATE_FOR.update,
+              )
+            : await sendSms(target, row.title, row.body);
+    } catch (error) {
+      ok = false;
+      details.push(
+        `${channel} request failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      continue;
+    }
     if (!result.ok) {
       ok = false;
       details.push(result.detail);
@@ -643,7 +657,11 @@ export type NotificationLog = {
   deliverAfter: string | null;
 };
 
-export async function notificationLog(sql: Sql, projectId: string, limit = 20): Promise<NotificationLog[]> {
+export async function notificationLog(
+  sql: Sql,
+  projectId: string,
+  limit = 20,
+): Promise<NotificationLog[]> {
   const rows = await sql<{
     id: string;
     channel: string;

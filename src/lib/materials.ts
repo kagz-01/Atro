@@ -1,6 +1,5 @@
-// Verified 2025/2026 Kenya construction material prices
-// Sources: KNBS Construction Input Price Indices Q4 2025, IQSK Cost Handbook, aspaxconstruction.com, goldstay.co.ke
-// Prices are indicative ranges — actual prices vary by brand, supplier, location and volume
+// Dated indicative price references. They are not live supplier quotations;
+// verify current rates, availability, delivery and tax before relying on them.
 
 export type MaterialCategory =
   | "cement"

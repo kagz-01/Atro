@@ -1,4 +1,8 @@
+t everything
 node_modules/
+.env
+.env.*
+!.env.example
 .vercel/
 .tanstack/
 screenshots/
@@ -8,3 +12,4 @@ screenshots/
 # runtime artifacts
 .grok/preview.pid
 .agent/
+.vercel

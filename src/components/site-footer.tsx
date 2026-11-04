@@ -27,11 +27,11 @@ const FOOTER_COLUMNS = [
     ],
   },
   {
-    label: "Tools & clients",
+    label: "Tools & project view",
     links: [
       { to: "/tools/cost-calculator", label: "Cost calculator" },
       { to: "/tools/boq-generator", label: "BOQ generator" },
-      { to: "/portal", label: "Client portal" },
+      { to: "/portal", label: "Project portal" },
     ],
   },
 ] as const;

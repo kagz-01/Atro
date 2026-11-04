@@ -144,7 +144,7 @@ function JourneyPage() {
       <section className="bg-paper py-14 md:py-20">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
           {/* Stage rail */}
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
             {JOURNEY.map((s) => {
               const on = s.id === active;
               return (
@@ -153,7 +153,7 @@ function JourneyPage() {
                   type="button"
                   onClick={() => setActive(s.id)}
                   className={cn(
-                    "group rounded-2xl border p-4 text-left transition-all",
+                    "group rounded-xl border p-3 text-left transition-all sm:rounded-2xl sm:p-4",
                     on
                       ? "border-gold bg-maroon text-paper shadow-[0_8px_30px_rgb(201_146_79/0.25)]"
                       : "border-ink/10 bg-white hover:border-gold/60",

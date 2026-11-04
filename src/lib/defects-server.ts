@@ -16,7 +16,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { requireAdmin, requireStaff } from "@/lib/staff-session.server";
 import { getSql, type Sql } from "@/lib/db";
 import { notify } from "@/lib/notify";
@@ -138,7 +138,7 @@ const ReportInput = z.object({
 
 export const reportDefect = createServerFn({ method: "POST" })
   .validator(ReportInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const [owned] = await sql<{ id: string; client_label: string }>`
@@ -191,7 +191,7 @@ export const reportDefect = createServerFn({ method: "POST" })
  */
 export const verifyDefect = createServerFn({ method: "POST" })
   .validator(z.object({ projectId: z.string().min(1), defectId: z.string().min(1) }))
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const [owned] = await sql<{ id: string }>`
@@ -265,7 +265,7 @@ export const updateDefect = createServerFn({ method: "POST" })
       rejectReason: z.string().max(300).optional().default(""),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
@@ -327,7 +327,7 @@ export const updateDefect = createServerFn({ method: "POST" })
 /** The studio logs a report made by phone or on site. */
 export const reportDefectForClient = createServerFn({ method: "POST" })
   .validator(ReportInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
@@ -356,7 +356,7 @@ export const reportDefectForClient = createServerFn({ method: "POST" })
 /** When the keys were handed over, the clock the client can see. */
 export const setDefectPeriod = createServerFn({ method: "POST" })
   .validator(z.object({ projectId: z.string().min(1), ends: z.string().max(40) }))
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
@@ -386,7 +386,7 @@ export const setRetainer = createServerFn({ method: "POST" })
       lastPaidOn: z.string().max(40).optional().default(""),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireAdmin("set-retainer");
     const sql = await getSql();

@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { promisify } from "node:util";
 import {
   APP_ENV_REL_PATH,
+  loadProjectEnv,
   mergeAppEnv,
   parseAppEnv,
   projectRoot,
@@ -48,6 +49,23 @@ test("a missing app-env.json is a clean no-op", () => {
 test("reads the app env from a workspace", () => {
   const root = makeWorkspace('{"VITE_AUTH_ENABLED":"false"}');
   assert.deepEqual(readAppEnv(root), { VITE_AUTH_ENABLED: "false" });
+});
+
+test("loads a workspace .env without overriding explicit process values", () => {
+  const root = makeWorkspace();
+  writeFileSync(join(root, ".env"), "APP_ENV_TEST_VALUE=from-file\n");
+  const previous = process.env.APP_ENV_TEST_VALUE;
+  process.env.APP_ENV_TEST_VALUE = "from-process";
+  try {
+    loadProjectEnv(root);
+    assert.equal(process.env.APP_ENV_TEST_VALUE, "from-process");
+    delete process.env.APP_ENV_TEST_VALUE;
+    loadProjectEnv(root);
+    assert.equal(process.env.APP_ENV_TEST_VALUE, "from-file");
+  } finally {
+    if (previous === undefined) delete process.env.APP_ENV_TEST_VALUE;
+    else process.env.APP_ENV_TEST_VALUE = previous;
+  }
 });
 
 test("an explicit process-env override wins over the file", () => {

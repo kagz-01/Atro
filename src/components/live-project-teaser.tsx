@@ -22,7 +22,7 @@ const LIVE_PROJECTS: LiveProject[] = [
     location: "Lavington, Nairobi",
     progress: 65,
     lastUpdate: "First-floor frame complete. Finishes being priced.",
-    image: "/images/site.webp",
+    image: "/catalog/images/site.webp",
     milestone: "Structure",
     daysAgo: 3,
   },
@@ -31,7 +31,7 @@ const LIVE_PROJECTS: LiveProject[] = [
     location: "Ruiru, Kiambu",
     progress: 15,
     lastUpdate: "Foundations underway. Site cleared and set out.",
-    image: "/images/kiambu.webp",
+    image: "/catalog/images/kiambu.webp",
     milestone: "Foundations",
     daysAgo: 5,
   },
@@ -55,7 +55,7 @@ export function LiveProjectTeaser() {
               <div className="size-2 rounded-full bg-green-500 animate-pulse" />
               <p className="text-[11px] uppercase tracking-[0.2em] text-green-700">Live from site</p>
             </div>
-            <h2 className="font-display text-4xl md:text-5xl text-maroon">See what we are building now.</h2>
+            <h2 className="font-display text-[2.1rem] leading-none text-maroon md:text-[2.8rem]">See what we are building now.</h2>
           </div>
         </div>
 

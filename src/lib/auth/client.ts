@@ -1,5 +1,9 @@
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/supabase/config";
+import {
+  clearGuestPreviewCookieAssignment,
+  guestPreviewCookieAssignment,
+} from "@/lib/preview-personas";
 
 /**
  * Browser auth surface for this app.
@@ -31,6 +35,28 @@ function setAccessTokenCookie(token: string | null) {
   document.cookie = token
     ? `${ACCESS_TOKEN_COOKIE}=${encodeURIComponent(token)}; path=/; samesite=lax`
     : `${ACCESS_TOKEN_COOKIE}=; path=/; samesite=lax; max-age=0`;
+}
+
+function setGuestPreview(enabled: boolean) {
+  if (typeof document === "undefined") return;
+  document.cookie = enabled
+    ? guestPreviewCookieAssignment()
+    : clearGuestPreviewCookieAssignment();
+}
+
+/** Enter the sample client portal without establishing an account session. */
+export function continueAsGuest(redirectTo = "/portal"): void {
+  if (typeof window === "undefined") return;
+  const destination = new URL(redirectTo, window.location.origin);
+  if (
+    destination.origin !== window.location.origin ||
+    !destination.pathname.startsWith("/portal") ||
+    destination.pathname.startsWith("//")
+  ) {
+    throw new Error("The guest preview return address is not allowed.");
+  }
+  setGuestPreview(true);
+  window.location.assign(`${destination.pathname}${destination.search}${destination.hash}`);
 }
 
 /**
@@ -80,7 +106,8 @@ export async function sendPhoneCode(rawPhone: string): Promise<{ error: string |
     return { error: "That does not look like a phone number. Try 0799 034 712." };
   }
   const supabase = supabaseBrowser();
-  if (!supabase) return { error: "Sign-in is not configured on this deployment." };
+  if (!supabase) return { error: "Sign-in is unavailable." };
+  setGuestPreview(false);
   const { error } = await supabase.auth.signInWithOtp({
     phone,
     options: { shouldCreateUser: true },
@@ -101,12 +128,69 @@ export async function verifyPhoneCode(
   const phone = toPhoneForOtp(rawPhone);
   if (!phone) return { error: "That phone number is not in a usable format." };
   const supabase = supabaseBrowser();
-  if (!supabase) return { error: "Sign-in is not configured on this deployment." };
+  if (!supabase) return { error: "Sign-in is unavailable." };
+  setGuestPreview(false);
   const { error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
   if (!error) {
     const { data } = await supabase.auth.getSession();
     setAccessTokenCookie(data.session?.access_token ?? null);
   }
+  return { error: error ? error.message : null };
+}
+
+/** Start passwordless email sign-in; a new account is created if needed. */
+export async function sendEmailCode(rawEmail: string): Promise<{ error: string | null }> {
+  const email = rawEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "Enter a valid email address." };
+  }
+  const supabase = supabaseBrowser();
+  if (!supabase) return { error: "Sign-in is unavailable." };
+  setGuestPreview(false);
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true },
+  });
+  return { error: error ? error.message : null };
+}
+
+/** Verify a passwordless email code and establish the session. */
+export async function verifyEmailCode(
+  rawEmail: string,
+  token: string,
+): Promise<{ error: string | null }> {
+  const email = rawEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "Enter a valid email address." };
+  }
+  const supabase = supabaseBrowser();
+  if (!supabase) return { error: "Sign-in is unavailable." };
+  setGuestPreview(false);
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token: token.trim(),
+    type: "email",
+  });
+  if (!error) {
+    const { data } = await supabase.auth.getSession();
+    setAccessTokenCookie(data.session?.access_token ?? null);
+  }
+  return { error: error ? error.message : null };
+}
+
+/** Redirect to Google OAuth and return to the supplied same-origin callback. */
+export async function signInWithGoogle(redirectTo: string): Promise<{ error: string | null }> {
+  const supabase = supabaseBrowser();
+  if (!supabase) return { error: "Sign-in is unavailable." };
+  setGuestPreview(false);
+  const callback = new URL(redirectTo, window.location.origin);
+  if (callback.origin !== window.location.origin) {
+    return { error: "The sign-in return address is not allowed." };
+  }
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: callback.toString() },
+  });
   return { error: error ? error.message : null };
 }
 

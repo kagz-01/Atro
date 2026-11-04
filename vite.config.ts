@@ -148,6 +148,11 @@ export default defineConfig(({ command, isPreview }) => ({
     host: "0.0.0.0",
     port: 8080,
     strictPort: false,
+    // Windows can lock generated Vercel output files while the app is running.
+    // Exclude it from Vite's file watcher so local dev does not crash on EBUSY.
+    watch: {
+      ignored: ["**/.vercel/**"],
+    },
   },
   preview: {
     host: "127.0.0.1",

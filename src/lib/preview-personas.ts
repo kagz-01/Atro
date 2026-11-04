@@ -18,6 +18,22 @@
 
 /** Cookie that carries the current persona key. Preview-only. */
 export const PREVIEW_PERSONA_COOKIE = "atro-preview-persona";
+export const GUEST_PREVIEW_COOKIE = "atro-guest-preview";
+export const GUEST_PREVIEW_USER_ID = "dev-guest-preview";
+
+export function isGuestPreviewCookie(header: string | null | undefined): boolean {
+  if (!header) return false;
+  const escaped = GUEST_PREVIEW_COOKIE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|;\\s*)${escaped}=1(?:;|$)`).test(header);
+}
+
+export function guestPreviewCookieAssignment(): string {
+  return `${GUEST_PREVIEW_COOKIE}=1; path=/; max-age=86400; samesite=lax`;
+}
+
+export function clearGuestPreviewCookieAssignment(): string {
+  return `${GUEST_PREVIEW_COOKIE}=; path=/; max-age=0; samesite=lax`;
+}
 
 export type PreviewPersonaKey = "boss" | "office" | "local" | "abroad";
 

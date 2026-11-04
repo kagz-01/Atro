@@ -2,9 +2,41 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { CostCalculator } from "@/components/cost-calculator";
 import { Badge } from "@/components/ui/badge";
-import { COMPANY } from "@/lib/site";
+import { COMPANY, ZONES } from "@/lib/site";
+import { FINISHES, PROJECT_TYPES, type CostProjectType, type FinishId } from "@/lib/cost";
+import { countyBySlug } from "@/lib/counties";
 
 export const Route = createFileRoute("/tools/cost-calculator")({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    type?: CostProjectType;
+    zone?: string;
+    sqm?: number;
+    finish?: FinishId;
+  } => {
+    const type =
+      typeof search.type === "string"
+        ? PROJECT_TYPES.find((item) => item.id === search.type)?.id
+        : undefined;
+    const zone =
+      typeof search.zone === "string" &&
+      (countyBySlug(search.zone) ||
+        search.zone === "coast" ||
+        ZONES.some((item) => item.slug === search.zone && item.slug !== "diaspora"))
+        ? search.zone
+        : undefined;
+    const sqmValue = Number(search.sqm);
+    const sqm =
+      Number.isInteger(sqmValue) && sqmValue >= 40 && sqmValue <= 800
+        ? sqmValue
+        : undefined;
+    const finish =
+      typeof search.finish === "string"
+        ? FINISHES.find((item) => item.id === search.finish)?.id
+        : undefined;
+    return { type, zone, sqm, finish };
+  },
   component: CostCalculatorPage,
   head: () => ({
     meta: [
@@ -18,6 +50,8 @@ export const Route = createFileRoute("/tools/cost-calculator")({
 });
 
 function CostCalculatorPage() {
+  const search = Route.useSearch();
+
   return (
     <main className="pt-32 pb-24">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
@@ -38,7 +72,7 @@ function CostCalculatorPage() {
               What will it cost?
             </h1>
             <p className="mt-5 text-ink/70">
-              Six questions. An indicative band. Then a person. We show you the arithmetic instead of hiding behind "it depends."
+              Five steps to a broad planning range. Then a person to discuss the site, scope and real costs before any commitment.
             </p>
             <div className="mt-8 space-y-4">
               <div className="flex items-start gap-3">
@@ -59,7 +93,7 @@ function CostCalculatorPage() {
                 <span className="text-lg">📍</span>
                 <div>
                   <p className="font-medium text-maroon">Zone-aware</p>
-                  <p className="text-sm text-ink/70">Costs adjusted for your location in Kenya.</p>
+                  <p className="text-sm text-ink/70">Existing areas use planning factors; other counties use a neutral baseline.</p>
                 </div>
               </div>
             </div>
@@ -67,7 +101,7 @@ function CostCalculatorPage() {
 
           {/* Right: calculator */}
           <div className="lg:col-span-8">
-            <CostCalculator />
+            <CostCalculator initialValues={search} />
           </div>
         </div>
       </div>

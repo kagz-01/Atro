@@ -24,6 +24,8 @@ import {
   X,
   MessageCircle,
   RefreshCw,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,10 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { whatsappHref } from "@/lib/whatsapp";
 import { formatPhone } from "@/lib/phone";
+import {
+  getEnquiryAttachmentUrl,
+} from "@/lib/enquiry-attachments-server";
+import { formatMessageFileSize } from "@/lib/enquiry-attachments";
 
 type Enquiry = {
   id: string;
@@ -67,6 +73,12 @@ type Enquiry = {
   assigned_to: string;
   project_id: string | null;
   created_at: string;
+  attachments: {
+    id: string;
+    filename: string;
+    mime: string;
+    sizeBytes: number;
+  }[];
 };
 
 const ZONE_LABELS: Record<string, string> = {
@@ -95,6 +107,55 @@ const TYPE_ICONS: Record<string, typeof Home> = {
   Commercial: Building2,
   Institutional: Landmark,
 };
+
+function EnquiryAttachmentFile({
+  attachment,
+}: {
+  attachment: Enquiry["attachments"][number];
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [url, setUrl] = useState("");
+
+  async function loadUrl() {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await getEnquiryAttachmentUrl({ data: { attachmentId: attachment.id } });
+      setUrl(result.url);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not open this file.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-maroon">{attachment.filename}</p>
+        <p className="text-xs text-muted">{formatMessageFileSize(attachment.sizeBytes)}</p>
+      </div>
+      {url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex shrink-0 items-center gap-2 text-xs font-medium text-burgundy underline"
+        >
+          <Download className="size-4" />
+          Open
+        </a>
+      ) : (
+        <Button type="button" size="sm" variant="outline" onClick={() => void loadUrl()} disabled={loading}>
+          {loading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+          Open
+        </Button>
+      )}
+      {error ? <p role="alert" className="basis-full text-xs text-red-700">{error}</p> : null}
+    </div>
+  );
+}
 
 function formatKes(n: number | null) {
   if (n == null) return "—";
@@ -460,7 +521,7 @@ export function EnquiriesInbox({
     return (
       <div className="rounded-3xl border border-ink/10 bg-paper p-8">
         <div>
-          <h1 className="font-display text-2xl text-maroon mb-2">Admin</h1>
+          <h1 className="mb-2 font-display text-[1.7rem] leading-none text-maroon">Admin</h1>
           <p className="text-sm text-muted mb-6">
             Sign in with a studio account to view enquiries.
           </p>
@@ -502,7 +563,7 @@ export function EnquiriesInbox({
               <ArrowLeft className="size-3.5" />
               Site
             </Link>
-            <h1 className="font-display text-xl text-maroon">Enquiries</h1>
+            <h1 className="font-display text-[1.35rem] leading-none text-maroon">Enquiries</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-[13px] text-muted">
             <span>
@@ -856,7 +917,7 @@ export function EnquiriesInbox({
                 {selected.indicative_min && selected.indicative_max ? (
                   <AccordionItem title="Indicative range">
                     <div className="p-4 bg-gradient-to-br from-maroon to-burgundy rounded-2xl">
-                      <p className="font-display text-2xl text-paper">
+                      <p className="font-display text-[1.7rem] leading-none text-paper">
                         {formatKes(selected.indicative_min)} – {formatKes(selected.indicative_max)}
                       </p>
                     </div>
@@ -868,6 +929,16 @@ export function EnquiriesInbox({
                     <p className="text-sm text-ink/80 bg-white border border-ink/10 p-4 rounded-xl whitespace-pre-wrap">
                       {selected.description}
                     </p>
+                  </AccordionItem>
+                ) : null}
+
+                {selected.attachments?.length ? (
+                  <AccordionItem title={`Attachments (${selected.attachments.length})`}>
+                    <div className="space-y-2">
+                      {selected.attachments.map((attachment) => (
+                        <EnquiryAttachmentFile key={attachment.id} attachment={attachment} />
+                      ))}
+                    </div>
                   </AccordionItem>
                 ) : null}
 

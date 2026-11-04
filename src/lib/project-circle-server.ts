@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { normaliseEmail } from "@/lib/staff";
 import { recordDecisionFor } from "@/lib/diaspora/server";
@@ -413,7 +413,7 @@ const InviteRepresentativeInput = z.object({
 
 export const inviteProjectRepresentative = createServerFn({ method: "POST" })
   .validator(InviteRepresentativeInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const projectId = await requireOwnedProject(sql, context.userId, data.projectId);
@@ -504,7 +504,7 @@ export const inviteProjectRepresentative = createServerFn({ method: "POST" })
 
 export const revokeProjectRepresentative = createServerFn({ method: "POST" })
   .validator(z.object({ projectId: z.string().min(1), representativeId: z.string().min(1) }))
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const projectId = await requireOwnedProject(sql, context.userId, data.projectId);
@@ -586,7 +586,7 @@ export const getProjectCircleInvite = createServerFn({ method: "GET" })
 
 export const acceptProjectCircleInvite = createServerFn({ method: "POST" })
   .validator(CircleTokenInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const invite = await findMatchingInvite(sql, data.token, context);
@@ -650,7 +650,7 @@ const SuggestDecisionInput = z.object({
 
 export const suggestProjectDecision = createServerFn({ method: "POST" })
   .validator(SuggestDecisionInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const representative = await requireRepresentative(sql, context.userId, data.projectId);
@@ -709,7 +709,7 @@ const ReviewSuggestionInput = z.object({
 
 export const reviewProjectDecisionSuggestion = createServerFn({ method: "POST" })
   .validator(ReviewSuggestionInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const projectId = await requireOwnedProject(sql, context.userId, data.projectId);
@@ -764,7 +764,7 @@ const RequestVisitInput = z.object({
 
 export const requestCircleVisit = createServerFn({ method: "POST" })
   .validator(RequestVisitInput)
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const representative = await requireRepresentative(sql, context.userId, data.projectId);

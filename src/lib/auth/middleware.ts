@@ -53,6 +53,17 @@ export const authMiddleware = createMiddleware({ type: "function" })
         email: session.email,
         emailVerified: session.emailVerified,
         phone: session.phone,
+        isGuestPreview: session.isGuestPreview,
       },
     });
+  });
+
+/** Authenticated account actions are unavailable in the read-only guest demo. */
+export const accountMiddleware = createMiddleware({ type: "function" })
+  .middleware([authMiddleware])
+  .server(async ({ next, context }) => {
+    if (context.isGuestPreview) {
+      throw new Error("Create an account to use this feature. Guest preview is read-only.");
+    }
+    return next();
   });

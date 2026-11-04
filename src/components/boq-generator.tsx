@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
   Plus, Trash2, Download, ChevronDown, ChevronRight,
-  Calculator, FileText, Copy, LayoutGrid,
+  Calculator, Copy, LayoutGrid,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ import {
   calculateLineTotal,
   calculateCategorySubtotal,
   calculateGrandTotal,
-  generateBoqPdf,
+  downloadBoqWorksheet,
   type BoqLineItem,
 } from "@/lib/boq";
 
@@ -29,6 +29,7 @@ export function BoqGenerator() {
 
   const contingencyPct = CONTINGENCY_OPTIONS.find((c) => c.id === contingencyId)?.value ?? 0.10;
   const totals = useMemo(() => calculateGrandTotal(items, contingencyPct), [items, contingencyPct]);
+  const sectionCount = useMemo(() => new Set(items.map((item) => item.categoryId)).size, [items]);
 
   const toggleCategory = (catId: string) => {
     setExpandedCats((prev) => {
@@ -82,8 +83,8 @@ export function BoqGenerator() {
     });
   };
 
-  const handleExport = () => {
-    generateBoqPdf(items, contingencyPct, projectName, projectType);
+  const handleDownload = () => {
+    downloadBoqWorksheet(items, contingencyPct, projectName, projectType);
   };
 
   return (
@@ -92,15 +93,15 @@ export function BoqGenerator() {
       <div className="p-6 border-b border-line bg-paper">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
           <div>
-            <h2 className="font-display text-2xl text-maroon">Bill of Quantities</h2>
+            <h2 className="font-display text-2xl text-maroon">Preliminary worksheet</h2>
             <p className="text-sm text-ink/60 mt-1">
               {items.length} line items · KES {totals.subtotal.toLocaleString("en-KE")} before contingency
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={handleExport} disabled={items.length === 0}>
+            <Button size="sm" variant="outline" onClick={handleDownload} disabled={items.length === 0}>
               <Download className="size-4 mr-1.5" />
-              Export
+              Download .txt
             </Button>
             <Button size="sm" variant="outline" onClick={() => setShowSummary(!showSummary)}>
               <Calculator className="size-4 mr-1.5" />
@@ -137,6 +138,36 @@ export function BoqGenerator() {
               <option>Custom</option>
             </select>
           </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-line/60 bg-cream p-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-muted">Tool status</p>
+            <p className="mt-2 font-medium text-maroon">Early planning worksheet</p>
+          </div>
+          <div className="rounded-2xl border border-line/60 bg-cream p-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-muted">Sections in use</p>
+            <p className="mt-2 font-display text-xl text-maroon tabular-nums">{sectionCount}</p>
+          </div>
+          <div className="rounded-2xl border border-line/60 bg-cream p-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-muted">Best before</p>
+            <p className="mt-2 font-medium text-maroon">Measurement review</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-b border-line bg-paper/60 p-5">
+        <div className="grid gap-3 md:grid-cols-3">
+          {[
+            { title: "1. Start with a template", text: "Load a common residential or commercial pattern and replace quantities to fit the site." },
+            { title: "2. Adjust the scope", text: "Edit rates, units and line descriptions to match your design intent and supply logic." },
+            { title: "3. Export for review", text: "Download the worksheet and discuss it with a QS or design lead before commitment." },
+          ].map((step) => (
+            <div key={step.title} className="rounded-2xl border border-line/60 bg-cream p-4">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-muted">{step.title}</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink/70">{step.text}</p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -420,18 +451,13 @@ export function BoqGenerator() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <p className="text-xs text-muted">
-              Measurement per SMM2 (2nd Edition, 2008). Excludes VAT (16%), statutory fees, professional fees.
+              Template rates and quantities are placeholders. Have a quantity surveyor verify the project-specific scope before tendering.
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={handleExport} disabled={items.length === 0}>
-              <FileText className="size-4 mr-1.5" />
-              Export BOQ
-            </Button>
-            <Button size="sm" onClick={handleExport} disabled={items.length === 0}>
-              <Download className="size-4 mr-1.5" />
-              Download
-            </Button>
+          <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.14em] text-muted">
+            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">Indicative only</span>
+            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">Plan, not tender</span>
+            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">Review before procurement</span>
           </div>
         </div>
       </div>
@@ -445,9 +471,9 @@ export function BoqGenerator() {
               KES {totals.total.toLocaleString("en-KE")}
             </p>
           </div>
-          <Button size="sm" onClick={handleExport} className="bg-gold text-maroon hover:bg-gold-light">
+          <Button size="sm" onClick={handleDownload} className="bg-gold text-maroon hover:bg-gold-light">
             <Download className="size-4 mr-1.5" />
-            Export
+            Download .txt
           </Button>
         </div>
       )}

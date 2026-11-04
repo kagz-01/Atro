@@ -10,7 +10,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { requireStaff } from "@/lib/staff-session.server";
 import { getSql, type Sql } from "@/lib/db";
 import {
@@ -100,7 +100,7 @@ export const createApproval = createServerFn({ method: "POST" })
       note: z.string().max(600).optional().default(""),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
@@ -135,7 +135,7 @@ export const updateApproval = createServerFn({ method: "POST" })
       note: z.string().max(600).optional(),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
@@ -172,7 +172,7 @@ export const chaseApproval = createServerFn({ method: "POST" })
       note: z.string().max(300).optional().default(""),
     }),
   )
-  .middleware([authMiddleware])
+  .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
