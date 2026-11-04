@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useRouterState } from "@tanstack/react-router";
 import { Concierge } from "@/components/concierge";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -6,9 +7,28 @@ import { WhatsappFab } from "@/components/whatsapp-fab";
 import { useSiteStore } from "@/lib/store";
 
 export function SiteShell({ children }: { children: ReactNode }) {
+  const isHome = useRouterState({ select: (state) => state.location.pathname === "/" });
+  const [footerVisible, setFooterVisible] = useState(false);
+
   useEffect(() => {
     void useSiteStore.persist.rehydrate();
   }, []);
+
+  useEffect(() => {
+    if (!isHome) {
+      setFooterVisible(false);
+      return;
+    }
+
+    const footer = document.querySelector("[data-site-footer]");
+    if (!footer) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setFooterVisible(entry.isIntersecting);
+    });
+    observer.observe(footer);
+    return () => observer.disconnect();
+  }, [isHome]);
 
   return (
     <div className="min-h-dvh flex flex-col bg-paper text-ink">
@@ -19,9 +39,13 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <main id="main" className="flex-1">
         {children}
       </main>
-      <SiteFooter />
-      <WhatsappFab />
-      <Concierge />
+      {isHome ? <SiteFooter /> : null}
+      {!footerVisible ? (
+        <>
+          <WhatsappFab />
+          <Concierge />
+        </>
+      ) : null}
     </div>
   );
 }

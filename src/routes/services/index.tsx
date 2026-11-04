@@ -52,106 +52,89 @@ function ServicesPage() {
       </section>
 
       {/* Services section */}
-      <section className="py-10 md:py-24">
+      <section className="py-8 md:py-20">
         <div className="container-wide">
-          {/* Summary stats */}
-          <div className="mb-12 grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
-            {SERVICE_CATEGORIES.map((cat) => {
-              const count = SERVICES.filter((s) => s.category === cat.id).length;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => toggleCategory(cat.id)}
-                  className={cn(
-                    "rounded-2xl border p-4 text-left transition-all duration-300 md:p-5",
-                    expandedCategory === cat.id
-                      ? "border-maroon bg-maroon text-paper shadow-soft"
-                      : "border-line/60 bg-cream hover:border-burgundy/35 hover:shadow-card card-lift",
-                  )}
-                >
-                  <span className={cn(
-                    "font-display text-[2.2rem] font-bold leading-none",
-                    expandedCategory === cat.id ? "text-gold" : "text-maroon",
-                  )}>
-                    {count}
-                  </span>
-                  <p className={cn(
-                    "mt-2 text-sm font-medium",
-                    expandedCategory === cat.id ? "text-paper/90" : "text-maroon",
-                  )}>
-                    {cat.title}
-                  </p>
-                </button>
-              );
-            })}
+          <div className="mb-5 max-w-2xl sm:mb-8">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy sm:text-xs">
+              Explore our services
+            </p>
+            <h2 className="mt-2 font-display text-2xl leading-tight text-maroon sm:text-3xl">
+              Find the right support for your project.
+            </h2>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink/70 sm:text-base">
+              Choose a project stage to see the services, their scope, and what to prepare.
+            </p>
           </div>
 
-          {/* Categories */}
-          <div className="space-y-4 sm:space-y-6">
+          <div className="space-y-3 sm:space-y-4">
             {SERVICE_CATEGORIES.map((cat) => {
               const services = SERVICES.filter((s) => s.category === cat.id);
               const isExpanded = expandedCategory === cat.id;
+              const panelId = `services-${cat.id}`;
 
               return (
                 <div
                   key={cat.id}
                   className={cn(
-                    "border rounded-2xl overflow-hidden transition-all duration-300",
-                    isExpanded ? "border-maroon/20 shadow-card" : "border-line/50",
+                    "overflow-hidden rounded-2xl border transition-colors duration-300",
+                    isExpanded ? "border-maroon/20 shadow-card" : "border-line/60 bg-cream",
                   )}
                 >
-                  {/* Category header */}
-                  <button
-                    type="button"
-                    onClick={() => toggleCategory(cat.id)}
-                    className=                    "flex w-full items-center justify-between bg-paper p-3 transition-colors duration-300 hover:bg-stone/20 sm:p-5 md:p-7"
-                  >
-                    <div className="text-left">
-                      <h2 className="font-display text-[1.4rem] leading-tight tracking-[-0.04em] text-maroon sm:text-[2rem] sm:leading-none md:text-[2.5rem]">
-                        {cat.title}
-                      </h2>
-                      <p className="mt-1 text-xs text-ink/60 sm:mt-2 sm:text-sm md:text-base">{cat.description}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="hidden text-xs font-medium uppercase tracking-[0.14em] text-muted sm:inline">
-                        {services.length} service{services.length !== 1 ? "s" : ""}
-                      </span>
-                      <ChevronDown
-                        className={cn(
-                          "size-5 text-muted transition-transform duration-300",
-                          isExpanded && "rotate-180",
-                        )}
-                      />
-                    </div>
-                  </button>
+                  <div className={cn("px-4 py-4 sm:px-6 sm:py-5", isExpanded && "bg-paper")}>
+                    <h2 className="text-base leading-tight sm:text-xl">
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(cat.id)}
+                        aria-expanded={isExpanded}
+                        aria-controls={panelId}
+                        className="flex min-h-11 w-full items-center justify-between gap-3 text-left"
+                      >
+                        <span className="font-display text-lg leading-tight tracking-[-0.03em] text-maroon sm:text-2xl">
+                          {cat.title}
+                        </span>
+                        <span className="flex shrink-0 items-center gap-2 text-[10px] font-medium text-muted sm:text-xs">
+                          {services.length} services
+                          <ChevronDown
+                            className={cn(
+                              "size-4 transition-transform duration-300",
+                              isExpanded && "rotate-180",
+                            )}
+                          />
+                        </span>
+                      </button>
+                    </h2>
+                    <p className="mt-1 pr-8 text-xs leading-relaxed text-ink/65 sm:mt-2 sm:text-sm">
+                      {cat.description}
+                    </p>
+                  </div>
 
-                  {/* Services grid - full width */}
-                  {isExpanded && (
-                    <div className="grid grid-cols-2 gap-3 p-3 sm:gap-4 sm:p-5 md:p-7 lg:grid-cols-3">
-                      {services.map((service) => (
-                        <Link
-                          key={service.slug}
-                          to="/services/$slug"
-                          params={{ slug: service.slug }}
-                          className="group rounded-xl border border-line/60 bg-cream p-3 transition-all duration-300 hover:border-burgundy/35 hover:shadow-card card-lift sm:rounded-2xl sm:p-5"
-                        >
-                          <p className="line-clamp-1 text-[8px] font-semibold uppercase tracking-[0.1em] text-gold sm:text-[10px] sm:tracking-[0.14em]">
-                            {service.kicker}
-                          </p>
-                          <h3 className="mt-2 font-display text-sm leading-tight tracking-[-0.04em] text-maroon transition-colors duration-300 group-hover:text-burgundy sm:mt-3 sm:text-[1.7rem] sm:leading-none">
-                            {service.title}
-                          </h3>
-                          <p className="mt-2 line-clamp-3 text-[10px] leading-snug text-ink/70 sm:mt-3 sm:text-sm sm:leading-relaxed">
-                            {service.lede}
-                          </p>
-                          <span className="mt-3 inline-flex items-center gap-1 text-[8px] font-semibold uppercase tracking-[0.08em] text-burgundy group-hover:text-maroon sm:mt-5 sm:text-[10px] sm:tracking-[0.14em]">
-                            View scope <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+                  <div
+                    id={panelId}
+                    hidden={!isExpanded}
+                    className="grid grid-cols-1 gap-3 border-t border-line/50 bg-paper p-3 sm:grid-cols-2 sm:gap-4 sm:p-5 lg:grid-cols-3"
+                  >
+                    {services.map((service) => (
+                      <Link
+                        key={service.slug}
+                        to="/services/$slug"
+                        params={{ slug: service.slug }}
+                        className="group flex min-h-32 flex-col items-start rounded-xl border border-line/60 bg-cream p-4 transition-all duration-300 hover:border-burgundy/35 hover:shadow-card card-lift sm:min-h-44 sm:rounded-2xl sm:p-5"
+                      >
+                        <p className="line-clamp-2 text-[9px] font-semibold uppercase leading-snug tracking-[0.1em] text-burgundy sm:text-[10px] sm:tracking-[0.14em]">
+                          {service.kicker}
+                        </p>
+                        <h3 className="mt-2 font-display text-lg leading-tight tracking-[-0.03em] text-maroon transition-colors duration-300 group-hover:text-burgundy sm:mt-3 sm:text-xl">
+                          {service.title}
+                        </h3>
+                        <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-ink/70 sm:mt-3 sm:text-sm">
+                          {service.lede}
+                        </p>
+                        <span className="mt-auto inline-flex items-center gap-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-burgundy group-hover:text-maroon sm:text-[11px]">
+                          View scope <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               );
             })}
