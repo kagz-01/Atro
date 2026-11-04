@@ -327,6 +327,9 @@ export function ClientDashboard({
           items: [{ id: "profile", label: "Profile", icon: UserRound }],
         },
       ]}
+      mobileItems={projectTabs.filter((item) =>
+        ["overview", "milestones", "decisions", "money", "messages"].includes(item.id),
+      ).slice(0, 4)}
       active={section}
       onSelect={(id) => setSection(id as Section)}
       alerts={[
@@ -555,7 +558,7 @@ export function ClientDashboard({
             />
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <StatCard
               label="Overall completion"
               value={`${p.progress}%`}
@@ -996,7 +999,50 @@ function PaymentTable({
   pending: string;
 }) {
   return (
-    <div className="overflow-x-auto">
+    <>
+    <ul className="space-y-3 p-3 sm:hidden">
+      {payments.map((pay) => {
+        const style = PAYMENT_STATUS[pay.status] ?? PAYMENT_STATUS.scheduled;
+        const key = `pay-${pay.id}`;
+        const checkoutPending = pay.checkoutStatus === "pending";
+        return (
+          <li key={pay.id} className="rounded-xl border border-ink/10 bg-white p-3">
+            <div className="flex items-start justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block text-[13px] font-medium text-maroon">{pay.label}</span>
+                {pay.certificate ? (
+                  <span className="font-mono text-[11px] text-muted">{pay.certificate}</span>
+                ) : null}
+              </span>
+              <span className="shrink-0 text-[13px] font-medium text-maroon">{kes(pay.amount)}</span>
+            </div>
+            <span
+              className={cn(
+                "mt-3 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]",
+                style.cls,
+              )}
+            >
+              {checkoutPending ? "Checkout started" : style.label}
+            </span>
+            {pay.status === "certified" ? (
+              <Button
+                className="mt-3 w-full"
+                size="sm"
+                disabled={pending === key}
+                onClick={() => onPay(pay.id)}
+              >
+                {pending === key
+                  ? "Opening…"
+                  : checkoutPending
+                    ? "Continue payment"
+                    : "Pay securely"}
+              </Button>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+    <div className="hidden overflow-x-auto sm:block">
       <table className="w-full min-w-[520px] border-collapse text-left">
         <thead>
           <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
@@ -1055,6 +1101,7 @@ function PaymentTable({
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -1208,7 +1255,49 @@ function VaultPanel({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <ul className="space-y-3 p-3 sm:hidden">
+            {documents.map((doc) => (
+              <li key={doc.id} className="rounded-xl border border-ink/10 bg-white p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium text-maroon">
+                      {KIND_LABEL[doc.kind]}
+                    </span>
+                    <span className="block font-mono text-[11px] text-muted">{doc.number}</span>
+                  </span>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+                      doc.status === "void"
+                        ? "border-red-200 bg-red-50 text-red-800"
+                        : DOC_TONE[doc.kind],
+                    )}
+                  >
+                    {doc.status === "void" ? "Void" : "Issued"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className="text-[11px] text-ink/55">
+                    {new Date(doc.issuedAt).toLocaleDateString("en-KE", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <span className="text-[12px] font-medium text-maroon">{kes(doc.total)}</span>
+                </div>
+                <Link
+                  to="/portal/document/$id"
+                  params={{ id: doc.id }}
+                  className="mt-3 inline-flex min-h-10 items-center text-[12px] font-medium text-burgundy underline decoration-gold decoration-2 underline-offset-4"
+                >
+                  Open document
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[520px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
@@ -1267,6 +1356,7 @@ function VaultPanel({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Panel>
 

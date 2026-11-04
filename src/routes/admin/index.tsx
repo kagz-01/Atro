@@ -690,7 +690,7 @@ function ProjectDetail({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <StatCard
               label="Build progress"
               value={`${p.progress}%`}
@@ -1933,7 +1933,85 @@ function ProjectsTable({
               ) : null}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <ul className="divide-y divide-ink/8 lg:hidden">
+              {pageProjects.map((p) => {
+                const status =
+                  p.lifecycleState === "closed"
+                    ? "Closed"
+                    : p.lifecycleState === "archived"
+                      ? "Archived"
+                      : p.buildComplete
+                        ? "Build complete"
+                        : p.blockedStages > 0
+                          ? "Blocked"
+                          : p.openDecisions > 0
+                            ? "Awaiting client"
+                            : p.onTrack
+                              ? "On track"
+                              : "Watch";
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => onOpen(p.id)}
+                      aria-label={`Open ${p.title} for ${p.clientLabel || "client"}`}
+                      className="w-full space-y-3 p-4 text-left transition-colors hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-maroon"
+                    >
+                      <span className="flex items-start justify-between gap-3">
+                        <span className="min-w-0">
+                          <span className="block text-[13px] font-medium text-maroon">{p.title}</span>
+                          <span className="font-mono text-[11px] text-muted">{p.reference}</span>
+                          <span className="mt-1 block text-[12px] text-ink/65">
+                            {p.clientLabel || "Client not named"}
+                            {p.clientCity ? ` · ${p.clientCity}` : ""}
+                          </span>
+                        </span>
+                        <Badge
+                          tone={
+                            p.lifecycleState === "closed" || p.lifecycleState === "archived"
+                              ? "maroon"
+                              : "gold"
+                          }
+                        >
+                          {portfolioLifecycleLabel(p.lifecycleState, p.buildComplete)}
+                        </Badge>
+                      </span>
+                      <span className="flex items-center justify-between gap-3 text-[11px] text-ink/60">
+                        <span className="truncate">{p.stage || "Stage not set"}</span>
+                        <span className="shrink-0">{p.progress}% complete</span>
+                      </span>
+                      <span className="block h-1.5 overflow-hidden rounded-full bg-ink/10">
+                        <span
+                          className="block h-full bg-gradient-to-r from-gold to-gold-light"
+                          style={{ width: `${p.progress}%` }}
+                        />
+                      </span>
+                      <span className="flex items-center justify-between gap-3">
+                        <span
+                          className={cn(
+                            "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                            p.blockedStages > 0
+                              ? "border-red-200 bg-red-50 text-red-800"
+                              : p.openDecisions > 0
+                                ? "border-amber-300 bg-amber-50 text-amber-900"
+                                : p.onTrack
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                  : "border-stone-300 bg-stone/100 text-stone-700",
+                          )}
+                        >
+                          {status}
+                        </span>
+                        <span className="text-right text-[11px] text-ink/60">
+                          {kes(p.paidToDate)} paid
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="hidden overflow-x-auto lg:block">
               <table className="w-full min-w-[900px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
@@ -2056,6 +2134,7 @@ function ProjectsTable({
                 </tbody>
               </table>
             </div>
+            </>
           )}
           {sorted.length > 0 ? (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 px-5 py-3">
@@ -2204,7 +2283,84 @@ function StaffProjectsDirectory({
           ) : null}
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        <ul className="divide-y divide-ink/8 lg:hidden">
+          {visibleProjects.map((project) => {
+            const followUpLabel =
+              project.blockedStages > 0
+                ? "Blocked"
+                : project.openDecisions > 0
+                  ? "Awaiting client"
+                  : !project.onTrack
+                    ? "Needs review"
+                    : project.buildComplete
+                      ? "Build complete"
+                      : "No open issue";
+            const programme =
+              project.daysRemaining > 0
+                ? `${project.daysRemaining} days remaining`
+                : project.daysRemaining < 0
+                  ? `${Math.abs(project.daysRemaining)} days past target`
+                  : project.onTrack
+                    ? "No target-date detail"
+                    : "Programme needs review";
+            return (
+              <li key={project.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpen(project.id)}
+                  aria-label={`Open ${project.title} for ${project.clientLabel || "client"}`}
+                  className="w-full space-y-3 p-4 text-left transition-colors hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-maroon"
+                >
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-medium text-maroon">
+                        {project.title}
+                      </span>
+                      <span className="font-mono text-[11px] text-muted">{project.reference}</span>
+                      <span className="mt-1 block text-[12px] text-ink/65">
+                        {project.clientLabel || "Client not named"}
+                        {project.clientCity ? ` · ${project.clientCity}` : ""}
+                      </span>
+                    </span>
+                    <Badge
+                      tone={
+                        project.lifecycleState === "closed" || project.lifecycleState === "archived"
+                          ? "maroon"
+                          : "gold"
+                      }
+                    >
+                      {portfolioLifecycleLabel(project.lifecycleState, project.buildComplete)}
+                    </Badge>
+                  </span>
+                  {project.source === "sample" ? <Badge tone="gold">Sample</Badge> : null}
+                  {project.clientType === "diaspora" ? <Badge tone="gold">From abroad</Badge> : null}
+                  <span className="flex items-center justify-between gap-3 text-[11px] text-ink/60">
+                    <span className="truncate">{project.stage || "Stage not set"}</span>
+                    <span className="shrink-0">{programme}</span>
+                  </span>
+                  <span
+                    className={cn(
+                      "inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                      project.blockedStages > 0
+                        ? "border-red-200 bg-red-50 text-red-800"
+                        : project.openDecisions > 0
+                          ? "border-amber-300 bg-amber-50 text-amber-900"
+                          : !project.onTrack
+                            ? "border-stone-300 bg-stone/100 text-stone-700"
+                            : project.buildComplete
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                              : "border-ink/10 bg-ink/2 text-ink/60",
+                    )}
+                  >
+                    {followUpLabel}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[760px] border-collapse text-left">
             <thead>
               <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
@@ -2333,6 +2489,7 @@ function StaffProjectsDirectory({
             </tbody>
           </table>
         </div>
+        </>
       )}
     </Panel>
   );
@@ -2395,8 +2552,8 @@ function StaffToday({
         title="Office overview"
         subtitle="The office needs a quick view of risk, follow-up and delivery health before a decision is made."
       >
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-900">
               Need attention
             </p>
@@ -2405,7 +2562,7 @@ function StaffToday({
             </p>
             <p className="mt-1 text-[11px] text-amber-800">projects with blocked work or open decisions</p>
           </div>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-900">
               Running clean
             </p>
@@ -2414,7 +2571,7 @@ function StaffToday({
             </p>
             <p className="mt-1 text-[11px] text-emerald-800">projects without active blockers</p>
           </div>
-          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+          <div className="col-span-2 rounded-2xl border border-sky-200 bg-sky-50 p-3 sm:col-span-1 sm:p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-900">
               Follow-up today
             </p>
@@ -2440,7 +2597,7 @@ function StaffToday({
           </Button>
         </div>
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
         <button
           type="button"
           onClick={onGoProjects}
@@ -2689,7 +2846,7 @@ function Overview({
 
   if (isLoading || !data) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="h-28 animate-pulse rounded-2xl border border-ink/10 bg-white" />
         ))}
@@ -2763,15 +2920,15 @@ function Overview({
         title="Owner dashboard"
         subtitle="The owner needs to see the live jobs, open decisions and money movement without digging through the details."
       >
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-ink/10 bg-cream/60 p-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-ink/10 bg-cream/60 p-3 sm:p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Live projects</p>
             <p className="mt-2 font-display text-[1.9rem] leading-none text-maroon">
               {liveProjectCount}
             </p>
             <p className="mt-1 text-[11px] text-ink/55">active sites currently in the portfolio</p>
           </div>
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-900">
               In focus
             </p>
@@ -2780,7 +2937,7 @@ function Overview({
             </p>
             <p className="mt-1 text-[11px] text-amber-800">need a decision, review, or unblock</p>
           </div>
-          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+          <div className="col-span-2 rounded-2xl border border-sky-200 bg-sky-50 p-3 sm:col-span-1 sm:p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-900">
               Certified to collect
             </p>
@@ -2795,7 +2952,7 @@ function Overview({
       </Panel>
 
       {/* headline numbers */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard
           label="Contracted"
           value={kesShort(money.contractValue)}
@@ -3869,10 +4026,38 @@ function AdminConsole() {
           ],
         },
       ];
+  const mobileItems = (isOwner
+    ? [
+        { id: "work", label: "Priorities", icon: ClipboardList },
+        { id: "overview", label: "Portfolio", icon: LayoutDashboard },
+        { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
+        { id: "enquiries", label: "Leads", icon: Inbox, badge: overview?.funnel.enquiriesNew || undefined },
+        { id: "funds", label: "Funds", icon: Banknote },
+      ]
+    : [
+        { id: "overview", label: "Today", icon: LayoutDashboard },
+        { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
+        ...(canViewCalendar ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }] : []),
+        {
+          id: "communications",
+          label: "Updates",
+          icon: MessageSquare,
+          badge:
+            messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole)).length ||
+            undefined,
+        },
+        {
+          id: "enquiries",
+          label: "Leads",
+          icon: Inbox,
+          badge: staffToday?.newEnquiries || undefined,
+        },
+      ]).slice(0, 4);
 
   return (
     <DashboardShell
       groups={shellGroups}
+      mobileItems={mobileItems}
       active={view}
       onSelect={(id) => {
         setTab(id as (typeof TABS)[number]["id"]);

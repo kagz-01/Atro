@@ -32,7 +32,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/10 bg-white p-4 shadow-card",
+        "relative flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/10 bg-white p-3 shadow-card sm:p-4",
         className,
       )}
     >
@@ -44,7 +44,7 @@ export function StatCard({
           <p
             title={exact}
             className={cn(
-              "mt-2 font-display text-xl leading-tight tracking-tight",
+              "mt-2 font-display text-lg leading-tight tracking-tight sm:text-xl",
               tone === "good" && "text-emerald-700",
               tone === "warn" && "text-amber-700",
               tone === "bad" && "text-burgundy",

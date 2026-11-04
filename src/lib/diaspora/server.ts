@@ -716,10 +716,11 @@ async function buildProjectPayload(
     note: string | null;
     checkout_status: string | null;
     authorization_url: string | null;
-  }>`select 
-    id, ord, label, stage, amount, status, due_date,
-      paid_date, certificate, method, note,
-      latest.status as checkout_status, latest.authorization_url
+  }>`select
+    portal_payments.id, portal_payments.ord, portal_payments.label, portal_payments.stage,
+      portal_payments.amount, portal_payments.status, portal_payments.due_date,
+      portal_payments.paid_date, portal_payments.certificate, portal_payments.method,
+      portal_payments.note, latest.status as checkout_status, latest.authorization_url
     from portal_payments
     left join lateral (
       select attempt.status, attempt.authorization_url

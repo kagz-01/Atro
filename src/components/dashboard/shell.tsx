@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Link } from "@tanstack/react-router";
@@ -43,6 +43,7 @@ export type Alert = { id: string; title: string; detail: string; onSelect?: () =
 
 export function DashboardShell({
   groups,
+  mobileItems,
   active,
   onSelect,
   alerts = [],
@@ -56,6 +57,8 @@ export function DashboardShell({
   hideNav = false,
 }: {
   groups: NavGroup[];
+  /** Highest-priority destinations shown as quick links on narrow screens. */
+  mobileItems?: NavItem[];
   active: string;
   onSelect: (id: string) => void;
   alerts?: Alert[];
@@ -75,11 +78,11 @@ export function DashboardShell({
   const [drawer, setDrawer] = useState(false);
   const [openAlerts, setOpenAlerts] = useState(false);
 
-  const nav = (
+  const nav = (compact: boolean) => (
     <nav className="flex flex-col gap-6 p-4" aria-label="Sections">
       {groups.map((group) => (
         <div key={group.title}>
-          {!rail ? (
+          {!compact ? (
             <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted/70">
               {group.title}
             </p>
@@ -90,7 +93,7 @@ export function DashboardShell({
                 <NavButton
                   item={item}
                   active={active === item.id}
-                  rail={rail}
+                  rail={compact}
                   onSelect={() => {
                     onSelect(item.id);
                     setDrawer(false);
@@ -105,14 +108,21 @@ export function DashboardShell({
   );
 
   return (
-    <div className="min-h-dvh bg-stone/25">
+    <div
+      className="min-h-dvh bg-stone/25"
+      style={
+        {
+          "--dashboard-sidebar-width": rail ? "76px" : "clamp(200px, 17vw, 260px)",
+        } as CSSProperties
+      }
+    >
       {/* Sidebar — wide screens only */}
       <aside
         className={cn(
-          "fixed left-0 z-30 flex flex-col border-r border-ink/10 bg-white transition-[width] duration-200",
-          "top-0 h-dvh",
+          "fixed left-0 top-0 z-30 hidden h-dvh flex-col border-r border-ink/10 bg-white transition-[width] duration-200 lg:flex",
+          hideNav && "!hidden",
         )}
-        style={{ width: rail ? 76 : "clamp(200px, 17vw, 260px)" }}
+        style={{ width: "var(--dashboard-sidebar-width)" }}
       >
         <div
           className={cn(
@@ -128,7 +138,7 @@ export function DashboardShell({
           </Link>
         </div>
 
-        <div className="flex-1 overflow-y-auto">{nav}</div>
+        <div className="flex-1 overflow-y-auto">{nav(rail)}</div>
 
         <div className={cn("shrink-0 border-t border-ink/10", rail ? "p-2" : "p-3")}>
           <button
@@ -149,10 +159,10 @@ export function DashboardShell({
       </aside>
 
       {/* Drawer — narrow screens */}
-      <Dialog.Root open={drawer} onOpenChange={setDrawer}>
+      <Dialog.Root open={drawer && !hideNav} onOpenChange={setDrawer}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-ink/50 backdrop-blur-[2px]" />
-          <Dialog.Content className="fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-white shadow-soft focus:outline-none">
+          <Dialog.Content className="fixed inset-y-0 left-0 z-50 flex max-h-dvh w-[min(280px,calc(100vw-1rem))] flex-col bg-white pb-[env(safe-area-inset-bottom)] shadow-soft focus:outline-none">
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-ink/10 px-5">
               <Dialog.Title asChild>
                 <Link to="/" aria-label="ATRO home">
@@ -169,25 +179,29 @@ export function DashboardShell({
                 </button>
               </Dialog.Close>
             </div>
-            <div className="flex-1 overflow-y-auto">{nav}</div>
+            <div className="flex-1 overflow-y-auto">{nav(false)}</div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
 
       {/* Content column */}
       <div
-        className="transition-[padding] duration-200"
-        style={{ paddingLeft: rail ? 76 : "clamp(200px, 17vw, 260px)" }}
+        className={cn(
+          "min-w-0 transition-[padding] duration-200",
+          !hideNav && "lg:pl-[var(--dashboard-sidebar-width)]",
+        )}
       >
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-ink/10 bg-white/90 px-4 backdrop-blur sm:px-6">
-          <button
-            type="button"
-            onClick={() => setDrawer(true)}
-            className="hidden size-10 shrink-0 place-items-center rounded-lg border border-ink/10 text-maroon"
-            aria-label="Open navigation"
-          >
-            <Menu className="size-4" />
-          </button>
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-ink/10 bg-white/95 px-3 backdrop-blur sm:h-16 sm:gap-3 sm:px-6">
+          {!hideNav ? (
+            <button
+              type="button"
+              onClick={() => setDrawer(true)}
+              className="grid size-10 shrink-0 place-items-center rounded-xl border border-ink/10 text-maroon transition-colors hover:bg-cream lg:hidden"
+              aria-label="Open navigation"
+            >
+              <Menu className="size-4" />
+            </button>
+          ) : null}
 
           {onSearch ? (
             <label className="relative min-w-0 flex-1 sm:max-w-sm">
@@ -199,7 +213,8 @@ export function DashboardShell({
               <input
                 value={search ?? ""}
                 onChange={(e) => onSearch(e.target.value)}
-                placeholder={searchPlaceholder}
+                placeholder="Search"
+                title={searchPlaceholder}
                 className="h-10 w-full rounded-xl border border-ink/10 bg-cream pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-gold"
               />
             </label>
@@ -207,17 +222,76 @@ export function DashboardShell({
             <div className="flex-1" />
           )}
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             <AlertsBell alerts={alerts} open={openAlerts} onOpenChange={setOpenAlerts} />
             {user ? <UserChip user={user} /> : null}
           </div>
         </header>
 
         {toolbar ? (
-          <div className="border-b border-ink/10 bg-white px-4 py-3 sm:px-6">{toolbar}</div>
+          <div className="border-b border-ink/10 bg-white px-3 py-3 sm:px-6">{toolbar}</div>
         ) : null}
 
-        <main className="px-4 py-6 sm:px-6 lg:px-8">
+        {!hideNav && mobileItems?.length ? (
+          <nav
+            aria-label="Quick sections"
+            className="border-b border-ink/10 bg-white px-2 py-2 lg:hidden"
+          >
+            <ul className="dashboard-quick-links flex gap-1 overflow-x-auto">
+              {mobileItems.map((item) => (
+                <li key={item.id} className="shrink-0">
+                  <button
+                    type="button"
+                    aria-current={active === item.id ? "page" : undefined}
+                    onClick={() => onSelect(item.id)}
+                    className={cn(
+                      "inline-flex min-h-10 items-center gap-1 rounded-xl px-1 text-[11px] transition-colors",
+                      active === item.id
+                        ? "bg-maroon text-paper"
+                        : "text-ink/65 hover:bg-cream hover:text-maroon",
+                    )}
+                  >
+                    <item.icon className="size-3 shrink-0" aria-hidden />
+                    <span>{item.label}</span>
+                    {item.badge ? (
+                      <span
+                        className={cn(
+                          "rounded-full px-1 py-0.5 text-[9px] font-bold",
+                          active === item.id
+                            ? "bg-gold/20 text-gold-light"
+                            : "bg-burgundy/10 text-burgundy",
+                        )}
+                      >
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              ))}
+              <li className="shrink-0">
+                <button
+                  type="button"
+                  aria-label="More dashboard sections"
+                  aria-current={
+                    mobileItems.some((item) => item.id === active) ? undefined : "page"
+                  }
+                  onClick={() => setDrawer(true)}
+                  className={cn(
+                    "inline-flex min-h-10 items-center gap-1 rounded-xl px-1 text-[11px] transition-colors",
+                    mobileItems.some((item) => item.id === active)
+                      ? "text-ink/65 hover:bg-cream hover:text-maroon"
+                      : "bg-maroon text-paper",
+                  )}
+                >
+                  <Menu className="size-3 shrink-0" aria-hidden />
+                  <span>More</span>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        ) : null}
+
+        <main className="min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
           {readOnly ? (
             <fieldset disabled className="min-w-0 border-0 p-0">
               {children}
@@ -357,6 +431,7 @@ function UserChip({ user }: { user: { name: string; role?: string; email?: strin
         <button
           type="button"
           className="flex items-center gap-2.5 rounded-xl border border-ink/10 py-1.5 pl-1.5 pr-2.5 transition-colors hover:bg-cream"
+          aria-label={`Account menu for ${user.name}`}
         >
           <span className="grid size-8 place-items-center rounded-lg bg-maroon text-[12px] font-bold text-gold">
             {initials || "A"}

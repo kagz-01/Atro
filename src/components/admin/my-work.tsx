@@ -111,10 +111,11 @@ export function MyWorkPanel({
           </Button>
         </div>
       ) : null}
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-3">
       <Panel
         title="My enquiries"
         subtitle="Claimed by you, still open"
+        className="min-w-0"
         actions={
           <Button size="sm" variant="ghost" onClick={onGoEnquiries}>
             Open the inbox <ArrowRight className="size-3.5" />
@@ -160,7 +161,7 @@ export function MyWorkPanel({
         )}
       </Panel>
 
-      <Panel title="Chases due" subtitle="Approvals that have gone quiet">
+      <Panel title="Chases due" subtitle="Approvals that have gone quiet" className="min-w-0">
         {isLoading ? (
           <Empty>Loading…</Empty>
         ) : chases.length === 0 ? (
@@ -204,7 +205,7 @@ export function MyWorkPanel({
         )}
       </Panel>
 
-      <Panel title="My notes" subtitle="What you recorded on projects">
+      <Panel title="My notes" subtitle="What you recorded on projects" className="min-w-0">
         {isLoading ? (
           <Empty>Loading…</Empty>
         ) : notes.length === 0 ? (
