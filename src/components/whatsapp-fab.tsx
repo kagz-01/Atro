@@ -11,10 +11,11 @@ export function WhatsappFab() {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="fixed z-30 right-4 bottom-4 md:right-6 md:bottom-6 size-14 rounded-xs bg-whatsapp text-cream shadow-soft inline-flex items-center justify-center hover:brightness-95 active:scale-[0.96] transition-transform"
+      className="fixed z-20 right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:right-6 md:bottom-6 h-12 w-12 md:w-auto md:px-4 rounded-full bg-whatsapp text-cream text-[11px] font-medium uppercase tracking-[0.12em] shadow-soft inline-flex items-center justify-center gap-2 hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold active:scale-[0.96] transition-transform"
       aria-label="Chat on WhatsApp"
     >
-      <MessageCircle className="size-7" strokeWidth={1.75} />
+      <MessageCircle className="size-5 shrink-0" strokeWidth={1.75} />
+      <span className="hidden md:inline">WhatsApp</span>
     </a>
   );
 }

@@ -22,6 +22,8 @@ export type PrivilegedOp =
   | "issue-statement"
   | "void-document"
   | "set-retainer"
+  | "record-project-expense"
+  | "approve-project-expense"
   | "close-project"
   | "archive-project"
   | "grant-access"
@@ -34,6 +36,8 @@ const REFUSAL: Record<PrivilegedOp, string> = {
   "issue-statement": "Only an admin can issue a statement.",
   "void-document": "Only an admin can void a document.",
   "set-retainer": "Only an admin can set the annual care fee.",
+  "record-project-expense": "Only an admin can record a project expense.",
+  "approve-project-expense": "Only an admin can approve a project expense.",
   "close-project": "Only an admin can close a project.",
   "archive-project": "Only an admin can archive a project.",
   "grant-access": "Only an admin can change studio access.",

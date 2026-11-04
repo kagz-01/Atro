@@ -75,12 +75,10 @@ function StartPage() {
               {isDiaspora ? "Diaspora enquiry" : "Start a project"}
             </Badge>
             <h1 className="font-display text-[2.2rem] leading-[0.94] tracking-[-0.05em] text-maroon md:text-[2.9rem]">
-              {isDiaspora ? "Tell us what you need." : "Tell us what you need."}
+              Tell us about your project.
             </h1>
             <p className="mt-5 text-base leading-relaxed text-ink/70 sm:text-lg">
-              {isDiaspora
-                ? "Share the brief, where it is, and how to reach you. We review the project and follow up with the next practical step."
-                : "Share the brief, where it is, and how to reach you. We review the project and follow up with the next practical step."}
+              Share what you are planning, where the project is, and how to reach you. We will review the brief and follow up with a practical next step.
             </p>
 
             {selectedService ? (

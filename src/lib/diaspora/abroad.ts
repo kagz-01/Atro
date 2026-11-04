@@ -29,7 +29,7 @@ export const ABROAD_FEATURES: AbroadFeature[] = [
     to: "/portal",
     title: "The client project portal",
     kicker: "Accounts — your build, live",
-    body: "Sign in and your project is a record, not a promise: milestones with photographic evidence, the payment ledger with retention, every certificate, the document vault, and the decision log. You approve milestones, release certified payments and record decisions from it.",
+    body: "Sign in and your project is a record, not a promise: milestones with photographic evidence, the payment ledger with retention, every certificate, the document vault, and the decision log. You approve milestones, pay certified instalments through Paystack and record decisions from it.",
     cta: "Open the portal",
     requiresSignIn: true,
   },

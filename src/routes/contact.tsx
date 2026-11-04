@@ -102,12 +102,12 @@ function ContactPage() {
           </div>
 
           <h1 className="reveal reveal-delay-1 mx-auto max-w-5xl font-display text-[2.4rem] leading-[0.94] tracking-[-0.05em] text-paper sm:text-[3rem] md:text-[4rem] lg:text-[4.8rem]">
-            Let's build something{" "}
-            <span className="text-gradient-gold italic">remarkable.</span>
+            Talk with ATRO about your{" "}
+            <span className="text-gradient-gold italic">building project.</span>
           </h1>
 
           <p className="reveal reveal-delay-2 mx-auto mt-8 max-w-2xl text-base text-paper/70 sm:text-lg md:text-xl">
-            Call, message, or visit us. We're based in Nairobi and serve businesses and homeowners across Kenya.
+            Tell us what you are planning. Our Nairobi team works with homeowners and organizations on design, cost planning and construction across Kenya.
           </p>
         </div>
       </section>

@@ -26,15 +26,14 @@ function GuidesIndex() {
 
         <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
           <p className="text-[11px] uppercase tracking-[0.2em] text-gold">
-            For Kenyans building from abroad
+            Building in Kenya
           </p>
           <h1 className="reveal mt-4 max-w-4xl font-display text-[2.3rem] leading-[0.96] text-paper sm:text-5xl md:text-6xl lg:text-7xl">
-            Everything to know before you build
+            Know what to expect before construction begins.
           </h1>
           <p className="reveal reveal-delay-1 mt-6 max-w-2xl text-base text-paper/75 sm:text-lg">
-            Written to be read before money moves, not after it has. No pitch, no
-            gated download — just how the process actually works, where it goes
-            wrong, and what to check yourself.
+            Clear guides to planning, costing, approvals and project stages—so
+            you can ask better questions before work begins.
           </p>
 
           <div className="reveal reveal-delay-2 mt-8 flex flex-wrap gap-3">

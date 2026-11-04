@@ -40,6 +40,8 @@ export type Payment = {
   certificate?: string;
   method?: string;
   note?: string;
+  checkoutStatus?: "pending" | "failed" | "expired" | "success";
+  checkoutUrl?: string;
 };
 
 export type VaultDoc = {

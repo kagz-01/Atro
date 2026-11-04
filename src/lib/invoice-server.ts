@@ -157,7 +157,7 @@ export async function issueCertificateFor(
     kind: "certificate",
     issuedTo: project[0]?.client_label || "Client",
     issuedBy: staffEmail,
-    narrative: `Certified under ${args.certificate} for work completed and inspected. This certificate authorises the release of ${money(args.amount)}. Retention held against defects is not included and is not payable until the defects liability period closes.`,
+    narrative: `Certified under ${args.certificate} for work completed and inspected. This certificate authorises payment of ${money(args.amount)}. Retention held against defects is not included and is not payable until the defects liability period closes.`,
     lines: [
       {
         description: args.label,
@@ -167,7 +167,7 @@ export async function issueCertificateFor(
   });
 }
 
-/** Issued to the client the moment they release a certified payment. */
+/** Issued to the client after Paystack confirms a certified payment. */
 export async function issueReceiptFor(
   sql: Sql,
   args: { projectId: string; paymentId: string; label: string; certificate: string; amount: number },
@@ -222,7 +222,7 @@ export async function issueStatementFor(
   const lines: Line[] = [
     { description: "Contract value (priced bill of quantities)", amount: contractValue },
     { description: "Paid to date", amount: paid },
-    { description: "Certified and awaiting your release", amount: awaiting },
+    { description: "Certified and awaiting payment", amount: awaiting },
     { description: "Retention held against defects", amount: retention },
     { description: "Still to be spent against the contract", amount: remaining },
   ];
@@ -236,7 +236,7 @@ export async function issueStatementFor(
     issuedTo: p.client_label || "Client",
     issuedBy: staffEmail,
     narrative:
-      "The position on your project as at the date of this statement. It is a record, not a demand for payment. The outstanding balance is the amount certified and waiting for your release.",
+      "The position on your project as at the date of this statement. It is a record, not a demand for payment. The outstanding balance is the amount certified and awaiting payment.",
     lines,
     // The only figure a statement may call a balance is what is actually owed.
     subtotal: awaiting,

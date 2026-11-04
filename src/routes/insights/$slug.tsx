@@ -1,4 +1,5 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { BackLink } from "@/components/back-link";
 import { CtaBand } from "@/components/page-hero";
 import { articleBySlug } from "@/lib/site";
 
@@ -23,9 +24,8 @@ function ArticlePage() {
     <>
       <article className="pt-28 md:pt-36 pb-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-gold">
-            <Link to="/insights" className="hover:text-burgundy">Insights</Link>
-            {" / "}
+          <BackLink to="/insights">All insights</BackLink>
+          <p className="mt-5 text-[11px] uppercase tracking-[0.18em] text-gold">
             {article.kicker} · {article.date}
           </p>
           <h1 className="mt-4 font-display text-4xl md:text-6xl text-maroon">{article.title}</h1>

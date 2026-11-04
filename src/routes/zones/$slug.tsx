@@ -1,4 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { BackLink } from "@/components/back-link";
 import { CtaBand } from "@/components/page-hero";
 import { ProjectCard } from "@/components/project-card";
 import { Badge } from "@/components/ui/badge";
@@ -35,9 +36,8 @@ function ZoneDetail() {
     <>
       <section className="pt-28 md:pt-36 pb-12 bg-maroon text-paper">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-gold">
-            <Link to="/zones" className="hover:text-paper">Zones</Link>
-            {" / "}
+          <BackLink to="/zones" tone="light">All zones</BackLink>
+          <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-gold">
             {zone.region}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">

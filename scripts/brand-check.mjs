@@ -17,7 +17,7 @@
  * Also runnable, so the background brand task can check its own work before it
  * reports (the parent answers without waiting for it):
  *
- *   node scripts/brand-check.mjs [--game] [--placeholder-ok] [--root <dir>]
+ *   node scripts/checks/brand-check.mjs [--game] [--placeholder-ok] [--root <dir>]
  *
  * That run judges the files on disk even though the task is holding the
  * og-pending marker; the marker only silences what the parent's gates see. It
@@ -30,7 +30,7 @@
 import { existsSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { OG_SITE_REL_PATH, readOgSite, siteHasCustomCard } from "./grok-pwa-shared.mjs";
+import { OG_SITE_REL_PATH, readOgSite, siteHasCustomCard } from "./vite/grok-pwa-shared.mjs";
 
 // Over this, link scrapers (X card previews included) time out or skip the
 // image, so the card silently fails to unfurl. The og skill's JPEG contract
@@ -168,7 +168,7 @@ function brandWarningsOnDisk({
 
 export function parseBrandCheckArgs(argv) {
   const usage =
-    "usage: node scripts/brand-check.mjs [--game] [--placeholder-ok] [--root <dir>]";
+    "usage: node scripts/checks/brand-check.mjs [--game] [--placeholder-ok] [--root <dir>]";
   let game = false;
   let placeholderOk = false;
   let root = null;

@@ -82,20 +82,20 @@ function Hero() {
       />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(145,111,63,0.14),transparent_32%)]" aria-hidden />
 
-      <div className="relative mx-auto w-full max-w-[1400px] px-6 py-16 sm:px-8 md:px-12 lg:px-16">
+      <div className="relative mx-auto w-full max-w-[1400px] px-6 pt-28 pb-16 sm:py-16 sm:px-8 md:px-12 lg:px-16">
         <div className="grid items-end gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
           <div className="max-w-[760px]">
-            <p className="mb-4 text-[10px] font-medium uppercase tracking-[0.24em] text-gold sm:text-xs">
-              Nairobi, Kenya <span className="mx-2 text-paper/45">/</span> Design · Cost planning ·
+            <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-paper drop-shadow-[0_1px_5px_rgba(0,0,0,0.95)] sm:text-xs">
+              Nairobi, Kenya <span className="mx-2 text-paper/75">/</span> Design · Cost planning ·
               Construction
             </p>
 
-            <h1 className="max-w-[620px] font-display text-[2.2rem] font-bold leading-[0.9] tracking-[-0.05em] text-white sm:text-[2.7rem] md:text-[3.2rem] lg:text-[3.7rem]">
-              Clear design. Solid build. One team.
+            <h1 className="max-w-[620px] font-display text-[2.2rem] leading-[0.9] tracking-[-0.05em] text-white sm:text-[2.7rem] md:text-[3.2rem] lg:text-[3.7rem]">
+              Design, cost planning and construction. One team.
             </h1>
 
             <p className="mt-5 max-w-[520px] text-base leading-relaxed text-white/80 sm:text-lg">
-              From homes and offices to institutional projects, we help you plan, price and build with clear decisions and fewer surprises.
+              We coordinate homes, offices and institutional projects across Kenya from the first plan to handover—with clear scope, practical costs and progress you can follow.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">

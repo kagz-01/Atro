@@ -109,8 +109,8 @@ profile settings.
    visit/walkthrough requests. Follow-up dates and weekly checklists help the
    team keep work visible.
 6. **The client reviews and responds.** Depending on the item, the client can
-   review evidence, approve a milestone marked ready, record a decision, release
-   a certified payment, review project documents, message the studio, or
+   review evidence, approve a milestone marked ready, record a decision, pay
+   a certified instalment through Paystack, review project documents, message the studio, or
    request a site visit or walkthrough. Client choices are recorded in the
    project history.
    A project representative may request a site visit and suggest an answer to
@@ -183,10 +183,19 @@ The local `.env` file is loaded by the `dev`, `build`, and `preview` wrapper and
 is ignored by Git. Never add service-role keys, database passwords, or provider
 secrets to `VITE_` variables; Vite exposes those values to the browser.
 
-Paystack is not currently integrated. Add its credentials only with the
-server-side payment and webhook-verification flow: the secret key must stay
-server-only, and any public key exposed to the browser must be used only for
-checkout initiation—not trusted as proof of payment.
+Client payments use Paystack-hosted checkout for certified project instalments.
+Set the server-only `PAYSTACK_SECRET_KEY` and `PAYSTACK_WEBHOOK_SECRET`, and set
+`ATRO_SITE_URL` to the canonical site origin. Configure Paystack's webhook URL
+as `https://<your-site>/api/paystack/webhook`. Keep both Paystack keys out of
+`VITE_` variables and browser code. The payment callback verifies the reference
+directly with Paystack; a browser redirect alone never marks an instalment paid.
+
+Paystack settles to the merchant bank account configured in Paystack. ATRO's
+project allocations are an internal ledger, not escrow or separate bank
+accounts. Project expense records reserve only that project's Paystack-verified
+receipts; an independent admin must approve an expense before staff can record
+an external bank-transfer reference as paid. The app does not initiate outgoing
+Paystack transfers.
 
 Project-message attachments use a private Supabase Storage bucket, created by
 the server on the first upload. They support JPEG, PNG, WebP, PDF, DOCX, XLSX,
@@ -205,6 +214,14 @@ connection string. The app uses Neon/PostgreSQL when it is set; otherwise it
 uses the local PGlite fallback. The production build runs pending database
 migrations when `DATABASE_URL` is present. Do not commit credentials or secret
 environment files.
+
+`migrations/schema.sql` is the canonical consolidated schema for a new Supabase
+database. Run it once in the Supabase SQL Editor, or let the app apply it to a
+fresh database. It records its schema version so the app does not replay it.
+Existing databases with the previous numbered migration records skip the
+bootstrap and continue to accept future numbered migrations. For future schema
+changes, continue with `0033_*.sql` and later migration numbers; do not edit the
+bootstrap to perform an upgrade on an existing database.
 
 ### Useful commands
 
@@ -230,8 +247,9 @@ when the app starts.
   development.
 - **Authentication:** Supabase phone OTP, with server-side session verification
   and role checks.
-- **Schema:** ordered SQL migrations in `migrations/`; applied migrations are
-  tracked in `_migrations`.
+- **Schema:** `migrations/schema.sql` is the consolidated baseline; future
+  incremental changes are numbered SQL migrations. Applied versions are tracked
+  in `_migrations`.
 - **Main application areas:** public pages in `src/routes/`, the client portal
   at `/portal`, staff and owner operations at `/admin`, and shared business
   rules/server functions in `src/lib/`.

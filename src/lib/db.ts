@@ -1,4 +1,4 @@
-import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+import { pendingMigrations } from "../../scripts/db/migration-plan.mjs";
 
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
@@ -129,13 +129,12 @@ async function createPgliteSql(): Promise<Sql> {
   });
   const pg = await globalRef.__pgliteInstance__;
 
-  // Apply migrations/ (the single schema source) so preview matches production.
+  // Apply the consolidated bootstrap and any future incremental migrations so
+  // preview matches production.
   // SQL is inlined by the bundler via import.meta.glob (no runtime fs); applied
-  // files are tracked in _migrations. The glob does not descend, so the opt-in
-  // auth schema under migrations/auth/ stays out. Runs once per module instance
-  // — so an HMR reload after adding a migration file applies it live — with
-  // passes serialized on a global chain so concurrent callers never
-  // double-apply.
+  // files are tracked in _migrations. Runs once per module instance — so an HMR
+  // reload after adding a migration file applies it live — with passes
+  // serialized on a global chain so concurrent callers never double-apply.
   const migrate = async (): Promise<void> => {
     const migrations = import.meta.glob("/migrations/*.sql", {
       query: "?raw",
@@ -147,7 +146,11 @@ async function createPgliteSql(): Promise<Sql> {
     );
     const done = doneRows.rows.map((r) => r.name);
     for (const { name, path } of pendingMigrations(Object.keys(migrations), done)) {
-      // Apply + record atomically (parity with scripts/migrate.mjs) so a failed
+      if (name === "schema.sql") {
+        await pg.exec(migrations[path]);
+        continue;
+      }
+      // Apply + record atomically (parity with scripts/db/migrate.mjs) so a failed
       // statement can't leave a file half-applied but untracked.
       await pg.transaction(async (tx) => {
         await tx.exec(migrations[path]);
@@ -187,7 +190,7 @@ async function seedLocalDemoData(pg: import("@electric-sql/pglite").PGlite) {
       "select count(*)::int as n from portal_projects",
     );
     if ((rows[0]?.n ?? 0) > 0) return;
-    const sql = import.meta.glob("/scripts/local-seed.sql", {
+    const sql = import.meta.glob("/scripts/db/local-seed.sql", {
       query: "?raw",
       import: "default",
       eager: true,

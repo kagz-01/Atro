@@ -8,7 +8,6 @@ import { createServerFn } from "@tanstack/react-start";
 import type { z } from "zod";
 import { accountMiddleware, authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
-import { issueReceiptFor } from "@/lib/invoice-server";
 import { leadProfile } from "@/lib/enquiry-lead";
 import { notify } from "@/lib/notify";
 import { toE164 } from "@/lib/phone";
@@ -16,7 +15,6 @@ import type { ProjectLifecycleState } from "@/lib/project-lifecycle";
 import {
   DecisionActionInput,
   MilestoneActionInput,
-  PaymentActionInput,
   ProjectInput,
   ProjectRefInput,
   paymentSchedule,
@@ -351,7 +349,7 @@ const SAMPLE_ACTIVITY: { kind: string; title: string; body: string; daysAgo: num
   {
     kind: "payment",
     title: "Certificate QS/2026/0417-06 issued",
-    body: "KES 480,000 certified, awaiting your release.",
+    body: "KES 480,000 certified and awaiting payment.",
     daysAgo: 4,
   },
   {
@@ -716,9 +714,23 @@ async function buildProjectPayload(
     certificate: string | null;
     method: string | null;
     note: string | null;
+    checkout_status: string | null;
+    authorization_url: string | null;
   }>`select 
     id, ord, label, stage, amount, status, due_date,
-      paid_date, certificate, method, note from portal_payments where project_id = ${projectId} order by ord`;
+      paid_date, certificate, method, note,
+      latest.status as checkout_status, latest.authorization_url
+    from portal_payments
+    left join lateral (
+      select attempt.status, attempt.authorization_url
+      from portal_paystack_attempt attempt
+      where attempt.project_id = portal_payments.project_id
+        and attempt.payment_id = portal_payments.id
+      order by attempt.created_at desc
+      limit 1
+    ) latest on true
+    where portal_payments.project_id = ${projectId}
+    order by portal_payments.ord`;
   const documentRows = await sql<{
     id: string;
     ord: number;
@@ -791,6 +803,14 @@ async function buildProjectPayload(
     certificate: p.certificate ?? undefined,
     method: p.method ?? undefined,
     note: p.note ?? undefined,
+    checkoutStatus:
+      p.checkout_status === "pending" ||
+      p.checkout_status === "failed" ||
+      p.checkout_status === "expired" ||
+      p.checkout_status === "success"
+        ? p.checkout_status
+        : undefined,
+    checkoutUrl: p.checkout_status === "pending" ? p.authorization_url ?? undefined : undefined,
   }));
 
   const documents: VaultDoc[] = documentRows.map((d) => ({
@@ -898,7 +918,6 @@ async function buildProjectPayload(
 export {
   ProjectInput,
   MilestoneActionInput,
-  PaymentActionInput,
   DecisionActionInput,
   ProjectRefInput,
 };
@@ -1132,83 +1151,6 @@ export async function approveMilestoneFor(
   return { ok: true, progress };
 }
 
-export async function releasePaymentFor(
-  sql: Sql,
-  userId: string,
-  data: z.infer<typeof PaymentActionInput>,
-): Promise<{ ok: true; paidToDate: number; receiptNumber: string | null }> {
-  const projectId = await ownedProject(sql, userId, data.projectId);
-  if (!projectId) throw new Error("Project not found.");
-
-  const rows = await sql<{
-    label: string;
-    amount: number;
-    status: string;
-    certificate: string | null;
-  }>`
-    select label, amount, status, certificate from portal_payments
-    where id = ${data.paymentId} and project_id = ${projectId} limit 1
-  `;
-  const payment = rows[0];
-  if (!payment) throw new Error("Payment not found.");
-  if (payment.status === "paid") throw new Error("That payment is already released.");
-  if (payment.status !== "certified") {
-    throw new Error("Only certified payments can be released.");
-  }
-
-  const amount = num(payment.amount);
-  await sql`
-    update portal_payments
-    set status = 'paid', paid_date = ${todayLabel()},
-        method = 'Bank transfer — released from portal'
-    where id = ${data.paymentId} and project_id = ${projectId}
-  `;
-
-  await sql`
-    update portal_projects
-    set paid_to_date = paid_to_date + ${amount},
-        currently_certified = greatest(0, currently_certified - ${amount}),
-        updated_at = now()
-    where id = ${projectId} and user_id = ${userId}
-  `;
-
-  await logActivity(
-    sql,
-    projectId,
-    "payment",
-    `Payment released: ${payment.label}`,
-    `KES ${amount.toLocaleString("en-KE")} released against the certificate.`,
-  );
-
-  const receipt = await issueReceiptFor(sql, {
-    projectId,
-    paymentId: data.paymentId,
-    label: payment.label,
-    certificate: payment.certificate ?? "certificate on file",
-    amount,
-  });
-
-  await notify({
-    projectId,
-    kind: "payment",
-    title: `Payment received: ${payment.label}`,
-    body: `KES ${amount.toLocaleString("en-KE")} received. Your receipt is ready to keep or forward to your bank.`,
-    documentUrl: receipt ? `/portal/document/${receipt.id}` : undefined,
-  });
-
-  // Money in is the studio's news too. The client's copy above is the receipt;
-  // this is the ledger catching up with whoever runs the accounts.
-  await notify({
-    projectId,
-    kind: "payment",
-    title: `Payment received: ${payment.label}`,
-    body: `KES ${amount.toLocaleString("en-KE")} released by the client against ${payment.certificate ?? "the certificate"}.`,
-    audience: "studio",
-  });
-
-  return { ok: true, paidToDate: amount, receiptNumber: receipt?.number ?? null };
-}
-
 export async function recordDecisionFor(
   sql: Sql,
   userId: string,
@@ -1296,11 +1238,6 @@ export const approveMilestone = createServerFn({ method: "POST" })
   .validator(MilestoneActionInput)
   .middleware([accountMiddleware])
   .handler(async ({ context, data }) => approveMilestoneFor(await getSql(), context.userId, data));
-
-export const releasePayment = createServerFn({ method: "POST" })
-  .validator(PaymentActionInput)
-  .middleware([accountMiddleware])
-  .handler(async ({ context, data }) => releasePaymentFor(await getSql(), context.userId, data));
 
 export const recordDecision = createServerFn({ method: "POST" })
   .validator(DecisionActionInput)

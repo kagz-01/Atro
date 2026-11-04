@@ -9,7 +9,7 @@ import {
   buildAuthEnabled,
   compareAuthInvariant,
   probeDevAuthEnabled,
-} from "./check-auth-invariant.mjs";
+} from "./checks/check-auth-invariant.mjs";
 import {
   baselineComparison,
   bodyTextPrefix,
@@ -18,7 +18,7 @@ import {
   normalizeBodyText,
   normalizedBodyTextHash,
   parseSmokeArgs,
-} from "./browser-smoke-verdict.mjs";
+} from "./checks/browser-smoke-verdict.mjs";
 
 const args = parseSmokeArgs(process.argv.slice(2), process.env);
 if (args.error) {

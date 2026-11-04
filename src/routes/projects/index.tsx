@@ -54,8 +54,8 @@ function ProjectsPage() {
     <>
       <PageHero
         kicker="Work"
-        title="Projects, tagged to the ground they stand on."
-        lede="Explore catalogue-backed projects and illustrative design concepts. Filter by type, status and location."
+        title="Explore our construction and design work."
+        lede="Browse documented ATRO projects and clearly labeled illustrative concepts by project type, status and location."
         image="/catalog/images/karen.webp"
       />
       <section className="mx-auto max-w-[1400px] px-4 py-10 sm:px-8 md:px-12 lg:px-16 lg:py-12">

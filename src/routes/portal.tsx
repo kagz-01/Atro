@@ -30,10 +30,10 @@ import {
   deletePortalProject,
   getPortal,
   recordDecision,
-  releasePayment,
   approveMilestone,
   type PortalPayload,
 } from "@/lib/diaspora/server";
+import { startPaystackCheckout } from "@/lib/paystack-server";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { getMyProjectCircle } from "@/lib/project-circle-server";
 import { getMyAccess } from "@/lib/staff-access";
@@ -121,7 +121,7 @@ function SignInWall() {
               <ul className="mt-8 space-y-4">
                 {[
                   [CheckCircle2, "Approve a milestone", "Mark a stage complete once the evidence is right. Progress, stage and the ledger all move."],
-                  [CreditCard, "Release a certified payment", "Only certified amounts can be released, and only once. No double payment."],
+                  [CreditCard, "Pay a certified instalment", "Only certified amounts can be paid online, and the ledger updates only after Paystack verifies the transaction."],
                   [FileText, "Record a decision", "Choose from the listed options; the choice is written into the log with today's date."],
                 ].map(([Icon, title, body]) => (
                   <li key={String(title)} className="flex gap-4">
@@ -597,13 +597,19 @@ function PortalPage() {
         nudges={nudges ?? []}
         firstVisit={firstVisit.current}
         pending={pending}
-        onRelease={(paymentId: string) =>
-          void run(
-            `rel-${paymentId}`,
-            () => releasePayment({ data: { projectId: p.id, paymentId } }),
-            "Payment released. Your receipt is in your documents.",
-          )
-        }
+        onPay={async (paymentId: string) => {
+          const key = `pay-${paymentId}`;
+          setPending(key);
+          try {
+            const checkout = await startPaystackCheckout({
+              data: { projectId: p.id, paymentId },
+            });
+            window.location.assign(checkout.authorizationUrl);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not open Paystack checkout.");
+            setPending("");
+          }
+        }}
         onApprove={(milestoneId: string) =>
           void run(
             `ms-${milestoneId}`,

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowRight, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { acceptProjectCircleInvite, getProjectCircleInvite } from "@/lib/project-circle-server";
@@ -58,6 +59,7 @@ function ProjectCircleInvitePage() {
   return (
     <main className="min-h-[75vh] bg-paper px-5 pt-32 pb-16">
       <div className="mx-auto max-w-xl">
+        <BackLink to="/portal">Back to your portal</BackLink>
         <Panel
           title="Project invitation"
           subtitle="A project owner has invited you to join a limited project circle."

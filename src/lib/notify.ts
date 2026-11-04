@@ -236,7 +236,7 @@ async function sendEmail(
     </a>
   </p>
   <p style="font-size:13px;color:#777;margin-top:20px">
-    Sign in to your portal to approve milestones, release certified payments or record a decision.
+    Sign in to your portal to approve milestones, pay certified instalments or record a decision.
   </p>
 </div>`,
     }),

@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowDown, ArrowRight, MapPin } from "lucide-react";
 import { Lightbox } from "@/components/lightbox";
+import { BackLink } from "@/components/back-link";
 import { CtaBand } from "@/components/page-hero";
 import { ProjectCard } from "@/components/project-card";
 import { Badge } from "@/components/ui/badge";
@@ -47,13 +48,7 @@ function ProjectDetail() {
       <main>
         <section className="bg-[#150e0f] pb-6 pt-20 text-paper sm:pb-10 sm:pt-24">
           <div className="mx-auto max-w-[1400px] px-4 sm:px-8 md:px-12 lg:px-16">
-            <p className="mb-4 text-[10px] uppercase tracking-[0.16em] text-paper/60 sm:mb-6 sm:text-[11px]">
-              <Link to="/projects" className="hover:text-gold">
-                Our work
-              </Link>
-              <span className="mx-2 text-gold/70">/</span>
-              {project.location}
-            </p>
+            <BackLink to="/projects" tone="light">All projects</BackLink>
 
             <div className="grid overflow-hidden rounded-2xl border border-white/10 bg-[#1d1516] lg:grid-cols-[0.88fr_1.12fr] lg:rounded-[1.75rem]">
               <div className="flex flex-col justify-center p-5 sm:p-8 lg:p-10">

@@ -21,8 +21,8 @@ function InsightsPage() {
     <>
       <PageHero
         kicker="Insights"
-        title="Useful pages. Not a newsroom."
-        lede="How costing, geography and remote clients actually behave on Kenyan sites."
+        title="Practical guidance for building in Kenya."
+        lede="Straightforward notes on project costs, locations, construction decisions and managing a build from abroad."
       />
       <section className="mx-auto grid max-w-[1400px] grid-cols-2 gap-3 px-6 pb-12 sm:gap-5 sm:px-8 md:grid-cols-3 md:px-12 md:pb-20 lg:px-16">
         {ARTICLES.map((a) => (

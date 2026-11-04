@@ -22,8 +22,8 @@ function AboutPage() {
     <>
       <PageHero
         kicker="Studio"
-        title="A design-and-build company, not a van with a logo."
-        lede="ATRO is a modern design-and-construction company focused on creating well-designed, technically sound and efficiently delivered structures."
+        title="Design and construction, coordinated from the start."
+        lede="ATRO is a Nairobi-based design-and-construction company bringing planning, practical costing and project delivery together for homes, offices and institutions."
         image="/catalog/images/interior.webp"
       />
       <section className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-16 grid lg:grid-cols-12 gap-12">

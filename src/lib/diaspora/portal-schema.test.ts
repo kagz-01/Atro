@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import {
   DecisionActionInput,
   MilestoneActionInput,
-  PaymentActionInput,
   ProjectInput,
   ProjectRefInput,
 } from "./portal-schema.ts";
@@ -110,16 +109,12 @@ describe("action input validators", () => {
     assert.equal(ProjectRefInput.safeParse({ projectId: "" }).success, false);
   });
 
-  it("pair the milestone and payment ids with the project id", () => {
+  it("pairs the milestone id with the project id", () => {
     assert.equal(
       MilestoneActionInput.safeParse({ projectId: "p1", milestoneId: "m1" }).success,
       true,
     );
     assert.equal(MilestoneActionInput.safeParse({ projectId: "p1" }).success, false);
-    assert.equal(
-      PaymentActionInput.safeParse({ projectId: "p1", paymentId: "pay1" }).success,
-      true,
-    );
   });
 
   it("bound the length of a recorded decision", () => {

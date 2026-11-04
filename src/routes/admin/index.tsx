@@ -40,6 +40,7 @@ import { ApprovalsPanel } from "@/components/admin/approvals-panel";
 import { EvidenceUploader } from "@/components/admin/evidence-uploader";
 import { StudioMessagesPanel } from "@/components/admin/messages-panel";
 import { CommunicationsInbox } from "@/components/admin/communications-inbox";
+import { ProjectExpensesPanel } from "@/components/admin/project-expenses-panel";
 import { needsStudioReply } from "@/lib/messages";
 import { AfterHandoverPanel } from "@/components/admin/after-handover-panel";
 import { VariationsPanel } from "@/components/admin/variations-panel";
@@ -607,7 +608,7 @@ function ProjectDetail({
       ? [
           {
             label: "Certified payments",
-            detail: `${kes(certifiedTotal)} awaiting client release`,
+            detail: `${kes(certifiedTotal)} awaiting payment`,
             count: certifiedPayments.length,
             section: "financial-summary",
           },
@@ -719,7 +720,7 @@ function ProjectDetail({
               icon={Banknote}
             />
             <StatCard
-              label="Certified, awaiting release"
+              label="Certified, awaiting payment"
               value={kesShort(p.budget.currentlyCertified)}
               exact={kes(p.budget.currentlyCertified)}
               sub={`${kes(p.budget.retentionHeld)} held in retention`}
@@ -1074,7 +1075,7 @@ function ProjectDetail({
             {[
               ["Contract", kes(p.contractValue)],
               ["Paid", kes(p.budget.paidToDate)],
-              ["Certified, unreleased", kes(p.budget.currentlyCertified)],
+              ["Certified, awaiting payment", kes(p.budget.currentlyCertified)],
               ["Retention", kes(p.budget.retentionHeld)],
             ].map(([k, v]) => (
               <div key={k}>
@@ -1085,11 +1086,11 @@ function ProjectDetail({
           </dl>
           <div className="mt-6">
             <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
-              Certified payments awaiting client release
+              Certified payments awaiting payment
             </h3>
             {certifiedPayments.length === 0 ? (
               <p className="mt-2 rounded-xl border border-ink/8 bg-white px-4 py-3 text-[12px] text-ink/55">
-                No certified payments are waiting for client release.
+                No certified payments are awaiting payment.
               </p>
             ) : (
               <ul className="mt-3 space-y-2">
@@ -2704,7 +2705,7 @@ function Overview({
   const moneySlices: Slice[] = [
     { name: "Collected", value: money.paid, color: "var(--color-maroon)" },
     {
-      name: "Certified, awaiting release",
+      name: "Certified, awaiting payment",
       value: money.certifiedUnreleased,
       color: "var(--color-gold)",
     },
@@ -2781,13 +2782,13 @@ function Overview({
           </div>
           <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-900">
-              Cash to release
+              Certified to collect
             </p>
             <p className="mt-2 font-display text-[1.9rem] leading-none text-sky-900">
               {kesShort(money.certifiedUnreleased)}
             </p>
             <p className="mt-1 text-[11px] text-sky-800">
-              {kes(money.certifiedUnreleased)} certified but waiting to move
+              {kes(money.certifiedUnreleased)} certified and awaiting payment
             </p>
           </div>
         </div>
@@ -3632,6 +3633,12 @@ const TABS = [
     body: "Project conversations with clients",
   },
   {
+    id: "funds",
+    label: "Project funds",
+    title: "Project funds",
+    body: "Verified receipts, expense reservations, approvals and bank references",
+  },
+  {
     id: "projects",
     label: "Projects",
     title: "Projects",
@@ -3669,9 +3676,6 @@ function AdminConsole() {
     accessRole: access?.role ?? null,
   });
   const [roleState, setRoleState] = useState<RoleState | null>(null);
-  if (user && access && dashboardRoute === "/portal") {
-    return <Navigate to="/portal" replace />;
-  }
   // Bumped after an invitation is accepted, which re-runs the role fetch —
   // the accept card's whole job is to make that fetch return staff.
   const [roleNonce, setRoleNonce] = useState(0);
@@ -3753,6 +3757,10 @@ function AdminConsole() {
     queryFn: () => getStaffToday({ data: undefined }),
     enabled: isStaff && !isAdmin && view === "overview",
   });
+
+  if (user && access && dashboardRoute === "/portal") {
+    return <Navigate to="/portal" replace />;
+  }
 
   if (!hydrated || roleState === null) {
     return (
@@ -3842,6 +3850,7 @@ function AdminConsole() {
         {
           title: "Controls",
           items: [
+            { id: "funds", label: "Project funds", icon: Banknote },
             { id: "communications", label: "Client updates", icon: MessageSquare, badge: messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole)).length || undefined },
             { id: "access", label: "Access", icon: Users },
           ],
@@ -3968,6 +3977,9 @@ function AdminConsole() {
       ) : null}
 
       {view === "profile" && isStaff ? <StaffProfilePanel /> : null}
+      {view === "funds" && isAdmin ? (
+        <ProjectExpensesPanel staffEmail={roleState?.email ?? ""} />
+      ) : null}
 
       {view === "overview" && isAdmin ? (
         <Overview

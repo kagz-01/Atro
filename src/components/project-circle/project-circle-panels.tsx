@@ -441,7 +441,7 @@ export function ProjectCircleRepresentativePanel({
         <p className="mt-5 rounded-xl border border-gold/35 bg-gold/8 p-4 text-[12px] leading-relaxed text-ink/70">
           You can coordinate a site visit and share recommendations on open decisions. Your
           suggestions do not approve work or become final decisions. You cannot view the owner’s
-          financial records, release payments, approve milestones, change contracts, or invite other
+          financial records, make payments, approve milestones, change contracts, or invite other
           people.
         </p>
       </Panel>

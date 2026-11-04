@@ -1,4 +1,3 @@
-t everything
 node_modules/
 .env
 .env.*

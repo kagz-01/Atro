@@ -134,7 +134,7 @@ describe("statement layout", () => {
     lines: [
       { description: "Contract value (priced bill of quantities)", amount: 41_800_000 },
       { description: "Paid to date", amount: 17_940_000 },
-      { description: "Certified and awaiting your release", amount: 480_000 },
+      { description: "Certified and awaiting payment", amount: 480_000 },
       { description: "Retention held against defects", amount: 940_000 },
     ],
     subtotal: 480_000,

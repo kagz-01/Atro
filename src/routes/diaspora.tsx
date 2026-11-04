@@ -142,21 +142,28 @@ function DiasporaPage() {
   return (
     <main className="pt-20 pb-0 md:pt-[4.5rem]">
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-maroon text-paper">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-burgundy/50 via-maroon to-maroon" />
-        <div className="absolute top-0 right-0 size-[360px] bg-gold/8 rounded-full blur-[130px] pointer-events-none" />
+      <section className="relative isolate overflow-hidden bg-maroon text-paper">
+        <img
+          src="/catalog/images/sigona-villa-front-view.webp"
+          alt=""
+          className="absolute inset-0 size-full object-cover object-[58%_center] lg:left-auto lg:w-[62%]"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(60,5,8,0.98)_0%,rgba(60,5,8,0.94)_34%,rgba(60,5,8,0.78)_62%,rgba(60,5,8,0.48)_100%)]" />
+        <div className="absolute inset-0 bg-maroon/20 lg:bg-transparent" />
 
-        <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-14 md:py-18">
-          <Badge tone="gold" className="mb-5">For Kenyans abroad</Badge>
+        <div className="relative mx-auto max-w-[1400px] px-6 py-14 sm:px-8 md:px-12 md:py-18 lg:px-16">
+          <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-gold-light sm:text-xs">
+            Nairobi, Kenya <span className="mx-2 text-paper/55">/</span> For Kenyans abroad
+          </p>
 
           <h1 className="max-w-4xl font-display text-[2.2rem] leading-[0.9] tracking-[-0.05em] text-paper sm:text-[2.9rem] md:text-[3.7rem]">
-            Build in Kenya from abroad.
-            <br className="hidden sm:block" />
-            <span className="text-gold">Keep every decision visible.</span>
+            Build your home.
+            <br />
+            <span className="text-gold">Without the guesswork.</span>
           </h1>
 
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-paper/75 sm:text-lg">
-            A named project team, clear milestone updates, and a single record of decisions — wherever you are.
+            Plan and build in Kenya with a local team coordinating design, costs and construction—and clear project updates wherever you are.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">

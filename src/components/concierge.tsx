@@ -57,13 +57,13 @@ export function Concierge() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed z-40 left-4 bottom-[5.5rem] md:left-6 md:bottom-6 size-12 md:w-auto md:px-4 rounded-full md:rounded-xs bg-maroon text-paper text-[11px] uppercase tracking-[0.16em] inline-flex items-center justify-center md:justify-start gap-2 shadow-soft hover:bg-burgundy"
+        className="fixed z-20 left-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:left-6 md:bottom-6 h-12 w-12 md:w-auto md:px-4 rounded-full bg-maroon text-paper text-[11px] uppercase tracking-[0.16em] inline-flex items-center justify-center gap-2 shadow-soft hover:bg-burgundy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold transition-transform active:scale-[0.96]"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label="Ask ATRO"
       >
         <MessageSquareText className="size-4 shrink-0" />
-        {/* Icon-only on mobile: the full-width label sat on top of the phone number. */}
+        {/* Keep the mobile shortcut compact above the bottom navigation. */}
         <span className="hidden md:inline">Ask ATRO</span>
       </button>
 

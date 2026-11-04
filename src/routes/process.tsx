@@ -22,8 +22,8 @@ function ProcessPage() {
     <>
       <PageHero
         kicker="Process"
-        title="A journey you can point to, not a fog of site visits."
-        lede="Eight steps. If a project skips cost planning or pretends approvals are optional, it is not an ATRO project."
+        title="A clear path from first brief to handover."
+        lede="Follow the project through assessment, design, cost planning, approvals, construction and handover—with the next step made clear."
         image="/catalog/images/site.webp"
       />
       <section className="mx-auto max-w-3xl px-4 sm:px-6 py-16">

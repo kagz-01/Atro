@@ -43,10 +43,10 @@ function ServicesPage() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-paper/80">Services</p>
           </div>
           <h1 className="reveal reveal-delay-1 max-w-5xl font-display text-[2.2rem] leading-[0.92] tracking-[-0.05em] text-white sm:text-[2.8rem] md:text-[3.2rem] lg:text-[3.8rem]">
-            What is included. What we need from you. What happens next.
+            Design, cost planning and construction—clearly scoped.
           </h1>
           <p className="reveal reveal-delay-2 mt-5 max-w-3xl text-base leading-relaxed text-paper/75 sm:text-lg">
-            Not a list of virtues. Each service is a scope: drawings, quantities, a site, and a direct conversation.
+            See what each service covers, what your project needs, and how the work can move from drawings and quantities to construction.
           </p>
         </div>
       </section>

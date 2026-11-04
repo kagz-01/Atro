@@ -1,4 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { BackLink } from "@/components/back-link";
 import { CtaBand } from "@/components/page-hero";
 import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/project-card";
@@ -32,11 +33,9 @@ function ServiceDetail() {
         <img src={service.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-maroon via-maroon/60 to-maroon/30" />
         <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 w-full pb-12 pt-32">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-gold">
-            <Link to="/services" className="hover:text-paper">
-              All services
-            </Link>
-            {category ? ` / ${category.title}` : ""}
+          <BackLink to="/services" tone="light">All services</BackLink>
+          <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-gold">
+            {category?.title ?? "Service"}
           </p>
           <h1 className="mt-4 font-display text-[2.5rem] md:text-[3.5rem] leading-[0.9] tracking-[-0.05em] text-paper max-w-4xl">
             {service.title}

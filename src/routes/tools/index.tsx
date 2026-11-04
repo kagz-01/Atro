@@ -86,10 +86,10 @@ function ToolsIndex() {
         <div className="mb-8 max-w-3xl md:mb-16">
           <Badge tone="maroon" className="mb-3 md:mb-4">Tools</Badge>
           <h1 className="font-display text-[2.5rem] md:text-[3.3rem] leading-[0.92] tracking-[-0.05em] text-maroon">
-            Plan smarter. Build better.
+            Plan your build with clearer numbers.
           </h1>
           <p className="mt-4 max-w-xl text-sm text-ink/70 sm:text-base md:mt-5 md:text-lg">
-            Use these tools to frame an early conversation about costs, location and scope. They do not confirm project acceptance, live prices or a tender-ready budget.
+            Explore early cost ranges, location and scope before speaking with our team. These tools do not confirm project acceptance, live prices or a tender-ready budget.
           </p>
 
           {/* Trust strip */}

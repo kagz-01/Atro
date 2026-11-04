@@ -933,7 +933,7 @@ export async function certifyPaymentFor(
     data.projectId,
     "payment",
     `Certificate issued: ${payment.label}`,
-    `${data.certificate} — KES ${amount.toLocaleString("en-KE")} certified and awaiting the client's release.`,
+    `${data.certificate} — KES ${amount.toLocaleString("en-KE")} certified and awaiting payment.`,
   );
   // The paperwork follows the money: the certificate is what authorises release,
   // so it is issued first and the message can link straight to it.

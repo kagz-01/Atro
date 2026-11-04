@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useSiteStore } from "@/lib/store";
 import {
   Banknote,
   CalendarDays,
@@ -85,7 +84,7 @@ const kesShort = (n: number) => {
 const PAYMENT_STATUS: Record<string, { label: string; cls: string }> = {
   paid: { label: "Paid", cls: "bg-emerald-50 text-emerald-800 border-emerald-200" },
   certified: {
-    label: "Certified — release it",
+    label: "Certified — ready to pay",
     cls: "bg-amber-50 text-amber-900 border-amber-300",
   },
   due: { label: "Due on certification", cls: "bg-sky-50 text-sky-900 border-sky-300" },
@@ -119,7 +118,7 @@ type Section =
 export function ClientDashboard({
   data,
   firstVisit,
-  onRelease,
+  onPay,
   onApprove,
   onDecide,
   onReloaded,
@@ -131,7 +130,7 @@ export function ClientDashboard({
 }: {
   data: PortalPayload;
   firstVisit: string | null;
-  onRelease: (paymentId: string) => void;
+  onPay: (paymentId: string) => void;
   onApprove: (milestoneId: string) => void;
   onDecide: (decisionId: string, chosen: string) => void;
   /** Called when a write lands on the client side, so the portal can refetch. */
@@ -145,11 +144,6 @@ export function ClientDashboard({
   children?: React.ReactNode;
 }) {
   const [section, setSection] = useState<Section>("overview");
-  const [depositMethod, setDepositMethod] = useState("M-Pesa");
-  const [depositAmount, setDepositAmount] = useState("50000");
-  const walletBalance = useSiteStore((state) => state.clientWallet.balance);
-  const walletActivity = useSiteStore((state) => state.clientWallet.activity);
-  const addClientWalletDeposit = useSiteStore((state) => state.addClientWalletDeposit);
   const activityRef = useRef<HTMLDivElement>(null);
   const p = data.project;
 
@@ -207,7 +201,7 @@ export function ClientDashboard({
       (payment.status === "due" || payment.status === "scheduled") &&
       payment.dueDate.trim().length > 0,
   );
-  const releasable = data.payments.filter((x) => x.status === "certified");
+  const payablePayments = data.payments.filter((x) => x.status === "certified");
   // Only stages the studio has marked ready can be approved from the overview.
   const awaitingApproval = data.milestones.filter(
     (m) => m.approvalReady === true && (m.status === "active" || m.status === "blocked"),
@@ -215,22 +209,10 @@ export function ClientDashboard({
   const newActivity = data.activity.filter((a) => firstVisit && a.at > firstVisit);
   const activityToShow = abroad && newActivity.length > 0 ? newActivity : data.activity.slice(0, 8);
 
-  const handleWalletDeposit = () => {
-    const value = Number(depositAmount);
-    if (!Number.isFinite(value) || value <= 0) return;
-    addClientWalletDeposit({
-      amount: value,
-      method: depositMethod,
-      label: "Client deposit",
-    });
-    setDepositAmount("");
-  };
-
-  const availableWallet = walletBalance - b.retentionHeld;
   const moneySlices: Slice[] = [
-    { name: "Paid to you", value: b.paidToDate, color: "var(--color-maroon)" },
+    { name: "Payments received", value: b.paidToDate, color: "var(--color-maroon)" },
     {
-      name: "Certified, ready to release",
+      name: "Certified, ready to pay",
       value: b.currentlyCertified,
       color: "var(--color-gold)",
     },
@@ -264,7 +246,7 @@ export function ClientDashboard({
           id: "money",
           label: "Money",
           icon: CreditCard,
-          badge: releasable.length || undefined,
+          badge: payablePayments.length || undefined,
         },
         {
           id: "messages",
@@ -302,7 +284,7 @@ export function ClientDashboard({
           id: "money",
           label: "Money",
           icon: CreditCard,
-          badge: releasable.length || undefined,
+          badge: payablePayments.length || undefined,
         },
         {
           id: "changes",
@@ -441,7 +423,7 @@ export function ClientDashboard({
             ) : null}
             <ul className="space-y-2">
               {openDecisions.length === 0 &&
-              releasable.length === 0 &&
+              payablePayments.length === 0 &&
               awaitingApproval.length === 0 ? (
                 <li className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
                   Nothing is waiting on you. The project keeps moving either way.
@@ -468,7 +450,7 @@ export function ClientDashboard({
                 </li>
               ))}
 
-              {releasable.map((pay) => (
+              {payablePayments.map((pay) => (
                 <li
                   key={pay.id}
                   className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 p-3"
@@ -476,17 +458,17 @@ export function ClientDashboard({
                   <span className="min-w-0">
                     <span className="block text-[13px] text-maroon">{pay.label}</span>
                     <span className="mt-0.5 block text-[11px] text-ink/55">
-                      {abroad ? "Certified and ready to release" : "Certified and ready to release"}
+                      Certified and ready for payment
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
                     <span className="text-[13px] text-maroon">{kes(pay.amount)}</span>
                     <Button
                       size="sm"
-                      disabled={pending === `rel-${pay.id}`}
-                      onClick={() => onRelease(pay.id)}
+                      disabled={pending === `pay-${pay.id}`}
+                      onClick={() => onPay(pay.id)}
                     >
-                      Release
+                      {pay.checkoutStatus === "pending" ? "Continue payment" : "Pay securely"}
                     </Button>
                   </span>
                 </li>
@@ -600,20 +582,20 @@ export function ClientDashboard({
               tone="good"
             />
             <StatCard
-              label={releasable.length > 0 ? "Ready to release" : "Committed, not paid"}
+              label={payablePayments.length > 0 ? "Ready to pay" : "Committed, not paid"}
               value={
-                releasable.length > 0
+                payablePayments.length > 0
                   ? kesShort(b.currentlyCertified)
                   : kesShort(b.currentlyCertified + b.retentionHeld)
               }
               exact={kes(b.currentlyCertified + b.retentionHeld)}
               sub={
-                releasable.length > 0
-                  ? `${releasable.length} certificate${releasable.length === 1 ? "" : "s"} waiting on you`
+                payablePayments.length > 0
+                  ? `${payablePayments.length} certificate${payablePayments.length === 1 ? "" : "s"} ready for payment`
                   : `${kes(b.retentionHeld)} of it is retention, payable after defects`
               }
               icon={Hourglass}
-              tone={releasable.length > 0 ? "warn" : "default"}
+              tone={payablePayments.length > 0 ? "warn" : "default"}
             />
           </div>
 
@@ -717,73 +699,16 @@ export function ClientDashboard({
 
       {section === "money" ? (
         <div className="space-y-5">
-          <Panel title="Client account" subtitle="Deposit funds, check your balance and see where it sits">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-ink/10 bg-cream p-4">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Available balance</p>
-                <p className="mt-3 font-display text-[2rem] leading-none text-maroon">{kes(walletBalance)}</p>
-              </div>
-              <div className="rounded-2xl border border-ink/10 bg-cream p-4">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Available for spends</p>
-                <p className="mt-3 font-display text-[2rem] leading-none text-maroon">{kes(availableWallet)}</p>
-              </div>
-              <div className="rounded-2xl border border-ink/10 bg-cream p-4">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Held in retention</p>
-                <p className="mt-3 font-display text-[2rem] leading-none text-maroon">{kes(b.retentionHeld)}</p>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="rounded-2xl border border-ink/10 bg-paper p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">Add funds</p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_180px]">
-                  <div>
-                    <Label htmlFor="wallet-amount">Amount</Label>
-                    <Input
-                      id="wallet-amount"
-                      type="number"
-                      min="1000"
-                      step="1000"
-                      value={depositAmount}
-                      onChange={(event) => setDepositAmount(event.target.value)}
-                      placeholder="50000"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="wallet-method">Method</Label>
-                    <Select
-                      id="wallet-method"
-                      value={depositMethod}
-                      onChange={(event) => setDepositMethod(event.target.value)}
-                    >
-                      <option value="M-Pesa">M-Pesa</option>
-                      <option value="Bank transfer">Bank transfer</option>
-                      <option value="Debit card">Debit card</option>
-                    </Select>
-                  </div>
-                </div>
-                <Button className="mt-4" onClick={handleWalletDeposit} type="button">
-                  Deposit into my account
-                </Button>
-              </div>
-
-              <div className="rounded-2xl border border-ink/10 bg-paper p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">Recent account activity</p>
-                <ul className="mt-4 space-y-3">
-                  {walletActivity.map((item) => (
-                    <li key={item.id} className="flex items-start justify-between gap-3 border-b border-ink/8 pb-2 last:border-0 last:pb-0">
-                      <div>
-                        <p className="text-[13px] text-maroon">{item.label}</p>
-                        <p className="text-[11px] text-ink/50">{item.method} · {new Date(item.date).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" })}</p>
-                      </div>
-                      <span className={cn("text-[12px] font-medium", item.direction === "in" ? "text-emerald-700" : "text-ink/65")}>
-                        {item.direction === "in" ? "+" : "-"}{kes(item.amount)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+          <Panel title="Project funds" subtitle="Each verified payment belongs to this project ledger">
+            <p className="text-[13px] leading-relaxed text-ink/65">
+              Pay only against a certified instalment. Checkout opens securely with Paystack; the
+              project is marked paid and a receipt is issued only after Paystack confirms the exact
+              amount in KES.
+            </p>
+            <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
+              ATRO’s Paystack balance settles to ATRO’s configured bank account. This project ledger
+              records your project’s payments separately; it is not a separate bank or escrow account.
+            </p>
           </Panel>
 
           <div className="grid min-w-0 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
@@ -793,7 +718,7 @@ export function ClientDashboard({
                   ["Contract value (BOQ priced)", kes(p.contractValue), false],
                   ["Certified to date", kes(b.certifiedToDate), false],
                   ["Paid to date", kes(b.paidToDate), false],
-                  ["Certified, awaiting your release", kes(b.currentlyCertified), true],
+                  ["Certified, awaiting payment", kes(b.currentlyCertified), true],
                   [`Retention held (${b.retentionPct}%)`, kes(b.retentionHeld), true],
                 ].map(([k, v, highlight]) => (
                   <div
@@ -829,7 +754,7 @@ export function ClientDashboard({
               className="min-w-0"
               bodyClassName="p-0"
             >
-              <PaymentTable payments={data.payments} onRelease={onRelease} pending={pending} />
+              <PaymentTable payments={data.payments} onPay={onPay} pending={pending} />
             </Panel>
           </div>
 
@@ -1063,11 +988,11 @@ function MilestonePanel({
 
 function PaymentTable({
   payments,
-  onRelease,
+  onPay,
   pending,
 }: {
   payments: Payment[];
-  onRelease: (paymentId: string) => void;
+  onPay: (paymentId: string) => void;
   pending: string;
 }) {
   return (
@@ -1090,7 +1015,8 @@ function PaymentTable({
         <tbody>
           {payments.map((pay) => {
             const style = PAYMENT_STATUS[pay.status] ?? PAYMENT_STATUS.scheduled;
-            const key = `rel-${pay.id}`;
+            const key = `pay-${pay.id}`;
+            const checkoutPending = pay.checkoutStatus === "pending";
             return (
               <tr key={pay.id} className="border-b border-ink/6 last:border-0">
                 <td className="px-5 py-3">
@@ -1109,13 +1035,17 @@ function PaymentTable({
                       style.cls,
                     )}
                   >
-                    {style.label}
+                    {checkoutPending ? "Checkout started" : style.label}
                   </span>
                 </td>
                 <td className="px-5 py-3 text-right">
                   {pay.status === "certified" ? (
-                    <Button size="sm" disabled={pending === key} onClick={() => onRelease(pay.id)}>
-                      Release
+                    <Button size="sm" disabled={pending === key} onClick={() => onPay(pay.id)}>
+                      {pending === key
+                        ? "Opening…"
+                        : checkoutPending
+                          ? "Continue payment"
+                          : "Pay securely"}
                     </Button>
                   ) : null}
                 </td>

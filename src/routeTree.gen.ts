@@ -32,6 +32,7 @@ import { Route as GuidesSlugRouteImport } from './routes/guides/$slug'
 import { Route as GuidesJourneyRouteImport } from './routes/guides/journey'
 import { Route as InsightsIndexRouteImport } from './routes/insights/index'
 import { Route as InsightsSlugRouteImport } from './routes/insights/$slug'
+import { Route as PaymentCallbackRouteImport } from './routes/payment.callback'
 import { Route as PortalCircleRouteImport } from './routes/portal.circle'
 import { Route as PortalInviteRouteImport } from './routes/portal.invite'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
@@ -45,6 +46,7 @@ import { Route as ToolsMaterialPricesRouteImport } from './routes/tools/material
 import { Route as ToolsZoneMapRouteImport } from './routes/tools/zone-map'
 import { Route as ZonesIndexRouteImport } from './routes/zones/index'
 import { Route as ZonesSlugRouteImport } from './routes/zones/$slug'
+import { Route as ApiPaystackWebhookRouteImport } from './routes/api.paystack.webhook'
 import { Route as PortalDocumentIdRouteImport } from './routes/portal/document.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -162,6 +164,11 @@ const InsightsSlugRoute = InsightsSlugRouteImport.update({
   path: '/insights/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PaymentCallbackRoute = PaymentCallbackRouteImport.update({
+  id: '/payment/callback',
+  path: '/payment/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortalCircleRoute = PortalCircleRouteImport.update({
   id: '/circle',
   path: '/circle',
@@ -227,6 +234,11 @@ const ZonesSlugRoute = ZonesSlugRouteImport.update({
   path: '/zones/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaystackWebhookRoute = ApiPaystackWebhookRouteImport.update({
+  id: '/api/paystack/webhook',
+  path: '/api/paystack/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortalDocumentIdRoute = PortalDocumentIdRouteImport.update({
   id: '/document/$id',
   path: '/document/$id',
@@ -254,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/guides/$slug': typeof GuidesSlugRoute
   '/guides/journey': typeof GuidesJourneyRoute
   '/insights/$slug': typeof InsightsSlugRoute
+  '/payment/callback': typeof PaymentCallbackRoute
   '/portal/circle': typeof PortalCircleRoute
   '/portal/invite': typeof PortalInviteRoute
   '/projects/$slug': typeof ProjectsSlugRoute
@@ -270,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/services/': typeof ServicesIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
+  '/api/paystack/webhook': typeof ApiPaystackWebhookRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
 export interface FileRoutesByTo {
@@ -293,6 +307,7 @@ export interface FileRoutesByTo {
   '/guides/$slug': typeof GuidesSlugRoute
   '/guides/journey': typeof GuidesJourneyRoute
   '/insights/$slug': typeof InsightsSlugRoute
+  '/payment/callback': typeof PaymentCallbackRoute
   '/portal/circle': typeof PortalCircleRoute
   '/portal/invite': typeof PortalInviteRoute
   '/projects/$slug': typeof ProjectsSlugRoute
@@ -309,6 +324,7 @@ export interface FileRoutesByTo {
   '/services': typeof ServicesIndexRoute
   '/tools': typeof ToolsIndexRoute
   '/zones': typeof ZonesIndexRoute
+  '/api/paystack/webhook': typeof ApiPaystackWebhookRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
 export interface FileRoutesById {
@@ -333,6 +349,7 @@ export interface FileRoutesById {
   '/guides/$slug': typeof GuidesSlugRoute
   '/guides/journey': typeof GuidesJourneyRoute
   '/insights/$slug': typeof InsightsSlugRoute
+  '/payment/callback': typeof PaymentCallbackRoute
   '/portal/circle': typeof PortalCircleRoute
   '/portal/invite': typeof PortalInviteRoute
   '/projects/$slug': typeof ProjectsSlugRoute
@@ -349,6 +366,7 @@ export interface FileRoutesById {
   '/services/': typeof ServicesIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
+  '/api/paystack/webhook': typeof ApiPaystackWebhookRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
 export interface FileRouteTypes {
@@ -374,6 +392,7 @@ export interface FileRouteTypes {
     | '/guides/$slug'
     | '/guides/journey'
     | '/insights/$slug'
+    | '/payment/callback'
     | '/portal/circle'
     | '/portal/invite'
     | '/projects/$slug'
@@ -390,6 +409,7 @@ export interface FileRouteTypes {
     | '/services/'
     | '/tools/'
     | '/zones/'
+    | '/api/paystack/webhook'
     | '/portal/document/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -413,6 +433,7 @@ export interface FileRouteTypes {
     | '/guides/$slug'
     | '/guides/journey'
     | '/insights/$slug'
+    | '/payment/callback'
     | '/portal/circle'
     | '/portal/invite'
     | '/projects/$slug'
@@ -429,6 +450,7 @@ export interface FileRouteTypes {
     | '/services'
     | '/tools'
     | '/zones'
+    | '/api/paystack/webhook'
     | '/portal/document/$id'
   id:
     | '__root__'
@@ -452,6 +474,7 @@ export interface FileRouteTypes {
     | '/guides/$slug'
     | '/guides/journey'
     | '/insights/$slug'
+    | '/payment/callback'
     | '/portal/circle'
     | '/portal/invite'
     | '/projects/$slug'
@@ -468,6 +491,7 @@ export interface FileRouteTypes {
     | '/services/'
     | '/tools/'
     | '/zones/'
+    | '/api/paystack/webhook'
     | '/portal/document/$id'
   fileRoutesById: FileRoutesById
 }
@@ -492,6 +516,7 @@ export interface RootRouteChildren {
   GuidesSlugRoute: typeof GuidesSlugRoute
   GuidesJourneyRoute: typeof GuidesJourneyRoute
   InsightsSlugRoute: typeof InsightsSlugRoute
+  PaymentCallbackRoute: typeof PaymentCallbackRoute
   ProjectsSlugRoute: typeof ProjectsSlugRoute
   ServicesSlugRoute: typeof ServicesSlugRoute
   ToolsBoqGeneratorRoute: typeof ToolsBoqGeneratorRoute
@@ -506,6 +531,7 @@ export interface RootRouteChildren {
   ServicesIndexRoute: typeof ServicesIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
   ZonesIndexRoute: typeof ZonesIndexRoute
+  ApiPaystackWebhookRoute: typeof ApiPaystackWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -671,6 +697,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsightsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/payment/callback': {
+      id: '/payment/callback'
+      path: '/payment/callback'
+      fullPath: '/payment/callback'
+      preLoaderRoute: typeof PaymentCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portal/circle': {
       id: '/portal/circle'
       path: '/circle'
@@ -762,6 +795,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ZonesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paystack/webhook': {
+      id: '/api/paystack/webhook'
+      path: '/api/paystack/webhook'
+      fullPath: '/api/paystack/webhook'
+      preLoaderRoute: typeof ApiPaystackWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portal/document/$id': {
       id: '/portal/document/$id'
       path: '/document/$id'
@@ -808,6 +848,7 @@ const rootRouteChildren: RootRouteChildren = {
   GuidesSlugRoute: GuidesSlugRoute,
   GuidesJourneyRoute: GuidesJourneyRoute,
   InsightsSlugRoute: InsightsSlugRoute,
+  PaymentCallbackRoute: PaymentCallbackRoute,
   ProjectsSlugRoute: ProjectsSlugRoute,
   ServicesSlugRoute: ServicesSlugRoute,
   ToolsBoqGeneratorRoute: ToolsBoqGeneratorRoute,
@@ -822,6 +863,7 @@ const rootRouteChildren: RootRouteChildren = {
   ServicesIndexRoute: ServicesIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,
   ZonesIndexRoute: ZonesIndexRoute,
+  ApiPaystackWebhookRoute: ApiPaystackWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -195,6 +195,10 @@
     color: var(--color-maroon);
   }
 
+  h1 {
+    font-weight: 400;
+  }
+
   .font-display {
     font-family: var(--font-display);
   }

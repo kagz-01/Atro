@@ -146,8 +146,8 @@ function ZonesPage() {
     <>
       <PageHero
         kicker="Zone coverage"
-        title="Where we build, and what that means for your money"
-        lede="Kenya is not one market. Soil, haulage, county desks and salt air all change the building — and whether we can take your project at all. This page says both, plainly."
+        title="Where we take on projects across Kenya."
+        lede="Location affects access, materials, approvals and cost. Check our published coverage and the practical considerations for your area."
         image="/catalog/images/school.webp"
       />
 

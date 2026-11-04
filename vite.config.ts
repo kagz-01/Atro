@@ -6,9 +6,9 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
-import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
-import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
-import { isMigrationFile } from "./scripts/migration-plan.mjs";
+import { grokPwaPlugin } from "./scripts/vite/grok-pwa-plugin.mjs";
+import { appEnvPlugin } from "./scripts/vite/app-env-plugin.mjs";
+import { isMigrationFile } from "./scripts/db/migration-plan.mjs";
 
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
 function hasGlobbedMigrations(root: string): boolean {
@@ -164,7 +164,7 @@ export default defineConfig(({ command, isPreview }) => ({
     pgliteBootstrapPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),
-    // Dev-only /__app-env, read by scripts/check-auth-invariant.mjs.
+    // Dev-only /__app-env, read by scripts/checks/check-auth-invariant.mjs.
     appEnvPlugin(),
     // PWA head + ?install=1 tutorial page; runs before Start/Nitro.
     grokPwaPlugin(),

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { BackLink } from "@/components/back-link";
 import { JOURNEY, JOURNEY_PHASES, type JourneyStage } from "@/lib/diaspora/journey";
 import { CtaBand } from "@/components/page-hero";
 import { cn } from "@/lib/utils";
@@ -111,6 +112,7 @@ function JourneyPage() {
         <div className="pointer-events-none absolute -top-20 right-10 size-[440px] rounded-full bg-gold/10 blur-[150px]" />
 
         <div className="relative mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+          <BackLink to="/guides" tone="light">All guides</BackLink>
           <p className="text-[11px] uppercase tracking-[0.2em] text-gold">
             The build journey
           </p>

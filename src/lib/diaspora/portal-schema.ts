@@ -50,11 +50,6 @@ export const MilestoneActionInput = z.object({
   milestoneId: z.string().min(1),
 });
 
-export const PaymentActionInput = z.object({
-  projectId: z.string().min(1),
-  paymentId: z.string().min(1),
-});
-
 export const DecisionActionInput = z.object({
   projectId: z.string().min(1),
   decisionId: z.string().min(1),
