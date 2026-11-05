@@ -39,7 +39,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { toAfricaTalking, toE164 } from "@/lib/phone";
-import { type Consent } from "@/lib/abroad";
+import { isAbroad, type Consent } from "@/lib/abroad";
 import { ALL_CHANNELS, partitionChannels, type Channel } from "@/lib/delivery";
 import { quietHoldUntil } from "@/lib/tz";
 
@@ -118,6 +118,7 @@ type Recipient = {
   timezone?: string;
   /** The client's channel consent; absent for the studio, which has none. */
   consent?: Consent;
+  portalPath?: "/portal" | "/portal/diaspora";
 };
 
 async function resolveStudio(sql: Sql): Promise<Recipient[]> {
@@ -137,6 +138,7 @@ async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | n
     notify_whatsapp: boolean;
     notify_sms: boolean;
     timezone: string | null;
+    client_type: string | null;
   }>`
     select coalesce(nullif(c.email, ''), u.email) as email,
            coalesce(nullif(c.display_name, ''), u.name) as name,
@@ -145,7 +147,8 @@ async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | n
            coalesce(c.notify_email, true) as notify_email,
            coalesce(c.notify_whatsapp, true) as notify_whatsapp,
            coalesce(c.notify_sms, false) as notify_sms,
-           coalesce(nullif(c.timezone, ''), nullif(p.client_tz, '')) as timezone
+           coalesce(nullif(c.timezone, ''), nullif(p.client_tz, '')) as timezone,
+           c.client_type
     from portal_projects p
     left join "user" u on u.id = p.user_id
     left join client_profile c on c.user_id = p.user_id
@@ -173,6 +176,7 @@ async function resolveClient(sql: Sql, projectId: string): Promise<Recipient | n
       whatsapp: row.notify_whatsapp,
       sms: row.notify_sms,
     },
+    portalPath: isAbroad(row.client_type ?? "") ? "/portal/diaspora" : "/portal",
   };
 }
 
@@ -190,6 +194,17 @@ function absoluteUrl(target: string): string {
   return target.startsWith("http") ? target : `${baseUrl()}${target}`;
 }
 
+function contextualDocumentUrl(
+  target: string,
+  portalPath: "/portal" | "/portal/diaspora",
+): string {
+  const url = new URL(absoluteUrl(target));
+  if (portalPath === "/portal/diaspora" && url.pathname.startsWith("/portal/document/")) {
+    url.searchParams.set("experience", "diaspora");
+  }
+  return url.toString();
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -204,8 +219,10 @@ async function sendEmail(
   body: string,
   projectRef: string,
   documentUrl?: string,
+  portalPath: "/portal" | "/portal/diaspora" = "/portal",
 ) {
   const from = process.env.RESEND_FROM ?? "ATRO <portal@atro.ke>";
+  const documentLink = documentUrl ? contextualDocumentUrl(documentUrl, portalPath) : undefined;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -221,16 +238,16 @@ async function sendEmail(
         "",
         body,
         "",
-        documentUrl
-          ? `Open it: ${absoluteUrl(documentUrl)}`
-          : `Open your project: ${baseUrl()}/portal`,
+        documentLink
+          ? `Open it: ${documentLink}`
+          : `Open your project: ${baseUrl()}${portalPath}`,
       ].join("\n"),
       html: `<div style="font-family:Georgia,serif;color:#3C0508;max-width:560px">
   <p style="letter-spacing:.14em;text-transform:uppercase;font-size:11px;color:#8a6a3a">ATRO · ${escapeHtml(projectRef)}</p>
   <h1 style="font-size:24px;margin:16px 0">${escapeHtml(title)}</h1>
   <p style="font-size:15px;line-height:1.7;color:#4a4a4a">${escapeHtml(body).replace(/\n/g, "<br>")}</p>
   <p style="margin-top:28px">
-    <a href="${escapeHtml(documentUrl ? absoluteUrl(documentUrl) : `${baseUrl()}/portal`)}"
+    <a href="${escapeHtml(documentLink ?? `${baseUrl()}${portalPath}`)}"
        style="display:inline-block;background:#3C0508;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-family:system-ui,sans-serif;font-size:13px">
       ${documentUrl ? "Open the document" : "Open your portal"}
     </a>
@@ -541,7 +558,14 @@ async function attemptSend(
     try {
       result =
         channel === "email"
-          ? await sendEmail(target, row.title, row.body, projectRef, row.document_url ?? undefined)
+          ? await sendEmail(
+              target,
+              row.title,
+              row.body,
+              projectRef,
+              row.document_url ?? undefined,
+              row.audience === "client" ? recipients[0]?.portalPath : undefined,
+            )
           : channel === "whatsapp"
             ? await sendWhatsApp(
                 target,

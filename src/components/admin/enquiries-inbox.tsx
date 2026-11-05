@@ -608,6 +608,7 @@ export function EnquiriesInbox({
           </p>
           <Link
             to="/login"
+            search={{ returnTo: undefined }}
             className="flex h-12 w-full items-center justify-center bg-gradient-to-r from-maroon to-burgundy text-white text-[12px] uppercase tracking-[0.14em] font-semibold rounded-xl"
           >
             Sign in

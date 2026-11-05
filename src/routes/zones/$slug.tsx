@@ -64,7 +64,9 @@ function ZoneDetail() {
             </Button>
             {zone.status !== "diaspora" ? (
               <Button asChild variant="line">
-                <Link to="/login">Open a client account</Link>
+                <Link to="/login" search={{ returnTo: undefined }}>
+                  Open a client account
+                </Link>
               </Button>
             ) : null}
           </div>

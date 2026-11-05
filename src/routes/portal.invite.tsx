@@ -14,6 +14,7 @@ import { useIsHydrated } from "@/lib/use-is-hydrated";
 export const Route = createFileRoute("/portal/invite")({
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === "string" ? search.token : "",
+    experience: search.experience === "diaspora" ? "diaspora" : "local",
   }),
   component: ProjectCircleInvitePage,
   head: () => ({
@@ -26,7 +27,8 @@ export const Route = createFileRoute("/portal/invite")({
 });
 
 function ProjectCircleInvitePage() {
-  const { token } = Route.useSearch();
+  const { token, experience } = Route.useSearch();
+  const portalRoute = experience === "diaspora" ? "/portal/diaspora" : "/portal";
   const { user, isPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
   const [acceptedProjectId, setAcceptedProjectId] = useState("");
@@ -41,7 +43,9 @@ function ProjectCircleInvitePage() {
     onSuccess: (result) => {
       setAcceptedProjectId(result.projectId);
       toast.success("Project access accepted.");
-      window.location.assign(`/portal/circle?projectId=${encodeURIComponent(result.projectId)}`);
+      window.location.assign(
+        `/portal/circle?projectId=${encodeURIComponent(result.projectId)}&experience=${experience}`,
+      );
     },
     onError: (cause) =>
       toast.error(cause instanceof Error ? cause.message : "Could not accept the invitation."),
@@ -55,11 +59,11 @@ function ProjectCircleInvitePage() {
     );
   }
 
-  const returnTo = `/portal/invite?token=${encodeURIComponent(token)}`;
+  const returnTo = `/portal/invite?token=${encodeURIComponent(token)}&experience=${experience}`;
   return (
     <main className="min-h-[75vh] bg-paper px-5 pt-32 pb-16">
       <div className="mx-auto max-w-xl">
-        <BackLink to="/portal">Back to your portal</BackLink>
+        <BackLink to={portalRoute}>Back to your portal</BackLink>
         <Panel
           title="Project invitation"
           subtitle="A project owner has invited you to join a limited project circle."
@@ -99,7 +103,7 @@ function ProjectCircleInvitePage() {
                 owner to send a new link if it has expired.
               </p>
               <Button asChild variant="outline">
-                <Link to="/portal">Open your portal</Link>
+                <Link to={portalRoute}>Open your portal</Link>
               </Button>
             </div>
           ) : invite.data ? (
@@ -149,7 +153,7 @@ function ProjectCircleInvitePage() {
                     {accept.isPending ? "Accepting…" : "Accept project access"}
                   </Button>
                   <Button asChild variant="outline">
-                    <Link to="/portal">Not now</Link>
+                    <Link to={portalRoute}>Not now</Link>
                   </Button>
                 </div>
               )}

@@ -8,6 +8,7 @@ import { notify } from "@/lib/notify";
 type CheckoutInput = {
   projectId: string;
   paymentId: string;
+  experience: "local" | "diaspora";
 };
 
 type PaystackEnvelope = {
@@ -202,7 +203,7 @@ export async function beginPaystackCheckout(
         amount: subunits,
         currency: "KES",
         reference,
-        callback_url: `${siteOrigin()}/payment/callback`,
+        callback_url: `${siteOrigin()}/payment/callback?experience=${input.experience}`,
         metadata: {
           atro_project_id: input.projectId,
           atro_payment_id: input.paymentId,

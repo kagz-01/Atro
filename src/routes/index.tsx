@@ -119,6 +119,7 @@ function Hero() {
               Already working with us?{" "}
               <Link
                 to="/login"
+                search={{ returnTo: undefined }}
                 className="font-medium text-white underline decoration-gold/80 underline-offset-4 hover:text-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
               >
                 Sign in to your project

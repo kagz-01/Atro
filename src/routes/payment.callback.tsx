@@ -12,6 +12,7 @@ export const Route = createFileRoute("/payment/callback")({
         : typeof search.trxref === "string"
           ? search.trxref
           : "",
+    experience: search.experience === "diaspora" ? "diaspora" : "local",
   }),
   component: PaymentCallbackPage,
   head: () => ({
@@ -23,7 +24,8 @@ export const Route = createFileRoute("/payment/callback")({
 });
 
 function PaymentCallbackPage() {
-  const { reference } = Route.useSearch();
+  const { reference, experience } = Route.useSearch();
+  const portalRoute = experience === "diaspora" ? "/portal/diaspora" : "/portal";
   const result = useQuery({
     queryKey: ["paystack-payment-verification", reference],
     queryFn: () => verifyPaystackPayment({ data: { reference } }),
@@ -93,7 +95,11 @@ function PaymentCallbackPage() {
         )}
         {!result.isPending ? (
           <Button asChild className="mt-6">
-            <Link to="/portal">Return to your project</Link>
+            <Link to={portalRoute}>
+              {experience === "diaspora"
+                ? "Return to the diaspora portal"
+                : "Return to your project"}
+            </Link>
           </Button>
         ) : null}
       </section>

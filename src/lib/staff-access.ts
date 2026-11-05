@@ -18,6 +18,7 @@ import {
   roleAfterAccept,
 } from "@/lib/staff-access-rules";
 import { lookupRole, normaliseEmail, type StaffRole } from "@/lib/staff";
+import { toE164 } from "@/lib/phone";
 
 export type StaffMember = {
   email: string;
@@ -258,12 +259,26 @@ export const inviteStaff = createServerFn({ method: "POST" })
     z.object({
       email: z.string().trim().email(),
       note: z.string().trim().max(160).default(""),
+      channel: z.enum(["email", "whatsapp"]).default("email"),
+      phone: z.string().trim().optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<{
+    ok: true;
+    email: string;
+    resent: boolean;
+    inviteUrl: string;
+    delivery:
+      | { channel: "email"; sent: boolean; detail: string }
+      | { channel: "whatsapp"; url: string };
+  }> => {
     const admin = await requireAdmin("grant-access");
     const sql = await getSql();
     const email = normaliseEmail(data.email);
+    const whatsappPhone = data.channel === "whatsapp" ? toE164(data.phone) : null;
+    if (data.channel === "whatsapp" && !whatsappPhone) {
+      throw new Error("Enter a valid WhatsApp number, including its country code.");
+    }
 
     const currentRole = await lookupRole(sql, email);
     const refusal = inviteRefusal({ alreadyStaff: Boolean(currentRole) });
@@ -273,20 +288,69 @@ export const inviteStaff = createServerFn({ method: "POST" })
       select id from staff_invite
       where lower(email) = ${email} and status = 'pending'
     `;
+    const resent = Boolean(existing[0]);
     if (existing[0]) {
       await sql`
         update staff_invite
         set note = ${data.note}, invited_by = ${admin.email}, created_at = now()
         where id = ${existing[0].id}
       `;
-      return { ok: true as const, email, resent: true };
+    } else {
+      await sql`
+        insert into staff_invite (email, invited_by, note)
+        values (${email}, ${admin.email}, ${data.note})
+      `;
     }
 
-    await sql`
-      insert into staff_invite (email, invited_by, note)
-      values (${email}, ${admin.email}, ${data.note})
+    const { staffInviteUrl, staffInviteWhatsAppUrl, sendStaffInviteEmail } =
+      await import("@/lib/staff-invites.server");
+    const inviteUrl = staffInviteUrl();
+    let delivery:
+      | { channel: "email"; sent: boolean; detail: string }
+      | { channel: "whatsapp"; url: string };
+    if (data.channel === "email") {
+      delivery = {
+        channel: "email",
+        ...(await sendStaffInviteEmail({
+          email,
+          invitedBy: admin.email,
+          note: data.note,
+          inviteUrl,
+        })),
+      };
+    } else {
+      if (!whatsappPhone) {
+        throw new Error("Enter a valid WhatsApp number, including its country code.");
+      }
+      delivery = {
+        channel: "whatsapp",
+        url: staffInviteWhatsAppUrl(
+          whatsappPhone,
+          [
+            `ATRO staff dashboard invitation for ${email}`,
+            data.note,
+            `Open ${inviteUrl}, sign in with ${email}, and accept the invitation.`,
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
+        ),
+      };
+    }
+    return { ok: true, email, resent, inviteUrl, delivery };
+  });
+
+/** Whether the signed-in user's email has a pending staff invitation. */
+export const getMyStaffInvitation = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const email = normaliseEmail(context.email ?? "");
+    if (!email) return { pending: false };
+    const rows = await (await getSql())<{ id: string }>`
+      select id from staff_invite
+      where lower(email) = ${email} and status = 'pending'
+      limit 1
     `;
-    return { ok: true as const, email, resent: false };
+    return { pending: Boolean(rows[0]) };
   });
 
 /** Withdraw an invitation before it is accepted. */

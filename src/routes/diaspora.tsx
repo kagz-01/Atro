@@ -94,7 +94,7 @@ function YourProjects() {
             </h2>
           </div>
           <Button asChild>
-            <Link to="/portal">
+            <Link to="/portal/diaspora">
               Open the portal
               <ArrowRight className="size-4" />
             </Link>
@@ -123,7 +123,7 @@ function YourProjects() {
                 </p>
               ) : null}
               <Button asChild variant="outline" size="sm" className="mt-5 self-start">
-                <Link to="/portal">
+                <Link to="/portal/diaspora">
                   Open in the portal
                   <ArrowRight className="size-3.5" />
                 </Link>
@@ -181,6 +181,7 @@ function DiasporaPage() {
             </Button>
             <Link
               to="/login"
+              search={{ returnTo: "/portal/diaspora" }}
               className="inline-flex min-h-11 items-center gap-2 text-sm text-paper/75 underline decoration-paper/35 underline-offset-4 hover:text-paper"
             >
               Already a client? Sign in
@@ -220,7 +221,7 @@ function DiasporaPage() {
                 title: "I need visibility",
                 body: "Track milestone updates, site progress and the project record from anywhere in the world.",
                 cta: "View the portal",
-                to: "/portal",
+                to: "/portal/diaspora",
               },
               {
                 title: "I need materials support",
@@ -289,13 +290,13 @@ function DiasporaPage() {
 
           <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-7 lg:grid-cols-3">
             {ABROAD_FEATURES.map((f) => {
-              const Icon = f.to === "/portal" ? ClipboardCheck
+              const Icon = f.to === "/portal/diaspora" ? ClipboardCheck
                 : f.to === "/verify" ? BadgeCheck
                 : f.to === "/scam-check" ? AlertTriangle
                 : f.to === "/guides/journey" ? Eye
                 : f.to === "/guides" ? FileText
                 : CreditCard;
-              const accent = f.to === "/portal";
+              const accent = f.to === "/portal/diaspora";
               return (
                 <Link
                   key={f.to}

@@ -33,12 +33,22 @@ function AuthSlot() {
   const { user, isPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const returnTo = useRouterState({ select: (s) => s.location.search.returnTo });
+  const preferredClientRoute =
+    pathname.startsWith("/diaspora") ||
+    (pathname === "/login" && returnTo === "/portal/diaspora")
+    ? "/portal/diaspora"
+    : "/portal";
   const { data: access } = useQuery({
     queryKey: ["my-access"],
     queryFn: () => getMyAccess({ data: undefined }),
     enabled: Boolean(user),
   });
-  const dashboardTo = resolveDashboardRoute({ user, accessRole: access?.role ?? null });
+  const dashboardTo = resolveDashboardRoute({
+    user,
+    accessRole: access?.role ?? null,
+    preferredClientRoute,
+  });
 
   if (isPending || !hydrated) {
     return (
@@ -54,15 +64,31 @@ function AuthSlot() {
     // The dashboard routes are app screens with their own shell, so signed-in visitors land in the
     // role-specific workspace rather than a shared generic portal toggle.
     const isAdminWorkspace = dashboardTo === "/admin";
+    const isStaffWorkspace = dashboardTo === "/staff";
+    const isDiasporaWorkspace = dashboardTo === "/portal/diaspora";
     return (
       <div className="flex items-center gap-2.5">
         <Link
           to={dashboardTo}
-          aria-label={isAdminWorkspace ? "Open the office dashboard" : "Open the project portal"}
+          aria-label={
+            isAdminWorkspace
+              ? "Open the admin dashboard"
+              : isStaffWorkspace
+                ? "Open the staff dashboard"
+                : isDiasporaWorkspace
+                ? "Open the diaspora project portal"
+                : "Open the Kenya project portal"
+          }
           className={cn(pill, "text-muted border-line hover:border-burgundy hover:text-burgundy")}
         >
           <LayoutDashboard className="size-3.5" />
-          {isAdminWorkspace ? "Office dashboard" : "Project portal"}
+          {isAdminWorkspace
+            ? "Admin dashboard"
+            : isStaffWorkspace
+              ? "Staff dashboard"
+              : isDiasporaWorkspace
+              ? "Diaspora portal"
+              : "Kenya portal"}
         </Link>
         <UserButton compact />
       </div>
@@ -71,7 +97,15 @@ function AuthSlot() {
   return (
     <Link
       to="/login"
-      aria-label="Sign in to the project portal"
+      search={{
+        returnTo:
+          preferredClientRoute === "/portal/diaspora" ? preferredClientRoute : undefined,
+      }}
+      aria-label={
+        preferredClientRoute === "/portal/diaspora"
+          ? "Sign in to the diaspora project portal"
+          : "Sign in to the Kenya project portal"
+      }
       className={cn(
         pill,
         pathname === "/login"
@@ -90,6 +124,13 @@ function MobileAccountRow() {
   const user = useCurrentUser();
   const { isPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const returnTo = useRouterState({ select: (s) => s.location.search.returnTo });
+  const preferredClientRoute =
+    pathname.startsWith("/diaspora") ||
+    (pathname === "/login" && returnTo === "/portal/diaspora")
+    ? "/portal/diaspora"
+    : "/portal";
   const { data: access } = useQuery({
     queryKey: ["my-access"],
     queryFn: () => getMyAccess({ data: undefined }),
@@ -99,8 +140,14 @@ function MobileAccountRow() {
     return <div className="mt-3 h-12 animate-pulse rounded-2xl bg-ink/6" aria-hidden />;
   }
   if (user) {
-    const dashboardTo = resolveDashboardRoute({ user, accessRole: access?.role ?? null });
+    const dashboardTo = resolveDashboardRoute({
+      user,
+      accessRole: access?.role ?? null,
+      preferredClientRoute,
+    });
     const isAdminWorkspace = dashboardTo === "/admin";
+    const isStaffWorkspace = dashboardTo === "/staff";
+    const isDiasporaWorkspace = dashboardTo === "/portal/diaspora";
     return (
       <div className="mt-3 flex items-center justify-between gap-4 rounded-2xl border border-line p-4">
         <Link
@@ -112,7 +159,13 @@ function MobileAccountRow() {
               {user.displayName ?? user.primaryEmail ?? "Your account"}
             </span>
             <span className="text-sm text-muted">
-              {isAdminWorkspace ? "Open the office dashboard" : "Open your project portal"}
+              {isAdminWorkspace
+                ? "Open the admin dashboard"
+                : isStaffWorkspace
+                  ? "Open the staff dashboard"
+                  : isDiasporaWorkspace
+                  ? "Open your diaspora project portal"
+                  : "Open your Kenya project portal"}
             </span>
           </span>
           <ArrowRight className="size-5 text-gold shrink-0" />
@@ -124,6 +177,10 @@ function MobileAccountRow() {
   return (
     <Link
       to="/login"
+      search={{
+        returnTo:
+          preferredClientRoute === "/portal/diaspora" ? preferredClientRoute : undefined,
+      }}
       className="mt-3 flex items-center gap-4 rounded-2xl border border-line p-4 text-ink transition-colors hover:border-burgundy"
     >
       <span className="size-10 rounded-xl bg-maroon/10 flex items-center justify-center text-maroon">

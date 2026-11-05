@@ -9,6 +9,7 @@ import {
   previewPersona,
   previewPersonaWorkspace,
 } from "./preview-personas.ts";
+import { resolveDashboardRoute } from "./dashboard-routing.ts";
 
 describe("preview personas", () => {
   it("pins each seat's identity so seeded rows stay findable", () => {
@@ -77,10 +78,75 @@ describe("preview personas", () => {
     assert.equal(personaCookieAssignment("local").startsWith("atro-preview-persona="), true);
   });
 
-  it("routes studio seats to the console and client seats to the portal", () => {
+  it("routes each preview seat to its matching workspace", () => {
     assert.equal(previewPersonaWorkspace("boss"), "/admin");
-    assert.equal(previewPersonaWorkspace("office"), "/admin");
+    assert.equal(previewPersonaWorkspace("office"), "/staff");
     assert.equal(previewPersonaWorkspace("local"), "/portal");
     assert.equal(previewPersonaWorkspace("abroad"), "/portal");
+  });
+
+  it("keeps local and diaspora client destinations distinct from staff workspaces", () => {
+    const user = {
+      id: "client",
+      displayName: "Client",
+      primaryEmail: "client@example.com",
+      primaryEmailVerified: true,
+      primaryPhone: null,
+      primaryPhoneVerified: false,
+      profileImageUrl: null,
+      isDevFallback: false,
+      isGuestPreview: false,
+    };
+
+    assert.equal(resolveDashboardRoute({ user }), "/portal");
+    assert.equal(
+      resolveDashboardRoute({ user, preferredClientRoute: "/portal/diaspora" }),
+      "/portal/diaspora",
+    );
+    assert.equal(
+      resolveDashboardRoute({
+        user,
+        accessRole: "staff",
+        preferredClientRoute: "/portal/diaspora",
+      }),
+      "/staff",
+    );
+    assert.equal(
+      resolveDashboardRoute({
+        user,
+        accessRole: "office_manager",
+        preferredClientRoute: "/portal/diaspora",
+      }),
+      "/staff",
+    );
+    assert.equal(
+      resolveDashboardRoute({
+        user,
+        accessRole: "admin",
+        preferredClientRoute: "/portal/diaspora",
+      }),
+      "/admin",
+    );
+  });
+
+  it("does not let a guest preview inherit a cached staff role", () => {
+    assert.equal(
+      resolveDashboardRoute({
+        user: {
+          id: "guest",
+          displayName: "Guest",
+          primaryEmail: null,
+          primaryEmailVerified: false,
+          primaryPhone: null,
+          primaryPhoneVerified: false,
+          profileImageUrl: null,
+          isDevFallback: true,
+          isGuestPreview: true,
+        },
+        accessRole: "admin",
+        preferredClientRoute: "/portal/diaspora",
+      }),
+      "/portal/diaspora",
+    );
   });
 });

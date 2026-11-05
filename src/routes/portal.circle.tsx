@@ -12,6 +12,7 @@ import { useIsHydrated } from "@/lib/use-is-hydrated";
 export const Route = createFileRoute("/portal/circle")({
   validateSearch: (search: Record<string, unknown>) => ({
     projectId: typeof search.projectId === "string" ? search.projectId : undefined,
+    experience: search.experience === "diaspora" ? "diaspora" : "local",
   }),
   component: ProjectCirclePage,
   head: () => ({
@@ -29,7 +30,8 @@ export const Route = createFileRoute("/portal/circle")({
 function ProjectCirclePage() {
   const { user, isPending } = useCurrentUserState();
   const hydrated = useIsHydrated();
-  const { projectId: requestedProjectId } = Route.useSearch();
+  const { projectId: requestedProjectId, experience } = Route.useSearch();
+  const portalRoute = experience === "diaspora" ? "/portal/diaspora" : "/portal";
   const circles = useQuery({
     queryKey: ["my-project-circle"],
     queryFn: () => getMyProjectCircle(),
@@ -56,7 +58,7 @@ function ProjectCirclePage() {
   }
 
   if (!user) {
-    const returnTo = "/portal/circle";
+    const returnTo = `/portal/circle?experience=${experience}`;
     return (
       <main className="min-h-[70vh] bg-paper px-5 pt-32 pb-16">
         <section className="mx-auto max-w-xl rounded-3xl border border-ink/10 bg-white p-8 text-center">
@@ -103,7 +105,7 @@ function ProjectCirclePage() {
             be revoked by the owner at any time.
           </p>
           <Button asChild variant="outline" className="mt-6">
-            <Link to="/portal">
+            <Link to={portalRoute}>
               <ArrowLeft className="size-4" />
               Back to the portal
             </Link>
@@ -125,7 +127,7 @@ function ProjectCirclePage() {
             </p>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link to="/portal">
+            <Link to={portalRoute}>
               <ArrowLeft className="size-4" />
               Your portal
             </Link>
@@ -139,7 +141,7 @@ function ProjectCirclePage() {
               id="circle-project-select"
               value={selectedProjectId}
               onChange={(event) => {
-                window.location.href = `/portal/circle?projectId=${encodeURIComponent(event.target.value)}`;
+                window.location.href = `/portal/circle?projectId=${encodeURIComponent(event.target.value)}&experience=${experience}`;
               }}
               className="mt-1"
             >

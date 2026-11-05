@@ -22,6 +22,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProcessRouteImport } from './routes/process'
 import { Route as ScamCheckRouteImport } from './routes/scam-check'
 import { Route as ScamWarningRouteImport } from './routes/scam-warning'
+import { Route as StaffRouteImport } from './routes/staff'
 import { Route as StartRouteImport } from './routes/start'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VerifyRouteImport } from './routes/verify'
@@ -34,6 +35,7 @@ import { Route as InsightsIndexRouteImport } from './routes/insights/index'
 import { Route as InsightsSlugRouteImport } from './routes/insights/$slug'
 import { Route as PaymentCallbackRouteImport } from './routes/payment.callback'
 import { Route as PortalCircleRouteImport } from './routes/portal.circle'
+import { Route as PortalDiasporaRouteImport } from './routes/portal.diaspora'
 import { Route as PortalInviteRouteImport } from './routes/portal.invite'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsSlugRouteImport } from './routes/projects/$slug'
@@ -115,6 +117,11 @@ const ScamWarningRoute = ScamWarningRouteImport.update({
   path: '/scam-warning',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffRoute = StaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StartRoute = StartRouteImport.update({
   id: '/start',
   path: '/start',
@@ -173,6 +180,11 @@ const PaymentCallbackRoute = PaymentCallbackRouteImport.update({
 const PortalCircleRoute = PortalCircleRouteImport.update({
   id: '/circle',
   path: '/circle',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalDiasporaRoute = PortalDiasporaRouteImport.update({
+  id: '/diaspora',
+  path: '/diaspora',
   getParentRoute: () => PortalRoute,
 } as any)
 const PortalInviteRoute = PortalInviteRouteImport.update({
@@ -265,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/process': typeof ProcessRoute
   '/scam-check': typeof ScamCheckRoute
   '/scam-warning': typeof ScamWarningRoute
+  '/staff': typeof StaffRoute
   '/start': typeof StartRoute
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
@@ -274,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/insights/$slug': typeof InsightsSlugRoute
   '/payment/callback': typeof PaymentCallbackRoute
   '/portal/circle': typeof PortalCircleRoute
+  '/portal/diaspora': typeof PortalDiasporaRoute
   '/portal/invite': typeof PortalInviteRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
@@ -307,6 +321,7 @@ export interface FileRoutesByTo {
   '/process': typeof ProcessRoute
   '/scam-check': typeof ScamCheckRoute
   '/scam-warning': typeof ScamWarningRoute
+  '/staff': typeof StaffRoute
   '/start': typeof StartRoute
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
@@ -316,6 +331,7 @@ export interface FileRoutesByTo {
   '/insights/$slug': typeof InsightsSlugRoute
   '/payment/callback': typeof PaymentCallbackRoute
   '/portal/circle': typeof PortalCircleRoute
+  '/portal/diaspora': typeof PortalDiasporaRoute
   '/portal/invite': typeof PortalInviteRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
@@ -350,6 +366,7 @@ export interface FileRoutesById {
   '/process': typeof ProcessRoute
   '/scam-check': typeof ScamCheckRoute
   '/scam-warning': typeof ScamWarningRoute
+  '/staff': typeof StaffRoute
   '/start': typeof StartRoute
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
@@ -359,6 +376,7 @@ export interface FileRoutesById {
   '/insights/$slug': typeof InsightsSlugRoute
   '/payment/callback': typeof PaymentCallbackRoute
   '/portal/circle': typeof PortalCircleRoute
+  '/portal/diaspora': typeof PortalDiasporaRoute
   '/portal/invite': typeof PortalInviteRoute
   '/projects/$slug': typeof ProjectsSlugRoute
   '/services/$slug': typeof ServicesSlugRoute
@@ -394,6 +412,7 @@ export interface FileRouteTypes {
     | '/process'
     | '/scam-check'
     | '/scam-warning'
+    | '/staff'
     | '/start'
     | '/terms'
     | '/verify'
@@ -403,6 +422,7 @@ export interface FileRouteTypes {
     | '/insights/$slug'
     | '/payment/callback'
     | '/portal/circle'
+    | '/portal/diaspora'
     | '/portal/invite'
     | '/projects/$slug'
     | '/services/$slug'
@@ -436,6 +456,7 @@ export interface FileRouteTypes {
     | '/process'
     | '/scam-check'
     | '/scam-warning'
+    | '/staff'
     | '/start'
     | '/terms'
     | '/verify'
@@ -445,6 +466,7 @@ export interface FileRouteTypes {
     | '/insights/$slug'
     | '/payment/callback'
     | '/portal/circle'
+    | '/portal/diaspora'
     | '/portal/invite'
     | '/projects/$slug'
     | '/services/$slug'
@@ -478,6 +500,7 @@ export interface FileRouteTypes {
     | '/process'
     | '/scam-check'
     | '/scam-warning'
+    | '/staff'
     | '/start'
     | '/terms'
     | '/verify'
@@ -487,6 +510,7 @@ export interface FileRouteTypes {
     | '/insights/$slug'
     | '/payment/callback'
     | '/portal/circle'
+    | '/portal/diaspora'
     | '/portal/invite'
     | '/projects/$slug'
     | '/services/$slug'
@@ -521,6 +545,7 @@ export interface RootRouteChildren {
   ProcessRoute: typeof ProcessRoute
   ScamCheckRoute: typeof ScamCheckRoute
   ScamWarningRoute: typeof ScamWarningRoute
+  StaffRoute: typeof StaffRoute
   StartRoute: typeof StartRoute
   TermsRoute: typeof TermsRoute
   VerifyRoute: typeof VerifyRoute
@@ -640,6 +665,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScamWarningRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/start': {
       id: '/start'
       path: '/start'
@@ -722,6 +754,13 @@ declare module '@tanstack/react-router' {
       path: '/circle'
       fullPath: '/portal/circle'
       preLoaderRoute: typeof PortalCircleRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/diaspora': {
+      id: '/portal/diaspora'
+      path: '/diaspora'
+      fullPath: '/portal/diaspora'
+      preLoaderRoute: typeof PortalDiasporaRouteImport
       parentRoute: typeof PortalRoute
     }
     '/portal/invite': {
@@ -834,12 +873,14 @@ declare module '@tanstack/react-router' {
 
 interface PortalRouteChildren {
   PortalCircleRoute: typeof PortalCircleRoute
+  PortalDiasporaRoute: typeof PortalDiasporaRoute
   PortalInviteRoute: typeof PortalInviteRoute
   PortalDocumentIdRoute: typeof PortalDocumentIdRoute
 }
 
 const PortalRouteChildren: PortalRouteChildren = {
   PortalCircleRoute: PortalCircleRoute,
+  PortalDiasporaRoute: PortalDiasporaRoute,
   PortalInviteRoute: PortalInviteRoute,
   PortalDocumentIdRoute: PortalDocumentIdRoute,
 }
@@ -861,6 +902,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProcessRoute: ProcessRoute,
   ScamCheckRoute: ScamCheckRoute,
   ScamWarningRoute: ScamWarningRoute,
+  StaffRoute: StaffRoute,
   StartRoute: StartRoute,
   TermsRoute: TermsRoute,
   VerifyRoute: VerifyRoute,

@@ -144,6 +144,8 @@ export function personaCookieAssignment(key: PreviewPersonaKey): string {
 }
 
 /** The workspace each preview seat should open. */
-export function previewPersonaWorkspace(key: PreviewPersonaKey): "/admin" | "/portal" {
-  return key === "boss" || key === "office" ? "/admin" : "/portal";
+export function previewPersonaWorkspace(key: PreviewPersonaKey): "/admin" | "/staff" | "/portal" {
+  if (key === "boss") return "/admin";
+  if (key === "office") return "/staff";
+  return "/portal";
 }

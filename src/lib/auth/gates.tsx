@@ -68,7 +68,7 @@ export function SignInButtons() {
   // Sign-in is a phone number and a code, and it lives on one page — so this is
   // a link, not a second copy of the form.
   return (
-    <Link to={SIGN_IN_PATH} className="w-full">
+    <Link to={SIGN_IN_PATH} search={{ returnTo: undefined }} className="w-full">
       <Button className="w-full">Sign in with your phone</Button>
     </Link>
   );

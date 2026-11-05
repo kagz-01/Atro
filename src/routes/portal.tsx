@@ -40,7 +40,7 @@ import { getMyAccess } from "@/lib/staff-access";
 import { resolveDashboardRoute } from "@/lib/dashboard-routing";
 
 export const Route = createFileRoute("/portal")({
-  component: PortalPage,
+  component: LocalPortalPage,
   head: () => ({
     meta: [
       { title: "Project portal — ATRO Design & Construction" },
@@ -77,9 +77,10 @@ function LoadingBlock({ label }: { label: string }) {
 
 /* ── the account wall ── */
 
-function SignInWall() {
+function SignInWall({ experience }: { experience: "local" | "diaspora" }) {
   const { isPending } = useCurrentUserState();
   if (isPending) return <LoadingBlock label="Checking your session" />;
+  const isDiaspora = experience === "diaspora";
 
   return (
     <>
@@ -91,15 +92,16 @@ function SignInWall() {
             <div className="inline-flex items-center gap-2 rounded-full bg-gold/15 px-4 py-2">
               <span className="size-1.5 rounded-full bg-gold" />
               <p className="text-[10px] uppercase tracking-[0.2em] text-gold">
-                Project portal
+                {isDiaspora ? "Diaspora project portal" : "Kenya project portal"}
               </p>
             </div>
             <h1 className="mt-6 font-display text-[2.3rem] leading-[0.95] text-paper sm:text-5xl md:text-6xl">
-              Your build, from anywhere
+              {isDiaspora ? "Your build, from anywhere" : "Your project, clearly in view"}
             </h1>
             <p className="mt-6 text-lg text-paper/75">
-              Milestones with photographic evidence, the payment ledger with retention,
-              every certificate, and every decision — private to your sign-in.
+              {isDiaspora
+                ? "Milestones with photographic evidence, the payment ledger with retention, every certificate, and every decision — private to your sign-in."
+                : "See project progress, approvals, payments and documents in one private place — linked to your sign-in."}
             </p>
           </div>
         </div>
@@ -140,13 +142,20 @@ function SignInWall() {
 
               <div className="mt-9 flex flex-wrap gap-3">
                 <Button asChild size="lg">
-                  <Link to="/login">
+                  <Link
+                    to="/login"
+                    search={{ returnTo: isDiaspora ? "/portal/diaspora" : undefined }}
+                  >
                     Sign in
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <Link to="/diaspora">What ATRO offers diaspora clients</Link>
+                  {isDiaspora ? (
+                    <Link to="/diaspora">About ATRO's diaspora service</Link>
+                  ) : (
+                    <Link to="/projects">Explore our projects</Link>
+                  )}
                 </Button>
               </div>
             </div>
@@ -447,9 +456,14 @@ function NewProjectForm({
 
 /* ── the portal ── */
 
-function PortalPage() {
+function LocalPortalPage() {
+  return <PortalExperience experience="local" />;
+}
+
+export function PortalExperience({ experience }: { experience: "local" | "diaspora" }) {
+  const portalRoute = experience === "diaspora" ? "/portal/diaspora" : "/portal";
   const isNestedPortalRoute = useRouterState({
-    select: (state) => state.location.pathname.replace(/\/+$/, "") !== "/portal",
+    select: (state) => state.location.pathname.replace(/\/+$/, "") !== portalRoute,
   });
   const { isPending: sessionPending, sessionError } = useCurrentUserState();
   const hydrated = useIsHydrated();
@@ -459,11 +473,15 @@ function PortalPage() {
     queryFn: () => getMyAccess({ data: undefined }),
     enabled: Boolean(user),
   });
-  const dashboardRoute = resolveDashboardRoute({ user, accessRole: access?.role ?? null });
+  const dashboardRoute = resolveDashboardRoute({
+    user,
+    accessRole: access?.role ?? null,
+    preferredClientRoute: portalRoute,
+  });
   const { data: nudges } = useQuery({
     queryKey: ["my-nudges"],
     queryFn: () => getMyNudges({ data: undefined }),
-    enabled: Boolean(user && !isNestedPortalRoute && dashboardRoute === "/portal"),
+    enabled: Boolean(user && !isNestedPortalRoute && dashboardRoute === portalRoute),
   });
   const { data: sharedProjects } = useQuery({
     queryKey: ["my-project-circle"],
@@ -477,7 +495,7 @@ function PortalPage() {
   const { data: documents } = useQuery({
     queryKey: ["my-documents"],
     queryFn: () => listMyDocuments({ data: undefined }),
-    enabled: Boolean(user && !isNestedPortalRoute && dashboardRoute === "/portal"),
+    enabled: Boolean(user && !isNestedPortalRoute && dashboardRoute === portalRoute),
   });
   const [pending, setPending] = useState("");
   const firstVisit = useRef<string | null>(null);
@@ -509,12 +527,12 @@ function PortalPage() {
       sessionPending ||
       !user ||
       accessLoading ||
-      dashboardRoute !== "/portal"
+      dashboardRoute !== portalRoute
     )
       return;
     void load();
     // Re-check when the account changes (sign-in, sign-out).
-  }, [user, isNestedPortalRoute, sessionPending, accessLoading, dashboardRoute]);
+  }, [user, isNestedPortalRoute, sessionPending, accessLoading, dashboardRoute, portalRoute]);
 
   async function run(key: string, action: () => Promise<unknown>, done: string) {
     setPending(key);
@@ -551,19 +569,27 @@ function PortalPage() {
   if (!user) {
     return (
       <>
-        <SignInWall />
+        <SignInWall experience={experience} />
         <CtaBand
-          title="Not sure whether this is for you?"
-          body="The portal is one part of how ATRO works with clients overseas. Start with what the service actually is."
-          ctaTo="/diaspora"
-          ctaLabel="See the Abroad service"
+          title={
+            experience === "diaspora"
+              ? "Building in Kenya from abroad?"
+              : "Planning a project in Kenya?"
+          }
+          body={
+            experience === "diaspora"
+              ? "See how ATRO coordinates design and construction for clients overseas."
+              : "Explore our work, services and project process before you get in touch."
+          }
+          ctaTo={experience === "diaspora" ? "/diaspora" : "/projects"}
+          ctaLabel={experience === "diaspora" ? "See the Abroad service" : "Explore our work"}
         />
       </>
     );
   }
 
-  if (user && !accessLoading && dashboardRoute === "/admin") {
-    return <Navigate to="/admin" replace />;
+  if (user && !accessLoading && (dashboardRoute === "/admin" || dashboardRoute === "/staff")) {
+    return <Navigate to={dashboardRoute} replace />;
   }
   if (loading && !data) return <LoadingBlock label="Loading your project record" />;
   if (!data) {
@@ -576,7 +602,10 @@ function PortalPage() {
           <div className="mt-8 flex justify-center gap-3">
             {error === "Open your project circle to see the project shared with you." ? (
               <Button asChild>
-                <Link to="/portal/circle" search={{ projectId: undefined }}>
+                <Link
+                  to="/portal/circle"
+                  search={{ projectId: undefined, experience }}
+                >
                   Open shared project
                 </Link>
               </Button>
@@ -584,7 +613,12 @@ function PortalPage() {
               <Button onClick={() => void load()}>Try again</Button>
             )}
             <Button asChild variant="outline">
-              <Link to="/login">Sign in</Link>
+              <Link
+                to="/login"
+                search={{ returnTo: experience === "diaspora" ? portalRoute : undefined }}
+              >
+                Sign in
+              </Link>
             </Button>
           </div>
         </div>
@@ -607,7 +641,10 @@ function PortalPage() {
               change account details.
             </p>
             <Button asChild size="sm">
-              <Link to="/login">
+              <Link
+                to="/login"
+                search={{ returnTo: experience === "diaspora" ? portalRoute : undefined }}
+              >
                 Create or sign in to an account
                 <ArrowRight className="size-4" />
               </Link>
@@ -617,6 +654,7 @@ function PortalPage() {
       ) : null}
       <ClientDashboard
         data={data}
+        experience={experience}
         readOnly={isGuestPreview}
         documents={documents ?? []}
         nudges={nudges ?? []}
@@ -627,7 +665,7 @@ function PortalPage() {
           setPending(key);
           try {
             const checkout = await startPaystackCheckout({
-              data: { projectId: p.id, paymentId },
+              data: { projectId: p.id, paymentId, experience },
             });
             window.location.assign(checkout.authorizationUrl);
           } catch (err) {
@@ -654,7 +692,10 @@ function PortalPage() {
         <div className="flex flex-wrap items-center gap-2">
           {sharedProjects?.length ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/portal/circle" search={{ projectId: undefined }}>
+              <Link
+                to="/portal/circle"
+                search={{ projectId: undefined, experience }}
+              >
                 Shared projects ({sharedProjects.length})
               </Link>
             </Button>

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Globe, Lock, Shield } from "lucide-react";
 import { Logo } from "@/components/logo";
@@ -9,11 +9,14 @@ import { PhoneSignInForm } from "@/components/auth/phone-sign-in-form";
 import { EmailSignInForm } from "@/components/auth/email-sign-in-form";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { getMyAccess } from "@/lib/staff-access";
+import { getMyAccess, getMyStaffInvitation } from "@/lib/staff-access";
 import { resolveDashboardRoute } from "@/lib/dashboard-routing";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 
 export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    returnTo: typeof search.returnTo === "string" ? search.returnTo : undefined,
+  }),
   component: Login,
   head: () => ({
     meta: [
@@ -46,35 +49,98 @@ const PERKS = [
 ];
 
 function Login() {
+  const { returnTo } = Route.useSearch();
   const { user, isPending, sessionError } = useCurrentUserState();
   const hydrated = useIsHydrated();
-  const { data: access } = useQuery({
+  const queryClient = useQueryClient();
+  const { data: access, isLoading: accessLoading } = useQuery({
     queryKey: ["my-access"],
     queryFn: () => getMyAccess({ data: undefined }),
     enabled: Boolean(user && !user.isDevFallback),
   });
+  const { data: staffInvitation } = useQuery({
+    queryKey: ["my-staff-invitation"],
+    queryFn: () => getMyStaffInvitation({ data: undefined }),
+    enabled: Boolean(user && !user.isDevFallback && returnTo === "/staff"),
+  });
+  let returnDestination: URL | null = null;
+  if (returnTo) {
+    try {
+      returnDestination = new URL(returnTo, "https://atro.invalid");
+    } catch {
+      returnDestination = null;
+    }
+  }
+  const preferredClientRoute: "/portal" | "/portal/diaspora" =
+    returnDestination?.pathname === "/portal/diaspora" ||
+    returnDestination?.searchParams.get("experience") === "diaspora"
+      ? "/portal/diaspora"
+      : "/portal";
   const [method, setMethod] = useState<"phone" | "email">("phone");
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleError, setGoogleError] = useState("");
+  const [accessError, setAccessError] = useState("");
 
-  const dashboardDestination = resolveDashboardRoute({
+  const resolvedDashboard = resolveDashboardRoute({
     user,
     accessRole: access?.role ?? null,
+    preferredClientRoute,
   });
+  const dashboardDestination =
+    resolvedDashboard === "/portal" &&
+    returnTo === "/staff" &&
+    staffInvitation?.pending
+      ? "/staff"
+      : resolvedDashboard;
 
   /**
    * Signed-in users land in the workspace that matches their role instead of a
-   * generic client portal toggle; staff keep the office dashboard while clients
-   * keep their project portal.
+   * generic client portal toggle; admins, staff, and clients each keep their
+   * role-appropriate workspace.
    */
-  const goToDashboard = () => {
+  const goToPortal = async () => {
     if (typeof window === "undefined") return;
-    window.location.assign(dashboardDestination);
-  };
+    setAccessError("");
+    let accessRole = access?.role ?? null;
+    if (!user?.isDevFallback && (accessLoading || !access)) {
+      try {
+        const resolvedAccess = await queryClient.fetchQuery({
+          queryKey: ["my-access"],
+          queryFn: () => getMyAccess({ data: undefined }),
+          staleTime: 0,
+        });
+        accessRole = resolvedAccess?.role ?? null;
+      } catch (cause) {
+        setAccessError(
+          cause instanceof Error
+            ? `We could not confirm your account access: ${cause.message}`
+            : "We could not confirm your account access. Please try again.",
+        );
+        return;
+      }
+    }
 
-  const goToPortal = () => {
-    if (typeof window === "undefined") return;
-    window.location.assign(getPortalDestination());
+    let destination = resolveDashboardRoute({ user, accessRole, preferredClientRoute });
+    if (destination === "/portal" && returnTo === "/staff") {
+      try {
+        const invitation = await queryClient.fetchQuery({
+          queryKey: ["my-staff-invitation"],
+          queryFn: () => getMyStaffInvitation({ data: undefined }),
+          staleTime: 0,
+        });
+        if (invitation.pending) destination = "/staff";
+      } catch (cause) {
+        setAccessError(
+          cause instanceof Error
+            ? `We could not confirm your invitation: ${cause.message}`
+            : "We could not confirm your invitation. Please try again.",
+        );
+        return;
+      }
+    }
+    window.location.assign(
+      destination === "/admin" || destination === "/staff" ? destination : getPortalDestination(),
+    );
   };
 
   async function continueWithGoogle() {
@@ -102,14 +168,23 @@ function Login() {
 
   function getPortalDestination(): string {
     const returnTo = new URLSearchParams(window.location.search).get("returnTo");
-    const safeReturnTo =
-      returnTo &&
-      (returnTo.startsWith("/portal") || returnTo.startsWith("/admin")) &&
-      !returnTo.startsWith("//") &&
-      !returnTo.includes("\\")
-        ? returnTo
-        : null;
-    return safeReturnTo ?? dashboardDestination;
+    if (!returnTo) return preferredClientRoute;
+    if (returnTo === "/staff") return "/staff";
+    if (returnTo.includes("\\")) return preferredClientRoute;
+
+    let destination: URL;
+    try {
+      destination = new URL(returnTo, window.location.origin);
+    } catch {
+      return preferredClientRoute;
+    }
+    if (
+      destination.origin === window.location.origin &&
+      (destination.pathname === "/portal" || destination.pathname.startsWith("/portal/"))
+    ) {
+      return `${destination.pathname}${destination.search}${destination.hash}`;
+    }
+    return preferredClientRoute;
   }
 
   function continueToGuestPreview() {
@@ -120,11 +195,11 @@ function Login() {
     <main className="min-h-screen bg-paper pt-24 pb-16 md:pt-28">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <Link
-          to="/diaspora"
+          to={preferredClientRoute === "/portal/diaspora" ? "/diaspora" : "/"}
           className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted transition-colors hover:text-maroon"
         >
           <ArrowLeft className="size-3.5" />
-          Back to Abroad
+          {preferredClientRoute === "/portal/diaspora" ? "Back to Abroad" : "Back to ATRO"}
         </Link>
 
         <div className="mt-8 grid items-stretch gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -173,7 +248,7 @@ function Login() {
             <div className="flex items-center justify-between gap-4">
               <Logo />
               <span className="rounded-full bg-maroon/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-maroon">
-                Project portal
+                {preferredClientRoute === "/portal/diaspora" ? "Diaspora portal" : "Kenya portal"}
               </span>
             </div>
 
@@ -184,6 +259,10 @@ function Login() {
                 <div className="h-12 w-full animate-pulse rounded-xl bg-ink/8" />
                 <div className="h-12 w-full animate-pulse rounded-xl bg-ink/8" />
               </div>
+            ) : user && !user.isDevFallback && accessLoading ? (
+              <p className="mt-10 text-[14px] text-ink/60" aria-busy="true">
+                Checking your account access…
+              </p>
             ) : user && !user.isDevFallback ? (
               <div className="mt-10">
                 <h2 className="font-display text-[2.1rem] leading-none text-maroon">You are signed in</h2>
@@ -191,14 +270,29 @@ function Login() {
                   {user.displayName ?? user.primaryEmail ?? "Your account"} — your projects,
                   milestones and documents are one click away.
                 </p>
+                <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
+                  ATRO staff use this same sign-in. Admins and staff are sent to their own
+                  dashboards automatically.
+                </p>
+                {accessError ? (
+                  <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-800">
+                    {accessError}
+                  </p>
+                ) : null}
 
                 <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-ink/10 bg-cream px-5 py-4">
                   <span className="text-[13px] text-ink/60">Account</span>
                   <UserButton />
                 </div>
 
-                <Button variant="primary" size="lg" className="mt-6 w-full" onClick={goToDashboard}>
-                  {dashboardDestination === "/admin" ? "Open the office dashboard" : "Open the portal"}
+                <Button variant="primary" size="lg" className="mt-6 w-full" onClick={() => void goToPortal()}>
+                  {dashboardDestination === "/admin"
+                    ? "Open the admin dashboard"
+                    : dashboardDestination === "/staff"
+                      ? "Open the staff dashboard"
+                      : dashboardDestination === "/portal/diaspora"
+                        ? "Open the diaspora portal"
+                        : "Open the Kenya portal"}
                   <ArrowRight className="size-4" />
                 </Button>
               </div>
@@ -218,6 +312,10 @@ function Login() {
                 <p className="mt-2 text-[13px] leading-relaxed text-ink/55">
                   Use the email address or phone number you shared with ATRO so your project can be
                   matched to your account.
+                </p>
+                <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
+                  ATRO staff use this same sign-in. Approved staff accounts open the office
+                  dashboard automatically.
                 </p>
 
                 <div className="mt-8">

@@ -45,9 +45,11 @@ function dateLabel(value: string): string {
 
 export function ProjectCircleOwnerPanel({
   projectId,
+  experience,
   disabled = false,
 }: {
   projectId: string;
+  experience: "local" | "diaspora";
   disabled?: boolean;
 }) {
   const queryClient = useQueryClient();
@@ -67,7 +69,7 @@ export function ProjectCircleOwnerPanel({
     onSuccess: async (result) => {
       setEmail("");
       setInviteLink(
-        `${window.location.origin}/portal/invite?token=${encodeURIComponent(result.token)}`,
+        `${window.location.origin}/portal/invite?token=${encodeURIComponent(result.token)}&experience=${experience}`,
       );
       toast.success("Secure invitation link created. Share it only with the invited person.");
       await refresh();

@@ -57,7 +57,6 @@ import {
   WalkthroughPanel,
 } from "@/components/dashboard/presence-panel";
 import { formatDay } from "@/lib/presence";
-import { isAbroad } from "@/lib/abroad";
 import { clientZone, isHomeZone, zonedClock } from "@/lib/tz";
 import { getMyProfile } from "@/lib/profile-server";
 import type { ActivityItem, PortalPayload, ProjectSummary } from "@/lib/diaspora/server";
@@ -118,6 +117,7 @@ type Section =
 
 export function ClientDashboard({
   data,
+  experience,
   firstVisit,
   onPay,
   onApprove,
@@ -130,6 +130,7 @@ export function ClientDashboard({
   readOnly = false,
 }: {
   data: PortalPayload;
+  experience: "local" | "diaspora";
   firstVisit: string | null;
   onPay: (paymentId: string) => void;
   onApprove: (milestoneId: string) => void;
@@ -149,13 +150,13 @@ export function ClientDashboard({
   const p = data.project;
   const measuredWork = usesMeasuredWorkCertification(p.track);
 
-  // Shared with ProfilePanel under the same key: flipping "I live abroad" or
-  // a timezone there updates this nav and the abroad section without a reload.
+  // The selected portal experience controls navigation; the profile timezone
+  // still controls how dates and times are presented.
   const { data: profile } = useQuery({
     queryKey: ["my-profile"],
     queryFn: () => getMyProfile({ data: undefined }),
   });
-  const abroad = isAbroad(profile?.clientType ?? "");
+  const abroad = experience === "diaspora";
   const zone = clientZone(profile?.timezone ?? "", p.clientTz);
 
   const { data: selections } = useQuery({
@@ -785,7 +786,12 @@ export function ClientDashboard({
       ) : null}
 
       {section === "documents" ? (
-        <VaultPanel documents={documents} projects={data.projects} />
+        <VaultPanel
+          documents={documents}
+          projects={data.projects}
+          experience={experience}
+          measuredWork={measuredWork}
+        />
       ) : null}
 
       {section === "changes" ? <VariationsPanel project={p} onChanged={onReloaded} /> : null}
@@ -805,7 +811,11 @@ export function ClientDashboard({
       {section === "profile" ? <ProfilePanel /> : null}
 
       {section === "people" ? (
-        <ProjectCircleOwnerPanel projectId={p.id} disabled={p.isSample} />
+        <ProjectCircleOwnerPanel
+          projectId={p.id}
+          experience={experience}
+          disabled={p.isSample}
+        />
       ) : null}
 
       {section === "abroad" ? (
@@ -1254,9 +1264,13 @@ function ActivityFeed({ items }: { items: ActivityItem[] }) {
 function VaultPanel({
   documents,
   projects,
+  experience,
+  measuredWork,
 }: {
   documents: DocumentSummary[];
   projects: ProjectSummary[];
+  experience: "local" | "diaspora";
+  measuredWork: boolean;
 }) {
   return (
     <div className="space-y-5">
@@ -1313,6 +1327,7 @@ function VaultPanel({
                 <Link
                   to="/portal/document/$id"
                   params={{ id: doc.id }}
+                  search={{ experience }}
                   className="mt-3 inline-flex min-h-10 items-center text-[12px] font-medium text-burgundy underline decoration-gold decoration-2 underline-offset-4"
                 >
                   Open document
@@ -1369,6 +1384,7 @@ function VaultPanel({
                       <Link
                         to="/portal/document/$id"
                         params={{ id: doc.id }}
+                        search={{ experience }}
                         className="text-[12px] text-burgundy underline decoration-gold decoration-2 underline-offset-4"
                       >
                         Open

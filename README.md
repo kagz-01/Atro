@@ -190,6 +190,13 @@ as `https://<your-site>/api/paystack/webhook`. Keep both Paystack keys out of
 `VITE_` variables and browser code. The payment callback verifies the reference
 directly with Paystack; a browser redirect alone never marks an instalment paid.
 
+Staff invitations are created from the admin dashboard's Access section.
+Configure `RESEND_API_KEY`, a verified `RESEND_FROM` address, and the canonical
+`ATRO_SITE_URL` to email the `/staff` link. WhatsApp invitations open a
+pre-filled `wa.me` message for an admin to review and send; they do not require
+WhatsApp Business API credentials. In either case, the recipient must sign in
+with the invited email and accept before staff access is granted.
+
 Paystack settles to the merchant bank account configured in Paystack. ATRO's
 project allocations are an internal ledger, not escrow or separate bank
 accounts. Project expense records reserve only that project's Paystack-verified

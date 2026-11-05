@@ -101,9 +101,9 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { resolveDashboardRoute } from "@/lib/dashboard-routing";
 
 export const Route = createFileRoute("/admin/")({
-  component: AdminConsole,
+  component: AdminRoute,
   head: () => ({
-    meta: [{ title: "Studio console — ATRO" }],
+    meta: [{ title: "Admin dashboard — ATRO" }],
     robots: { index: false, follow: false },
   }),
 });
@@ -128,20 +128,24 @@ const kesShort = (n: number) => {
 
 /* ── gate ── */
 
-function StaffWall() {
+function StaffWall({ workspace }: { workspace: "admin" | "staff" }) {
   return (
     <main className="min-h-[70vh] flex flex-col items-center justify-center bg-stone/30 px-4">
       <div className="w-full max-w-sm rounded-2xl border border-line/50 bg-paper p-8 text-center shadow-card">
         <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-maroon/10 text-maroon">
           <Lock className="size-6" />
         </span>
-        <h1 className="mt-6 font-display text-[1.75rem] leading-none text-maroon">Office dashboard</h1>
+        <h1 className="mt-6 font-display text-[1.75rem] leading-none text-maroon">
+          {workspace === "admin" ? "Admin dashboard" : "Staff dashboard"}
+        </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          This is the ATRO office view. Sign in with the account ATRO has listed, or ask the team to
-          add your address.
+          This is the ATRO {workspace} workspace. Sign in with the email address ATRO invited, or
+          ask an admin to add your address.
         </p>
         <Button asChild className="mt-6 w-full">
-          <Link to="/login">Sign in</Link>
+          <Link to="/login" search={{ returnTo: workspace === "staff" ? "/staff" : "/admin" }}>
+            Sign in
+          </Link>
         </Button>
         <Link
           to="/portal"
@@ -3537,7 +3541,16 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
   const [busy, setBusy] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteNote, setInviteNote] = useState("");
+  const [inviteChannel, setInviteChannel] = useState<"email" | "whatsapp">("email");
+  const [invitePhone, setInvitePhone] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{
+    email: string;
+    inviteUrl: string;
+    delivery:
+      | { channel: "email"; sent: boolean; detail: string }
+      | { channel: "whatsapp"; url: string };
+  } | null>(null);
 
   const { data, refetch } = useQuery({
     queryKey: ["staff-list"],
@@ -3662,9 +3675,8 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
           className="border-gold/40 bg-gold/5"
         >
           <p className="text-[12px] leading-relaxed text-ink/55">
-            An invitation goes to an address and opens nothing on its own — the console opens the
-            first time that address signs in and accepts. Use Grant access instead for someone who
-            already has an account.
+            Invitations go to a private email or WhatsApp message. Access is still locked until the
+            invited person signs in with the matching email address and accepts.
           </p>
 
           {isAdmin ? (
@@ -3690,19 +3702,64 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
                   className="mt-1"
                 />
               </div>
+              <div>
+                <Label htmlFor="inv-channel">Send invitation by</Label>
+                <Select
+                  id="inv-channel"
+                  value={inviteChannel}
+                  onChange={(event) =>
+                    setInviteChannel(event.target.value === "whatsapp" ? "whatsapp" : "email")
+                  }
+                  className="mt-1"
+                >
+                  <option value="email">Email</option>
+                  <option value="whatsapp">WhatsApp</option>
+                </Select>
+              </div>
+              {inviteChannel === "whatsapp" ? (
+                <div>
+                  <Label htmlFor="inv-phone">Their WhatsApp number</Label>
+                  <Input
+                    id="inv-phone"
+                    type="tel"
+                    value={invitePhone}
+                    onChange={(event) => setInvitePhone(event.target.value)}
+                    placeholder="+254 7xx xxx xxx"
+                    className="mt-1"
+                  />
+                </div>
+              ) : null}
               <div className="flex items-end">
                 <Button
                   className="w-full"
-                  disabled={inviteBusy}
+                  disabled={
+                    inviteBusy ||
+                    !inviteEmail.trim() ||
+                    (inviteChannel === "whatsapp" && !invitePhone.trim())
+                  }
                   onClick={() => {
                     setInviteBusy(true);
-                    void inviteStaff({ data: { email: inviteEmail, note: inviteNote } })
+                    setInviteResult(null);
+                    void inviteStaff({
+                      data: {
+                        email: inviteEmail,
+                        note: inviteNote,
+                        channel: inviteChannel,
+                        ...(inviteChannel === "whatsapp" ? { phone: invitePhone } : {}),
+                      },
+                    })
                       .then((r) => {
-                        toast.success(
-                          r.resent
-                            ? `Invitation to ${r.email} sent again.`
-                            : `Invitation sent to ${r.email}.`,
-                        );
+                        setInviteResult(r);
+                        if (r.delivery.channel === "email") {
+                          if (r.delivery.sent) toast.success(r.delivery.detail);
+                          else toast.error(r.delivery.detail);
+                        } else {
+                          toast.success(
+                            r.resent
+                              ? `Invitation for ${r.email} is ready to resend.`
+                              : `Invitation for ${r.email} is ready to send on WhatsApp.`,
+                          );
+                        }
                         setInviteEmail("");
                         setInviteNote("");
                         void refetch();
@@ -3713,9 +3770,38 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
                       .finally(() => setInviteBusy(false));
                   }}
                 >
-                  Send invite
+                  {inviteBusy
+                    ? "Preparing invitation…"
+                    : inviteChannel === "email"
+                      ? "Send email invitation"
+                      : "Prepare WhatsApp invitation"}
                 </Button>
               </div>
+            </div>
+          ) : null}
+
+          {inviteResult ? (
+            <div className="mt-4 rounded-xl border border-ink/10 bg-white p-4">
+              <p className="text-[13px] font-medium text-maroon">
+                Invitation for {inviteResult.email}
+              </p>
+              {inviteResult.delivery.channel === "whatsapp" ? (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <Button asChild size="sm">
+                    <a href={inviteResult.delivery.url} target="_blank" rel="noreferrer">
+                      Open WhatsApp to send
+                    </a>
+                  </Button>
+                  <span className="text-[11px] text-ink/55">
+                    WhatsApp opens with a prepared message; press Send in WhatsApp.
+                  </span>
+                </div>
+              ) : (
+                <p className="mt-1 text-[12px] text-ink/60">{inviteResult.delivery.detail}</p>
+              )}
+              <p className="mt-3 break-all text-[11px] text-ink/50">
+                Dashboard link: {inviteResult.inviteUrl}
+              </p>
             </div>
           ) : null}
 
@@ -3743,9 +3829,15 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
                         disabled={inviteBusy}
                         onClick={() => {
                           setInviteBusy(true);
-                          void inviteStaff({ data: { email: i.email, note: i.note } })
-                            .then(() => {
-                              toast.success(`Invitation to ${i.email} sent again.`);
+                          void inviteStaff({
+                            data: { email: i.email, note: i.note, channel: "email" },
+                          })
+                            .then((r) => {
+                              if (r.delivery.channel === "email" && r.delivery.sent) {
+                                toast.success(`Invitation email sent again to ${i.email}.`);
+                              } else if (r.delivery.channel === "email") {
+                                toast.error(r.delivery.detail);
+                              }
                               void refetch();
                             })
                             .catch((e: unknown) =>
@@ -3887,7 +3979,11 @@ type RoleState = {
 
 const NO_ROLE: RoleState = { role: null, userId: null, email: null, invite: null };
 
-function AdminConsole() {
+function AdminRoute() {
+  return <AdminConsole workspace="admin" />;
+}
+
+export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
   const hydrated = useIsHydrated();
   const user = useCurrentUser();
   const { data: access } = useQuery({
@@ -3940,6 +4036,7 @@ function AdminConsole() {
   // Staff land on the operational queue; admins land on the portfolio.
   // Explicit navigation always wins over this default.
   const view = tab ?? "overview";
+  const expectedRoute = workspace === "admin" ? "/admin" : "/staff";
 
   const {
     data: projects,
@@ -3982,8 +4079,11 @@ function AdminConsole() {
     enabled: isStaff && !isAdmin && view === "overview",
   });
 
-  if (user && access && dashboardRoute === "/portal") {
-    return <Navigate to="/portal" replace />;
+  if (user && isStaff) {
+    const roleRoute = isOwner ? "/admin" : "/staff";
+    if (roleRoute !== expectedRoute) return <Navigate to={roleRoute} replace />;
+  } else if (user && access && dashboardRoute !== expectedRoute) {
+    return <Navigate to={dashboardRoute} replace />;
   }
 
   if (!hydrated || roleState === null) {
@@ -3998,7 +4098,7 @@ function AdminConsole() {
   // invitation, if one is waiting, answers the question before it is asked —
   // otherwise let them request access, which is otherwise a one-way door.
   if (!isStaff) {
-    if (!roleState.email) return <StaffWall />;
+    if (!roleState.email) return <StaffWall workspace={workspace} />;
     return roleState.invite ? (
       <AcceptInviteCard
         email={roleState.email}
@@ -4152,7 +4252,7 @@ function AdminConsole() {
               {view === "overview"
                 ? isOwner
                   ? "Owner dashboard"
-                  : "Office dashboard"
+                  : "Staff dashboard"
                 : activeTab.title}
             </h1>
             <p className="text-[12px] text-muted">

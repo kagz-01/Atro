@@ -6,6 +6,7 @@ import { getSql } from "@/lib/db";
 const CheckoutInput = z.object({
   projectId: z.string().uuid(),
   paymentId: z.string().uuid(),
+  experience: z.enum(["local", "diaspora"]).default("local"),
 });
 
 const VerifyInput = z.object({

@@ -26,7 +26,7 @@ export const ABROAD_HERO_STATS = [
 /** The suite. Every card routes to something that already works. */
 export const ABROAD_FEATURES: AbroadFeature[] = [
   {
-    to: "/portal",
+    to: "/portal/diaspora",
     title: "The client project portal",
     kicker: "Accounts — your build, live",
     body: "Sign in and your project is a record, not a promise: milestones with photographic evidence, the payment ledger with retention, every certificate, the document vault, and the decision log. You approve milestones, pay certified instalments through Paystack and record decisions from it.",

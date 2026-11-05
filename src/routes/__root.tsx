@@ -52,7 +52,11 @@ function RootDocument() {
   // bring their own navigation, so the marketing header, footer, WhatsApp
   // button and concierge would only get in the way of the data.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isApp = pathname.startsWith("/admin") || pathname.startsWith("/portal");
+  const isApp =
+    pathname.startsWith("/admin") ||
+    pathname === "/staff" ||
+    pathname.startsWith("/staff/") ||
+    pathname.startsWith("/portal");
 
   return (
     <html lang="en" className="antialiased" suppressHydrationWarning>

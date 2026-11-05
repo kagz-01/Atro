@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Printer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,9 @@ import { DOCUMENT_STYLES, KIND_LABEL } from "@/lib/invoices";
 import { getMyDocument } from "@/lib/invoice-server";
 
 export const Route = createFileRoute("/portal/document/$id")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    experience: search.experience === "diaspora" ? "diaspora" : "local",
+  }),
   component: DocumentPage,
   head: () => ({
     meta: [{ title: "Document — ATRO client portal" }],
@@ -17,6 +20,8 @@ export const Route = createFileRoute("/portal/document/$id")({
 
 function DocumentPage() {
   const { id } = Route.useParams();
+  const { experience } = Route.useSearch();
+  const portalRoute = experience === "diaspora" ? "/portal/diaspora" : "/portal";
   const { data: doc, isLoading, error } = useQuery({
     queryKey: ["my-document", id],
     queryFn: () => getMyDocument({ data: { id } }),
@@ -34,10 +39,10 @@ function DocumentPage() {
             variant="ghost"
             size="sm"
           >
-            <a href="/portal">
+            <Link to={portalRoute}>
               <ArrowLeft className="size-4" />
               Back to the portal
-            </a>
+            </Link>
           </Button>
           {doc && doc.status !== "void" ? (
             <Button size="sm" onClick={() => window.print()}>

@@ -3,7 +3,15 @@ import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
 type BackLinkProps = {
-  to: "/projects" | "/services" | "/zones" | "/insights" | "/guides" | "/diaspora" | "/portal";
+  to:
+    | "/projects"
+    | "/services"
+    | "/zones"
+    | "/insights"
+    | "/guides"
+    | "/diaspora"
+    | "/portal"
+    | "/portal/diaspora";
   children: ReactNode;
   tone?: "light" | "dark";
 };
