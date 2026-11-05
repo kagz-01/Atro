@@ -63,8 +63,8 @@ export function LiveProjectTeaser() {
           {LIVE_PROJECTS.map((project, i) => (
             <Reveal
               key={project.name}
+              delay={i * 0.1}
               className="group bg-paper border border-line/50 rounded-2xl overflow-hidden card-lift hover:border-gold/30"
-              style={{ transitionDelay: `${i * 100}ms` }}
             >
                 {/* Image with progress overlay */}
                 <div className="relative aspect-[16/10] overflow-hidden">

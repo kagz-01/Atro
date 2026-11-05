@@ -71,8 +71,8 @@ export function TrustStrip() {
           {STATS.map((stat, i) => (
             <Reveal
               key={stat.label}
+              delay={i * 0.1}
               className="text-center md:text-left p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
-              style={{ transitionDelay: `${i * 100}ms` }}
             >
               <AnimatedCounter
                 end={stat.value}

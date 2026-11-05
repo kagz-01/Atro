@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import { Menu, X, Home, Briefcase, Wrench, Info, Phone, Globe, ArrowRight, LogIn, LayoutDashboard } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
@@ -182,16 +183,25 @@ export function SiteHeader() {
                 <Link
                   key={item.to}
                   to={item.to}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "inline-flex h-8 items-center gap-1 rounded-full px-1.5 text-[9px] font-medium uppercase tracking-[0.12em] whitespace-nowrap transition-colors sm:px-2 lg:px-2.5 xl:text-[10px]",
+                    "motion-link relative inline-flex h-8 items-center gap-1 rounded-full px-1.5 text-[9px] font-medium uppercase tracking-[0.12em] whitespace-nowrap sm:px-2 lg:px-2.5 xl:text-[10px]",
                     active
-                      ? "bg-white/10 text-gold"
+                      ? "text-gold"
                       : "text-paper/70 hover:bg-white/[0.07] hover:text-paper",
                   )}
                 >
-                  {item.label}
+                  {active ? (
+                    <motion.span
+                      layoutId="site-nav-active"
+                      className="absolute inset-0 rounded-full bg-white/10"
+                      transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  <span className="relative z-10">{item.label}</span>
                   {"badge" in item && item.badge && (
-                    <span className="rounded-full bg-gradient-to-r from-gold to-gold-light px-1 py-0.5 text-[7px] font-bold leading-none text-maroon">
+                    <span className="relative z-10 rounded-full bg-gradient-to-r from-gold to-gold-light px-1 py-0.5 text-[7px] font-bold leading-none text-maroon">
                       {item.badge}
                     </span>
                   )}

@@ -106,8 +106,8 @@ export function Concierge() {
         </Dialog.Trigger>
 
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-[2px]" />
-          <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[calc(100dvh-1rem-env(safe-area-inset-top))] w-full flex-col overflow-hidden rounded-t-2xl border border-line bg-paper text-ink shadow-soft focus:outline-none sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:w-[min(100%-3rem,30rem)] sm:-translate-y-1/2 sm:rounded-2xl md:right-6 md:top-auto md:bottom-6 md:translate-y-0 md:max-h-[min(80dvh,46rem)]">
+          <Dialog.Overlay className="motion-overlay fixed inset-0 z-50 bg-ink/50 backdrop-blur-[2px]" />
+          <Dialog.Content className="motion-sheet fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[calc(100dvh-1rem-env(safe-area-inset-top))] w-full flex-col overflow-hidden rounded-t-2xl border border-line bg-paper text-ink shadow-soft focus:outline-none sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:w-[min(100%-3rem,30rem)] sm:-translate-y-1/2 sm:rounded-2xl md:right-6 md:top-auto md:bottom-6 md:translate-y-0 md:max-h-[min(80dvh,46rem)]">
             <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-burgundy">

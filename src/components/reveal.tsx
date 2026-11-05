@@ -1,5 +1,5 @@
-import type { CSSProperties, ReactNode } from "react";
-import { useRevealOnScroll } from "@/hooks/use-reveal";
+import type { ReactNode } from "react";
+import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -8,22 +8,22 @@ import { cn } from "@/lib/utils";
  */
 export function Reveal({
   className,
-  style,
+  delay = 0,
   children,
 }: {
   className?: string;
-  style?: CSSProperties;
+  delay?: number;
   children: ReactNode;
 }) {
-  const { ref, revealed } = useRevealOnScroll();
-
   return (
-    <div
-      ref={ref}
-      className={cn("reveal-on-scroll", revealed && "revealed", className)}
-      style={style}
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.12 }}
+      transition={{ duration: 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
+      className={cn(className)}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }

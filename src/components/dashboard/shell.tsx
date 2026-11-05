@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
   ChevronLeft,
@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { LogoMark } from "@/components/logo";
+import { RouteTransition } from "@/components/motion/route-transition";
 import { cn } from "@/lib/utils";
 
 /**
@@ -77,6 +78,7 @@ export function DashboardShell({
   const [rail, setRail] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [openAlerts, setOpenAlerts] = useState(false);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   const nav = (compact: boolean) => (
     <nav className="flex flex-col gap-6 p-4" aria-label="Sections">
@@ -161,8 +163,8 @@ export function DashboardShell({
       {/* Drawer — narrow screens */}
       <Dialog.Root open={drawer && !hideNav} onOpenChange={setDrawer}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-ink/50 backdrop-blur-[2px]" />
-          <Dialog.Content className="fixed inset-y-0 left-0 z-50 flex max-h-dvh w-[min(280px,calc(100vw-1rem))] flex-col bg-white pb-[env(safe-area-inset-bottom)] shadow-soft focus:outline-none">
+          <Dialog.Overlay className="motion-overlay fixed inset-0 z-40 bg-ink/50 backdrop-blur-[2px]" />
+          <Dialog.Content className="motion-drawer fixed inset-y-0 left-0 z-50 flex max-h-dvh w-[min(280px,calc(100vw-1rem))] flex-col bg-white pb-[env(safe-area-inset-bottom)] shadow-soft focus:outline-none">
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-ink/10 px-5">
               <Dialog.Title asChild>
                 <Link to="/" aria-label="ATRO home">
@@ -292,13 +294,15 @@ export function DashboardShell({
         ) : null}
 
         <main className="min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
-          {readOnly ? (
-            <fieldset disabled className="min-w-0 border-0 p-0">
-              {children}
-            </fieldset>
-          ) : (
-            children
-          )}
+          <RouteTransition routeKey={`${pathname}:${active}`}>
+            {readOnly ? (
+              <fieldset disabled className="min-w-0 border-0 p-0">
+                {children}
+              </fieldset>
+            ) : (
+              children
+            )}
+          </RouteTransition>
         </main>
       </div>
     </div>
@@ -317,7 +321,7 @@ function NavButton({
   onSelect: () => void;
 }) {
   const className = cn(
-    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-[background-color,color,transform,box-shadow] duration-200 ease-out",
     active ? "bg-maroon text-paper shadow-card" : "text-ink/65 hover:bg-cream hover:text-maroon",
     rail && "justify-center px-0",
   );
@@ -390,7 +394,7 @@ function AlertsBell({
         <DropdownMenu.Content
           align="end"
           sideOffset={8}
-          className="z-50 w-[320px] rounded-2xl border border-ink/10 bg-white p-2 shadow-soft focus:outline-none"
+          className="motion-popover z-50 w-[320px] rounded-2xl border border-ink/10 bg-white p-2 shadow-soft focus:outline-none"
         >
           <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
             Needs a human
@@ -452,7 +456,7 @@ function UserChip({ user }: { user: { name: string; role?: string; email?: strin
         <DropdownMenu.Content
           align="end"
           sideOffset={8}
-          className="z-50 w-[240px] rounded-2xl border border-ink/10 bg-white p-2 shadow-soft focus:outline-none"
+          className="motion-popover z-50 w-[240px] rounded-2xl border border-ink/10 bg-white p-2 shadow-soft focus:outline-none"
         >
           <div className="px-3 py-2">
             <p className="truncate text-[13px] text-maroon">{user.name}</p>

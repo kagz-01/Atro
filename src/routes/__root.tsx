@@ -5,6 +5,7 @@ import {
   Scripts,
   useRouterState,
 } from "@tanstack/react-router";
+import { MotionConfig } from "motion/react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { SiteShell } from "@/components/site-shell";
@@ -60,15 +61,17 @@ function RootDocument() {
       </head>
       <body className="bg-paper text-ink">
         <PreviewHostBridge />
-        <AuthProvider>
-          {isApp ? (
-            <Outlet />
-          ) : (
-            <SiteShell>
+        <MotionConfig reducedMotion="user">
+          <AuthProvider>
+            {isApp ? (
               <Outlet />
-            </SiteShell>
-          )}
-        </AuthProvider>
+            ) : (
+              <SiteShell>
+                <Outlet />
+              </SiteShell>
+            )}
+          </AuthProvider>
+        </MotionConfig>
         <Scripts />
       </body>
     </html>

@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, type ReactNode } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 type ScrollRevealTextProps = {
@@ -12,37 +13,16 @@ export function ScrollRevealText({
   className,
   delay = 0,
 }: ScrollRevealTextProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setTimeout(() => setVisible(true), delay);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.3 },
-    );
-
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [delay]);
-
   return (
-    <div
-      ref={ref}
-      className={cn(
-        "transition-all duration-1000 ease-out",
-        visible
-          ? "opacity-100 translate-y-0 blur-0"
-          : "opacity-0 translate-y-8 blur-[2px]",
-        className,
-      )}
+    <motion.div
+      initial={{ opacity: 0, y: 18, filter: "blur(3px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.55, delay: delay / 1000, ease: [0.22, 1, 0.36, 1] }}
+      className={cn(className)}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -61,43 +41,32 @@ export function SplitText({
   delay = 0,
   staggerDelay = 30,
 }: SplitTextProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setTimeout(() => setVisible(true), delay);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.3 },
-    );
-
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [delay]);
-
   const words = text.split(" ");
 
   return (
-    <Tag className={cn("overflow-hidden", className)}>
-      <div ref={ref} className="flex flex-wrap">
+    <Tag className={cn("overflow-hidden", className)} aria-label={text}>
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ delay: delay / 1000, staggerChildren: staggerDelay / 1000 }}
+        className="flex flex-wrap"
+        aria-hidden="true"
+      >
         {words.map((word, i) => (
-          <span
+          <motion.span
             key={i}
             className="inline-block mr-[0.3em]"
-            style={{
-              transition: `opacity 600ms ease ${i * staggerDelay}ms, transform 600ms ease ${i * staggerDelay}ms`,
-              opacity: visible ? 1 : 0,
-              transform: visible ? "translateY(0)" : "translateY(100%)",
+            variants={{
+              hidden: { opacity: 0, y: "100%" },
+              visible: { opacity: 1, y: 0 },
             }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
             {word}
-          </span>
+          </motion.span>
         ))}
-      </div>
+      </motion.div>
     </Tag>
   );
 }
@@ -119,30 +88,41 @@ export function CountUp({
 }: CountUpProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const [count, setCount] = useState(0);
-  const [started, setStarted] = useState(false);
+  const started = useRef(false);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
+    let frame = 0;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !started) {
-          setStarted(true);
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          if (prefersReducedMotion) {
+            setCount(end);
+            observer.disconnect();
+            return;
+          }
           const startTime = Date.now();
           const animate = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             const eased = 1 - Math.pow(1 - progress, 3);
             setCount(Math.floor(eased * end));
-            if (progress < 1) requestAnimationFrame(animate);
+            if (progress < 1) frame = requestAnimationFrame(animate);
           };
-          requestAnimationFrame(animate);
+          frame = requestAnimationFrame(animate);
+          observer.disconnect();
         }
       },
       { threshold: 0.5 },
     );
 
     if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [end, duration, started]);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [end, duration, prefersReducedMotion]);
 
   return (
     <span ref={ref} className={cn("tabular-nums", className)}>

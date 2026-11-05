@@ -93,7 +93,7 @@ export function CtaBand({
         <Link
           to={typeof ctaTo === "string" ? ctaTo : ctaTo.to}
           search={typeof ctaTo === "object" ? ctaTo.search : undefined}
-          className="group inline-flex h-12 items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-gold to-gold-light px-5 text-[11px] font-bold uppercase tracking-[0.16em] text-maroon shadow-glow-gold btn-lift sm:h-14 sm:px-8 sm:text-[12px]"
+          className="group motion-link inline-flex h-12 items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-gold to-gold-light px-5 text-[11px] font-bold uppercase tracking-[0.16em] text-maroon shadow-glow-gold btn-lift sm:h-14 sm:px-8 sm:text-[12px]"
         >
           <span className="relative z-10">{ctaLabel}</span>
           <ArrowRight className="size-5 relative z-10 group-hover:translate-x-1 transition-transform" />

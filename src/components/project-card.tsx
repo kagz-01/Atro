@@ -12,7 +12,7 @@ export function ProjectCard({ project }: { project: Project }) {
       to="/projects/$slug"
       params={{ slug: project.slug }}
       aria-label={`Read about ${project.name}`}
-      className="group block overflow-hidden rounded-[1.25rem] border border-line/50 bg-white shadow-card transition-all duration-300 hover:border-gold/30 hover:shadow-card-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-burgundy"
+      className="group card-lift block overflow-hidden rounded-[1.25rem] border border-line/50 bg-white shadow-card transition-all duration-300 hover:border-gold/30 hover:shadow-card-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-burgundy"
     >
       <div className="relative aspect-square overflow-hidden bg-stone sm:aspect-[4/3]">
         <img

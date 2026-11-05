@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { Concierge } from "@/components/concierge";
+import { RouteTransition } from "@/components/motion/route-transition";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { WhatsappFab } from "@/components/whatsapp-fab";
@@ -39,7 +40,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
       </a>
       <SiteHeader />
       <main id="main" className="flex-1">
-        {children}
+        <RouteTransition routeKey={pathname}>{children}</RouteTransition>
       </main>
       {isHome ? <SiteFooter /> : null}
       {!isStartingProject ? (

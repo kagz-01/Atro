@@ -386,7 +386,7 @@ function Proof({ projects }: { projects: ReturnType<typeof featuredProjects> }) 
 
         <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 stagger">
           {projects.slice(0, 3).map((p, i) => (
-            <Reveal key={p.slug} style={{ transitionDelay: `${i * 100}ms` }}>
+            <Reveal key={p.slug} delay={i * 0.1}>
               <ProjectCard project={p} />
             </Reveal>
           ))}
@@ -443,11 +443,11 @@ function Services() {
 
         <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 stagger">
           {featuredServices.map(({ category, service }, i) => (
-            <Reveal key={category.id} style={{ transitionDelay: `${i * 80}ms` }}>
+            <Reveal key={category.id} delay={i * 0.08}>
               <Link
                 to="/services/$slug"
                 params={{ slug: service.slug }}
-                className="group block h-full overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/3 transition-all duration-300 hover:border-gold/35 hover:shadow-[0_30px_70px_rgba(0,0,0,0.2)]"
+                className="group card-lift block h-full overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/3 transition-all duration-300 hover:border-gold/35 hover:shadow-[0_30px_70px_rgba(0,0,0,0.2)]"
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-stone">
                   <img
@@ -590,10 +590,10 @@ function Tools() {
 
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 stagger">
           {tools.map((t, i) => (
-            <Reveal key={t.title} style={{ transitionDelay: `${i * 100}ms` }}>
+            <Reveal key={t.title} delay={i * 0.1}>
               <Link
                 to={t.link}
-                className="group block h-full rounded-xl border border-maroon/15 bg-[#1b1516] p-3 text-left text-paper transition-all duration-300 hover:border-gold/35 hover:bg-[#241a1b] hover:shadow-[0_25px_55px_rgba(60,5,8,0.18)] sm:rounded-[1.5rem] sm:p-5 lg:p-7"
+                className="group card-lift block h-full rounded-xl border border-maroon/15 bg-[#1b1516] p-3 text-left text-paper transition-all duration-300 hover:border-gold/35 hover:bg-[#241a1b] hover:shadow-[0_25px_55px_rgba(60,5,8,0.18)] sm:rounded-[1.5rem] sm:p-5 lg:p-7"
               >
                 <div className="flex items-center justify-between gap-4">
                   <span className="flex size-8 items-center justify-center rounded-xl bg-white/8 text-lg sm:size-12 sm:rounded-2xl sm:text-2xl">{t.icon}</span>
