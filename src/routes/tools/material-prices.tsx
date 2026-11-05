@@ -47,7 +47,7 @@ function MaterialPricesPage() {
           <div className="max-w-xl">
             <h2 className="font-display text-3xl text-paper">Need a project-specific cost plan?</h2>
             <p className="mt-3 text-paper/70">
-              These prices are indicative. A real BOQ locks in quantities, rates and procurement timing — before you spend on site.
+              A measured BOQ records the project quantities and priced assumptions. Confirm current supplier quotations, delivery, tax and contract terms before ordering or committing.
             </p>
             <Link
               to="/start"

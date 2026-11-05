@@ -1,4 +1,4 @@
-// ATRO financial documents — certificates, invoices, receipts, statements.
+// ATRO financial documents — quotations, certificates, payment requests, receipts and statements.
 //
 // Pure rendering and arithmetic, no I/O, so it is unit-testable and the numbers
 // on a document can be checked independently of the database.
@@ -7,17 +7,27 @@
 // a document on demand would mean an invoice could quietly change after money
 // moved, which is exactly the thing a certificate exists to prevent.
 
-export type DocumentKind = "certificate" | "invoice" | "receipt" | "statement";
+export type DocumentKind =
+  | "quotation"
+  | "certificate"
+  | "payment_request"
+  | "invoice"
+  | "receipt"
+  | "statement";
 
 export const KIND_LABEL: Record<DocumentKind, string> = {
+  quotation: "Quotation",
   certificate: "Payment certificate",
-  invoice: "Invoice",
+  payment_request: "Payment request — not a tax invoice",
+  invoice: "Tax invoice",
   receipt: "Receipt",
   statement: "Statement of account",
 };
 
 export const KIND_CODE: Record<DocumentKind, string> = {
+  quotation: "QUOT",
   certificate: "CERT",
+  payment_request: "PAY",
   invoice: "INV",
   receipt: "RCPT",
   statement: "STMT",
@@ -60,6 +70,14 @@ export type DocumentData = {
   amountPaid: number;
   paidLabel?: string;
   currency: string;
+  validUntil?: string;
+  etimsReference?: string;
+  registeredName?: string;
+  businessAddress?: string;
+  kraPin?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
 };
 
 /** Human number: `ATR-2026-CERT-0007`. */
@@ -102,13 +120,19 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Shareable, printable HTML. Self-contained: no scripts, no external assets.
+ * Printable HTML. No scripts; the letterhead logo is served by this application.
  *
  * Two layouts on purpose: an invoice prices work and ends in an amount due; a
  * statement reports a position and ends in what is actually outstanding.
  */
 export function renderHtml(data: DocumentData): string {
   const layout = data.layout ?? "invoice";
+  const registeredName = data.registeredName ?? "ATRO Design & Construction";
+  const businessAddress = data.businessAddress ?? "PLACEHOLDER — TO BE PROVIDED";
+  const kraPin = data.kraPin ?? "PLACEHOLDER — TO BE PROVIDED";
+  const contactEmail = data.contactEmail ?? "hello@atroconstruction.co.ke";
+  const contactPhone = data.contactPhone ?? "+254 799 034 712";
+  const website = data.website ?? "atroconstruction.co.ke";
 
   const rows = data.lines
     .map((line) =>
@@ -154,21 +178,46 @@ ${vatRow}`;
     data.amountPaid > 0
       ? `<p class="paid">${escapeHtml(data.paidLabel ?? "Received")}: <strong>${formatMoney(data.amountPaid, data.currency)}</strong></p>`
       : "";
+  const documentNotice =
+    data.kind === "payment_request"
+      ? `<p class="notice">Payment request only — this is not a tax invoice. ATRO is not yet issuing eTIMS tax invoices through this system.</p>`
+      : data.kind === "invoice" && !data.etimsReference
+        ? `<p class="notice">Draft only — not a tax invoice. An eTIMS control reference is required before this can be issued as a tax invoice.</p>`
+        : data.kind === "quotation"
+        ? `<p class="notice">This quotation is not a contract or signed engagement. Work begins only after the scope, terms and engagement are agreed in writing.</p>`
+          : "";
+  const validUntil =
+    data.kind === "quotation" && data.validUntil
+      ? `<div><dt>Valid until</dt><dd>${escapeHtml(formatDate(data.validUntil))}</dd></div>`
+      : "";
+  const retentionNote =
+    data.kind === "certificate" || data.kind === "statement"
+      ? `<p>Retention, if agreed in the contract, is held against defects and is payable only under the contract terms.</p>`
+      : "";
 
   return `<article class="doc">
   <header>
-    <p class="brand">ATRO Design &amp; Construction</p>
-    <p class="brand-sub">Designing &amp; building better structures · Nairobi, Kenya</p>
+    <div class="letterhead">
+      <img class="logo" src="/logo/logo.png" alt="ATRO Design &amp; Construction">
+      <div>
+        <p class="brand">${escapeHtml(registeredName)}</p>
+        <p class="brand-sub">${escapeHtml(businessAddress)}</p>
+        <p class="contact">${escapeHtml(contactEmail)} · ${escapeHtml(contactPhone)} · ${escapeHtml(website)}</p>
+      </div>
+    </div>
+    <p class="tax-details">KRA PIN: ${escapeHtml(kraPin)}</p>
     <h1>${escapeHtml(KIND_LABEL[data.kind])}</h1>
     <dl>
       <div><dt>Number</dt><dd>${escapeHtml(data.number)}</dd></div>
       <div><dt>Date</dt><dd>${escapeHtml(formatDate(data.issuedAt))}</dd></div>
+      ${validUntil}
       <div><dt>Project</dt><dd>${escapeHtml(data.projectReference)} — ${escapeHtml(data.projectTitle)}</dd></div>
       <div><dt>Issued to</dt><dd>${escapeHtml(data.issuedTo)}</dd></div>
       <div><dt>Issued by</dt><dd>${escapeHtml(data.issuedBy)}</dd></div>
     </dl>
   </header>
 
+  ${documentNotice}
   ${data.narrative ? `<p class="narrative">${escapeHtml(data.narrative)}</p>` : ""}
 
   <table>
@@ -185,8 +234,8 @@ ${subtotalRows}
   ${paidLine}
 
   <footer>
-    <p>This document was issued by ATRO Design &amp; Construction and reflects the project record at the date above.</p>
-    <p>Retention held against defects is not payable until the defects liability period closes.</p>
+    <p>Issued by ${escapeHtml(registeredName)} · ${escapeHtml(contactEmail)} · ${escapeHtml(contactPhone)}</p>
+    ${retentionNote}
   </footer>
 </article>`;
 }
@@ -218,10 +267,15 @@ export function renderText(data: DocumentData): string {
         }`;
 
   return [
-    `ATRO Design & Construction`,
+    data.registeredName ?? "ATRO Design & Construction",
+    `${data.businessAddress ?? "PLACEHOLDER — TO BE PROVIDED"} · KRA PIN: ${data.kraPin ?? "PLACEHOLDER — TO BE PROVIDED"}`,
+    `${data.contactEmail ?? "hello@atroconstruction.co.ke"} · ${data.contactPhone ?? "+254 799 034 712"} · ${data.website ?? "atroconstruction.co.ke"}`,
     `${KIND_LABEL[data.kind].toUpperCase()}`,
     `Number: ${data.number}`,
     `Date: ${formatDate(data.issuedAt)}`,
+    data.kind === "quotation" && data.validUntil
+      ? `Valid until: ${formatDate(data.validUntil)}`
+      : "",
     `Project: ${data.projectReference} — ${data.projectTitle}`,
     `Issued to: ${data.issuedTo}`,
     `Issued by: ${data.issuedBy}`,
@@ -232,8 +286,13 @@ export function renderText(data: DocumentData): string {
     data.amountPaid > 0
       ? `  ${data.paidLabel ?? "Received"} — ${data.amountPaid.toLocaleString("en-KE")} ${data.currency}`
       : "",
-    "",
-    "Retention held against defects is not payable until the defects liability period closes.",
+    data.kind === "quotation"
+      ? "This quotation is not a contract or signed engagement. Work begins only after the scope, terms and engagement are agreed in writing."
+      : data.kind === "payment_request" || (data.kind === "invoice" && !data.etimsReference)
+        ? "Payment request/draft only — not a tax invoice. ATRO is not yet issuing eTIMS tax invoices through this system."
+        : data.kind === "certificate" || data.kind === "statement"
+          ? "Retention, if agreed in the contract, is held against defects and is payable only under the contract terms."
+          : "",
   ]
     .filter((line) => line !== "")
     .join("\n");
@@ -243,13 +302,17 @@ export function renderText(data: DocumentData): string {
 export const DOCUMENT_STYLES = `
 .doc{max-width:760px;margin:0 auto;background:#fff;color:#2b2b2b;font-family:Georgia,'Times New Roman',serif}
 .doc header{border-bottom:2px solid #3C0508;padding-bottom:1.25rem;margin-bottom:1.5rem}
+.doc .letterhead{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.doc .logo{width:88px;height:88px;object-fit:contain}
 .doc .brand{font-family:system-ui,sans-serif;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#3C0508;margin:0}
-.doc .brand-sub{font-family:system-ui,sans-serif;font-size:12px;color:#777;margin:.35rem 0 1.25rem}
+.doc .brand-sub{font-family:system-ui,sans-serif;font-size:12px;color:#777;margin:.35rem 0}
+.doc .contact,.doc .tax-details{font-family:system-ui,sans-serif;font-size:10px;color:#777;margin:.35rem 0}
+.doc .tax-details{margin:.65rem 0 1.25rem}
 .doc h1{font-family:system-ui,sans-serif;font-size:26px;letter-spacing:.01em;color:#3C0508;margin:0 0 1rem}
 .doc dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem 1.5rem;margin:0;font-family:system-ui,sans-serif;font-size:13px}
 .doc dt{color:#8a6a3a;text-transform:uppercase;letter-spacing:.12em;font-size:10px;margin:0 0 .2rem}
 .doc dd{margin:0;color:#2b2b2b}
-.doc .narrative{font-size:15px;line-height:1.7;margin:0 0 1.5rem}
+.doc .narrative{font-size:15px;line-height:1.7;margin:0 0 1.5rem;white-space:pre-line}
 .doc table{width:100%;border-collapse:collapse;font-family:system-ui,sans-serif;font-size:13px}
 .doc th{text-align:left;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8a6a3a;border-bottom:1px solid #d9d2c7;padding:.6rem .5rem}
 .doc td{padding:.7rem .5rem;border-bottom:1px solid #eee7dd;vertical-align:top}
@@ -258,6 +321,7 @@ export const DOCUMENT_STYLES = `
 .doc tfoot td{border-bottom:none;padding-top:.7rem}
 .doc tfoot .total td{border-top:2px solid #3C0508;font-weight:700;color:#3C0508;padding-top:.8rem}
 .doc .paid{margin:1.25rem 0 0;font-family:system-ui,sans-serif;font-size:13px}
+.doc .notice{margin:0 0 1rem;padding:.75rem 1rem;border:1px solid #dfc48d;background:#fff9ed;color:#5a390d;font-family:system-ui,sans-serif;font-size:12px;line-height:1.55}
 .doc footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #eee7dd;font-family:system-ui,sans-serif;font-size:11px;color:#777}
-@media print{.doc{border:0}.no-print{display:none}}
+@media print{.doc{border:0}.no-print{display:none}@page{size:A4;margin:18mm}}
 `;

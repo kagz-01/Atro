@@ -92,7 +92,7 @@ export const DESIGN_KB = {
       name: "Concept Design",
       description: "A direction that can be built. Options, not a single precious sketch. Cost sits in the room while we draw.",
       duration: "2-4 weeks",
-      activities: ["2-3 concept options", "Massing studies", "Cost estimate", "Client review"],
+      activities: ["2-3 concept options", "Massing studies", "Cost-driver review", "Client review"],
     },
     {
       phase: 4,

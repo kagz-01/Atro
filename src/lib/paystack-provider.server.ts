@@ -164,7 +164,7 @@ export async function beginPaystackCheckout(
   const payment = rows[0];
   if (!payment || payment.source === "sample") throw new Error("Project not found.");
   if (payment.status !== "certified") {
-    throw new Error("Only a certified project payment can be paid online.");
+    throw new Error("This project payment stage is not yet approved for payment.");
   }
   const amount = Number(payment.amount);
   const subunits = paystackAmountSubunits(amount);
@@ -208,7 +208,7 @@ export async function beginPaystackCheckout(
           atro_payment_id: input.paymentId,
           project_reference: input.projectId,
           installment: payment.label,
-          certificate: payment.certificate ?? "",
+          stage_reference: payment.certificate ?? "",
         },
       }),
     });

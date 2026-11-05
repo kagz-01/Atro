@@ -12,6 +12,7 @@ import { getSql, type Sql } from "@/lib/db";
 import { normaliseEmail, type StaffIdentity } from "@/lib/staff";
 import { canScheduleProjectCalls } from "@/lib/privileges";
 import { trackById, TRACK_IDS, type ProjectBrief } from "@/lib/diaspora/portal-schema";
+import { usesMeasuredWorkCertification } from "@/lib/diaspora/tracks";
 import { generateProject } from "@/lib/diaspora/server";
 import { loadProjectById, logActivity, type PortalPayload } from "@/lib/diaspora/server";
 import { leadLocality } from "@/lib/enquiry-lead";
@@ -23,7 +24,11 @@ import {
   releaseHeld,
   retryPending,
 } from "@/lib/notify";
-import { issueCertificateFor, issueStatementFor } from "@/lib/invoice-server";
+import {
+  issueCertificateFor,
+  issuePaymentRequestFor,
+  issueStatementFor,
+} from "@/lib/invoice-server";
 import {
   lifecycleTransitionError,
   PROJECT_LIFECYCLE_STATES,
@@ -900,16 +905,28 @@ export async function certifyPaymentFor(
   staff: { email: string; userId: string },
   data: z.infer<typeof CertifyPayment>,
 ) {
-  const rows = await sql<{ label: string; amount: number; status: string }>`
-      select label, amount, status from portal_payments
-      where id = ${data.paymentId} and project_id = ${data.projectId} limit 1
+  const rows = await sql<{
+    label: string;
+    amount: number;
+    status: string;
+    track: string;
+    reference: string;
+  }>`
+      select pay.label, pay.amount, pay.status, project.track, project.reference
+      from portal_payments pay
+      join portal_projects project on project.id = pay.project_id
+      where pay.id = ${data.paymentId} and pay.project_id = ${data.projectId} limit 1
     `;
   const payment = rows[0];
   if (!payment) throw new Error("Payment not found on that project.");
   if (payment.status === "paid") throw new Error("That payment is already released.");
 
+  const measuredWork = usesMeasuredWorkCertification(payment.track);
   const amount = Number(payment.amount ?? 0);
   const wasCertified = payment.status === "certified";
+  const reference = measuredWork
+    ? data.certificate
+    : data.certificate.replace(/^QS\//, "STAGE/");
 
   await sql`
       update portal_payments set status = 'certified', certificate = ${data.certificate}
@@ -932,28 +949,46 @@ export async function certifyPaymentFor(
     sql,
     data.projectId,
     "payment",
-    `Certificate issued: ${payment.label}`,
-    `${data.certificate} — KES ${amount.toLocaleString("en-KE")} certified and awaiting payment.`,
+    measuredWork ? `Payment certified: ${payment.label}` : `Payment stage approved: ${payment.label}`,
+    `${reference} — KES ${amount.toLocaleString("en-KE")} confirmed and awaiting payment.`,
   );
-  // The paperwork follows the money: the certificate is what authorises release,
-  // so it is issued first and the message can link straight to it.
-  const document = await issueCertificateFor(sql, staff.email, {
+  const certificate = measuredWork
+    ? await issueCertificateFor(sql, staff.email, {
+        projectId: data.projectId,
+        paymentId: data.paymentId,
+        label: payment.label,
+        certificate: reference,
+        amount,
+      })
+    : null;
+  const paymentRequest = await issuePaymentRequestFor(sql, staff.email, {
     projectId: data.projectId,
     paymentId: data.paymentId,
     label: payment.label,
-    certificate: data.certificate,
+    reference,
+    ...(measuredWork ? { certificate: reference } : {}),
     amount,
   });
 
   await notify({
     projectId: data.projectId,
     kind: "payment",
-    title: `Certified for release: ${payment.label}`,
-    body: `KES ${amount.toLocaleString("en-KE")} under certificate ${data.certificate}. Release it from your portal.`,
-    documentUrl: document ? `/portal/document/${document.id}` : undefined,
+    title: `${measuredWork ? "Certified" : "Stage approved"} for payment: ${payment.label}`,
+    body: measuredWork
+      ? `KES ${amount.toLocaleString("en-KE")} under certificate ${reference}. Review the payment request in your portal.`
+      : `KES ${amount.toLocaleString("en-KE")} for the agreed stage ${reference}. Review the payment request in your portal.`,
+    documentUrl: paymentRequest
+      ? `/portal/document/${paymentRequest.id}`
+      : certificate
+        ? `/portal/document/${certificate.id}`
+        : undefined,
   });
 
-  return { ok: true as const, amount, documentNumber: document?.number ?? null };
+  return {
+    ok: true as const,
+    amount,
+    documentNumber: paymentRequest?.number ?? certificate?.number ?? null,
+  };
 }
 
 export async function addDocumentFor(
@@ -1170,9 +1205,10 @@ export const listProjectLifecycleHistory = createServerFn({ method: "GET" })
 
 const OpenFromEnquiry = z.object({
   enquiryId: z.string().min(1),
+  quotationId: z.string().uuid(),
+  engagementConfirmed: z.literal(true),
   title: z.string().trim().min(3).max(120),
   track: z.enum(TRACK_IDS as [string, ...string[]]).default("construction"),
-  contractValue: z.number().int().min(500_000).max(50_000_000_000),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   zone: z.string().trim().max(60).default(""),
@@ -1225,6 +1261,25 @@ export async function openProjectFromEnquiryFor(
 
   if (enquiry.already) return { projectId: enquiry.already, clientEmail: email };
 
+  const quotationRows = await sql<{ id: string; total: number }>`
+    select id, total from portal_invoice
+    where id = ${data.quotationId}
+      and enquiry_id = ${data.enquiryId}
+      and project_id is null
+      and kind = 'quotation'
+      and status = 'issued'
+      and valid_until >= current_date
+    limit 1
+  `;
+  const quotation = quotationRows[0];
+  if (!quotation) {
+    throw new Error("Choose a current quotation for this enquiry before opening the project.");
+  }
+  const contractValue = Number(quotation.total);
+  if (!Number.isSafeInteger(contractValue) || contractValue < 500_000) {
+    throw new Error("The accepted quotation total is below the minimum project value.");
+  }
+
   const year = new Date().getFullYear();
   const reference = `ATR-${year}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
   const track = trackById(data.track);
@@ -1237,7 +1292,7 @@ export async function openProjectFromEnquiryFor(
     title: data.title.trim(),
     plot: data.plot.trim() || enquiry.zone,
     area: data.area.trim(),
-    contractValue: data.contractValue,
+    contractValue,
     startDate: data.startDate,
     targetDate: data.targetDate,
     clientCity: locality.clientCity,
@@ -1255,6 +1310,17 @@ export async function openProjectFromEnquiryFor(
   const projectId = await generateProject(sql, "", brief, reference, email, enquiry.name);
 
   await sql`
+    update portal_invoice
+    set project_id = ${projectId}, status = 'accepted'
+    where id = ${data.quotationId}
+      and enquiry_id = ${data.enquiryId}
+      and project_id is null
+      and kind = 'quotation'
+      and status = 'issued'
+      and valid_until >= current_date
+  `;
+
+  await sql`
     update enquiries set status = 'converted', project_id = ${projectId}, updated_at = now()
     where id = ${data.enquiryId}
   `;
@@ -1263,7 +1329,7 @@ export async function openProjectFromEnquiryFor(
     projectId,
     "note",
     "Project opened from an enquiry",
-    `Prepared by ${staff.email} from enquiry ${enquiry.id}. It will appear for ${email} as soon as they sign in with that address or the number on the enquiry.` +
+    `Prepared by ${staff.email} from enquiry ${enquiry.id} after confirming the signed engagement against quotation ${quotation.id} (KES ${contractValue.toLocaleString("en-KE")}). It will appear for ${email} as soon as they sign in with that address or the number on the enquiry.` +
       (enquiry.diaspora
         ? ` They are based in ${enquiry.diaspora_country || "abroad"}${locality.clientTz ? `, on ${locality.clientTz}` : ""}.`
         : ""),

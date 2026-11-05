@@ -16,6 +16,7 @@ const ADMIN_ONLY: PrivilegedOp[] = [
   "certify-payment",
   "release-retention",
   "issue-statement",
+  "issue-quotation",
   "void-document",
   "set-retainer",
   "record-project-expense",
@@ -89,6 +90,7 @@ describe("privilege matrix", () => {
       assert.equal(refusalFor("grant-access"), "Only an admin can change studio access.");
       assert.equal(refusalFor("revoke-access"), "Only an admin can change studio access.");
       assert.equal(refusalFor("issue-statement"), "Only an admin can issue a statement.");
+      assert.equal(refusalFor("issue-quotation"), "Only an admin can issue a quotation.");
     });
   });
 });

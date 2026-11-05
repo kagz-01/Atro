@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
+import { startAuthCookieSync } from "./client";
 
 /**
  * App-wide client provider mounted once near the top of `<body>` in `__root.tsx`.
@@ -15,6 +16,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       }),
   );
+  useEffect(() => startAuthCookieSync(), []);
+
   return (
     <QueryClientProvider client={client}>
       {children}

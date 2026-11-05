@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { CtaBand } from "@/components/page-hero";
-import { SERVICES, SERVICE_CATEGORIES, type ServiceCategory } from "@/lib/site";
+import { MYHARDWARE_URL, SERVICES, SERVICE_CATEGORIES, type ServiceCategory } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/services/")({
@@ -155,7 +155,7 @@ function ServicesPage() {
               </p>
             </div>
             <a
-              href="https://myhardware.co.ke"
+              href={MYHARDWARE_URL}
               target="_blank"
               rel="noreferrer"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-maroon px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-paper transition-colors hover:bg-[#5b1c26]"

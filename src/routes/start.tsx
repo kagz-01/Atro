@@ -113,17 +113,17 @@ function StartPage() {
                 {
                   num: "1",
                   title: "Project type",
-                  desc: "Home, commercial space or institutional project.",
+                  desc: "Choose the closest type of work so we can direct your brief to the right team. We’ll confirm details with you.",
                 },
                 {
                   num: "2",
                   title: "Location",
-                  desc: "Choose a county or tell us if you are still deciding.",
+                  desc: "Search by county, add a nearby town if you know it, or continue while you decide.",
                 },
                 {
                   num: "3",
-                  title: "Project brief",
-                  desc: "Optional area or finish preferences, or a short custom brief.",
+                  title: "Scope & finish",
+                  desc: "Scope means the work to be done. Share an optional rough area and finish preference; these help us understand the brief, not calculate a price.",
                 },
                 {
                   num: "4",

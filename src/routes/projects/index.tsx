@@ -18,8 +18,7 @@ export const Route = createFileRoute("/projects/")({
   }),
 });
 
-const TYPES: Array<ProjectType | "All"> = [
-  "All",
+const TYPES: ProjectType[] = [
   "Residential",
   "Commercial",
   "Institutional",
@@ -27,8 +26,7 @@ const TYPES: Array<ProjectType | "All"> = [
   "School",
   "Renovation",
 ];
-const STATUSES: Array<ProjectStatus | "All"> = [
-  "All",
+const STATUSES: ProjectStatus[] = [
   "Completed",
   "Ongoing",
   "In design",
@@ -37,9 +35,14 @@ const STATUSES: Array<ProjectStatus | "All"> = [
 ];
 
 function ProjectsPage() {
-  const [type, setType] = useState<(typeof TYPES)[number]>("All");
-  const [status, setStatus] = useState<(typeof STATUSES)[number]>("All");
+  const [type, setType] = useState<ProjectType | "All">("All");
+  const [status, setStatus] = useState<ProjectStatus | "All">("All");
   const [zone, setZone] = useState("All");
+  const activeFilters = [
+    type !== "All" ? type : "",
+    status !== "All" ? status : "",
+    zone !== "All" ? ZONES.find((item) => item.slug === zone)?.name ?? zone : "",
+  ].filter(Boolean);
 
   const filtered = useMemo(() => {
     return PROJECTS.filter((p) => {
@@ -59,18 +62,89 @@ function ProjectsPage() {
         image="/catalog/images/karen.webp"
       />
       <section className="mx-auto max-w-[1400px] px-4 py-10 sm:px-8 md:px-12 lg:px-16 lg:py-12">
-        <div className="flex flex-col gap-3 sm:gap-4">
-          <FilterRow label="Type" value={type} onChange={setType} options={TYPES} />
-          <FilterRow label="Status" value={status} onChange={setStatus} options={STATUSES} />
-          <FilterRow
-            label="Zone"
-            value={zone}
-            onChange={setZone}
-            options={["All", ...ZONES.map((z) => z.slug)]}
-            labels={{ All: "All", ...Object.fromEntries(ZONES.map((z) => [z.slug, z.name])) }}
-          />
-        </div>
-        <p className="mt-8 text-[10px] uppercase tracking-[0.16em] text-muted sm:text-[11px]">
+        <details className="group rounded-2xl border border-line bg-paper">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold text-maroon">Filter projects</span>
+              <span className="mt-0.5 block truncate text-[11px] text-muted">
+                {activeFilters.length > 0 ? activeFilters.join(" · ") : "Type, status or location"}
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-2">
+              {activeFilters.length > 0 ? (
+                <span className="rounded-full bg-burgundy px-2 py-0.5 text-[10px] font-semibold text-white">
+                  {activeFilters.length} active
+                </span>
+              ) : null}
+              <span className="text-xs text-burgundy group-open:hidden">Show</span>
+              <span className="hidden text-xs text-burgundy group-open:inline">Hide</span>
+            </span>
+          </summary>
+          <div className="grid gap-3 border-t border-line p-4 sm:grid-cols-3">
+            <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+              Type
+              <select
+                aria-label="Filter projects by type"
+                value={type}
+                onChange={(event) => setType(event.target.value as ProjectType | "All")}
+                className="h-10 min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-normal normal-case tracking-normal text-ink"
+              >
+                <option value="All">All types</option>
+                {TYPES.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+              Status
+              <select
+                aria-label="Filter projects by status"
+                value={status}
+                onChange={(event) => setStatus(event.target.value as ProjectStatus | "All")}
+                className="h-10 min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-normal normal-case tracking-normal text-ink"
+              >
+                <option value="All">All statuses</option>
+                {STATUSES.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+              Location
+              <select
+                aria-label="Filter projects by location"
+                value={zone}
+                onChange={(event) => setZone(event.target.value)}
+                className="h-10 min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-normal normal-case tracking-normal text-ink"
+              >
+                <option value="All">All locations</option>
+                {ZONES.map((option) => (
+                  <option key={option.slug} value={option.slug}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {activeFilters.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setType("All");
+                  setStatus("All");
+                  setZone("All");
+                }}
+                className="justify-self-start text-xs font-medium text-burgundy underline sm:col-span-3"
+              >
+                Clear filters
+              </button>
+            ) : null}
+          </div>
+        </details>
+        <p className="mt-4 text-[10px] uppercase tracking-[0.16em] text-muted sm:text-[11px]">
           {filtered.length} project{filtered.length === 1 ? "" : "s"}
         </p>
         {filtered.length === 0 ? (
@@ -87,43 +161,5 @@ function ProjectsPage() {
       </section>
       <CtaBand title="Discuss your project" />
     </>
-  );
-}
-
-function FilterRow<T extends string>({
-  label,
-  value,
-  onChange,
-  options,
-  labels,
-}: {
-  label: string;
-  value: T;
-  onChange: (v: T) => void;
-  options: readonly T[] | T[];
-  labels?: Record<string, string>;
-}) {
-  return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-      <span className="w-full text-[10px] uppercase tracking-[0.16em] text-muted sm:w-16 sm:text-[11px]">
-        {label}
-      </span>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onChange(opt)}
-            className={`h-9 rounded-full border px-2.5 text-[9px] font-medium uppercase tracking-[0.12em] transition-colors sm:h-10 sm:px-3 sm:text-[11px] ${
-              value === opt
-                ? "border-burgundy bg-burgundy text-paper"
-                : "border-line text-ink hover:border-burgundy hover:text-burgundy"
-            }`}
-          >
-            {labels?.[opt] ?? opt}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }

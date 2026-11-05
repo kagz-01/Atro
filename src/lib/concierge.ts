@@ -63,9 +63,8 @@ ${c.phases.map((p) => `${p.name}: ${p.description}`).join("\n")}
 ## FINISH LEVELS
 ${d.finishLevels.map((f) => `${f.name}: ${f.budgetNote} ${f.description}`).join("\n")}
 
-## PRICING POLICY (dynamic and indicative)
+## PRICING POLICY (dated references and project-specific quotations)
 Pricing principle: ${ref.pricingPolicy.principle}
-Refresh cadence: Materials ${ref.pricingPolicy.updateCadence.materials}; labour ${ref.pricingPolicy.updateCadence.labour}; utility connections ${ref.pricingPolicy.updateCadence.utilityConnections}.
 Source hierarchy: ${ref.pricingPolicy.sourceHierarchy.join("; ")}.
 Update triggers: ${ref.pricingPolicy.updateTriggers.join("; ")}.
 Decision rule: ${ref.pricingPolicy.decisionRule}

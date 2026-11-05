@@ -55,14 +55,14 @@ Same items, hamburger menu. Tools gets a "New" badge.
 | # | Feature | Route/Location | Effort | Details |
 |---|---------|---------------|--------|---------|
 | 1.1 | Hero → 3/4 viewport | `/` Hero section | Done | `h-[75svh]` — already implemented |
-| 1.2 | AI Cost Calculator v2 | `/` CostTeaser section | Medium | Upgrade slider → upload sketch, select params, get instant range |
+| 1.2 | AI Cost Calculator v2 | `/` CostTeaser section | Deferred | Do not generate instant whole-build ranges without validated, current location- and scope-specific rate data. Replaced by dated PPRA material references and a manual BOQ worksheet. |
 | 1.3 | Interactive Zone Map | `/zones` + `/` ProblemAndZone | Medium | SVG Kenya map with clickable counties, real-time availability |
 | 1.4 | Trust Strip Enhancement | `/` TrustStrip | Low | Add counters (projects completed, years, zones) with animation |
 | 1.5 | Live Project Teaser | `/` (new section) | Medium | Show 1-2 ongoing projects with latest photo + progress % |
 
 **Deliverables:**
 - Updated hero section (done)
-- Enhanced cost calculator with more inputs
+- No whole-project calculator until a defensible, maintained pricing dataset is available
 - Animated trust counters
 - "Live from site" section showing ongoing work
 
@@ -219,7 +219,7 @@ POST /api/enquiry           — Form submission
 | Feature | Impact | Effort | Priority |
 |---------|--------|--------|----------|
 | Hero 3/4 viewport | High | Low | ✅ Done |
-| AI Cost Calculator v2 | High | Medium | P1 |
+| AI Cost Calculator v2 | Deferred | Medium | Revisit only when validated current location- and scope-specific rate data is maintained |
 | Interactive Zone Map | High | Medium | P1 |
 | Live Project Teaser | High | Medium | P1 |
 | Tools Hub page | High | Low | P2 |

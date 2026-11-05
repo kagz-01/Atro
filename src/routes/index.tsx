@@ -6,7 +6,7 @@ import { Reveal } from "@/components/reveal";
 import { Button } from "@/components/ui/button";
 import { useRevealOnScroll } from "@/hooks/use-reveal";
 import { SplitText } from "@/components/scroll-effects";
-import { COMPANY, featuredProjects, SERVICES, SERVICE_CATEGORIES, ZONES } from "@/lib/site";
+import { COMPANY, featuredProjects, MYHARDWARE_URL, SERVICES, SERVICE_CATEGORIES, ZONES } from "@/lib/site";
 import { useSiteStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -146,12 +146,12 @@ function ProjectSnapshot() {
     <section className="bg-[#f5efe7] px-6 py-10 sm:px-8 sm:py-12 md:px-12 lg:px-16 lg:py-14">
       <div className="mx-auto max-w-[1400px]">
         <div className="mb-6 inline-flex items-center rounded-full border border-[#c7a478]/60 bg-[#f3ebdf] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-burgundy">
-          Your projects
+          Portal preview
         </div>
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <h2 className="font-display text-[1.8rem] leading-[0.98] tracking-[-0.04em] text-maroon sm:text-[2.2rem] md:text-[2.8rem]">
-            This is where your project stands.
+            See how project progress is recorded.
           </h2>
 
           <Link
@@ -165,22 +165,24 @@ function ProjectSnapshot() {
         <div className="mt-6 rounded-[1.75rem] border border-[#d6cab6] bg-[#f3efe8] p-4 sm:p-5 lg:p-7">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.2em] text-burgundy">ATRO-2403</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-burgundy">
+                Demonstration project · ATRO-2403
+              </p>
               <h3 className="mt-3 font-display text-[1.5rem] leading-none text-maroon sm:text-[2rem] md:text-[2.8rem]">Feasibility and cost plan</h3>
             </div>
             <div className="text-left sm:text-right">
-              <p className="text-sm text-ink/70">Current focus:</p>
+              <p className="text-sm text-ink/70">Example focus:</p>
               <p className="text-sm font-medium text-ink">Cost options and next steps</p>
             </div>
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <button
-              type="button"
+            <Link
+              to="/portal"
               className="inline-flex w-fit items-center gap-2 rounded-full border border-[#2e2d2d]/40 bg-transparent px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-maroon transition-colors hover:border-maroon hover:bg-white/20"
             >
-              Open in the portal <ArrowRight className="size-4" />
-            </button>
+              Explore the portal <ArrowRight className="size-4" />
+            </Link>
 
             <div className="text-sm text-ink/70">
               Weekly written updates • Payments tied to verified work • One project record, wherever you are
@@ -503,7 +505,7 @@ function HardwarePartner() {
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <a
-                href="https://myhardware.co.ke"
+                href={MYHARDWARE_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex min-h-11 items-center gap-2 rounded-full bg-maroon px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-paper transition-colors hover:bg-[#5b1c26]"

@@ -1,30 +1,23 @@
 // ATRO Knowledge Base — REFERENCE DATA
-// Rates, zones, regulations, contact info — the numbers the agent reaches for first
+// Dated references, zones, regulations, and contact info.
 
 import { MATERIALS, MATERIAL_PRICE_SOURCE, PPRA_PRICE_TOWNS } from "@/lib/materials";
 
 export const REFERENCE_KB = {
-  // ─── Dynamic pricing policy ───
+  // ─── Pricing policy ───
   pricingPolicy: {
-    principle: "Material, labour and utility prices are planning references, not fixed quotations. They must be refreshed against live market conditions before a figure is treated as current.",
-    updateCadence: {
-      materials: "Every 30-90 days, or sooner if supply conditions change",
-      labour: "Quarterly review with site conditions and productivity assumptions",
-      utilityConnections: "As county or utility tariffs change",
-      professionalFees: "Review at each project and annually as standards update",
-    },
+    principle: "The PPRA June 2026 table is a dated reference for selected material unit prices only, not a live quote or whole-project estimate. Do not describe an unverified price as current.",
     sourceHierarchy: [
-      "Current supplier quotations and delivery notes",
-      "ATRO market pricing files and recent project cost data",
-      "Kenya market benchmarks (KNBS, industry publications, local price lists)",
+      "Dated supplier or contractor quotations that match the project's location, specification and scope",
+      "PPRA June 2026 only for an item and surveyed town explicitly listed in the reference table",
+      "Official indices and published market benchmarks as context only, not as direct project rates",
       "Earlier ATRO history only as a baseline, never as a current quote",
     ],
     updateTriggers: [
-      "Supplier price movement or material shortages",
-      "Fuel, transport or logistics shifts",
-      "County permit or utility tariff changes",
-      "A change in project specification or finish level",
-      "New site conditions, geotechnical findings or remote delivery constraints",
+      "A newer official reference or dated supplier quotation is available",
+      "Supplier price movement or material shortages are confirmed",
+      "Fuel, transport or logistics shifts affect a project-specific quotation",
+      "A change in project specification, site conditions or delivery requirements",
     ],
     decisionRule: "Only quote a material unit price when it appears in the dated PPRA table, with its town and survey date. Never derive a whole-project total from floor area, finish level or a town multiplier. Project totals require measured quantities and current project-specific quotations.",
   },

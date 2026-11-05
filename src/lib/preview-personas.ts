@@ -94,7 +94,7 @@ export const PREVIEW_PERSONAS: readonly PreviewPersona[] = [
   },
 ] as const;
 
-const DEFAULT_KEY: PreviewPersonaKey = "boss";
+const DEFAULT_KEY: PreviewPersonaKey = "local";
 
 export function isPreviewPersonaKey(value: unknown): value is PreviewPersonaKey {
   return typeof value === "string" && PREVIEW_PERSONAS.some((p) => p.key === value);
@@ -104,8 +104,8 @@ export function isPreviewPersonaKey(value: unknown): value is PreviewPersonaKey 
  * Resolve a persona key to the full identity.
  *
  * Anything unknown — a stale cookie, a hand-typed value — resolves to the
- * boss rather than to nothing: the preview must always open *somewhere*, and
- * the boss is the seat every other seat is measured against.
+ * local client rather than the studio owner, so public portal links open a
+ * client workspace by default.
  */
 export function previewPersona(key: string | null = null): PreviewPersona {
   const match = PREVIEW_PERSONAS.find((p) => p.key === key);

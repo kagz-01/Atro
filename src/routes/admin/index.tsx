@@ -31,6 +31,8 @@ import { Accordion, AccordionItem } from "@/components/ui/accordion";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { Donut, GroupedBars, MonthlyColumns, type Slice } from "@/components/dashboard/charts";
 import { EnquiriesInbox, type EnquiryFilterStatus } from "@/components/admin/enquiries-inbox";
+import { QuotationComposer } from "@/components/admin/quotation-composer";
+import { DocumentFlowGuide } from "@/components/documents/document-flow-guide";
 import { MyWorkPanel } from "@/components/admin/my-work";
 import { StaffProfilePanel } from "@/components/admin/staff-profile-panel";
 import { CoordinationCalendar } from "@/components/admin/coordination-calendar";
@@ -62,6 +64,7 @@ import {
 import { issueStatementForProject, releaseRetention } from "@/lib/staff-ops";
 import { listProjectDocuments, voidDocument } from "@/lib/invoice-server";
 import { KIND_LABEL } from "@/lib/invoices";
+import { usesMeasuredWorkCertification } from "@/lib/diaspora/tracks";
 import { runAttentionSweepNow } from "@/lib/attention";
 import {
   addDocument,
@@ -558,6 +561,7 @@ function ProjectDetail({
   }
 
   const p = data.project;
+  const measuredWork = usesMeasuredWorkCertification(p.track);
   const defectPeriodEndIsFuture =
     Boolean(p.defectPeriodEnd) && p.defectPeriodEnd > new Date().toISOString().slice(0, 10);
   const allTrackedMilestonesComplete =
@@ -607,7 +611,7 @@ function ProjectDetail({
     ...(certifiedPayments.length > 0
       ? [
           {
-            label: "Certified payments",
+            label: measuredWork ? "Certified payments" : "Approved payment stages",
             detail: `${kes(certifiedTotal)} awaiting payment`,
             count: certifiedPayments.length,
             section: "financial-summary",
@@ -720,7 +724,7 @@ function ProjectDetail({
               icon={Banknote}
             />
             <StatCard
-              label="Certified, awaiting payment"
+              label={measuredWork ? "Certified, awaiting payment" : "Stages approved, awaiting payment"}
               value={kesShort(p.budget.currentlyCertified)}
               exact={kes(p.budget.currentlyCertified)}
               sub={`${kes(p.budget.retentionHeld)} held in retention`}
@@ -736,7 +740,7 @@ function ProjectDetail({
             >
               {ownerActions.length === 0 ? (
                 <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
-                  No tracked decisions, blocked milestones, certified payments, messages, visit
+                  No tracked decisions, blocked milestones, payment stages, messages, visit
                   requests, or client sign-offs are waiting.
                 </p>
               ) : (
@@ -788,8 +792,14 @@ function ProjectDetail({
                 {[
                   ["Contract", kes(p.contractValue)],
                   ["Paid", kes(p.budget.paidToDate)],
-                  ["Certified to date", kes(p.budget.certifiedToDate)],
-                  ["Awaiting release", kes(p.budget.currentlyCertified)],
+                  [
+                    measuredWork ? "Work certified to date" : "Stages approved to date",
+                    kes(p.budget.certifiedToDate),
+                  ],
+                  [
+                    measuredWork ? "Certified, awaiting payment" : "Approved stages awaiting payment",
+                    kes(p.budget.currentlyCertified),
+                  ],
                   [`Retention · ${p.budget.retentionPct}%`, kes(p.budget.retentionHeld)],
                   ["Projected at completion", kes(p.budget.projectedAtCompletion)],
                 ].map(([label, value]) => (
@@ -1075,7 +1085,10 @@ function ProjectDetail({
             {[
               ["Contract", kes(p.contractValue)],
               ["Paid", kes(p.budget.paidToDate)],
-              ["Certified, awaiting payment", kes(p.budget.currentlyCertified)],
+              [
+                measuredWork ? "Certified, awaiting payment" : "Approved stages awaiting payment",
+                kes(p.budget.currentlyCertified),
+              ],
               ["Retention", kes(p.budget.retentionHeld)],
             ].map(([k, v]) => (
               <div key={k}>
@@ -1086,11 +1099,11 @@ function ProjectDetail({
           </dl>
           <div className="mt-6">
             <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
-              Certified payments awaiting payment
+              {measuredWork ? "Certified payments awaiting payment" : "Approved stages awaiting payment"}
             </h3>
             {certifiedPayments.length === 0 ? (
               <p className="mt-2 rounded-xl border border-ink/8 bg-white px-4 py-3 text-[12px] text-ink/55">
-                No certified payments are awaiting payment.
+                No payment stages are awaiting payment.
               </p>
             ) : (
               <ul className="mt-3 space-y-2">
@@ -1105,7 +1118,7 @@ function ProjectDetail({
                     </span>
                     {payment.certificate ? (
                       <span className="w-full font-mono text-[11px] text-muted">
-                        Certificate {payment.certificate}
+                        {measuredWork ? "Certificate" : "Stage reference"} {payment.certificate}
                       </span>
                     ) : null}
                   </li>
@@ -1471,9 +1484,14 @@ function ProjectDetail({
           </WriteBlock>
         </AccordionItem>
         {uncertified.length > 0 ? (
-          <AccordionItem title="Certify a payment" hint={`${uncertified.length}`}>
+          <AccordionItem
+            title={measuredWork ? "Certify completed work" : "Approve an agreed fee stage"}
+            hint={`${uncertified.length}`}
+          >
             <p className="text-[12px] text-ink/55">
-              Only certified amounts appear as releasable in the client portal.
+              {measuredWork
+                ? "Confirm the work has been inspected and measured against the agreement. The client receives a payment certificate and a separate payment request."
+                : "Confirm the agreed deliverable or fee stage is complete under the signed engagement. The client receives a payment request, not a QS certificate."}
             </p>
             <ul className="mt-4 space-y-2">
               {uncertified.map((pay) => (
@@ -1500,11 +1518,11 @@ function ProjectDetail({
                                 certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
                               },
                             }),
-                          "Payment certified.",
+                          measuredWork ? "Work certified and payment request issued." : "Stage approved and payment request issued.",
                         )
                       }
                     >
-                      Certify
+                      {measuredWork ? "Certify work" : "Approve stage"}
                     </Button>
                   ) : (
                     <span className="text-[11px] text-muted">Admins only</span>
@@ -1593,7 +1611,13 @@ function ProjectDetail({
       </Accordion>
 
       <DeliveryLog projectId={projectId} onChanged={onChanged} />
-      <IssuedDocuments projectId={projectId} isAdmin={isAdmin} onChanged={onChanged} />
+      <IssuedDocuments
+        projectId={projectId}
+        projectTitle={p.title}
+        clientLabel={p.clientLabel}
+        isAdmin={isAdmin}
+        onChanged={onChanged}
+      />
     </div>
   );
 }
@@ -3225,10 +3249,14 @@ function StudioActivityFeed({ items }: { items: ActivityItem[] }) {
 
 function IssuedDocuments({
   projectId,
+  projectTitle,
+  clientLabel,
   isAdmin,
   onChanged,
 }: {
   projectId: string;
+  projectTitle: string;
+  clientLabel: string;
   isAdmin: boolean;
   onChanged: () => void;
 }) {
@@ -3243,13 +3271,18 @@ function IssuedDocuments({
   // written.
   const [voiding, setVoiding] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState("");
+  const [quoteOpen, setQuoteOpen] = useState(false);
 
-  if (!data || data.length === 0) return null;
+  if (!isAdmin && (!data || data.length === 0)) return null;
 
   return (
     <section className="rounded-3xl border border-ink/10 bg-white p-6">
       <h3 className="font-display text-lg text-maroon">Documents issued</h3>
-      <ul className="mt-4 space-y-2">
+      <div className="mt-4">
+        <DocumentFlowGuide audience="studio" />
+      </div>
+      {data?.length ? (
+        <ul className="mt-4 space-y-2">
         {data.map((doc) => (
           <li
             key={doc.id}
@@ -3271,6 +3304,14 @@ function IssuedDocuments({
             </span>
             <span className="flex items-center gap-3">
               <span className="text-[13px] text-maroon">{kes(doc.total)}</span>
+              <a
+                href={`/admin/document/${doc.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[12px] text-burgundy underline"
+              >
+                Open
+              </a>
               {doc.status === "issued" && isAdmin && voiding !== doc.id ? (
                 <Button size="sm" variant="ghost" onClick={() => setVoiding(doc.id)}>
                   Void
@@ -3329,7 +3370,33 @@ function IssuedDocuments({
             ) : null}
           </li>
         ))}
-      </ul>
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm text-ink/55">No quotations, certificates or receipts yet.</p>
+      )}
+      {isAdmin ? (
+        <div className="mt-5">
+          {!quoteOpen ? (
+            <Button
+              variant="outline"
+              onClick={() => setQuoteOpen(true)}
+            >
+              Prepare quotation
+            </Button>
+          ) : (
+            <QuotationComposer
+              projectId={projectId}
+              recipient={clientLabel || "Client"}
+              projectLabel={projectTitle}
+              onIssued={() => {
+                void queryClient.invalidateQueries({ queryKey: ["project-documents", projectId] });
+                onChanged();
+              }}
+              onCancel={() => setQuoteOpen(false)}
+            />
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }

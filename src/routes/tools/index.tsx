@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, MapPin, TrendingUp, FileText, BarChart3, Clock, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { COMPANY } from "@/lib/site";
+import { COMPANY, MYHARDWARE_URL } from "@/lib/site";
 
 export const Route = createFileRoute("/tools/")({
   component: ToolsIndex,
@@ -48,7 +48,7 @@ const TOOLS = [
     icon: FileText,
     title: "BOQ Worksheet",
     desc: "Creates a preliminary quantities worksheet for early planning, not a final tender or payment schedule.",
-    longDesc: "Use it to frame quantities, sections and budgets in a way that can be refined into a measured cost plan with a QS.",
+    longDesc: "Use it to organize scope sections and enter your own measured quantities and rates. A quantity surveyor should verify scope and pricing before you treat it as a project cost plan.",
     link: "/tools/boq-generator",
     badge: "Draft",
     badgeTone: "maroon" as const,
@@ -107,7 +107,7 @@ function ToolsIndex() {
               </p>
             </div>
             <a
-              href="https://myhardware.co.ke"
+              href={MYHARDWARE_URL}
               target="_blank"
               rel="noreferrer"
               className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-maroon px-3 py-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-paper transition-colors hover:bg-[#5b1c26] sm:gap-2 sm:px-5 sm:text-[11px] sm:tracking-[0.14em]"

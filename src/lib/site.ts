@@ -27,7 +27,10 @@ export const COMPANY = {
   /** The studio's own words for what it does — used where a summary is needed. */
   description:
     "ATRO Design & Construction delivers practical design and building solutions for homes, offices and institutions across Kenya. We combine clear planning, cost-conscious decisions and reliable delivery so each project stays understandable from first concept to final handover.",
-  email: "hello@atro.ke",
+  email: "hello@atroconstruction.co.ke",
+  registeredName: "ATRO Design & Construction",
+  kraPin: "PLACEHOLDER — TO BE PROVIDED",
+  registeredAddress: "PLACEHOLDER — TO BE PROVIDED",
   phoneDisplay: "+254 799 034 712",
   phoneTel: "+254799034712",
   whatsapp: "254799034712",
@@ -47,6 +50,8 @@ export const COMPANY = {
   instagram: "https://instagram.com",
   linkedin: "https://www.linkedin.com",
 } as const;
+
+export const MYHARDWARE_URL = "https://myhardware.ratifiedtech.com";
 
 /** True while the studio is reachable, in East Africa Time. */
 export function isOpenNow(at: Date = new Date()): boolean {
@@ -1097,7 +1102,7 @@ export const SERVICES: Service[] = [
     included: [
       "Land due diligence and surveyor verification",
       "Design and structural engineering",
-      "Measured Bill of Quantities before you commit",
+      "Measured BOQ and project-specific pricing before construction contracting, where appropriate to the scope",
       "Private client portal with milestone approvals and payment ledger",
       "Weekly written reports with photographic evidence",
       "Decision log, document vault and handover pack",
@@ -1308,10 +1313,10 @@ export const WHY = [
 ] as const;
 
 export const VALUES = [
-  { title: "Clarity", body: "We would rather lose a job than win it with a number that cannot survive the soil." },
-  { title: "Craft", body: "Joints, levels, waterproofing. The unphotogenic work that decides whether a house lasts." },
-  { title: "Stewardship", body: "Someone else’s money, land and years. We treat them as if they were ours." },
-  { title: "Presence", body: "A site that is attended. A client who is informed. A drawing that matches the wall." },
+  { title: "Clarity", body: "We explain scope, cost assumptions, decisions and changes in plain language." },
+  { title: "Craft", body: "We pay attention to design, materials and the details that shape long-term performance." },
+  { title: "Stewardship", body: "We treat your property, budget and time with care and accountability." },
+  { title: "Presence", body: "We stay engaged, share progress and keep the work aligned with agreed plans." },
 ] as const;
 
 export const NAV = [

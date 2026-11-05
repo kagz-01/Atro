@@ -11,8 +11,8 @@ export const CONSULTANCY_KB = {
     {
       id: "cost-planning",
       name: "Cost Planning",
-      description: "Turning a brief into a number you can fund. If the sketch and the money disagree, the money wins until the sketch is rewritten.",
-      deliverables: ["Preliminary cost plan", "Elemental cost plan", "Detailed cost plan", "Value engineering options"],
+      description: "Developing project-specific cost information as scope, measured quantities and current quotations become available. If the design and agreed budget do not align, revise the scope or design before commitment.",
+      deliverables: ["Cost drivers and information gaps", "Cost plan with stated scope and assumptions", "Detailed cost plan based on measured quantities and current quotations", "Value engineering options"],
       feeBasis: "Agreed scope and written proposal",
       whenNeeded: "Before design is finalised — the earlier, the better",
     },
@@ -156,7 +156,7 @@ export const CONSULTANCY_KB = {
     },
     {
       q: "What is a BOQ and do I need one?",
-      a: "A Bill of Quantities lists every material, labour item and cost in a building project. You need one for accurate tendering, cost control, and payment verification. Without a BOQ, you are building on guesswork.",
+      a: "A Bill of Quantities records measured work items, quantities and the applicable pricing basis for a defined scope. It helps compare tenders, track cost and verify payments, but it does not automatically include every cost or prevent approved variations. Ask a quantity surveyor whether and when your project needs one.",
     },
     {
       q: "Can I build from abroad?",

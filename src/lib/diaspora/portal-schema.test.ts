@@ -17,6 +17,7 @@ import {
   programmeDays,
   stageWindows,
   trackById,
+  usesMeasuredWorkCertification,
 } from "./tracks.ts";
 
 const BRIEF = {
@@ -258,6 +259,15 @@ describe("programme planning", () => {
 });
 
 describe("payment planning", () => {
+  it("uses QS certificates only for construction delivery tracks", () => {
+    assert.equal(usesMeasuredWorkCertification("construction"), true);
+    assert.equal(usesMeasuredWorkCertification("renovation"), true);
+    assert.equal(usesMeasuredWorkCertification("design"), false);
+    assert.equal(usesMeasuredWorkCertification("advisory"), false);
+    assert.equal(usesMeasuredWorkCertification("specialist"), false);
+    assert.equal(usesMeasuredWorkCertification("maintenance"), false);
+  });
+
   it("produces tranches that sum exactly to the contract value, on every track", () => {
     for (const track of TRACK_LIST) {
       for (const value of [500_000, 9_000_000, 41_800_000, 137_500_000]) {

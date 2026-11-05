@@ -30,12 +30,12 @@ describe("preview personas", () => {
     }
   });
 
-  it("falls back to the boss for anything unknown", () => {
-    assert.equal(previewPersona("nope").key, "boss");
-    assert.equal(previewPersona("").key, "boss");
-    assert.equal(previewPersona(null).key, "boss");
-    assert.equal(previewPersona(undefined).key, "boss");
-    assert.equal(previewPersona().key, "boss");
+  it("falls back to the local client for anything unknown", () => {
+    assert.equal(previewPersona("nope").key, "local");
+    assert.equal(previewPersona("").key, "local");
+    assert.equal(previewPersona(null).key, "local");
+    assert.equal(previewPersona(undefined).key, "local");
+    assert.equal(previewPersona().key, "local");
   });
 
   it("recognises exactly the four seat keys", () => {

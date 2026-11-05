@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Globe, Lock, Shield } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
-import { authAvailable, continueAsGuest, startAuthCookieSync } from "@/lib/auth/client";
+import { authAvailable, continueAsGuest } from "@/lib/auth/client";
 import { PhoneSignInForm } from "@/components/auth/phone-sign-in-form";
 import { EmailSignInForm } from "@/components/auth/email-sign-in-form";
 import { UserButton } from "@/lib/auth/gates";
@@ -46,7 +46,7 @@ const PERKS = [
 ];
 
 function Login() {
-  const { user, isPending } = useCurrentUserState();
+  const { user, isPending, sessionError } = useCurrentUserState();
   const hydrated = useIsHydrated();
   const { data: access } = useQuery({
     queryKey: ["my-access"],
@@ -70,6 +70,11 @@ function Login() {
   const goToDashboard = () => {
     if (typeof window === "undefined") return;
     window.location.assign(dashboardDestination);
+  };
+
+  const goToPortal = () => {
+    if (typeof window === "undefined") return;
+    window.location.assign(getPortalDestination());
   };
 
   async function continueWithGoogle() {
@@ -110,9 +115,6 @@ function Login() {
   function continueToGuestPreview() {
     continueAsGuest(getPortalDestination());
   }
-
-  // Keep the server-visible session cookie in step with the Supabase session.
-  useEffect(() => startAuthCookieSync(), []);
 
   return (
     <main className="min-h-screen bg-paper pt-24 pb-16 md:pt-28">
@@ -203,6 +205,12 @@ function Login() {
             ) : (
               <div className="mt-10">
                 <h2 className="font-display text-[2.1rem] leading-none text-maroon">Sign in</h2>
+                {sessionError ? (
+                  <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-800">
+                    We could not restore your sign-in session: {sessionError}. Refresh the page and
+                    try again.
+                  </p>
+                ) : null}
                 <p className="mt-3 text-[15px] leading-relaxed text-ink/65">
                   Use the account you already have. Your portal stays private to you — projects,
                   evidence, payments and documents are scoped to your sign-in.

@@ -85,7 +85,7 @@ export const KB = {
       id: "boq-generator",
       category: "tool",
       name: "BOQ Worksheet",
-      summary: "Preliminary quantities and totals to support early planning and cost discussions.",
+      summary: "Unpriced scope prompts and subtotals for lines with entered quantities and rates; not a complete project estimate or contract BOQ.",
       tags: ["boq", "quantities", "worksheet", "bill of quantities", "cost plan"],
       terms: ["boq", "bill of quantities", "quantities", "worksheet", "cost plan"],
     },

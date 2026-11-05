@@ -166,7 +166,7 @@ export const MILESTONES: Milestone[] = [
     plannedEnd: "20 Mar 2026",
     actualEnd: "18 Mar 2026",
     summary:
-      "Concept approved by client on 3 Feb. Developed design and specification issued 27 Feb, approved 12 Mar after two revision rounds. Bill of quantities priced at KES 41,800,000.",
+      "Demonstration record: concept approved on 3 Feb. Developed design and specification issued 27 Feb, approved 12 Mar after two revision rounds. Illustrative BOQ figure shown; not a current quotation.",
     verifiedBy: "A. Wanjiru, Architect — AAK/2016/1187",
     evidence: [
       {
@@ -183,9 +183,9 @@ export const MILESTONES: Milestone[] = [
       },
       {
         date: "18 Mar 2026",
-        caption: "Bill of quantities priced",
+        caption: "Sample bill-of-quantities figure",
         detail:
-          "312 measured items priced to Q1 2026 rates. Total KES 41,800,000 excluding VAT, statutory fees and external works.",
+          "Demonstration data only: 312 sample measured items and an illustrative total of KES 41,800,000, excluding VAT, statutory fees and external works. This is not a current quotation or market rate.",
       },
     ],
   },

@@ -152,7 +152,7 @@ export const DIASPORA_KB = {
     {
       id: "trust",
       name: "Trust and transparency",
-      description: "Know exactly what is happening, when, and why. No hidden costs, no surprises, no excuses.",
+      description: "See what is happening, when and why, with project costs, assumptions and approved changes documented for review.",
       howATRODelivers: [
         "Named project manager with direct contact",
         "Weekly written reports with photographs",
@@ -247,7 +247,7 @@ export const DIASPORA_KB = {
       id: "boq-first",
       title: "BOQ before construction",
       description:
-        "Every project starts with a Bill of Quantities. You know the cost before you commit. No vague estimates. No 'we'll see when we start'. A measured, priced document.",
+        "Before construction is contracted, agree the scope, payment terms and a suitable measured and priced BOQ where the project requires one. Pricing should state its assumptions, exclusions and quotation date; it is not a guarantee against later approved changes.",
     },
     {
       id: "milestone-payments",
@@ -271,7 +271,7 @@ export const DIASPORA_KB = {
       id: "open-book",
       title: "Open-book costing",
       description:
-        "You see every cost. Material prices, labour rates, subcontractor quotes. No black boxes. No mysterious markups.",
+        "Project costs, material prices, labour rates and subcontractor quotations are documented for review, with their scope and assumptions made clear.",
     },
   ],
 
@@ -332,7 +332,7 @@ export const DIASPORA_KB = {
       {
         phase: "Variations",
         payment: "Priced and approved before work starts",
-        protection: "Written variation order signed by both parties. No surprise costs.",
+        protection: "Record the changed scope, price and programme in a signed variation before work proceeds.",
       },
       {
         phase: "Retention",
@@ -454,7 +454,7 @@ export const DIASPORA_KB = {
     "Weekly written reports as standard (not optional)",
     "Milestone-based payment terms in every contract",
     "Named project manager — not a call centre",
-    "Open-book costing — you see every number",
+    "Cost and payment records available for review, with scope and assumptions documented",
     "Professional indemnity insurance",
     "Clear contract with scope, schedule, and payment terms",
   ],

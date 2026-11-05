@@ -44,7 +44,7 @@ export function usableZone(timezone: string): string {
   }
 }
 
-/** Country "Other" is a polite decline of the question, not a place. */
+/** Keep older enquiries that selected "Other" unset; new entries accept free text. */
 function usableCountry(country: string): string {
   const value = country.trim();
   return !value || value === "Other" ? "" : value;

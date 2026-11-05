@@ -109,7 +109,7 @@ export function DashboardShell({
 
   return (
     <div
-      className="min-h-dvh bg-stone/25"
+      className="dashboard-canvas min-h-dvh"
       style={
         {
           "--dashboard-sidebar-width": rail ? "76px" : "clamp(200px, 17vw, 260px)",

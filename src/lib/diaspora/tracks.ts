@@ -50,9 +50,9 @@ export const TRACKS: Record<TrackId, Track> = {
     services: ["construction", "building-from-abroad"],
     stages: [
       { name: "Land and due diligence", summary: "Confirming the land is genuinely owned, genuinely for sale, and genuinely the size it claims.", weight: 0.08 },
-      { name: "Concept and cost options", summary: "Design and cost planning happen together, so the sketch and the budget agree before you commit.", weight: 0.1 },
+      { name: "Concept and cost options", summary: "Design and cost drivers are reviewed together; measured quantities and project-specific quotations are developed as the scope becomes clear.", weight: 0.1 },
       { name: "Developed design and approvals", summary: "Structural and architectural design, then the statutory approvals that depend on it.", weight: 0.12 },
-      { name: "Bill of Quantities and contract", summary: "A measured, priced document and a contract with a locked scope and payment terms.", weight: 0.1 },
+      { name: "Bill of Quantities and contract", summary: "Agree the measured scope, pricing basis, exclusions, payment terms and variation process before construction contracting.", weight: 0.1 },
       { name: "Site establishment and substructure", summary: "Setting out, excavation, foundations and slab to the agreed drawings.", weight: 0.06 },
       { name: "Superstructure", summary: "Walls, columns, ring beams and slabs to roof level, inspected as each level completes.", weight: 0.28 },
       { name: "Roof, first fix and finishes", summary: "Covering, services rough-in, plaster, joinery and painting to the specification.", weight: 0.14 },
@@ -187,6 +187,11 @@ export const TRACK_IDS = Object.keys(TRACKS) as TrackId[];
 
 export function isTrackId(value: string): value is TrackId {
   return value in TRACKS;
+}
+
+/** Only construction delivery tracks need QS certification of measured work. */
+export function usesMeasuredWorkCertification(track: string): boolean {
+  return track === "construction" || track === "renovation";
 }
 
 export function trackById(id: string): Track {

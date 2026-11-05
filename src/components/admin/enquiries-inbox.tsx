@@ -5,7 +5,7 @@
 // client-side gate standing in for it.
 
 import { Link } from "@tanstack/react-router";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -30,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem } from "@/components/ui/accordion";
+import { QuotationComposer } from "@/components/admin/quotation-composer";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { listEnquiriesFromDb } from "@/lib/enquiry-server";
@@ -49,6 +50,7 @@ import {
   getEnquiryAttachmentUrl,
 } from "@/lib/enquiry-attachments-server";
 import { formatMessageFileSize } from "@/lib/enquiry-attachments";
+import { listEnquiryQuotations } from "@/lib/invoice-server";
 
 type Enquiry = {
   id: string;
@@ -184,19 +186,35 @@ function timeAgo(dateStr: string) {
 function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
   const queryClient = useQueryClient();
   const { user } = useCurrentUserState();
+  const { data: quotations } = useQuery({
+    queryKey: ["enquiry-quotations", enquiry.id],
+    queryFn: () => listEnquiryQuotations({ data: { enquiryId: enquiry.id } }),
+  });
   const [open, setOpen] = useState(false);
+  const [quoteOpen, setQuoteOpen] = useState(false);
   const [track, setTrack] = useState<string>("construction");
+  const [engagementConfirmed, setEngagementConfirmed] = useState(false);
+  const [quotationId, setQuotationId] = useState("");
   const [title, setTitle] = useState(
     `${enquiry.project_type || "New build"}, ${ZONE_LABELS[enquiry.zone] ?? enquiry.zone ?? "site"}`,
   );
-  const [value, setValue] = useState("25000000");
   const [months, setMonths] = useState("12");
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const currentQuotations =
+    quotations?.filter(
+      (quotation) =>
+        quotation.status === "issued" &&
+        quotation.validUntil !== null &&
+        quotation.validUntil >= today,
+    ) ?? [];
 
   // The modal reads the enquiry from the refetched list, so invalidating here
   // is what updates the copy in place — the staff member is never left looking
   // at "Open a project" for a project that now exists.
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ["admin-enquiries"] });
+    void queryClient.invalidateQueries({ queryKey: ["enquiry-quotations", enquiry.id] });
     // Converting opens a real project; moving a lead changes the funnel counts.
     // Both are read on their own keys elsewhere in the console, so a write here
     // would otherwise leave the rest of the page showing yesterday's shape.
@@ -208,15 +226,20 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
 
   const convert = useMutation({
     mutationFn: () => {
+      const selectedQuotation = currentQuotations.find((quotation) => quotation.id === quotationId);
+      if (!selectedQuotation) {
+        throw new Error("Choose a current quotation for the signed engagement.");
+      }
       const start = new Date();
       const target = new Date(start);
       target.setMonth(target.getMonth() + Number(months));
       return openProjectFromEnquiry({
         data: {
           enquiryId: enquiry.id,
+          quotationId: selectedQuotation.id,
+          engagementConfirmed: true,
           title: title.trim(),
           track: track as (typeof TRACK_LIST)[number]["id"],
-          contractValue: Number(value),
           startDate: start.toISOString().slice(0, 10),
           targetDate: target.toISOString().slice(0, 10),
           zone: enquiry.zone ?? "",
@@ -272,8 +295,44 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
   if (!open) {
     return (
       <div className="space-y-3">
+        {quotations?.length ? (
+          <div className="rounded-xl border border-ink/10 bg-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+              Quotations issued
+            </p>
+            <ul className="mt-2 space-y-2">
+              {quotations.map((quotation) => (
+                <li
+                  key={quotation.id}
+                  className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                >
+                  <span className="text-maroon">
+                    {quotation.number} · KES {quotation.total.toLocaleString("en-KE")} ·{" "}
+                    {quotation.status}
+                    {quotation.validUntil ? ` · valid until ${quotation.validUntil}` : ""}
+                  </span>
+                  <a
+                    href={`/admin/document/${quotation.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-burgundy underline"
+                  >
+                    Open
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {transitions.length > 0 ? (
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setQuoteOpen((current) => !current)}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-gold/50 bg-gold/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-burgundy hover:bg-gold/20"
+            >
+              {quoteOpen ? "Close quotation" : "Prepare quotation"}
+            </button>
             <button
               type="button"
               onClick={() => setOpen(true)}
@@ -308,6 +367,15 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
             {owner === "mine" ? "Yours" : `Claimed by ${enquiry.assigned_to}`}
           </p>
         )}
+        {quoteOpen ? (
+          <QuotationComposer
+            enquiryId={enquiry.id}
+            recipient={enquiry.name}
+            projectLabel={`${enquiry.project_type || "Project"} · ${ZONE_LABELS[enquiry.zone] ?? enquiry.zone ?? "site to be confirmed"}`}
+            onIssued={refresh}
+            onCancel={() => setQuoteOpen(false)}
+          />
+        ) : null}
       </div>
     );
   }
@@ -350,16 +418,31 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
           </select>
         </div>
         <div>
-          <label className={label} htmlFor={`cv-value-${enquiry.id}`}>
-            Contract value (KES)
+          <label className={label} htmlFor={`cv-quotation-${enquiry.id}`}>
+            Signed quotation
           </label>
-          <input
-            id={`cv-value-${enquiry.id}`}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            inputMode="numeric"
+          <select
+            id={`cv-quotation-${enquiry.id}`}
+            value={quotationId}
+            onChange={(event) => setQuotationId(event.target.value)}
             className={field}
-          />
+          >
+            <option value="">Choose a current quotation</option>
+            {currentQuotations.map((quotation) => (
+              <option key={quotation.id} value={quotation.id}>
+                {quotation.number} · KES {quotation.total.toLocaleString("en-KE")} · valid until{" "}
+                {quotation.validUntil}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-[11px] leading-relaxed text-ink/55">
+            Project value and payment stages will use this quotation's total.
+          </p>
+          {currentQuotations.length === 0 ? (
+            <p className="mt-1 text-[11px] leading-relaxed text-amber-800">
+              Issue a current quotation first. Expired quotations cannot be used to open a project.
+            </p>
+          ) : null}
         </div>
         <div>
           <label className={label} htmlFor={`cv-months-${enquiry.id}`}>
@@ -375,15 +458,24 @@ function ConvertEnquiry({ enquiry }: { enquiry: Enquiry }) {
         </div>
       </div>
       <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
-        Stages and the payment schedule are generated from this. The client does not need an account
-        yet — the project waits for {enquiry.email} (or the enquiry's number) and appears the first
-        time they sign in.
+        The project waits for {enquiry.email} (or the enquiry&apos;s number) until they sign in.
       </p>
+      <label className="mt-4 flex items-start gap-2 text-[12px] leading-relaxed text-ink/70">
+        <input
+          type="checkbox"
+          checked={engagementConfirmed}
+          onChange={(event) => setEngagementConfirmed(event.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          I confirm the client accepted the selected quotation and the written engagement is signed.
+        </span>
+      </label>
       <div className="mt-4 flex gap-2">
         <button
           type="button"
           onClick={() => convert.mutate()}
-          disabled={convert.isPending}
+          disabled={convert.isPending || !engagementConfirmed || !quotationId || currentQuotations.every((quote) => quote.id !== quotationId)}
           className="inline-flex h-10 items-center gap-2 rounded-xl bg-maroon px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white disabled:opacity-50"
         >
           {convert.isPending ? "Opening…" : "Open project"}

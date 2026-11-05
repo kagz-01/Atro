@@ -58,22 +58,22 @@ export function missingConfiguration(): string[] {
  * Signing in needs a real Supabase project, so until the keys exist there is
  * nothing to sign in *as*. Falling back to a placeholder address would leave
  * the studio console unreachable, because access is an allowlist keyed on the
- * signed-in address — so the preview identity borrows the seeded studio admin
- * and every dashboard opens for real.
+ * signed-in address — so the preview identity uses the seeded local client
+ * by default, while the persona cookie opens the other seeded seats.
  *
  * This is impossible to reach on a real deployment: `configured` short-circuits
  * it, so adding Supabase keys disables the bypass with no other change. The
- * other guard is `DATABASE_URL` — a deployed database must never serve a shared
- * identity (see `requireUserId`).
+ * local client is the default preview seat; the persona cookie selects the
+ * other seeded seats. The other guard is `DATABASE_URL` — a deployed database
+ * must never serve a shared identity (see `requireUserId`).
  */
 export function previewIdentity(): { id: string; email: string } | null {
   if (configured) return null;
   const email =
     process.env.PREVIEW_AUTH_EMAIL?.trim() ||
     process.env.VITE_PREVIEW_AUTH_EMAIL?.trim() ||
-    // The studio owner seeded by migrations/0003_staff_roles.sql.
-    "hello@atro.ke";
-  return { id: "dev-user", email };
+    "wanjiku@example.com";
+  return { id: "dev-local", email };
 }
 
 /**

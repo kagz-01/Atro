@@ -46,6 +46,7 @@ import { Route as ToolsMaterialPricesRouteImport } from './routes/tools/material
 import { Route as ToolsZoneMapRouteImport } from './routes/tools/zone-map'
 import { Route as ZonesIndexRouteImport } from './routes/zones/index'
 import { Route as ZonesSlugRouteImport } from './routes/zones/$slug'
+import { Route as AdminDocumentIdRouteImport } from './routes/admin/document.$id'
 import { Route as ApiPaystackWebhookRouteImport } from './routes/api.paystack.webhook'
 import { Route as PortalDocumentIdRouteImport } from './routes/portal/document.$id'
 
@@ -234,6 +235,11 @@ const ZonesSlugRoute = ZonesSlugRouteImport.update({
   path: '/zones/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDocumentIdRoute = AdminDocumentIdRouteImport.update({
+  id: '/admin/document/$id',
+  path: '/admin/document/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaystackWebhookRoute = ApiPaystackWebhookRouteImport.update({
   id: '/api/paystack/webhook',
   path: '/api/paystack/webhook',
@@ -283,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/services/': typeof ServicesIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
+  '/admin/document/$id': typeof AdminDocumentIdRoute
   '/api/paystack/webhook': typeof ApiPaystackWebhookRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
@@ -324,6 +331,7 @@ export interface FileRoutesByTo {
   '/services': typeof ServicesIndexRoute
   '/tools': typeof ToolsIndexRoute
   '/zones': typeof ZonesIndexRoute
+  '/admin/document/$id': typeof AdminDocumentIdRoute
   '/api/paystack/webhook': typeof ApiPaystackWebhookRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
@@ -366,6 +374,7 @@ export interface FileRoutesById {
   '/services/': typeof ServicesIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
+  '/admin/document/$id': typeof AdminDocumentIdRoute
   '/api/paystack/webhook': typeof ApiPaystackWebhookRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
@@ -409,6 +418,7 @@ export interface FileRouteTypes {
     | '/services/'
     | '/tools/'
     | '/zones/'
+    | '/admin/document/$id'
     | '/api/paystack/webhook'
     | '/portal/document/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -450,6 +460,7 @@ export interface FileRouteTypes {
     | '/services'
     | '/tools'
     | '/zones'
+    | '/admin/document/$id'
     | '/api/paystack/webhook'
     | '/portal/document/$id'
   id:
@@ -491,6 +502,7 @@ export interface FileRouteTypes {
     | '/services/'
     | '/tools/'
     | '/zones/'
+    | '/admin/document/$id'
     | '/api/paystack/webhook'
     | '/portal/document/$id'
   fileRoutesById: FileRoutesById
@@ -531,6 +543,7 @@ export interface RootRouteChildren {
   ServicesIndexRoute: typeof ServicesIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
   ZonesIndexRoute: typeof ZonesIndexRoute
+  AdminDocumentIdRoute: typeof AdminDocumentIdRoute
   ApiPaystackWebhookRoute: typeof ApiPaystackWebhookRoute
 }
 
@@ -795,6 +808,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ZonesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/document/$id': {
+      id: '/admin/document/$id'
+      path: '/admin/document/$id'
+      fullPath: '/admin/document/$id'
+      preLoaderRoute: typeof AdminDocumentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paystack/webhook': {
       id: '/api/paystack/webhook'
       path: '/api/paystack/webhook'
@@ -863,6 +883,7 @@ const rootRouteChildren: RootRouteChildren = {
   ServicesIndexRoute: ServicesIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,
   ZonesIndexRoute: ZonesIndexRoute,
+  AdminDocumentIdRoute: AdminDocumentIdRoute,
   ApiPaystackWebhookRoute: ApiPaystackWebhookRoute,
 }
 export const routeTree = rootRouteImport

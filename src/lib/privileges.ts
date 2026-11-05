@@ -20,6 +20,7 @@ export type PrivilegedOp =
   | "certify-payment"
   | "release-retention"
   | "issue-statement"
+  | "issue-quotation"
   | "void-document"
   | "set-retainer"
   | "record-project-expense"
@@ -34,6 +35,7 @@ const REFUSAL: Record<PrivilegedOp, string> = {
   "certify-payment": "Only an admin can certify a payment.",
   "release-retention": "Only an admin can release retention.",
   "issue-statement": "Only an admin can issue a statement.",
+  "issue-quotation": "Only an admin can issue a quotation.",
   "void-document": "Only an admin can void a document.",
   "set-retainer": "Only an admin can set the annual care fee.",
   "record-project-expense": "Only an admin can record a project expense.",

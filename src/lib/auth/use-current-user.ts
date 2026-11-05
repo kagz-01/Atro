@@ -35,7 +35,7 @@ export type AppUser = {
  * sides agree on who you are — the id every per-user row is scoped by comes
  * from the persona, not from a module-level constant, because the four seats
  * are four different owners. No cookie falls back to the env override (or the
- * boss seat's address), matching the server's default.
+ * local client seat's address), matching the server's default.
  *
  * Browser-only by construction: `start()` never runs on the server, so
  * touching `document.cookie` here can never leak into SSR.
@@ -47,7 +47,7 @@ export type AppUser = {
  * the cookie cannot move underneath this cache.
  */
 const previewEmail =
-  (import.meta.env.VITE_PREVIEW_AUTH_EMAIL as string | undefined)?.trim() || "hello@atro.ke";
+  (import.meta.env.VITE_PREVIEW_AUTH_EMAIL as string | undefined)?.trim() || null;
 
 let previewUser: AppUser | null = null;
 
@@ -72,7 +72,7 @@ function previewAppUser(): AppUser {
   previewUser = {
     id: persona.userId,
     displayName: persona.name,
-    primaryEmail: key ? persona.email : previewEmail,
+    primaryEmail: previewEmail ?? persona.email,
     primaryEmailVerified: false,
     primaryPhone: null,
     primaryPhoneVerified: false,
@@ -89,15 +89,18 @@ export type CurrentUserState = {
   user: AppUser | null;
   /** True while the session is still resolving — don't treat `user: null` as signed out yet. */
   isPending: boolean;
+  /** Present when Supabase could not restore the browser session. */
+  sessionError: string | null;
 };
 
 type Cache = {
   user: AppUser | null;
   isPending: boolean;
+  sessionError: string | null;
   listeners: Set<() => void>;
 };
 
-const cache: Cache = { user: null, isPending: true, listeners: new Set() };
+const cache: Cache = { user: null, isPending: true, sessionError: null, listeners: new Set() };
 let started = false;
 
 function emit() {
@@ -130,17 +133,35 @@ function start() {
   }
   started = true;
 
-  void supabase.auth.getSession().then(({ data }) => {
-    const user = data.session?.user;
-    set({
-      user: user ? mapUser(user) : guestUserOrNull(),
-      isPending: false,
+  void supabase.auth
+    .getSession()
+    .then(({ data, error }) => {
+      if (error) {
+        console.error("Could not restore the Supabase session.", error);
+        set({ user: null, isPending: false, sessionError: error.message });
+        return;
+      }
+      const user = data.session?.user;
+      set({
+        user: user ? mapUser(user) : guestUserOrNull(),
+        isPending: false,
+        sessionError: null,
+      });
+    })
+    .catch((cause: unknown) => {
+      const message =
+        cause instanceof Error ? cause.message : "Could not restore the Supabase session.";
+      console.error("Could not restore the Supabase session.", cause);
+      set({ user: null, isPending: false, sessionError: message });
     });
-  });
 
   supabase.auth.onAuthStateChange((_event, session) => {
     const user = session?.user;
-    set({ user: user ? mapUser(user) : guestUserOrNull(), isPending: false });
+    set({
+      user: user ? mapUser(user) : guestUserOrNull(),
+      isPending: false,
+      sessionError: null,
+    });
   });
 }
 
@@ -201,7 +222,7 @@ const getServerSnapshot = () => null;
  */
 export function useCurrentUserState(): CurrentUserState {
   start();
-  return { user: cache.user, isPending: cache.isPending };
+  return { user: cache.user, isPending: cache.isPending, sessionError: cache.sessionError };
 }
 
 /**

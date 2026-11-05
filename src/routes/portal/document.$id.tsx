@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Printer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DocumentFlowGuide } from "@/components/documents/document-flow-guide";
 import { DOCUMENT_STYLES, KIND_LABEL } from "@/lib/invoices";
 import { getMyDocument } from "@/lib/invoice-server";
 
@@ -38,7 +39,7 @@ function DocumentPage() {
               Back to the portal
             </a>
           </Button>
-          {doc && doc.status === "issued" ? (
+          {doc && doc.status !== "void" ? (
             <Button size="sm" onClick={() => window.print()}>
               <Printer className="size-4" />
               Print or save as PDF
@@ -79,6 +80,9 @@ function DocumentPage() {
               className="rounded-2xl border border-ink/10 bg-white p-6 md:p-10"
               dangerouslySetInnerHTML={{ __html: doc.bodyHtml }}
             />
+            <div className="mt-6">
+              <DocumentFlowGuide audience="client" kind={doc.kind} status={doc.status} />
+            </div>
           </>
         )}
       </div>

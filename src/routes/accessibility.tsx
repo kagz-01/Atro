@@ -129,8 +129,8 @@ function AccessibilityPage() {
             <>
               <p>
                 Nothing on this site is the only way to work with us. Every
-                calculator, price list, map and bill of quantities can be given to
-                you another way:
+                material-price reference, coverage map and BOQ worksheet can be
+                provided another way:
               </p>
               <ul className="ml-5 list-disc space-y-2 marker:text-gold">
                 <li>As a plain document, emailed or WhatsApped to you.</li>

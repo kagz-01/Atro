@@ -82,7 +82,6 @@ export function startAuthCookieSync(): () => void {
 
   return () => {
     data.subscription.unsubscribe();
-    setAccessTokenCookie(null);
   };
 }
 

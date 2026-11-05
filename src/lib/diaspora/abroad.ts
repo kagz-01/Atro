@@ -84,7 +84,7 @@ export const ABROAD_INCLUDED = [
   {
     icon: "boq",
     title: "BOQ before construction",
-    desc: "Every project starts with a measured Bill of Quantities. You know the cost before you commit. No vague estimates.",
+    desc: "Before construction is contracted, agree a suitable measured BOQ, its scope and pricing assumptions. Project costs depend on current quotations and may change through approved variations.",
   },
   {
     icon: "milestone",
@@ -109,7 +109,7 @@ export const ABROAD_INCLUDED = [
   {
     icon: "openbook",
     title: "Open-book costing",
-    desc: "You see every cost — material prices, labour rates, subcontractor quotes. No black boxes. No mysterious markups.",
+    desc: "Project costs, material prices, labour rates and subcontractor quotations are documented for review, with their scope and assumptions made clear.",
   },
 ] as const;
 
@@ -142,8 +142,8 @@ export const ABROAD_PROCESS = [
     num: 4,
     title: "Bill of Quantities",
     icon: "file",
-    desc: "A measured, priced document listing every material, labour item and cost. This is what you are committing to.",
-    detail: "SMM2-compliant. You know the cost before you sign anything. No surprises later.",
+    desc: "A measured document for the agreed scope, with priced items and stated assumptions, exclusions and quotation basis.",
+    detail: "Review the BOQ alongside the drawings, specifications, current quotations and contract. It supports informed decisions; it cannot promise there will be no later approved variations.",
   },
   {
     num: 5,

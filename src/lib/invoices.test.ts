@@ -40,7 +40,7 @@ describe("document numbers", () => {
   });
 
   it("never collides across kinds because the kind code differs", () => {
-    const kinds = ["certificate", "invoice", "receipt", "statement"] as const;
+    const kinds = ["quotation", "certificate", "payment_request", "invoice", "receipt", "statement"] as const;
     assert.equal(new Set(kinds.map((k) => formatNumber(k, 2026, 1))).size, kinds.length);
   });
 });
@@ -98,12 +98,35 @@ describe("frozen document body", () => {
     assert.match(renderText({ ...doc, amountPaid: 5_030_000 }), /Received — 5,030,000 KES/);
   });
 
-  it("renders self-contained HTML with no scripts or external assets", () => {
+  it("renders printable HTML with the ATRO letterhead and no scripts", () => {
     const html = renderHtml(doc);
     assert.match(html, /Payment certificate/);
     assert.match(html, /Superstructure — first floor/);
+    assert.match(html, /hello@atroconstruction\.co\.ke/);
+    assert.match(html, /src="\/logo\/logo\.png"/);
     assert.doesNotMatch(html, /<script/i);
-    assert.doesNotMatch(html, /src=/i);
+  });
+
+  it("labels quotations clearly and shows their validity", () => {
+    const quotation = {
+      ...doc,
+      kind: "quotation" as const,
+      number: "ATR-2026-QUOT-0001",
+      validUntil: "2026-04-30",
+      totalLabel: "Quoted total",
+    };
+    const html = renderHtml(quotation);
+    assert.match(html, /Valid until/);
+    assert.match(html, /30 April 2026/);
+    assert.match(html, /not a contract or signed engagement/i);
+    assert.match(renderText(quotation), /Valid until: 30 April 2026/);
+    assert.match(renderText(quotation), /QUOTED TOTAL/);
+  });
+
+  it("makes payment requests explicit that they are not tax invoices", () => {
+    const request = { ...doc, kind: "payment_request" as const };
+    assert.match(renderHtml(request), /not a tax invoice/i);
+    assert.match(renderText(request), /not a tax invoice/i);
   });
 
   it("escapes markup so a description can never become live HTML", () => {
@@ -115,7 +138,8 @@ describe("frozen document body", () => {
     const html = renderHtml(hostile);
     // No tag survives — the angle brackets and quotes become entities, so the
     // payload is inert text rather than an element or an event handler.
-    assert.doesNotMatch(html, /<img/i);
+    assert.doesNotMatch(html, /<img src=x/i);
+    assert.doesNotMatch(html, /<img[^>]+onerror=/i);
     assert.doesNotMatch(html, /<script/i);
     assert.match(html, /&lt;script&gt;steal\(\)&lt;\/script&gt;/);
     assert.match(html, /&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);

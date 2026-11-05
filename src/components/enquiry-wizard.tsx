@@ -51,7 +51,7 @@ import {
 const STEPS_BASE = [
   { id: "type", label: "Project", icon: Building2 },
   { id: "place", label: "Site", icon: MapPin },
-  { id: "scale", label: "Scope", icon: Ruler },
+  { id: "scale", label: "Scope & finish", icon: Ruler },
   { id: "you", label: "Contact", icon: User },
   { id: "review", label: "Review", icon: CheckCircle2 },
 ] as const;
@@ -59,13 +59,13 @@ const STEPS_BASE = [
 const DIASPORA_STEPS = [
   { id: "type", label: "Project", icon: Building2 },
   { id: "place", label: "Site", icon: MapPin },
-  { id: "scale", label: "Scope", icon: Ruler },
+  { id: "scale", label: "Scope & finish", icon: Ruler },
   { id: "you", label: "Contact", icon: User },
   { id: "abroad", label: "Remote", icon: Globe },
   { id: "review", label: "Review", icon: CheckCircle2 },
 ] as const;
 
-const DIASPORA_COUNTRIES = [
+const COUNTRY_SUGGESTIONS = [
   "United Kingdom",
   "United States",
   "United Arab Emirates",
@@ -75,7 +75,12 @@ const DIASPORA_COUNTRIES = [
   "Australia",
   "Germany",
   "South Africa",
-  "Other",
+  "Ireland",
+  "France",
+  "Netherlands",
+  "India",
+  "Nigeria",
+  "New Zealand",
 ];
 
 const TIMEZONES = [
@@ -88,7 +93,6 @@ const TIMEZONES = [
   { label: "AEST (Sydney, Melbourne)", value: "Australia/Sydney" },
   { label: "CET (Germany, France)", value: "Europe/Berlin" },
   { label: "SAST (Johannesburg)", value: "Africa/Johannesburg" },
-  { label: "Other", value: "other" },
 ];
 
 const COUNTY_CHOICES = KENYA_COUNTIES.map((county) => ({
@@ -212,16 +216,25 @@ export function EnquiryWizard({
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const visiblePlaces = useMemo(() => {
-    const query = placeSearch.trim().toLocaleLowerCase();
-    return query
-      ? PLACE_CHOICES.filter((place) => place.name.toLocaleLowerCase().includes(query))
-      : PLACE_CHOICES;
+  const matchingPlaces = useMemo(() => {
+    const query = placeSearch.trim().toLocaleLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!query) return [];
+    return PLACE_CHOICES.filter(
+      (place) =>
+        place.slug !== NO_SITE_SLUG &&
+        place.name.toLocaleLowerCase().replace(/[^a-z0-9]/g, "").includes(query),
+    ).sort((a, b) => {
+      const aStartsWithQuery = a.name.toLocaleLowerCase().replace(/[^a-z0-9]/g, "").startsWith(query);
+      const bStartsWithQuery = b.name.toLocaleLowerCase().replace(/[^a-z0-9]/g, "").startsWith(query);
+      return Number(bStartsWithQuery) - Number(aStartsWithQuery);
+    });
   }, [placeSearch]);
+  const visiblePlaces = matchingPlaces.slice(0, 8);
   const selectedPlaceName =
     zone === NO_SITE_SLUG
       ? NO_SITE_NAME
       : (PLACE_CHOICES.find((place) => place.slug === zone)?.name ?? NO_SITE_NAME);
+  const selectedPlaceCoverage = PLACE_CHOICES.find((place) => place.slug === zone)?.coverage;
 
   useEffect(() => {
     if (initialZone) {
@@ -242,6 +255,7 @@ export function EnquiryWizard({
   function chooseZone(slug: string) {
     setLocalZone(slug);
     setZone(slug === NO_SITE_SLUG ? null : slug);
+    setPlaceSearch("");
   }
 
   function continueToNextStep() {
@@ -492,7 +506,7 @@ export function EnquiryWizard({
               icon: FileText,
               text:
                 type === "Other"
-                  ? "After reviewing the scope, we will confirm what is needed for a tailored estimate and proposal."
+                  ? "After reviewing the brief, we will confirm what scope, measurements and current quotations are needed for a project-specific cost plan and proposal."
                   : "After reviewing the scope and site conditions, we will prepare a proposal and project programme.",
             },
             {
@@ -646,11 +660,12 @@ export function EnquiryWizard({
         {step === 0 ? (
           <fieldset>
             <legend className="font-display text-2xl md:text-3xl text-maroon mb-2">
-              What kind of project or work do you have in mind?
+              What best describes your project?
             </legend>
             <p className="text-sm text-muted mb-6">
-              The type of work affects the people, approvals and approach we may need. Choose the
-              closest match; ATRO will confirm the scope with you.
+              Choose the closest match. This helps us direct your brief to the right team and
+              consider the likely approvals and information needed. It does not lock in the design
+              or price—we will confirm the details with you.
             </p>
             <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4">
               {PROJECT_CHOICES.map((t) => (
@@ -699,13 +714,16 @@ export function EnquiryWizard({
             {type === "Other" ? (
               <div className="mt-6 max-w-xl">
                 <Label htmlFor="custom-project-name" className="mb-2 block">
-                  What kind of project do you have in mind?
+                  What work do you need?
                 </Label>
+                <p className="mb-2 text-xs leading-relaxed text-muted">
+                  Name the service or work so we can direct your brief to the right person.
+                </p>
                 <Input
                   id="custom-project-name"
                   value={customProjectName}
                   onChange={(event) => setCustomProjectName(event.target.value)}
-                  placeholder="e.g. Swimming pool, boundary wall, or design-only"
+                  placeholder="e.g. swimming pool, boundary wall or design-only"
                   maxLength={80}
                   required
                   className="rounded-xl"
@@ -719,94 +737,120 @@ export function EnquiryWizard({
         {step === 1 ? (
           <fieldset>
             <legend className="font-display text-2xl md:text-3xl text-maroon mb-2">
-              Where is the project?
+              Where in Kenya is the project?
             </legend>
             <p className="text-sm text-muted mb-4">
-              Location helps us check service coverage, access, travel and local supply. A county
-              alone cannot determine a project cost.
+              Choose a county so we can check service availability and plan around site access and
+              travel. You can search instead of scrolling through the full list.
             </p>
-            <div className="sm:hidden">
-              <Label htmlFor="enquiry-county-mobile">County or site status</Label>
-              <Select
-                id="enquiry-county-mobile"
-                value={zone}
-                onChange={(event) => chooseZone(event.target.value)}
+            <div className="max-w-2xl rounded-2xl border border-line/50 bg-paper p-4 sm:p-6">
+              <Label htmlFor="enquiry-county-search" className="mb-2 block">
+                Search for a county
+              </Label>
+              <Input
+                id="enquiry-county-search"
+                type="search"
+                value={placeSearch}
+                onChange={(event) => setPlaceSearch(event.target.value)}
+                placeholder="Start typing, e.g. Mombasa"
+                autoComplete="off"
+                maxLength={60}
                 className="rounded-xl"
-              >
-                {PLACE_CHOICES.map((place) => (
-                  <option key={place.slug} value={place.slug}>
-                    {place.name}
-                  </option>
-                ))}
-              </Select>
-              <p className="mt-2 text-xs leading-relaxed text-muted">
-                {PLACE_CHOICES.find((place) => place.slug === zone)?.coverage}
+                aria-describedby="county-search-help"
+              />
+              <p id="county-search-help" className="mt-2 text-xs leading-relaxed text-muted">
+                Search any county by name. We’ll show matching places as you type.
               </p>
+
+              {placeSearch.trim() ? (
+                <div className="mt-3" aria-live="polite">
+                  {visiblePlaces.length > 0 ? (
+                    <>
+                      <p className="mb-2 text-xs font-medium text-ink/70">
+                        {matchingPlaces.length > visiblePlaces.length
+                          ? `Showing ${visiblePlaces.length} of ${matchingPlaces.length} matches. Add more letters to narrow the results.`
+                          : `${matchingPlaces.length} ${
+                              matchingPlaces.length === 1 ? "match" : "matches"
+                            }`}
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {visiblePlaces.map((place) => (
+                          <button
+                            key={place.slug}
+                            type="button"
+                            onClick={() => chooseZone(place.slug)}
+                            aria-pressed={zone === place.slug}
+                            className={cn(
+                              "flex min-h-14 items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
+                              zone === place.slug
+                                ? "border-burgundy bg-maroon text-paper"
+                                : "border-line/60 bg-white text-ink hover:border-burgundy/60 hover:bg-cream",
+                            )}
+                          >
+                            <span className="min-w-0">
+                              <span className="block font-medium">{place.name}</span>
+                              <span
+                                className={cn(
+                                  "mt-0.5 block text-xs",
+                                  zone === place.slug ? "text-paper/75" : "text-muted",
+                                )}
+                              >
+                                {place.coverage}
+                              </span>
+                            </span>
+                            {zone === place.slug ? (
+                              <CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="rounded-xl border border-line/60 bg-white p-4 text-sm text-muted">
+                      No county matches that search. Check the spelling, or leave the site
+                      unselected for now.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
+              <div className="mt-4 border-t border-line/50 pt-4">
+                <p className="text-xs uppercase tracking-[0.14em] text-muted">Current selection</p>
+                <p className="mt-1 font-medium text-maroon">{selectedPlaceName}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted">{selectedPlaceCoverage}</p>
+              </div>
+
+              {zone === NO_SITE_SLUG ? (
+                <p className="mt-3 text-xs leading-relaxed text-muted">
+                  It’s okay to continue while you’re still deciding on a site.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => chooseZone(NO_SITE_SLUG)}
+                  className="mt-3 min-h-11 w-full rounded-xl border border-line/60 bg-white px-4 py-2 text-left text-sm text-ink/75 transition-colors hover:border-burgundy/50"
+                >
+                  I haven’t chosen a site yet
+                </button>
+              )}
             </div>
-            <div className="mb-4 mt-4">
-              <Label htmlFor="enquiry-site-area">Town, estate or nearby area (optional)</Label>
+
+            <div className="mt-4 max-w-2xl">
+              <Label htmlFor="enquiry-site-area">
+                Town, estate or nearby area <span className="font-normal text-muted">Optional</span>
+              </Label>
               <Input
                 id="enquiry-site-area"
                 value={siteArea}
                 onChange={(event) => setSiteArea(event.target.value)}
                 placeholder="e.g. Ruiru, Karen or near the town centre"
                 maxLength={120}
-                className="rounded-xl"
+                className="mt-2 rounded-xl"
               />
               <p className="mt-1 text-xs leading-relaxed text-muted">
                 Helps us understand local access and travel. Please don’t send a house number or
                 exact plot address yet.
               </p>
-            </div>
-            <label htmlFor="enquiry-county-search" className="sr-only">
-              Search counties
-            </label>
-            <input
-              id="enquiry-county-search"
-              type="search"
-              value={placeSearch}
-              onChange={(event) => setPlaceSearch(event.target.value)}
-              placeholder="Search counties"
-              className="mb-4 hidden h-11 w-full rounded-xl border border-line bg-paper px-4 text-sm text-ink outline-none focus:border-burgundy sm:block"
-            />
-            <div className="hidden grid-cols-2 gap-4 sm:grid">
-              {visiblePlaces.map((z) => (
-                <button
-                  key={z.slug}
-                  type="button"
-                  onClick={() => chooseZone(z.slug)}
-                  aria-pressed={zone === z.slug}
-                  className={cn(
-                    "group text-left p-6 border rounded-2xl transition-all duration-300",
-                    zone === z.slug
-                      ? "border-burgundy bg-gradient-to-br from-maroon to-burgundy text-paper shadow-soft scale-[1.02]"
-                      : "border-line/50 bg-paper hover:border-burgundy/50 hover:shadow-card card-lift",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "size-12 rounded-xl flex items-center justify-center mb-4 transition-colors duration-300",
-                      zone === z.slug ? "bg-white/20" : "bg-maroon/5 group-hover:bg-maroon/10",
-                    )}
-                  >
-                    <MapPin className="size-6" />
-                  </div>
-                  <span className="font-display text-xl block">{z.name}</span>
-                  <span
-                    className={cn(
-                      "block text-sm mt-1",
-                      zone === z.slug ? "text-paper/80" : "text-ink/60",
-                    )}
-                  >
-                    {z.coverage}
-                  </span>
-                </button>
-              ))}
-              {visiblePlaces.length === 0 ? (
-                <p className="hidden rounded-xl border border-line bg-paper p-5 text-sm text-muted sm:col-span-2 sm:block">
-                  No county matches that search.
-                </p>
-              ) : null}
             </div>
           </fieldset>
         ) : null}
@@ -816,11 +860,12 @@ export function EnquiryWizard({
           <div className="grid gap-6 max-w-xl">
             <div>
               <h2 className="font-display text-2xl md:text-3xl text-maroon mb-2">
-                Tell us about the scope
+                What work do you need?
               </h2>
               <p className="text-sm text-muted">
-                No standard size or finish assumptions for a custom project. Describe what you need,
-                and we will review it before suggesting the right next step.
+                Here, scope means what you want done and what is included. Describe the work in your
+                own words; we will review it before suggesting the right next step. This brief does
+                not produce a price.
               </p>
             </div>
             <div>
@@ -847,10 +892,13 @@ export function EnquiryWizard({
         {/* Step 2: Scale */}
         {step === 2 && type !== "Other" ? (
           <div>
-            <h2 className="font-display text-2xl md:text-3xl text-maroon mb-2">Scope and finish</h2>
+            <h2 className="font-display text-2xl md:text-3xl text-maroon mb-2">
+              What size and finish are you considering?
+            </h2>
             <p className="text-sm text-muted mb-5">
-              These details are optional. Share what you know; leave anything undecided blank. They
-              help us understand the brief but do not generate a whole-project price.
+              Scope means the work you want done and how much of it. Share a rough area and finish
+              preference if you know them; both are optional. These clues help us understand the
+              brief, but they do not calculate a project price.
             </p>
 
             <div className="mb-6 max-w-xl rounded-2xl border border-line/50 bg-paper p-4 sm:p-6">
@@ -889,7 +937,8 @@ export function EnquiryWizard({
                 Finish preference <span className="font-normal text-muted">Optional</span>
               </legend>
               <p className="mb-3 text-xs text-muted">
-                This is only an early preference, not a final material specification.
+                This describes the level of finish you have in mind—not a fixed package, material
+                list or price. Final specifications are agreed during design.
               </p>
               <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4">
                 <button
@@ -950,9 +999,35 @@ export function EnquiryWizard({
 
             <div className="mt-8 rounded-2xl border border-line/50 bg-paper p-4 sm:p-6">
               <p className="text-[11px] uppercase tracking-[0.18em] text-burgundy">
-                How project pricing works
+                How a project cost is worked out
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-ink/70">{COST_CAVEAT}</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink/70">
+                Area and finish are starting clues, not a quote. To build a reliable project cost,
+                ATRO needs to:
+              </p>
+              <ol className="mt-3 space-y-2 text-sm leading-relaxed text-ink/70">
+                <li>
+                  <span className="font-medium text-maroon">1. Define the work:</span> agree what
+                  is included and the materials or finish required.
+                </li>
+                <li>
+                  <span className="font-medium text-maroon">2. Measure it:</span> use drawings and
+                  site information to work out quantities; floor area alone is not enough.
+                </li>
+                <li>
+                  <span className="font-medium text-maroon">3. Check current prices:</span> get
+                  supplier and contractor quotations for the specified work.
+                </li>
+                <li>
+                  <span className="font-medium text-maroon">4. Account for the site:</span> consider
+                  access, delivery and other project conditions.
+                </li>
+              </ol>
+              <p className="mt-3 text-xs leading-relaxed text-muted">
+                This enquiry does not calculate or confirm a construction price. PPRA material
+                prices are dated references for selected items only—not a live quote or whole-build
+                budget.
+              </p>
             </div>
           </div>
         ) : null}
@@ -1014,9 +1089,14 @@ export function EnquiryWizard({
                   }}
                   autoComplete="tel"
                   required
-                  placeholder={diaspora ? "+44 7XXX XXX XXX" : "+254 7XX XXX XXX"}
+                  placeholder={diaspora ? "+country code and number" : "+254 7XX XXX XXX"}
                   className="rounded-xl"
                 />
+                {diaspora ? (
+                  <p className="mt-1 text-xs text-muted">
+                    Start with + and your country calling code so we can reach you internationally.
+                  </p>
+                ) : null}
               </div>
               <div>
                 <Label htmlFor="email" className="flex items-center gap-2 mb-2">
@@ -1167,40 +1247,50 @@ export function EnquiryWizard({
               <div>
                 <Label htmlFor="country" className="flex items-center gap-2 mb-2">
                   <Globe className="size-4 text-muted" />
-                  Where are you based?
+                  Which country or territory are you based in?
                 </Label>
-                <Select
+                <Input
                   id="country"
+                  list="diaspora-country-suggestions"
                   value={diasporaCountry}
                   onChange={(e) => setDiasporaCountry(e.target.value)}
+                  placeholder="Type any country or territory"
+                  maxLength={60}
                   className="rounded-xl"
-                >
-                  <option value="">Select country</option>
-                  {DIASPORA_COUNTRIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                />
+                <datalist id="diaspora-country-suggestions">
+                  {COUNTRY_SUGGESTIONS.map((country) => (
+                    <option key={country} value={country} />
                   ))}
-                </Select>
+                </datalist>
+                <p className="mt-1 text-xs text-muted">
+                  You do not need to be Kenyan. If your project is in Kenya, we welcome clients
+                  wherever they live. You can leave this blank.
+                </p>
               </div>
               <div>
                 <Label htmlFor="tz" className="flex items-center gap-2 mb-2">
                   <Clock className="size-4 text-muted" />
                   Your time zone
                 </Label>
-                <Select
+                <Input
                   id="tz"
+                  list="diaspora-timezone-suggestions"
                   value={diasporaTimezone}
                   onChange={(e) => setDiasporaTimezone(e.target.value)}
+                  placeholder="e.g. Europe/Paris"
+                  maxLength={60}
                   className="rounded-xl"
-                >
-                  <option value="">Select time zone</option>
+                />
+                <datalist id="diaspora-timezone-suggestions">
                   {TIMEZONES.map((tz) => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </option>
+                    <option key={tz.value} value={tz.value} label={tz.label} />
                   ))}
-                </Select>
+                </datalist>
+                <p className="mt-1 text-xs text-muted">
+                  Enter your IANA time zone or choose a suggestion. Optional—if unsure, leave it
+                  blank and we will agree a suitable call time.
+                </p>
               </div>
               <div>
                 <Label htmlFor="kenya-contact" className="flex items-center gap-2 mb-2">
@@ -1385,8 +1475,7 @@ export function EnquiryWizard({
                         {diasporaCountry || "Country not specified"}
                       </p>
                       <p className="mt-1 text-sm text-ink/70">
-                        {TIMEZONES.find((item) => item.value === diasporaTimezone)?.label ??
-                          "Time zone not specified"}
+                        {diasporaTimezone || "Time zone not specified"}
                       </p>
                       {diasporaKenyaContact ? (
                         <p className="mt-1 text-sm text-ink/70">

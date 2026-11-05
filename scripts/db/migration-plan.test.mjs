@@ -37,7 +37,10 @@ test("non-.sql entries are dropped", () => {
 
 test("the migrations directory uses one canonical SQL bootstrap", () => {
   const migrationsDir = join(projectRoot(), "migrations");
-  assert.deepEqual(readdirSync(migrationsDir).filter((entry) => entry.endsWith(".sql")), [
-    "schema.sql",
-  ]);
+  assert.deepEqual(
+    readdirSync(migrationsDir)
+      .filter((entry) => entry.endsWith(".sql"))
+      .sort(),
+    ["0001_quotations_and_payment_requests.sql", "schema.sql"],
+  );
 });

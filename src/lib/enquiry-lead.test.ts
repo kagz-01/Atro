@@ -49,7 +49,7 @@ describe("leadLocality", () => {
     assert.deepEqual(leadLocality(LOCAL), { clientCity: "", clientTz: "" });
   });
 
-  test("country Other and zone other both land as unset, never as labels", () => {
+  test("older Other selections and unrecognized zones land as unset, never as labels", () => {
     const locality = leadLocality({
       diaspora: true,
       country: "Other",
@@ -69,6 +69,16 @@ describe("leadProfile", () => {
     assert.equal(profile.initials, "AN");
     assert.equal(profile.email, "Amina@Example.com");
     assert.equal(profile.phone, "+447700900123");
+  });
+
+  test("a client in any country can be recorded without a country-list restriction", () => {
+    const profile = leadProfile({
+      ...ABROAD,
+      country: "Bhutan",
+      timezone: "Africa/Nairobi",
+    });
+    assert.equal(profile.country, "Bhutan");
+    assert.equal(profile.timezone, "Africa/Nairobi");
   });
 
   test("a local lead stays an ordinary profile with no invented abroad facts", () => {

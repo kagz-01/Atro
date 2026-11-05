@@ -47,7 +47,7 @@ function BoqGeneratorPage() {
           <div className="max-w-xl">
             <h2 className="font-display text-3xl text-paper">Need a measured cost plan?</h2>
             <p className="mt-3 text-paper/70">
-              A preliminary BOQ helps you plan. For a tender-ready document, a registered quantity surveyor should verify quantities, rates and specifications on site.
+              This worksheet is only a starting point. For a tender-ready BOQ or project cost plan, a quantity surveyor should verify scope, quantities, specifications and current rates.
             </p>
             <Link
               to="/start"

@@ -36,6 +36,7 @@ import { ApprovalsPanel } from "@/components/dashboard/approvals-panel";
 import { listMyApprovals } from "@/lib/approvals-server";
 import { KIND_LABEL } from "@/lib/invoices";
 import { CONTRACTOR, PROFESSIONALS } from "@/lib/diaspora/portal";
+import { usesMeasuredWorkCertification } from "@/lib/diaspora/tracks";
 import type { Decision, Milestone, Payment } from "@/lib/diaspora/portal";
 import { EvidencePanel } from "@/components/dashboard/evidence-panel";
 import { MessagesPanel } from "@/components/dashboard/messages-panel";
@@ -84,10 +85,10 @@ const kesShort = (n: number) => {
 const PAYMENT_STATUS: Record<string, { label: string; cls: string }> = {
   paid: { label: "Paid", cls: "bg-emerald-50 text-emerald-800 border-emerald-200" },
   certified: {
-    label: "Certified — ready to pay",
+    label: "Ready for payment",
     cls: "bg-amber-50 text-amber-900 border-amber-300",
   },
-  due: { label: "Due on certification", cls: "bg-sky-50 text-sky-900 border-sky-300" },
+  due: { label: "Awaiting stage confirmation", cls: "bg-sky-50 text-sky-900 border-sky-300" },
   scheduled: { label: "Scheduled", cls: "bg-stone/100 text-stone-600 border-stone-200" },
   retained: { label: "Held in retention", cls: "bg-burgundy/10 text-burgundy border-burgundy/25" },
 };
@@ -146,6 +147,7 @@ export function ClientDashboard({
   const [section, setSection] = useState<Section>("overview");
   const activityRef = useRef<HTMLDivElement>(null);
   const p = data.project;
+  const measuredWork = usesMeasuredWorkCertification(p.track);
 
   // Shared with ProfilePanel under the same key: flipping "I live abroad" or
   // a timezone there updates this nav and the abroad section without a reload.
@@ -212,7 +214,7 @@ export function ClientDashboard({
   const moneySlices: Slice[] = [
     { name: "Payments received", value: b.paidToDate, color: "var(--color-maroon)" },
     {
-      name: "Certified, ready to pay",
+      name: measuredWork ? "Certified work, ready to pay" : "Approved stages, ready to pay",
       value: b.currentlyCertified,
       color: "var(--color-gold)",
     },
@@ -410,7 +412,7 @@ export function ClientDashboard({
             subtitle={
               abroad
                 ? "You do not need to check everything every day — just the decisions, money and work that need your reply."
-                : "Your project keeps moving. Keep an eye on the decisions, certified work and next steps."
+                : "Your project keeps moving. Keep an eye on decisions, confirmed payment stages and next steps."
             }
           >
             {nudges.length > 0 ? (
@@ -461,7 +463,9 @@ export function ClientDashboard({
                   <span className="min-w-0">
                     <span className="block text-[13px] text-maroon">{pay.label}</span>
                     <span className="mt-0.5 block text-[11px] text-ink/55">
-                      Certified and ready for payment
+                      {measuredWork
+                        ? "Inspected work certified; ready for payment"
+                        : "Agreed stage approved; ready for payment"}
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
@@ -594,7 +598,7 @@ export function ClientDashboard({
               exact={kes(b.currentlyCertified + b.retentionHeld)}
               sub={
                 payablePayments.length > 0
-                  ? `${payablePayments.length} certificate${payablePayments.length === 1 ? "" : "s"} ready for payment`
+                  ? `${payablePayments.length} payment stage${payablePayments.length === 1 ? "" : "s"} ready for payment`
                   : `${kes(b.retentionHeld)} of it is retention, payable after defects`
               }
               icon={Hourglass}
@@ -704,9 +708,11 @@ export function ClientDashboard({
         <div className="space-y-5">
           <Panel title="Project funds" subtitle="Each verified payment belongs to this project ledger">
             <p className="text-[13px] leading-relaxed text-ink/65">
-              Pay only against a certified instalment. Checkout opens securely with Paystack; the
-              project is marked paid and a receipt is issued only after Paystack confirms the exact
-              amount in KES.
+              {measuredWork
+                ? "For construction and renovation, pay only against work inspected and certified under your agreement."
+                : "Pay only after ATRO confirms the agreed deliverable or fee stage under your signed engagement."}{" "}
+              Checkout opens securely with Paystack; the project is marked paid and a receipt is
+              issued only after Paystack confirms the exact amount in KES.
             </p>
             <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
               ATRO’s Paystack balance settles to ATRO’s configured bank account. This project ledger
@@ -719,9 +725,13 @@ export function ClientDashboard({
               <dl className="space-y-3">
                 {[
                   ["Contract value (BOQ priced)", kes(p.contractValue), false],
-                  ["Certified to date", kes(b.certifiedToDate), false],
+                  [measuredWork ? "Work certified to date" : "Stages approved to date", kes(b.certifiedToDate), false],
                   ["Paid to date", kes(b.paidToDate), false],
-                  ["Certified, awaiting payment", kes(b.currentlyCertified), true],
+                  [
+                    measuredWork ? "Certified, awaiting payment" : "Approved stages awaiting payment",
+                    kes(b.currentlyCertified),
+                    true,
+                  ],
                   [`Retention held (${b.retentionPct}%)`, kes(b.retentionHeld), true],
                 ].map(([k, v, highlight]) => (
                   <div
@@ -757,7 +767,12 @@ export function ClientDashboard({
               className="min-w-0"
               bodyClassName="p-0"
             >
-              <PaymentTable payments={data.payments} onPay={onPay} pending={pending} />
+              <PaymentTable
+                payments={data.payments}
+                onPay={onPay}
+                pending={pending}
+                measuredWork={measuredWork}
+              />
             </Panel>
           </div>
 
@@ -993,10 +1008,12 @@ function PaymentTable({
   payments,
   onPay,
   pending,
+  measuredWork,
 }: {
   payments: Payment[];
   onPay: (paymentId: string) => void;
   pending: string;
+  measuredWork: boolean;
 }) {
   return (
     <>
@@ -1011,7 +1028,9 @@ function PaymentTable({
               <span className="min-w-0">
                 <span className="block text-[13px] font-medium text-maroon">{pay.label}</span>
                 {pay.certificate ? (
-                  <span className="font-mono text-[11px] text-muted">{pay.certificate}</span>
+                  <span className="font-mono text-[11px] text-muted">
+                    {measuredWork ? "Certificate" : "Stage reference"} {pay.certificate}
+                  </span>
                 ) : null}
               </span>
               <span className="shrink-0 text-[13px] font-medium text-maroon">{kes(pay.amount)}</span>
@@ -1068,7 +1087,9 @@ function PaymentTable({
                 <td className="px-5 py-3">
                   <span className="block text-[13px] text-maroon">{pay.label}</span>
                   {pay.certificate ? (
-                    <span className="font-mono text-[11px] text-muted">{pay.certificate}</span>
+                    <span className="font-mono text-[11px] text-muted">
+                      {measuredWork ? "Certificate" : "Stage reference"} {pay.certificate}
+                    </span>
                   ) : null}
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap text-[13px] text-ink/70">
@@ -1250,8 +1271,10 @@ function VaultPanel({
             <FileText className="mx-auto size-6 text-ink/30" />
             <p className="mt-3 font-display text-lg text-maroon">No documents yet</p>
             <p className="mx-auto mt-2 max-w-md text-[13px] text-ink/55">
-              Your first certificate appears here as soon as ATRO certifies work on your project.
-              You can print it or save it as a PDF from there.
+              {measuredWork
+                ? "Your payment certificate and matching payment request appear here once ATRO confirms inspected work."
+                : "Your payment request appears here once ATRO confirms an agreed fee stage or deliverable."}{" "}
+              You can print it or save it as a PDF.
             </p>
           </div>
         ) : (

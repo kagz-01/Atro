@@ -1,10 +1,20 @@
 export const PROJECT_TYPES = [
-  { id: "Residential", label: "Residential", icon: "🏠", desc: "Family homes, apartments, villas" },
-  { id: "Commercial", label: "Commercial", icon: "🏢", desc: "Offices, retail, mixed-use" },
-  { id: "Institutional", label: "Institutional", icon: "🏛️", desc: "Schools, hospitals, community" },
-  { id: "Church", label: "Church", icon: "⛪", desc: "Worship spaces, parish halls" },
-  { id: "School", label: "School", icon: "🎓", desc: "Classrooms, labs, libraries" },
-  { id: "Renovation", label: "Renovation", icon: "🔧", desc: "Extensions, remodels, upgrades" },
+  { id: "Residential", label: "Residential", icon: "🏠", desc: "New homes, apartments and villas" },
+  { id: "Commercial", label: "Commercial", icon: "🏢", desc: "Shops, offices, hospitality and mixed-use" },
+  {
+    id: "Institutional",
+    label: "Institutional",
+    icon: "🏛️",
+    desc: "Healthcare, civic and community facilities",
+  },
+  { id: "Church", label: "Church", icon: "⛪", desc: "Churches, worship spaces and parish halls" },
+  { id: "School", label: "School", icon: "🎓", desc: "Schools and other learning facilities" },
+  {
+    id: "Renovation",
+    label: "Renovation",
+    icon: "🔧",
+    desc: "Alter or extend an existing building",
+  },
 ] as const;
 
 export type CostProjectType = (typeof PROJECT_TYPES)[number]["id"];

@@ -23,7 +23,7 @@ function FeesPage() {
     <LegalPage
       slug="/fees"
       title="Fees & payment terms"
-      lede="How we charge, when you pay, and how money reaches a project in Kenya from abroad. Published upfront so there are no surprises mid-build."
+      lede="How fees, payments and project cost information are presented. Agree the scope, assumptions and payment terms before work proceeds."
       updated={UPDATED}
       intro={
         <>
@@ -279,10 +279,7 @@ function FeesPage() {
           heading: "VAT and taxes",
           body: (
             <p>
-              Figures on this site and in our indicative tools are shown excluding
-              VAT unless we say otherwise. VAT is applied where legally required.
-              Statutory fees payable to county governments and statutory agencies are
-              passed through at cost with receipts, not marked up.
+              Check each project proposal or supplier quotation for its stated tax treatment. Dated material-price references are not live supplier quotations; confirm applicable tax, delivery and other charges directly before ordering. Statutory fees payable to county governments and statutory agencies are passed through at cost with receipts, not marked up.
             </p>
           ),
         },
@@ -291,11 +288,7 @@ function FeesPage() {
           heading: "Prices quoted before a survey",
           body: (
             <p>
-              A price given before we have seen the site, the drawings and the
-              ground is an estimate, and we will always label it as one. Our cost
-              calculator and bill of quantity tools are built to give you a
-              realistic order of magnitude and a sensible shortlist — not a figure
-              you should build a contract around.
+              A price prepared before the site, drawings and ground conditions are reviewed is provisional and should be labelled as such. ATRO’s public tools do not generate a whole-project construction price: the material table is a dated reference, and the BOQ worksheet has no preset quantities or rates. A project cost requires a defined scope, measured quantities and current project-specific quotations.
             </p>
           ),
         },

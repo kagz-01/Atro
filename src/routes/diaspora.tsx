@@ -30,7 +30,7 @@ import {
   ABROAD_RED_FLAGS,
   abroadService,
 } from "@/lib/diaspora/abroad";
-import { SERVICES } from "@/lib/site";
+import { MYHARDWARE_URL, SERVICES } from "@/lib/site";
 import { getDiasporaHome } from "@/lib/diaspora-home";
 import { stampIn } from "@/lib/tz";
 
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/diaspora")({
       {
         name: "description",
         content:
-          "Kenyans abroad: build your home with confidence. Milestone payments, a private project portal, weekly reports, independent verification and a named project manager — not WhatsApp guesses.",
+          "Build in Kenya from anywhere in the world. ATRO coordinates design and construction with milestone payments, a private project portal, weekly reports, independent verification and a named project manager.",
       },
     ],
   }),
@@ -153,7 +153,7 @@ function DiasporaPage() {
 
         <div className="relative mx-auto max-w-[1400px] px-6 py-14 sm:px-8 md:px-12 md:py-18 lg:px-16">
           <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-gold-light sm:text-xs">
-            Nairobi, Kenya <span className="mx-2 text-paper/55">/</span> For Kenyans abroad
+            Nairobi, Kenya <span className="mx-2 text-paper/55">/</span> For clients worldwide
           </p>
 
           <h1 className="max-w-4xl font-display text-[2.2rem] leading-[0.9] tracking-[-0.05em] text-paper sm:text-[2.9rem] md:text-[3.7rem]">
@@ -163,7 +163,7 @@ function DiasporaPage() {
           </h1>
 
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-paper/75 sm:text-lg">
-            Plan and build in Kenya with a local team coordinating design, costs and construction—and clear project updates wherever you are.
+            Wherever you live, plan and build in Kenya with a local team coordinating design, costs and construction—and clear project updates on your time.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
@@ -226,7 +226,7 @@ function DiasporaPage() {
                 title: "I need materials support",
                 body: "Compare suppliers and product options while ATRO handles the project decisions and delivery flow.",
                 cta: "Open MyHardware",
-                to: "https://myhardware.co.ke",
+                to: MYHARDWARE_URL,
                 external: true,
               },
             ].map((item) => (
@@ -366,7 +366,7 @@ function DiasporaPage() {
               </p>
             </div>
             <a
-              href="https://myhardware.co.ke"
+              href={MYHARDWARE_URL}
               target="_blank"
               rel="noreferrer"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-maroon px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-paper transition-colors hover:bg-[#5b1c26]"
@@ -483,7 +483,7 @@ function DiasporaPage() {
         <ol className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
             ["01", "Plan", "Brief, site and land checks before design starts."],
-            ["02", "Design & price", "Drawings and a measured BOQ, aligned to budget."],
+            ["02", "Design & cost planning", "Develop the scope, measurements and current quotations before agreeing a construction budget."],
             ["03", "Build with visibility", "Written scope, weekly evidence and certified payments."],
             ["04", "Handover", "Inspections, keys, manuals and a complete record."],
           ].map(([number, title, detail]) => (

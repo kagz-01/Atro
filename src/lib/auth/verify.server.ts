@@ -62,7 +62,7 @@ export async function getSessionUser(bearerToken?: string): Promise<VerifiedUser
   const guestPreview = isGuestPreviewCookie(request?.headers.get("cookie"));
 
   // No Supabase means no way to sign in, so preview — as whoever the
-  // persona cookie says, or as the seeded studio admin when it says nothing.
+  // persona cookie says, or as the seeded local client when it says nothing.
   if (!configured) {
     if (guestPreview) {
       return {
@@ -135,7 +135,7 @@ export async function getSessionUser(bearerToken?: string): Promise<VerifiedUser
  * - Not configured + `DATABASE_URL` set -> throw (fail closed): one shared dev
  *   user on a real database would let every visitor read/write everyone's rows.
  * - Not configured + no database -> the preview persona (the cookie's seat,
- *   or the seeded studio admin when the cookie says nothing).
+ *   or the seeded local client when the cookie says nothing).
  */
 export type SessionIdentity = {
   userId: string;

@@ -197,7 +197,7 @@ function NewProjectForm({
   const [title, setTitle] = useState("");
   const [plot, setPlot] = useState("");
   const [area, setArea] = useState("");
-  const [contractValue, setContractValue] = useState("25000000");
+  const [contractValue, setContractValue] = useState("");
   const [city, setCity] = useState("");
   const [tz, setTz] = useState("");
   const [months, setMonths] = useState("12");
@@ -326,14 +326,20 @@ function NewProjectForm({
           />
         </div>
         <div>
-          <Label htmlFor="np-value">Contract value (KES)</Label>
+          <Label htmlFor="np-value">Agreed contract value (KES)</Label>
           <Input
             id="np-value"
+            type="number"
+            min="500000"
+            step="1"
             value={contractValue}
             onChange={(e) => setContractValue(e.target.value)}
             inputMode="numeric"
             required
           />
+          <p className="mt-1 text-xs text-muted">
+            Enter the amount agreed in writing. It determines this project's payment stages.
+          </p>
         </div>
         <div className="sm:col-span-2">
           <Label htmlFor="np-service">Service</Label>
@@ -445,7 +451,7 @@ function PortalPage() {
   const isNestedPortalRoute = useRouterState({
     select: (state) => state.location.pathname.replace(/\/+$/, "") !== "/portal",
   });
-  const { isPending: sessionPending } = useCurrentUserState();
+  const { isPending: sessionPending, sessionError } = useCurrentUserState();
   const hydrated = useIsHydrated();
   const user = useCurrentUser();
   const { data: access, isLoading: accessLoading } = useQuery({
@@ -498,10 +504,17 @@ function PortalPage() {
   }
 
   useEffect(() => {
-    if (isNestedPortalRoute || dashboardRoute === "/admin") return;
+    if (
+      isNestedPortalRoute ||
+      sessionPending ||
+      !user ||
+      accessLoading ||
+      dashboardRoute !== "/portal"
+    )
+      return;
     void load();
     // Re-check when the account changes (sign-in, sign-out).
-  }, [user?.id, isNestedPortalRoute, dashboardRoute]);
+  }, [user, isNestedPortalRoute, sessionPending, accessLoading, dashboardRoute]);
 
   async function run(key: string, action: () => Promise<unknown>, done: string) {
     setPending(key);
@@ -522,7 +535,19 @@ function PortalPage() {
   // of it: `useCurrentUserState().isPending` holds back until the session resolves.
   // The server always renders "pending", so the first client paint must too —
   // otherwise the two trees differ and React throws the page away.
-  if (sessionPending || !hydrated) return <LoadingBlock label="Checking your session" />;
+  if (sessionPending || !hydrated) return <LoadingBlock label="Restoring your account" />;
+  if (sessionError) {
+    return (
+      <div className="mx-auto max-w-xl px-6 py-24 text-center">
+        <p role="alert" className="rounded-xl bg-red-50 px-5 py-4 text-sm text-red-800">
+          We could not restore your sign-in session: {sessionError}.
+        </p>
+        <Button className="mt-5" onClick={() => window.location.reload()}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
   if (!user) {
     return (
       <>
@@ -540,7 +565,7 @@ function PortalPage() {
   if (user && !accessLoading && dashboardRoute === "/admin") {
     return <Navigate to="/admin" replace />;
   }
-  if (loading && !data) return <LoadingBlock label="Opening your project" />;
+  if (loading && !data) return <LoadingBlock label="Loading your project record" />;
   if (!data) {
     return (
       <main className="pt-32 pb-20">

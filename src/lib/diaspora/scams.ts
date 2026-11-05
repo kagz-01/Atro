@@ -225,9 +225,9 @@ export const SIGNALS: Signal[] = [
     weight: 7,
     group: "Presentation",
     text: "A total price far below every other quote you have received.",
-    why: "Published Kenyan construction rates span a wide band. A figure dramatically below the market usually reflects omitted scope, not a bargain.",
+    why: "There is no single reliable construction rate for every site and specification. Quotes that cover different work or use different assumptions are not directly comparable.",
     action:
-      "Ask for the bill of quantities and compare item by item. The saving is usually a missing item, not a lower price.",
+      "Ask for the scope, specification and measured BOQ. Compare like-for-like quantities and current quotations, and clarify exclusions before choosing.",
   },
   {
     id: "impressions",

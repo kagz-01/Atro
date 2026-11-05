@@ -33,7 +33,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
   }, [isHome]);
 
   return (
-    <div className="min-h-dvh flex flex-col bg-paper text-ink">
+    <div className="site-canvas min-h-dvh flex flex-col text-ink">
       <a href="#main" className="skip-link">
         Skip to content
       </a>
