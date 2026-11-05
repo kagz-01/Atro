@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { useState, type KeyboardEvent } from "react";
+import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { CtaBand } from "@/components/page-hero";
+import { PortalPreview } from "@/components/portal-preview";
 import { ProjectCard } from "@/components/project-card";
 import { Reveal } from "@/components/reveal";
 import { Button } from "@/components/ui/button";
 import { useRevealOnScroll } from "@/hooks/use-reveal";
 import { SplitText } from "@/components/scroll-effects";
-import { COMPANY, featuredProjects, MYHARDWARE_URL, SERVICES, SERVICE_CATEGORIES, ZONES } from "@/lib/site";
+import { COMPANY, featuredProjects, MYHARDWARE_URL, PROJECTS, SERVICES, SERVICE_CATEGORIES, ZONES } from "@/lib/site";
 import { useSiteStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -32,15 +34,13 @@ function Home() {
   return (
     <>
       <Hero />
-      <ProjectSnapshot />
       {diaspora ? <DiasporaBanner /> : null}
-      <QuickStart />
-      <HowWeWork />
-      <Solution />
       <Proof projects={featured} />
+      <HowWeWork />
       <Services />
-      <HardwarePartner />
+      <PortalPreview experience="kenya" />
       <Tools />
+      <HardwarePartner />
       <CtaBand />
       <script
         type="application/ld+json"
@@ -83,7 +83,7 @@ function Hero() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(145,111,63,0.14),transparent_32%)]" aria-hidden />
 
       <div className="relative mx-auto w-full max-w-[1400px] px-6 pt-28 pb-16 sm:py-16 sm:px-8 md:px-12 lg:px-16">
-        <div className="grid items-end gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
+        <div className="grid items-end gap-8 lg:grid-cols-1 lg:gap-12">
           <div className="max-w-[760px]">
             <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-paper drop-shadow-[0_1px_5px_rgba(0,0,0,0.95)] sm:text-xs">
               Nairobi, Kenya <span className="mx-2 text-paper/75">/</span> Design · Cost planning ·
@@ -103,7 +103,7 @@ function Hero() {
                 to="/start"
                 className="inline-flex min-h-12 items-center gap-2 rounded-full bg-gold px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-maroon transition-all duration-300 hover:bg-gold-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
               >
-                Tell us about your project
+                Start a project
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
               <Link
@@ -115,131 +115,8 @@ function Hero() {
               </Link>
             </div>
 
-            <p className="mt-6 text-sm text-white/70">
-              Already working with us?{" "}
-              <Link
-                to="/login"
-                search={{ returnTo: undefined }}
-                className="font-medium text-white underline decoration-gold/80 underline-offset-4 hover:text-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
-              >
-                Sign in to your project
-              </Link>
-            </p>
           </div>
 
-          <div className="hidden lg:block">
-            <div className="ml-auto h-[420px] w-full max-w-[440px] overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_30px_80px_rgba(0,0,0,0.25)] backdrop-blur-[2px]">
-              <img
-                src="/catalog/images/hero.webp"
-                alt=""
-                className="h-full w-full object-cover object-center opacity-90"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ProjectSnapshot() {
-  return (
-    <section className="bg-[#f5efe7] px-6 py-10 sm:px-8 sm:py-12 md:px-12 lg:px-16 lg:py-14">
-      <div className="mx-auto max-w-[1400px]">
-        <div className="mb-6 inline-flex items-center rounded-full border border-[#c7a478]/60 bg-[#f3ebdf] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-burgundy">
-          Portal preview
-        </div>
-
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <h2 className="font-display text-[1.8rem] leading-[0.98] tracking-[-0.04em] text-maroon sm:text-[2.2rem] md:text-[2.8rem]">
-            See how project progress is recorded.
-          </h2>
-
-          <Link
-            to="/portal"
-            className="inline-flex items-center justify-center rounded-xl bg-[#410f18] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-paper transition-colors hover:bg-[#5b1c26]"
-          >
-            Open the portal <ArrowRight className="ml-2 size-4" />
-          </Link>
-        </div>
-
-        <div className="mt-6 rounded-[1.75rem] border border-[#d6cab6] bg-[#f3efe8] p-4 sm:p-5 lg:p-7">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.2em] text-burgundy">
-                Demonstration project · ATRO-2403
-              </p>
-              <h3 className="mt-3 font-display text-[1.5rem] leading-none text-maroon sm:text-[2rem] md:text-[2.8rem]">Feasibility and cost plan</h3>
-            </div>
-            <div className="text-left sm:text-right">
-              <p className="text-sm text-ink/70">Example focus:</p>
-              <p className="text-sm font-medium text-ink">Cost options and next steps</p>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Link
-              to="/portal"
-              className="inline-flex w-fit items-center gap-2 rounded-full border border-[#2e2d2d]/40 bg-transparent px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-maroon transition-colors hover:border-maroon hover:bg-white/20"
-            >
-              Explore the portal <ArrowRight className="size-4" />
-            </Link>
-
-            <div className="text-sm text-ink/70">
-              Weekly written updates • Payments tied to verified work • One project record, wherever you are
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Quick Start ─── */
-function QuickStart() {
-  const steps = [
-    {
-      title: "I am starting a project",
-      text: "From first brief to scope, costs and next decisions.",
-      to: "/start",
-    },
-    {
-      title: "I am building from abroad",
-      text: "Remote milestones, approvals and site visibility from Nairobi.",
-      to: "/diaspora",
-    },
-    {
-      title: "I want a planning check",
-      text: "Check feasibility, constraints and likely project shape early.",
-      to: "/tools",
-    },
-  ];
-
-  return (
-    <section className="bg-[#f8f2ea] py-10 sm:py-12 md:py-14">
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-        <div className="mb-6 max-w-3xl sm:mb-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-burgundy">Start here</p>
-          <h2 className="mt-3 font-display text-[1.8rem] text-maroon sm:text-[2.2rem] md:text-[2.9rem]">Choose the path that fits your project.</h2>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-          {steps.map((step) => (
-            <Link
-              key={step.title}
-              to={step.to}
-              className="group rounded-xl border border-[#d6cab6] bg-white p-3 text-left shadow-[0_20px_40px_-30px_rgba(60,5,8,0.22)] transition-all duration-300 hover:-translate-y-1 hover:border-gold/30 hover:shadow-[0_28px_60px_-28px_rgba(60,5,8,0.24)] sm:rounded-[1.4rem] sm:p-5 lg:p-6"
-            >
-              <div className="mb-3 flex items-center justify-between gap-2 sm:mb-5 sm:gap-3">
-                <span className="flex size-8 items-center justify-center rounded-full bg-gold/12 text-xs font-semibold text-maroon sm:size-10 sm:text-sm">
-                  0{steps.indexOf(step) + 1}
-                </span>
-                <ArrowRight className="size-4 text-maroon transition-transform duration-300 group-hover:translate-x-1" />
-              </div>
-              <h3 className="font-display text-sm leading-tight text-maroon sm:text-2xl sm:leading-normal">{step.title}</h3>
-              <p className="mt-2 text-[10px] leading-snug text-ink/70 sm:mt-2.5 sm:text-sm sm:leading-relaxed">{step.text}</p>
-            </Link>
-          ))}
         </div>
       </div>
     </section>
@@ -247,113 +124,149 @@ function QuickStart() {
 }
 
 function HowWeWork() {
-  const steps = [
-    {
-      number: "01",
-      title: "Scope the brief",
-      desc: "We define the project, the site conditions and the questions that matter before design starts.",
-    },
-    {
-      number: "02",
-      title: "Price the direction",
-      desc: "We align drawings, quantities and cost thinking so the project has a clear planning base.",
-    },
-    {
-      number: "03",
-      title: "Manage the build",
-      desc: "Site progress, approvals and day-to-day decisions stay visible to the client and the team.",
-    },
-    {
-      number: "04",
-      title: "Close the job",
-      desc: "Final handover is backed by records, updates and a clear trail of what was agreed and delivered.",
-    },
+  const project = PROJECTS.find((item) => item.slug === "pcea-baraka-church");
+  const moments = [
+    ...(project
+      ? [{
+          date: "Design intent",
+          title: project.name,
+          caption: project.excerpt,
+          image: project.image,
+          alt: `Design view of ${project.name}`,
+        }]
+      : []),
+    ...(project?.timeline?.map((moment) => ({
+      ...moment,
+      alt: `${project.name}: ${moment.title}, ${moment.date}`,
+    })) ?? []),
   ];
+  const [activeMoment, setActiveMoment] = useState(0);
+  const selectedMoment = moments[activeMoment];
+
+  function moveMoment(direction: -1 | 1) {
+    setActiveMoment((current) => (current + direction + moments.length) % moments.length);
+  }
+
+  function handleMomentKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      const next = (index + 1) % moments.length;
+      setActiveMoment(next);
+      document.getElementById(`kenya-project-tab-${next}`)?.focus();
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const previous = (index - 1 + moments.length) % moments.length;
+      setActiveMoment(previous);
+      document.getElementById(`kenya-project-tab-${previous}`)?.focus();
+    } else if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      const target = event.key === "Home" ? 0 : moments.length - 1;
+      setActiveMoment(target);
+      document.getElementById(`kenya-project-tab-${target}`)?.focus();
+    }
+  }
+
+  if (!project || !selectedMoment) return null;
 
   return (
     <section className="bg-[#f5efe7] py-10 sm:py-12 md:py-16 lg:py-20">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div className="mb-6 max-w-3xl sm:mb-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-burgundy">How ATRO works</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-burgundy">One live project, stage by stage</p>
           <h2 className="mt-3 font-display text-[1.8rem] text-maroon sm:text-[2.2rem] md:text-[2.9rem]">
-            Clear decisions. Measured progress. One project record.
+            Watch the design take shape on site.
           </h2>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-          {steps.map((step) => (
-            <article key={step.number} className="rounded-xl border border-[#d7cab7] bg-white p-3 shadow-[0_18px_30px_-28px_rgba(60,5,8,0.22)] sm:rounded-[1.4rem] sm:p-5">
-              <div className="mb-2 flex items-center justify-between sm:mb-3">
-                <span className="font-display text-2xl text-gold sm:text-3xl">{step.number}</span>
-                <span className="size-6 rounded-full border border-maroon/15 bg-maroon/5 sm:size-8" aria-hidden />
-              </div>
-              <h3 className="font-display text-sm leading-tight text-maroon sm:text-[1.7rem] sm:leading-none">{step.title}</h3>
-              <p className="mt-2 text-[10px] leading-snug text-ink/70 sm:mt-2.5 sm:text-sm sm:leading-relaxed">{step.desc}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Solution ─── */
-function Solution() {
-  const storyCards = [
-    {
-      number: "01",
-      title: "Private homes",
-      desc: "Family homes, compounds and custom living spaces planned to feel calm, practical and built for everyday life.",
-    },
-    {
-      number: "02",
-      title: "Commercial spaces",
-      desc: "Shops, workspaces and mixed-use developments shaped around how the business actually runs.",
-    },
-    {
-      number: "03",
-      title: "Institutional projects",
-      desc: "Schools, facilities and larger projects where quality, process and detail matter just as much as speed.",
-    },
-  ];
-
-  return (
-    <section aria-labelledby="approach-heading" className="bg-[#110d0e] py-10 text-paper sm:py-12 md:py-16 lg:py-20">
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-        <div className="mb-8 max-w-3xl sm:mb-10">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">What we build</p>
-          <h2
-            id="approach-heading"
-            className="mt-3 font-display text-[1.8rem] leading-[0.96] tracking-[-0.04em] text-white sm:text-[2.2rem] md:text-[2.9rem]"
-          >
-            Built around real use, not vague ideas.
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-          {storyCards.map((card) => (
-            <article key={card.number} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:rounded-[1.4rem] sm:p-5 lg:p-6">
-              <div className="mb-3 flex items-center justify-between gap-3 sm:mb-4 sm:gap-4">
-                <span className="font-display text-sm font-semibold text-gold sm:text-lg">{card.number}</span>
-                <span className="size-6 rounded-full border border-white/10 bg-white/5 sm:size-8" aria-hidden />
-              </div>
-              <h3 className="font-display text-sm leading-tight text-white sm:text-2xl">{card.title}</h3>
-              <p className="mt-2 line-clamp-3 text-[10px] leading-snug text-white/70 sm:mt-2.5 sm:text-sm sm:leading-relaxed">{card.desc}</p>
-            </article>
-          ))}
-        </div>
-
-        <div className="mt-8 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-2xl text-sm leading-relaxed text-white/75 sm:text-base">
-            We work from first sketch to final handover — with drawings, quantities, timelines and site decisions aligned in one flow.
+          <p className="mt-3 text-sm text-ink/65 sm:text-base">
+            {project.name} · {project.location}
           </p>
-          <Link
-            to="/services"
-            className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-gold underline decoration-gold/70 underline-offset-4 transition-colors hover:text-gold-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
+        </div>
+
+        <div className="overflow-hidden rounded-[1.5rem] border border-[#d7cab7] bg-white shadow-[0_20px_55px_-35px_rgba(60,5,8,0.4)]">
+          <div
+            role="tablist"
+            aria-label={`${project.name} project stages`}
+            className="grid grid-cols-2 gap-1 border-b border-ink/10 p-2 sm:grid-cols-3 lg:grid-cols-5"
           >
-            Explore our services
-            <ArrowRight className="size-4" aria-hidden />
-          </Link>
+            {moments.map((moment, index) => (
+              <button
+                key={`${moment.date}-${moment.title}`}
+                id={`kenya-project-tab-${index}`}
+                type="button"
+                role="tab"
+                aria-selected={activeMoment === index}
+                aria-controls="kenya-project-panel"
+                tabIndex={activeMoment === index ? 0 : -1}
+                onClick={() => setActiveMoment(index)}
+                onKeyDown={(event) => handleMomentKeyDown(event, index)}
+                className={`min-h-11 rounded-lg px-3 py-2 text-left text-xs transition-colors sm:text-sm ${
+                  activeMoment === index
+                    ? "bg-maroon text-paper"
+                    : "text-ink/65 hover:bg-[#f5efe7] hover:text-maroon"
+                }`}
+              >
+                <span className="block font-medium">{moment.title}</span>
+                <span className={`mt-0.5 block text-[10px] ${activeMoment === index ? "text-paper/65" : "text-ink/45"}`}>
+                  {moment.date}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div
+            id="kenya-project-panel"
+            role="tabpanel"
+            aria-labelledby={`kenya-project-tab-${activeMoment}`}
+            tabIndex={0}
+            className="grid lg:grid-cols-[1.15fr_0.85fr]"
+          >
+            <img
+              key={selectedMoment.image}
+              src={selectedMoment.image}
+              alt={selectedMoment.alt}
+              className="aspect-[16/10] w-full bg-stone object-cover lg:aspect-[4/3]"
+              loading="lazy"
+            />
+            <div className="flex flex-col justify-between p-5 sm:p-7 lg:p-9">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-burgundy">
+                  {selectedMoment.date}
+                </p>
+                <h3 className="mt-3 font-display text-2xl text-maroon sm:text-3xl">
+                  {selectedMoment.title}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-ink/65 sm:text-base">
+                  {selectedMoment.caption}
+                </p>
+              </div>
+              <div className="mt-6 flex items-center justify-between border-t border-ink/10 pt-4">
+                <Link
+                  to="/projects/$slug"
+                  params={{ slug: project.slug }}
+                  className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-burgundy hover:text-maroon"
+                >
+                  Full project story <ArrowRight className="size-4" aria-hidden />
+                </Link>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => moveMoment(-1)}
+                    aria-label="Previous project stage"
+                    className="grid size-9 place-items-center rounded-full border border-ink/15 text-maroon hover:bg-[#f5efe7]"
+                  >
+                    <ChevronLeft className="size-4" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveMoment(1)}
+                    aria-label="Next project stage"
+                    className="grid size-9 place-items-center rounded-full border border-ink/15 text-maroon hover:bg-[#f5efe7]"
+                  >
+                    <ChevronRight className="size-4" aria-hidden />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -428,7 +341,7 @@ function Services() {
           <div className="max-w-3xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">What we do</p>
             <SplitText
-              text="One team, from first drawing to final handover."
+              text="Design the brief. Price the work. Deliver the build."
               tag="h2"
               className="mt-3 font-display text-[2.2rem] text-white md:text-[2.9rem]"
               delay={100}
@@ -446,8 +359,8 @@ function Services() {
           {featuredServices.map(({ category, service }, i) => (
             <Reveal key={category.id} delay={i * 0.08}>
               <Link
-                to="/services/$slug"
-                params={{ slug: service.slug }}
+                to="/services"
+                search={{ service: service.slug }}
                 className="group card-lift block h-full overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/3 transition-all duration-300 hover:border-gold/35 hover:shadow-[0_30px_70px_rgba(0,0,0,0.2)]"
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-stone">

@@ -9,7 +9,7 @@ import { useSiteStore } from "@/lib/store";
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const isHome = pathname === "/";
+  const hasMarketingFooter = pathname === "/" || pathname === "/diaspora";
   const isStartingProject = pathname === "/start";
   const [footerVisible, setFooterVisible] = useState(false);
 
@@ -18,7 +18,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!isHome) {
+    if (!hasMarketingFooter) {
       setFooterVisible(false);
       return;
     }
@@ -31,7 +31,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
     });
     observer.observe(footer);
     return () => observer.disconnect();
-  }, [isHome]);
+  }, [hasMarketingFooter]);
 
   return (
     <div className="site-canvas min-h-dvh flex flex-col text-ink">
@@ -42,7 +42,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <main id="main" className="flex-1">
         <RouteTransition routeKey={pathname}>{children}</RouteTransition>
       </main>
-      {isHome ? <SiteFooter /> : null}
+      {hasMarketingFooter ? <SiteFooter /> : null}
       {!isStartingProject ? (
         <div
           aria-hidden="true"

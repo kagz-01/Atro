@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState, type KeyboardEvent } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -19,6 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CtaBand } from "@/components/page-hero";
+import { PortalPreview } from "@/components/portal-preview";
+import { PROJECTS } from "@/lib/site";
 import {
   ABROAD_CHANNELS,
   ABROAD_FAQS,
@@ -136,6 +139,333 @@ function YourProjects() {
   );
 }
 
+function DiasporaProjectEvidence() {
+  const project = PROJECTS.find((item) => item.slug === "sigona-villa");
+  if (!project) return null;
+
+  return (
+    <section className="border-b border-ink/10 bg-[#f5efe7] py-12 md:py-16">
+      <div className="mx-auto grid max-w-[1400px] gap-7 px-6 sm:px-8 md:px-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:px-16">
+        <div>
+          <Badge tone="gold" className="mb-3">Design to site</Badge>
+          <h2 className="font-display text-[2rem] leading-none text-maroon md:text-[2.8rem]">
+            See the plan beside the progress.
+          </h2>
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink/70 sm:text-base">
+            {project.name} · {project.location}. Compare the design intent with a dated
+            foundation-stage site record from the same project.
+          </p>
+          <Link
+            to="/projects/$slug"
+            params={{ slug: project.slug }}
+            className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-burgundy underline decoration-gold underline-offset-4"
+          >
+            View the project story
+            <ArrowRight className="size-4" aria-hidden />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <figure className="overflow-hidden rounded-2xl bg-white">
+            <img
+              src="/catalog/images/sigona-villa-front-view.webp"
+              alt="Design view of Sigona Villa"
+              className="aspect-[4/3] w-full object-cover"
+              loading="lazy"
+            />
+            <figcaption className="p-3 text-[10px] font-medium text-ink/65 sm:text-xs">
+              Design intent
+            </figcaption>
+          </figure>
+          <figure className="overflow-hidden rounded-2xl bg-white">
+            <img
+              src="/catalog/images/sigona-villa-foundation-progress-01.webp"
+              alt="Dated foundation-stage site progress at Sigona Villa"
+              className="aspect-[4/3] w-full object-cover"
+              loading="lazy"
+            />
+            <figcaption className="p-3 text-[10px] font-medium text-ink/65 sm:text-xs">
+              Foundation-stage record · 23 Sep 2026
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DiasporaJourney() {
+  return (
+    <section id="process" className="bg-white py-12 md:py-16">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+        <div className="max-w-3xl">
+          <Badge tone="maroon" className="mb-3">From your time zone to the site</Badge>
+          <h2 className="font-display text-[2.1rem] leading-none text-maroon md:text-[2.8rem]">
+            A decision trail you can follow from abroad.
+          </h2>
+        </div>
+
+        <ol className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            ["01", "Agree the scope", "Brief, site and land checks establish what the project needs."],
+            ["02", "Review the plan", "Drawings, quantities and current quotations inform the next decision."],
+            ["03", "See verified progress", "Written updates and site evidence show what has happened."],
+            ["04", "Approve and pay", "Recorded approvals and certified work connect decisions to payments."],
+          ].map(([number, title, detail]) => (
+            <li key={number} className="rounded-2xl border border-ink/10 bg-[#fbf8f3] p-4 sm:p-5">
+              <span className="font-display text-2xl text-gold">{number}</span>
+              <h3 className="mt-2 font-display text-lg text-maroon">{title}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-ink/65 sm:text-sm">{detail}</p>
+            </li>
+          ))}
+        </ol>
+
+        <details className="group mt-4 rounded-2xl border border-ink/10 bg-[#fbf8f3] px-5">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-maroon marker:hidden">
+            Explore the detailed eight-step process
+            <span className="text-xl text-gold transition-transform group-open:rotate-45" aria-hidden>
+              +
+            </span>
+          </summary>
+          <ol className="space-y-3 border-t border-ink/10 py-5">
+            {ABROAD_PROCESS.map((step) => {
+              const Icon = PROCESS_ICON[step.icon] ?? ClipboardCheck;
+              return (
+                <li key={step.num} className="flex gap-4">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-maroon text-sm font-bold text-white">
+                    {step.num}
+                  </span>
+                  <div>
+                    <h3 className="flex items-center gap-2 font-medium text-maroon">
+                      <Icon className="size-4" aria-hidden />
+                      {step.title}
+                    </h3>
+                    <p className="mt-1 text-sm leading-relaxed text-ink/65">{step.desc}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-ink/55">{step.detail}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </details>
+      </div>
+    </section>
+  );
+}
+
+type AssuranceStage = "progress" | "costs" | "approval" | "payment";
+
+const ASSURANCE_STAGES: { id: AssuranceStage; label: string; summary: string; safeguards: string[] }[] = [
+  {
+    id: "progress",
+    label: "See progress",
+    summary: "A named project manager, site evidence and a regular written record keep you close to what is happening.",
+    safeguards: ["Weekly written reports", "Named project manager", "Independent verification"],
+  },
+  {
+    id: "costs",
+    label: "Review costs",
+    summary: "Understand the measured scope, pricing basis and assumptions before construction is contracted.",
+    safeguards: ["BOQ before construction", "Open-book costing"],
+  },
+  {
+    id: "approval",
+    label: "Approve work",
+    summary: "Keep professional responsibility, agreed scope and project decisions documented.",
+    safeguards: ["Registered professionals", "Physical office in Nairobi"],
+  },
+  {
+    id: "payment",
+    label: "Pay certified stages",
+    summary: "Payments are tied to agreed deliverables, inspection and written approval—not promises.",
+    safeguards: ["Milestone-based payments"],
+  },
+];
+
+function DiasporaAssurance() {
+  const [activeStage, setActiveStage] = useState<AssuranceStage>("progress");
+  const selectedStage = ASSURANCE_STAGES.find((stage) => stage.id === activeStage)!;
+  const selectedIndex = ASSURANCE_STAGES.findIndex((stage) => stage.id === activeStage);
+
+  function selectStage(stage: AssuranceStage) {
+    setActiveStage(stage);
+  }
+
+  function handleStageKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    let nextIndex: number | undefined;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (index + 1) % ASSURANCE_STAGES.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = (index - 1 + ASSURANCE_STAGES.length) % ASSURANCE_STAGES.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = ASSURANCE_STAGES.length - 1;
+    }
+
+    if (nextIndex !== undefined) {
+      event.preventDefault();
+      const next = ASSURANCE_STAGES[nextIndex];
+      setActiveStage(next.id);
+      document.getElementById(`diaspora-assurance-tab-${next.id}`)?.focus();
+    }
+  }
+
+  return (
+    <section className="bg-stone/50 py-12 md:py-16">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+        <div className="max-w-3xl">
+          <Badge tone="gold" className="mb-3">How remote oversight works</Badge>
+          <h2 className="font-display text-[2.1rem] leading-none text-maroon md:text-[2.8rem]">
+            From site evidence to an informed payment.
+          </h2>
+        </div>
+
+        <div className="mt-7 overflow-hidden rounded-[1.5rem] border border-ink/10 bg-paper shadow-[0_24px_70px_-45px_rgba(60,5,8,0.35)]">
+          <div
+            role="tablist"
+            aria-label="Project oversight and payment steps"
+            className="grid grid-cols-2 gap-1 border-b border-ink/10 p-2 sm:grid-cols-4 sm:p-3"
+          >
+            {ASSURANCE_STAGES.map((stage, index) => (
+              <button
+                key={stage.id}
+                id={`diaspora-assurance-tab-${stage.id}`}
+                type="button"
+                role="tab"
+                aria-selected={activeStage === stage.id}
+                aria-controls="diaspora-assurance-panel"
+                tabIndex={activeStage === stage.id ? 0 : -1}
+                onClick={() => selectStage(stage.id)}
+                onKeyDown={(event) => handleStageKeyDown(event, index)}
+                className={`flex min-h-12 items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors sm:min-h-14 sm:px-4 sm:text-sm ${
+                  activeStage === stage.id
+                    ? "bg-maroon text-paper"
+                    : "text-ink/60 hover:bg-white hover:text-maroon"
+                }`}
+              >
+                <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[10px] ${
+                  activeStage === stage.id ? "bg-gold text-maroon" : "bg-maroon/8 text-burgundy"
+                }`}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                {stage.label}
+              </button>
+            ))}
+          </div>
+
+          <div
+            id="diaspora-assurance-panel"
+            role="tabpanel"
+            aria-labelledby={`diaspora-assurance-tab-${activeStage}`}
+            tabIndex={0}
+            className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[0.8fr_1.2fr] lg:items-start lg:p-9"
+          >
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-burgundy">
+                Step {String(selectedIndex + 1).padStart(2, "0")} of 04
+              </p>
+              <h3 className="mt-2 font-display text-2xl text-maroon sm:text-3xl">{selectedStage.label}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-ink/65 sm:text-base">{selectedStage.summary}</p>
+            </div>
+
+            {activeStage === "payment" ? (
+              <ol className="grid gap-2 sm:grid-cols-2">
+                {ABROAD_PAYMENT_PHASES.map((item, index) => (
+                  <li key={item.phase} className="rounded-xl border border-ink/10 bg-white p-4">
+                    <span className="text-[10px] font-bold tracking-[0.14em] text-gold">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <h4 className="mt-1 text-sm font-medium text-maroon">{item.phase}</h4>
+                    <p className="mt-1 text-xs leading-relaxed text-ink/65">{item.pay}</p>
+                    <p className="mt-2 border-t border-ink/8 pt-2 text-[11px] leading-relaxed text-ink/55">{item.protect}</p>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {selectedStage.safeguards.map((title) => {
+                  const safeguard = ABROAD_INCLUDED.find((item) => item.title === title);
+                  if (!safeguard) return null;
+                  const Icon = INCLUDED_ICON[safeguard.icon] ?? BadgeCheck;
+                  return (
+                    <article key={title} className="rounded-xl border border-ink/10 bg-white p-4">
+                      <Icon className="size-5 text-maroon" aria-hidden />
+                      <h4 className="mt-3 text-sm font-medium text-maroon">{safeguard.title}</h4>
+                      <p className="mt-1 text-xs leading-relaxed text-ink/60">{safeguard.desc}</p>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <details className="group mt-4 rounded-2xl border border-ink/10 bg-paper px-5">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-maroon marker:hidden">
+            See all safeguards, communication standards and red flags
+            <span className="text-xl text-gold transition-transform group-open:rotate-45" aria-hidden>+</span>
+          </summary>
+          <div className="border-t border-ink/10 py-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {ABROAD_INCLUDED.map((signal) => {
+                const Icon = INCLUDED_ICON[signal.icon] ?? BadgeCheck;
+                return (
+                  <article key={signal.title} className="rounded-xl border border-ink/10 bg-white p-3 sm:p-4">
+                    <Icon className="size-4 text-maroon sm:size-5" aria-hidden />
+                    <h3 className="mt-2 text-xs font-medium leading-tight text-maroon sm:text-base">{signal.title}</h3>
+                    <p className="mt-1 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">{signal.desc}</p>
+                  </article>
+                );
+              })}
+            </div>
+
+            <h3 className="mt-7 font-display text-xl text-maroon">How we stay in touch</h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {ABROAD_CHANNELS.map((channel) => (
+                <article key={channel.name} className="rounded-xl border border-ink/10 bg-white p-3 sm:p-4">
+                  <h4 className="text-xs font-medium text-maroon sm:text-base">{channel.name}</h4>
+                  <p className="text-[9px] leading-snug text-ink/55 sm:text-xs">
+                    {channel.frequency} · {channel.format}
+                  </p>
+                  <p className="mt-2 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">
+                    {channel.contents.join(" · ")}
+                  </p>
+                </article>
+              ))}
+            </div>
+
+            <div className="mt-7 grid gap-6 md:grid-cols-2">
+              <div>
+                <h3 className="font-display text-xl text-maroon">Warning signs to check</h3>
+                <ul className="mt-3 space-y-2">
+                  {ABROAD_RED_FLAGS.map((flag) => (
+                    <li key={flag} className="flex items-start gap-2 text-sm text-ink/70">
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-burgundy" />
+                      {flag}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-display text-xl text-maroon">What we will not do</h3>
+                <ul className="mt-3 space-y-2">
+                  {ABROAD_NEVER.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm text-ink/70">
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-maroon" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
+  );
+}
+
 function DiasporaPage() {
   const service = abroadService(SERVICES);
 
@@ -169,7 +499,7 @@ function DiasporaPage() {
           <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
             <Button asChild variant="gold" className="min-h-12 px-6">
               <Link to="/start" search={{ from: "diaspora" }}>
-                Tell us about your project
+                Start a project
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -179,13 +509,6 @@ function DiasporaPage() {
                 <ArrowRight className="size-4" />
               </a>
             </Button>
-            <Link
-              to="/login"
-              search={{ returnTo: "/portal/diaspora" }}
-              className="inline-flex min-h-11 items-center gap-2 text-sm text-paper/75 underline decoration-paper/35 underline-offset-4 hover:text-paper"
-            >
-              Already a client? Sign in
-            </Link>
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-paper/15 pt-5 text-xs text-paper/65">
@@ -199,62 +522,9 @@ function DiasporaPage() {
       </section>
 
       <YourProjects />
-
-      <section className="border-b border-ink/10 bg-[#f7f1e5] py-12 md:py-16">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <div className="mb-8 max-w-3xl">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">Choose your path</p>
-            <h2 className="mt-3 font-display text-[2.2rem] leading-none text-maroon md:text-[2.9rem]">
-              Remote project control, without losing clarity.
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            {[
-              {
-                title: "I need a starting plan",
-                body: "We review your brief, site and likely scope before you commit to a direction.",
-                cta: "Start a plan",
-                to: "/start?from=diaspora",
-              },
-              {
-                title: "I need visibility",
-                body: "Track milestone updates, site progress and the project record from anywhere in the world.",
-                cta: "View the portal",
-                to: "/portal/diaspora",
-              },
-              {
-                title: "I need materials support",
-                body: "Compare suppliers and product options while ATRO handles the project decisions and delivery flow.",
-                cta: "Open MyHardware",
-                to: MYHARDWARE_URL,
-                external: true,
-              },
-            ].map((item) => (
-              <Link
-                key={item.title}
-                to={item.to as string}
-                target={item.external ? "_blank" : undefined}
-                rel={item.external ? "noreferrer" : undefined}
-                className="group rounded-xl border border-[#d7c8af] bg-white p-3 shadow-[0_18px_30px_-28px_rgba(60,5,8,0.22)] transition-all duration-300 hover:-translate-y-1 hover:border-gold/35 hover:shadow-[0_26px_46px_-28px_rgba(60,5,8,0.24)] sm:rounded-[1.6rem] sm:p-5"
-              >
-                <div className="mb-3 flex items-center justify-between gap-2 sm:mb-5 sm:gap-3">
-                  <span className="flex size-8 items-center justify-center rounded-full bg-gold/12 text-xs font-semibold text-maroon sm:size-10 sm:text-sm">
-                    {String(item.title[0]).toUpperCase()}
-                  </span>
-                  <ArrowRight className="size-4 text-maroon transition-transform duration-300 group-hover:translate-x-1" />
-                </div>
-                <h3 className="font-display text-sm leading-tight text-maroon sm:text-xl md:text-[1.8rem]">{item.title}</h3>
-                <p className="mt-2 line-clamp-3 text-[10px] leading-snug text-ink/70 sm:mt-3 sm:text-sm sm:leading-relaxed">{item.body}</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-[8px] font-semibold uppercase tracking-[0.08em] text-burgundy sm:mt-5 sm:text-[10px] sm:tracking-[0.14em]">
-                  {item.cta}
-                  <ArrowRight className="size-3.5" />
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      <DiasporaProjectEvidence />
+      <DiasporaJourney />
+      <PortalPreview experience="diaspora" />
 
       {/* ── Service overview ── */}
       {service ? (
@@ -267,8 +537,8 @@ function DiasporaPage() {
               <p className="mt-1 text-sm leading-relaxed text-ink/70 md:text-base">{service.lede}</p>
             </div>
             <Link
-              to="/services/$slug"
-              params={{ slug: service.slug }}
+              to="/services"
+              search={{ service: service.slug }}
               className="inline-flex min-h-11 shrink-0 items-center gap-2 text-sm font-medium text-maroon underline decoration-gold underline-offset-4 hover:text-burgundy"
             >
               See what is included
@@ -289,7 +559,7 @@ function DiasporaPage() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-7 lg:grid-cols-3">
-            {ABROAD_FEATURES.map((f) => {
+            {ABROAD_FEATURES.filter((f) => f.to !== "/portal/diaspora").map((f) => {
               const Icon = f.to === "/portal/diaspora" ? ClipboardCheck
                 : f.to === "/verify" ? BadgeCheck
                 : f.to === "/scam-check" ? AlertTriangle
@@ -379,188 +649,7 @@ function DiasporaPage() {
         </div>
       </section>
 
-      {/* ── Trust signals ── */}
-      <section className="bg-stone/60 py-12 md:py-16">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <div className="max-w-3xl">
-            <Badge tone="gold" className="mb-3">How we protect your build</Badge>
-            <h2 className="font-display text-[2.1rem] leading-none text-maroon md:text-[2.8rem]">
-              A clear record at every stage.
-            </h2>
-          </div>
-
-          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {ABROAD_INCLUDED.slice(0, 4).map((signal) => {
-              const Icon = INCLUDED_ICON[signal.icon] ?? BadgeCheck;
-              return (
-                <article key={signal.title} className="rounded-xl border border-ink/10 bg-paper p-3 sm:rounded-2xl sm:p-4">
-                  <Icon className="size-4 text-maroon sm:size-5" aria-hidden />
-                  <h3 className="mt-2 font-display text-xs leading-tight text-maroon sm:mt-3 sm:text-base">{signal.title}</h3>
-                  <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">
-                    {signal.desc}
-                  </p>
-                </article>
-              );
-            })}
-          </div>
-
-          <details className="group mt-4 rounded-2xl border border-ink/10 bg-paper px-5">
-            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-maroon marker:hidden">
-              See all safeguards, reporting standards and red flags
-              <span className="text-xl text-gold transition-transform group-open:rotate-45" aria-hidden>
-                +
-              </span>
-            </summary>
-            <div className="border-t border-ink/10 py-5">
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                {ABROAD_INCLUDED.slice(4).map((signal) => {
-                  const Icon = INCLUDED_ICON[signal.icon] ?? BadgeCheck;
-                  return (
-                    <article key={signal.title} className="rounded-xl border border-ink/10 p-3 sm:p-4">
-                      <Icon className="size-4 text-maroon sm:size-5" aria-hidden />
-                      <h3 className="mt-2 text-xs font-medium leading-tight text-maroon sm:text-base">{signal.title}</h3>
-                      <p className="mt-1 line-clamp-3 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">{signal.desc}</p>
-                    </article>
-                  );
-                })}
-              </div>
-
-              <h3 className="mt-7 font-display text-xl text-maroon">How we stay in touch</h3>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                {ABROAD_CHANNELS.map((channel) => (
-                  <article key={channel.name} className="rounded-xl border border-ink/10 p-3 sm:p-4">
-                    <h4 className="text-xs font-medium text-maroon sm:text-base">{channel.name}</h4>
-                    <p className="text-[9px] leading-snug text-ink/55 sm:text-xs">
-                      {channel.frequency} · {channel.format}
-                    </p>
-                    <p className="mt-2 line-clamp-3 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">
-                      {channel.contents.join(" · ")}
-                    </p>
-                  </article>
-                ))}
-              </div>
-
-              <div className="mt-7 grid gap-6 md:grid-cols-2">
-                <div>
-                  <h3 className="font-display text-xl text-maroon">Warning signs to check</h3>
-                  <ul className="mt-3 space-y-2">
-                    {ABROAD_RED_FLAGS.map((flag) => (
-                      <li key={flag} className="flex items-start gap-2 text-sm text-ink/70">
-                        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-burgundy" />
-                        {flag}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="font-display text-xl text-maroon">What we will not do</h3>
-                  <ul className="mt-3 space-y-2">
-                    {ABROAD_NEVER.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm text-ink/70">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-maroon" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </details>
-        </div>
-      </section>
-
-      {/* ── Process walkthrough ── */}
-      <section id="process" className="mx-auto max-w-[1400px] px-6 py-12 sm:px-8 md:px-12 md:py-16 lg:px-16">
-        <div className="max-w-3xl">
-          <Badge tone="maroon" className="mb-3">The process</Badge>
-          <h2 className="font-display text-[2.1rem] leading-none text-maroon md:text-[2.8rem]">
-            From first call to keys.
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-ink/65 md:text-base">
-            Four clear phases. Detailed checks and decisions stay available when you need them.
-          </p>
-        </div>
-
-        <ol className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[
-            ["01", "Plan", "Brief, site and land checks before design starts."],
-            ["02", "Design & cost planning", "Develop the scope, measurements and current quotations before agreeing a construction budget."],
-            ["03", "Build with visibility", "Written scope, weekly evidence and certified payments."],
-            ["04", "Handover", "Inspections, keys, manuals and a complete record."],
-          ].map(([number, title, detail]) => (
-            <li key={number} className="rounded-xl border border-ink/10 bg-white p-3 sm:rounded-2xl sm:p-5">
-              <span className="text-xs font-bold tracking-[0.14em] text-gold">{number}</span>
-              <h3 className="mt-2 font-display text-sm leading-tight text-maroon sm:text-xl">{title}</h3>
-              <p className="mt-2 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">{detail}</p>
-            </li>
-          ))}
-        </ol>
-
-        <details className="group mt-4 rounded-2xl border border-ink/10 bg-white px-5">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-maroon">
-            View the full eight-step process
-            <span className="text-xl text-gold transition-transform group-open:rotate-45" aria-hidden>
-              +
-            </span>
-          </summary>
-          <ol className="space-y-3 border-t border-ink/10 py-5">
-            {ABROAD_PROCESS.map((step) => {
-              const Icon = PROCESS_ICON[step.icon] ?? ClipboardCheck;
-              return (
-                <li key={step.num} className="flex gap-4">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-maroon text-sm font-bold text-white">
-                    {step.num}
-                  </span>
-                  <div>
-                    <h3 className="flex items-center gap-2 font-medium text-maroon">
-                      <Icon className="size-4" aria-hidden />
-                      {step.title}
-                    </h3>
-                    <p className="mt-1 text-sm leading-relaxed text-ink/65">{step.desc}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-ink/55">{step.detail}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </details>
-      </section>
-
-      {/* ── Payment protection ── */}
-      <section className="bg-cream py-12 md:py-16">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="max-w-2xl">
-              <Badge tone="maroon" className="mb-3">Payment protection</Badge>
-              <h2 className="font-display text-3xl text-maroon md:text-4xl">
-                Pay for completed work.
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink/65">
-                Payments follow agreed deliverables, inspection and written approval.
-              </p>
-            </div>
-            <Button asChild variant="outline" className="min-h-11">
-              <Link to="/fees">
-                Fees and terms
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-          </div>
-
-          <ol className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
-            {ABROAD_PAYMENT_PHASES.map((item, index) => (
-              <li key={item.phase} className="rounded-2xl border border-ink/10 bg-white p-4">
-                <span className="text-xs font-bold tracking-[0.14em] text-gold">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <h3 className="mt-2 font-medium text-maroon">{item.phase}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-ink/65">{item.pay}</p>
-                <p className="mt-2 text-xs leading-relaxed text-ink/55">{item.protect}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
+      <DiasporaAssurance />
 
       {/* ── FAQs ── */}
       <section className="mx-auto max-w-[1400px] px-6 py-12 sm:px-8 md:px-12 md:py-16 lg:px-16">
@@ -592,7 +681,7 @@ function DiasporaPage() {
         title="Planning a build in Kenya?"
         body="Share the brief and we will tell you the next practical step."
         ctaTo={{ to: "/start", search: { from: "diaspora" } }}
-        ctaLabel="Tell us about your project"
+        ctaLabel="Start a project"
       />
     </main>
   );

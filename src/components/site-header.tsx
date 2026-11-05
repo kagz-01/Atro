@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Menu, X, Home, Briefcase, Wrench, Info, Phone, Globe, ArrowRight, LogIn, LayoutDashboard } from "lucide-react";
+import { Menu, X, Home, Briefcase, Wrench, Info, Phone, Globe, ArrowRight, LogIn } from "lucide-react";
 import { useEffect, useState } from "react";
 import { HeaderLogo } from "@/components/logo";
 import { UserButton } from "@/lib/auth/gates";
@@ -23,77 +23,19 @@ const NAV_ICONS: Record<string, typeof Home> = {
 
 const DESKTOP_NAV = [...NAV, DIASPORA_LINK];
 
-/**
- * Desktop account slot. While the session resolves it holds a same-sized
- * placeholder, so a hard reload on /portal never flashes a signed-out button.
- * The homepage keeps its client-portal action in the hero; other public pages
- * retain a compact sign-in or portal link here.
- */
+/** Keep public-site account entry consistent; sign-in routes each role correctly. */
 function AuthSlot() {
-  const { user, isPending } = useCurrentUserState();
-  const hydrated = useIsHydrated();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const returnTo = useRouterState({ select: (s) => s.location.search.returnTo });
+  const enquiryOrigin = useRouterState({ select: (s) => s.location.search.from });
   const preferredClientRoute =
     pathname.startsWith("/diaspora") ||
-    (pathname === "/login" && returnTo === "/portal/diaspora")
+    (pathname === "/login" && returnTo === "/portal/diaspora") ||
+    (pathname === "/start" && enquiryOrigin === "diaspora")
     ? "/portal/diaspora"
     : "/portal";
-  const { data: access } = useQuery({
-    queryKey: ["my-access"],
-    queryFn: () => getMyAccess({ data: undefined }),
-    enabled: Boolean(user),
-  });
-  const dashboardTo = resolveDashboardRoute({
-    user,
-    accessRole: access?.role ?? null,
-    preferredClientRoute,
-  });
-
-  if (isPending || !hydrated) {
-    return (
-      <span
-        aria-hidden
-        className="h-9 w-24 shrink-0 animate-pulse rounded-full bg-ink/10"
-      />
-    );
-  }
   const pill =
     "h-9 px-3.5 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] border rounded-full transition-all duration-300 whitespace-nowrap";
-  if (user) {
-    // The dashboard routes are app screens with their own shell, so signed-in visitors land in the
-    // role-specific workspace rather than a shared generic portal toggle.
-    const isAdminWorkspace = dashboardTo === "/admin";
-    const isStaffWorkspace = dashboardTo === "/staff";
-    const isDiasporaWorkspace = dashboardTo === "/portal/diaspora";
-    return (
-      <div className="flex items-center gap-2.5">
-        <Link
-          to={dashboardTo}
-          aria-label={
-            isAdminWorkspace
-              ? "Open the admin dashboard"
-              : isStaffWorkspace
-                ? "Open the staff dashboard"
-                : isDiasporaWorkspace
-                ? "Open the diaspora project portal"
-                : "Open the Kenya project portal"
-          }
-          className={cn(pill, "text-muted border-line hover:border-burgundy hover:text-burgundy")}
-        >
-          <LayoutDashboard className="size-3.5" />
-          {isAdminWorkspace
-            ? "Admin dashboard"
-            : isStaffWorkspace
-              ? "Staff dashboard"
-              : isDiasporaWorkspace
-              ? "Diaspora portal"
-              : "Kenya portal"}
-        </Link>
-        <UserButton compact />
-      </div>
-    );
-  }
   return (
     <Link
       to="/login"
@@ -101,20 +43,16 @@ function AuthSlot() {
         returnTo:
           preferredClientRoute === "/portal/diaspora" ? preferredClientRoute : undefined,
       }}
-      aria-label={
-        preferredClientRoute === "/portal/diaspora"
-          ? "Sign in to the diaspora project portal"
-          : "Sign in to the Kenya project portal"
-      }
+      aria-label="Sign in or create an account"
       className={cn(
         pill,
         pathname === "/login"
-          ? "bg-gold/15 text-maroon border-gold/50"
-          : "text-muted border-line hover:border-burgundy hover:text-burgundy",
+          ? "border-gold bg-gold text-maroon"
+          : "border-white/35 text-paper hover:border-gold hover:bg-white/10 hover:text-gold",
       )}
     >
       <LogIn className="size-3.5" />
-      Sign in
+      Sign in / Sign up
     </Link>
   );
 }
@@ -126,9 +64,11 @@ function MobileAccountRow() {
   const hydrated = useIsHydrated();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const returnTo = useRouterState({ select: (s) => s.location.search.returnTo });
+  const enquiryOrigin = useRouterState({ select: (s) => s.location.search.from });
   const preferredClientRoute =
     pathname.startsWith("/diaspora") ||
-    (pathname === "/login" && returnTo === "/portal/diaspora")
+    (pathname === "/login" && returnTo === "/portal/diaspora") ||
+    (pathname === "/start" && enquiryOrigin === "diaspora")
     ? "/portal/diaspora"
     : "/portal";
   const { data: access } = useQuery({
@@ -140,6 +80,16 @@ function MobileAccountRow() {
     return <div className="mt-3 h-12 animate-pulse rounded-2xl bg-ink/6" aria-hidden />;
   }
   if (user) {
+    if (pathname === "/start") {
+      return (
+        <div className="mt-3 flex items-center justify-between gap-4 rounded-2xl border border-line p-4">
+          <span className="min-w-0 truncate font-display text-base text-ink">
+            {user.displayName ?? user.primaryEmail ?? "Your account"}
+          </span>
+          <UserButton compact />
+        </div>
+      );
+    }
     const dashboardTo = resolveDashboardRoute({
       user,
       accessRole: access?.role ?? null,
@@ -187,8 +137,8 @@ function MobileAccountRow() {
         <LogIn className="size-5" />
       </span>
       <span className="flex-1">
-        <span className="block font-display text-lg">Sign in</span>
-        <span className="text-sm text-muted">Track your project, payments and next steps</span>
+        <span className="block font-display text-lg">Sign in / Sign up</span>
+        <span className="text-sm text-muted">Google, email or phone code</span>
       </span>
       <ArrowRight className="size-5 text-gold shrink-0" />
     </Link>
@@ -209,8 +159,6 @@ export function SiteHeader() {
       document.body.style.overflow = "";
     };
   }, [open]);
-
-  const showDesktopAccount = pathname !== "/";
 
   return (
     <>
@@ -259,15 +207,7 @@ export function SiteHeader() {
             })}
           </nav>
 
-          <Link
-            to="/start"
-            className="hidden xl:inline-flex h-8 items-center gap-1.5 rounded-full bg-gold px-3 text-[9px] font-semibold uppercase tracking-[0.12em] text-maroon transition-colors hover:bg-gold-light"
-          >
-            Start a project
-            <ArrowRight className="size-3.5" />
-          </Link>
-
-          {showDesktopAccount ? <AuthSlot /> : null}
+          <AuthSlot />
         </div>
       </header>
 

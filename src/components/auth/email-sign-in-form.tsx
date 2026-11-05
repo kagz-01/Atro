@@ -70,7 +70,7 @@ export function EmailSignInForm({
       noValidate
     >
       <h2 className="font-display text-2xl text-maroon">Continue with email</h2>
-      <p className="mt-2 text-sm leading-relaxed text-ink/65">
+      <p className="mt-2 text-sm leading-relaxed text-ink/80">
         We will email you a one-time code. No password is needed, and a new account is created
         automatically if this is your first visit.
       </p>
@@ -105,7 +105,7 @@ export function EmailSignInForm({
       noValidate
     >
       <h2 className="font-display text-2xl text-maroon">Check your email</h2>
-      <p className="mt-2 text-sm leading-relaxed text-ink/65">
+      <p className="mt-2 text-sm leading-relaxed text-ink/80">
         Enter the one-time code sent to <strong>{email.trim()}</strong>.
       </p>
       <div className="mt-5">
@@ -140,7 +140,7 @@ export function EmailSignInForm({
             setCode("");
             setError("");
           }}
-          className="cursor-pointer text-ink/55 underline decoration-gold decoration-2 underline-offset-4 hover:text-maroon"
+          className="cursor-pointer text-ink/75 underline decoration-gold decoration-2 underline-offset-4 hover:text-maroon"
         >
           Change email
         </button>

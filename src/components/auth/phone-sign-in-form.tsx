@@ -76,7 +76,7 @@ export function PhoneSignInForm({
         noValidate
       >
         <h2 className="font-display text-[2.1rem] leading-none text-maroon">Sign in</h2>
-        <p className="mt-2 text-[15px] leading-relaxed text-ink/65">
+        <p className="mt-2 text-[15px] leading-relaxed text-ink/80">
           Enter the phone number you gave the studio. We will text you a code — no
           password to remember, and it works whether you are in Nairobi or abroad.
         </p>
@@ -92,7 +92,7 @@ export function PhoneSignInForm({
             onChange={(e) => setPhone(e.target.value)}
             placeholder="0799 034 712"
           />
-          <p className="mt-2 text-[12px] leading-relaxed text-ink/50">
+          <p className="mt-2 text-[13px] leading-relaxed text-ink/75">
             Include your country code if you are outside Kenya, for example +44
             7700 900123.
           </p>
@@ -119,7 +119,7 @@ export function PhoneSignInForm({
         noValidate
       >
         <h2 className="font-display text-[2.1rem] leading-none text-maroon">Enter your code</h2>
-        <p className="mt-2 text-[15px] leading-relaxed text-ink/65">
+        <p className="mt-2 text-[15px] leading-relaxed text-ink/80">
           {sent ? (
             <>
               We sent a code to <strong>{phone}</strong>. It is six digits and it is
@@ -156,7 +156,7 @@ export function PhoneSignInForm({
               setCode("");
               setError(null);
             }}
-            className="cursor-pointer text-ink/55 underline decoration-gold decoration-2 underline-offset-4 hover:text-maroon"
+            className="cursor-pointer text-ink/75 underline decoration-gold decoration-2 underline-offset-4 hover:text-maroon"
           >
             Change number
           </button>

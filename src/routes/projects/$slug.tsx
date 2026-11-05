@@ -232,8 +232,8 @@ function ProjectDetail() {
                   {projectServices.map((service) => (
                     <li key={service.slug}>
                       <Link
-                        to="/services/$slug"
-                        params={{ slug: service.slug }}
+                        to="/services"
+                        search={{ service: service.slug }}
                         className="inline-flex min-h-9 items-center rounded-full border border-line px-3 py-1.5 text-xs text-burgundy transition-colors hover:border-gold hover:bg-cream focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-burgundy sm:text-sm"
                       >
                         {service.title}
