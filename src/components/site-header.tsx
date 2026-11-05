@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Menu, X, Home, Briefcase, Wrench, Info, Phone, Globe, ArrowRight, LogIn, LayoutDashboard } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Logo } from "@/components/logo";
+import { HeaderLogo } from "@/components/logo";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getMyAccess } from "@/lib/staff-access";
@@ -218,16 +218,8 @@ export function SiteHeader() {
       <header
         className="pointer-events-none fixed inset-x-4 top-3 z-40 hidden md:block"
       >
-        <div className="pointer-events-auto mx-auto flex h-14 max-w-[1260px] items-center gap-3 rounded-full border border-white/10 bg-[#171615]/95 px-2.5 text-paper shadow-[0_14px_44px_rgba(16,12,10,0.28)] backdrop-blur-xl sm:gap-4 sm:px-3">
-          <Logo className="shrink-0 [&_img]:h-10 [&_img]:w-10 [&_img]:rounded-full [&_img]:border [&_img]:border-white/10" />
-          <span className="hidden shrink-0 leading-tight lg:block">
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-paper">
-              ATRO
-            </span>
-            <span className="mt-0.5 block text-[8px] uppercase tracking-[0.16em] text-paper/45">
-              Design &amp; Construction
-            </span>
-          </span>
+        <div className="pointer-events-auto mx-auto flex h-14 max-w-[1260px] items-center gap-3 rounded-full border border-gold/20 bg-[linear-gradient(110deg,#3d0406_0%,#4a090b_48%,#310305_100%)] px-2.5 text-paper shadow-[0_14px_44px_rgba(16,12,10,0.28)] backdrop-blur-xl sm:gap-4 sm:px-3">
+          <HeaderLogo />
 
           <nav
             className="flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-full border border-white/10 bg-white/[0.03] p-1"
@@ -280,9 +272,9 @@ export function SiteHeader() {
       </header>
 
       {/* ── Mobile header ── */}
-      <header className="md:hidden fixed inset-x-3 top-3 z-40 rounded-full border border-white/10 bg-[#171615]/95 shadow-[0_12px_36px_rgba(16,12,10,0.28)] backdrop-blur-xl">
-        <div className="flex h-14 items-center justify-between px-3">
-          <Logo className="shrink-0" />
+      <header className="md:hidden fixed inset-x-3 top-3 z-40 rounded-full border border-gold/20 bg-[linear-gradient(110deg,#3d0406_0%,#4a090b_48%,#310305_100%)] shadow-[0_12px_36px_rgba(16,12,10,0.28)] backdrop-blur-xl">
+        <div className="flex h-14 items-center justify-between px-2.5">
+          <HeaderLogo />
           <button
             type="button"
             className="inline-flex size-10 items-center justify-center rounded-full text-paper transition-colors hover:bg-white/10"
