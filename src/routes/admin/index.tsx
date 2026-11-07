@@ -43,6 +43,7 @@ import { EvidenceUploader } from "@/components/admin/evidence-uploader";
 import { StudioMessagesPanel } from "@/components/admin/messages-panel";
 import { CommunicationsInbox } from "@/components/admin/communications-inbox";
 import { ProjectExpensesPanel } from "@/components/admin/project-expenses-panel";
+import { StudioPaymentsPanel } from "@/components/admin/studio-payments-panel";
 import { needsStudioReply } from "@/lib/messages";
 import { AfterHandoverPanel } from "@/components/admin/after-handover-panel";
 import { VariationsPanel } from "@/components/admin/variations-panel";
@@ -139,8 +140,8 @@ function StaffWall({ workspace }: { workspace: "admin" | "staff" }) {
           {workspace === "admin" ? "Admin dashboard" : "Staff dashboard"}
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          This is the ATRO {workspace} workspace. Sign in with the email address ATRO invited, or
-          ask an admin to add your address.
+          This is the ATRO {workspace === "admin" ? "admin" : "office"} workspace. Sign in with the
+          email address ATRO invited, or ask an admin to add your address.
         </p>
         <Button asChild className="mt-6 w-full">
           <Link to="/login" search={{ returnTo: workspace === "staff" ? "/staff" : "/admin" }}>
@@ -2959,7 +2960,7 @@ function Overview({
       {!projectsLoading && !projectsError && liveProjectCount === 0 ? (
         <Panel
           title="No live projects yet"
-          subtitle="Your owner portfolio is ready. New client projects will appear here as the studio opens them."
+          subtitle="Your admin portfolio is ready. New client projects will appear here as the studio opens them."
           actions={
             <Button size="sm" variant="outline" onClick={onGoEnquiries}>
               Review enquiries
@@ -2974,8 +2975,8 @@ function Overview({
       ) : null}
 
       <Panel
-        title="Owner dashboard"
-        subtitle="The owner needs to see the live jobs, open decisions and money movement without digging through the details."
+        title="Admin dashboard"
+        subtitle="The admin needs to see the live jobs, open decisions and money movement without digging through the details."
       >
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-ink/10 bg-cream/60 p-3 sm:p-4">
@@ -3978,6 +3979,12 @@ const TABS = [
     body: "Project conversations with clients",
   },
   {
+    id: "payments",
+    label: "Payments",
+    title: "Client payments",
+    body: "Per-client project ledgers and verified payment history",
+  },
+  {
     id: "funds",
     label: "Project funds",
     title: "Project funds",
@@ -4194,7 +4201,7 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
         {
           title: "Executive view",
           items: [
-            { id: "work", label: "Owner priorities", icon: ClipboardList },
+            { id: "work", label: "Admin priorities", icon: ClipboardList },
             { id: "overview", label: "Portfolio", icon: LayoutDashboard },
             {
               id: "projects",
@@ -4213,6 +4220,7 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
         {
           title: "Controls",
           items: [
+            { id: "payments", label: "Client payments", icon: Banknote },
             { id: "funds", label: "Project funds", icon: Banknote },
             {
               id: "communications",
@@ -4237,6 +4245,7 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
               icon: FolderKanban,
               badge: all.length || undefined,
             },
+            { id: "payments", label: "Payments", icon: Banknote },
             ...(canViewCalendar
               ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }]
               : []),
@@ -4264,6 +4273,7 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
         { id: "work", label: "Priorities", icon: ClipboardList },
         { id: "overview", label: "Portfolio", icon: LayoutDashboard },
         { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
+        { id: "payments", label: "Payments", icon: Banknote },
           {
             id: "enquiries",
             label: "Leads",
@@ -4275,6 +4285,7 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
     : [
         { id: "overview", label: "Today", icon: LayoutDashboard },
         { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
+        { id: "payments", label: "Payments", icon: Banknote },
         ...(canViewCalendar ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }] : []),
         {
           id: "communications",
@@ -4311,7 +4322,11 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
       user={{
         name: myStaffProfile?.displayName || roleState?.email || "Studio",
         role:
-          roleState?.role === "office_manager" ? "Office Manager" : (roleState?.role ?? undefined),
+          roleState?.role === "admin"
+            ? "Admin"
+            : roleState?.role === "office_manager"
+              ? "Office Manager"
+              : (roleState?.role ?? undefined),
         email: roleState?.email ?? undefined,
       }}
       readOnly={user?.isGuestPreview}
@@ -4324,7 +4339,7 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
             <h1 className="font-display text-lg leading-tight text-maroon">
               {view === "overview"
                 ? isOwner
-                  ? "Owner dashboard"
+                  ? "Admin dashboard"
                   : "Staff dashboard"
                 : activeTab.title}
             </h1>
@@ -4402,6 +4417,9 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
       ) : null}
 
       {view === "profile" && isStaff ? <StaffProfilePanel /> : null}
+      {view === "payments" && isStaff ? (
+        <StudioPaymentsPanel onOpenProject={openProject} />
+      ) : null}
       {view === "funds" && isAdmin ? (
         <ProjectExpensesPanel staffEmail={roleState?.email ?? ""} />
       ) : null}

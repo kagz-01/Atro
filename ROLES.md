@@ -1,237 +1,249 @@
-# ATRO Role Dashboard Map
+# ATRO Platform Roles and Dashboard Manual
 
-This document explains the purpose of each dashboard user in ATRO and what they should be able to do. It is meant to keep product development intentional and to surface the gaps we still need to build.
+This manual explains who each ATRO workspace is for, what its dashboard tabs
+are used for, and how the workspaces differ. It describes the current product
+so clients, staff, and developers can tell what each area is meant to do.
 
-## 1. Boss / Owner
+## The four workspaces at a glance
 
-### Role intent
-The boss is the decision-maker. This person is not here to do paperwork or chase individual tasks. They need a high-level command view across the business.
+| Workspace | Intended user | Main purpose | Route |
+|---|---|---|---|
+| Admin | The business owner or person with final authority | Oversee the full portfolio, make high-impact decisions, manage access and control financial actions | `/admin` |
+| Staff / Office | The office team coordinating projects and client follow-up | Keep delivery, communication, schedules, and enquiries moving | `/staff` |
+| Kenyan client | A client whose project is coordinated from Kenya | Follow practical project progress, make project decisions, and handle local coordination | `/portal` |
+| Diaspora client | A client managing a Kenya-based project while living abroad | Follow progress remotely with clear evidence, decisions, financial visibility, and time-zone-aware coordination | `/portal/diaspora` |
 
-### Dashboard purpose
-The owner dashboard should answer four questions quickly:
-- What is happening now across the business?
-- Which projects are healthy, at risk, or stuck?
-- Where is money moving and where is it at risk?
-- Which client or project decisions need my attention?
+The public Kenya and diaspora websites are separate from the signed-in project
+portals. The client portal toolbar includes a **Back to Kenya site** or
+**Back to diaspora site** link so a client can return to the appropriate public
+site.
 
-### What the boss should be able to do
-- See all active projects in one view
-- See all completed or closed projects for comparison
-- Track project health by stage, client type, and urgency
-- See the money picture: revenue, payments due, retention, and outstanding balances
-- Review approvals, decisions, and escalations across projects
-- See which projects need follow-up, approval, or intervention
-- Understand whether delivery is on track, delayed, or at risk
-- See operational summary without getting buried in tasks
-- Open a project to drill into details when needed
-- Approve or escalate major decisions without manual admin work
+## Role and access boundaries
 
-### Dashboard expectations
-The owner should not be working in the same operational detail as the office team. Their dashboard should be board-like and decision-oriented.
+### Admin
 
-### Use cases
-- Check business health at a glance
-- See what needs leadership decision
-- Review portfolio performance by project
-- Decide whether a project must be escalated, paused, or prioritized
+**Admin** is the business-level authority role. It is the only studio role with
+the high-impact controls that can change business, financial, or access records.
+Admin can certify payment stages, issue statements and quotations, release
+retention, manage project expenses, close or archive projects, and grant or
+revoke studio access.
 
-### Current gaps to fill
-- Stronger project health score and risk highlighting
-- Portfolio KPIs for revenue, payments, and delivery health
-- A cleaner executive summary with priority alerts
-- Better owner-only actions for corporate review and escalation
-- Better distinction between office operations and owner decisions
+Admin still uses project records and operational tools, but should use the
+portfolio and priority views to decide where to focus rather than treating the
+dashboard as one undifferentiated task list.
 
----
+### Staff / Office
 
-## 2. Office / Admin Lead
+**Staff** is the day-to-day operations workspace for people on the studio access
+list. Staff can work with project records, follow-up, client communication,
+enquiries, and payment visibility. The **Payments** tab is read-only: it helps
+staff understand each project's ledger and follow up, but does not let staff
+certify or record a payment.
 
-### Role intent
-This is the operational coordinator. They keep the project machine moving. They are responsible for coordination, communication, schedules, evidence, and follow-up.
+The access list has three role values:
 
-### Dashboard purpose
-The office dashboard should be the working hub for day-to-day delivery and coordination. It should help the office team know:
-- what is due today
-- which projects need attention
-- which responses are pending
-- what reminders need to go out
-- which decisions or approvals are waiting
+- `staff`: standard studio access.
+- `office_manager`: studio access with the additional ability to schedule
+  project calls.
+- `admin`: Admin authority described above.
 
-### What the office/admin lead should be able to do
-- Review all active work in a daily operations view
-- See deadlines, pending client updates, and communication needs
-- Review project stage progression and blocked tasks
-- Track project decisions and approvals
-- Manage project messages and coordination with clients
-- See new enquiries and leads coming in
-- Open project files, evidence, documents, and updates
-- Coordinate calls, site visits, and project scheduling
-- Assign work internally or monitor who is responsible
-- See staff progress and project accountability
-- Monitor communication threads and identify when a client needs follow-up
+Staff and Office Manager can see the calendar; only Office Manager and Admin
+can schedule calls. The role shown in the UI is **Staff** or **Office Manager**;
+“office/admin lead” is not a second business-admin role.
 
-### Dashboard expectations
-This dashboard should feel operational, detailed, and action-focused. It is not a boardroom dashboard. It is the command center for getting work done.
+The Staff workspace is for studio coordination; it is not an HR system. An
+Office Manager may coordinate office work, but does not inherit Admin's
+financial, project-closeout, or access-management authority.
 
-### Use cases
-- Daily project check-in
-- Handling enquiries and leads
-- Coordinating meetings and site logistics
-- Tracking client messaging and approvals
-- Moving work from pending to complete
+### Kenyan and Diaspora clients
 
-### Current gaps to fill
-- Stronger daily task and workload view
-- Clearer assignment responsibility per project/task
-- Better delivery reminders and alerts for client follow-up
-- More structured project coordination workflow rules
-- Better separation between leadership summary and operational work
+Clients see only projects they are authorized to access. Their tabs are
+project-focused; they cannot browse the studio's portfolio, other clients'
+ledgers, staff access, or internal studio controls.
 
----
+Clients can respond to project requests such as approvals and decisions, and
+pay a certified amount from their own project ledger. Payment checkout is
+hosted securely by Paystack. A checkout attempt is not a payment: ATRO records
+the stage as paid only after the transaction is verified. Project ledgers are
+separate records, not bank accounts or escrow.
 
-## 3. Local Kenyan Client
+### Demonstration projects
 
-### Role intent
-This user is building at home in Kenya and usually wants clarity, progress, and reassurance. They need to see their project status without too much operational noise.
+A project marked **Demonstration** or **Sample** is for exploring the portal
+with sample information. It is not a live client account and must not be used
+to infer a real balance, initiate a real payment, or spend real project funds.
 
-### Dashboard purpose
-The local client dashboard should feel clear, practical, and reassuring. The user should know:
-- where their project is
-- what stage it is at
-- what has been approved or completed
-- what is next
-- what they need to do
-- how payments and milestones are progressing
+## Admin dashboard manual
 
-### What the local Kenyan client should be able to do
-- View their project summary and live status
-- See milestones and progress with evidence
-- Approve milestones or decisions when requested
-- View payment schedule and balances
-- Review documents and project records
-- Track project communication with the studio
-- See what the next step is without reading a full admin log
-- Submit or respond to issues when relevant
-- Review the project history and key decisions
+Admin's desktop navigation is grouped into **Executive view** and **Controls**.
+Mobile navigation presents a shorter set of quick links; additional areas
+remain in the dashboard navigation.
 
-### Dashboard expectations
-This dashboard should be simple and confidence-building. The local client is usually more involved in the physical project and wants a clear operational view without feeling overwhelmed.
+| Tab | Purpose |
+|---|---|
+| **Admin priorities** | A personal work queue for claimed enquiries, client chases, and notes. Use it to see what Admin has taken responsibility for. |
+| **Portfolio** | Business-wide overview of live jobs, projects needing attention, money position, contracted-versus-collected amounts, enquiries, workload, and items needing a human response. It is a summary, not a substitute for opening a project record. |
+| **Projects** | Search and filter the studio project register. Open a project to inspect its delivery, client activity, decisions, documents, and financial details. |
+| **New leads** | Review incoming enquiries and move the conversation toward a project. |
+| **Client payments** | Search and filter payment stages across active client projects. Shows each project separately, including its contract and ledger amounts, payment status, and latest Paystack attempt. This view is for tracking; it does not itself certify payments. |
+| **Project funds** | Record and review project expense reservations, approvals, and bank-payment references. Admin actions are required for financial controls. This is an internal allocation ledger, not an instruction to Paystack to transfer money. |
+| **Client updates** | Review and respond to project conversation threads. |
+| **Access** | Review studio access, invitations, and requests, and grant or revoke access. Admin-only controls are shown only to Admin. |
 
-### Use cases
-- Checking whether work is progressing
-- Seeing what is pending from their side
-- Approving a stage or document
-- Monitoring payments and project value
-- Understanding the next stage before site work continues
+### Opening a project as Admin
 
-### Current gaps to fill
-- More obvious decision reminders for client-side approvals
-- Clearer “what you need to do next” prompts
-- Better distinction between project status and account balance state
-- Stronger payment/account details with transaction history
-- More practical local-language and locally relatable wording in more places
+The project record combines a summary with expandable operational areas:
 
----
+- **Needs your attention** — blockers, unanswered client decisions, and other
+  items that need a response.
+- **Financial position / Financial summary** — contract, paid-to-date,
+  certified-but-unpaid, and retention figures, with payment-stage detail.
+- **Project lifecycle** — delivery and close-out state. Closing and archiving
+  are Admin-controlled.
+- **Client & consent** — client/project context and consent information.
+- **Activity** — chronological record of project actions.
+- **Message thread** — conversation with the client.
+- **Site presence** — site visit and presence requests.
+- **Milestone & evidence** — update a milestone, add evidence, and mark work
+  ready for client approval.
+- **Approvals**, **Selections**, **Variations**, and **Defects & care** — review
+  the corresponding project workflows.
+- **Document vault** — review documents and add project documents. Admin-only
+  document actions remain restricted.
+- **Payment certification** — certify inspected work or approve an agreed fee
+  stage. Certification makes a payment request available; it does **not** mean
+  the client has paid.
+- **Statement of account** and **Retention** — issue a statement or release
+  retention where eligible; these are Admin actions.
+- **What the client has decided** — review recorded client choices.
 
-## 4. Diaspora Client
+## Staff / Office dashboard manual
 
-### Role intent
-This user is outside Kenya and often needs trust, visibility, and remote oversight. They may not be on site and may be more worried about whether work is being done properly and whether money is under control.
+Staff's dashboard is an operational workspace. It uses the same project records
+as Admin, but does not show Admin's portfolio controls or privileged financial
+and access actions.
 
-### Dashboard purpose
-The diaspora dashboard should build confidence from a distance. It must answer the questions that remote clients care about most:
-- What is happening on site?
-- What evidence proves progress?
-- What still needs my decision or approval?
-- Is the money flow controlled and transparent?
-- Who is responsible for what?
+| Tab | Purpose |
+|---|---|
+| **Today** | Office overview of projects needing attention, projects running cleanly, and the follow-up queue. It is the starting point for the day's coordination work. |
+| **Projects** | Search and open project records to review current status and coordinate delivery. The project list includes filters such as local, diaspora, needs follow-up, and sample. |
+| **Payments** | Read-only view of client payment ledgers. Use the per-project payment stage, status, date, and checkout reference to answer questions or follow up. A pending, failed, or expired checkout must not be treated as money received. |
+| **Calendar** | View project calls, visits, and walkthroughs. Scheduling is available to Office Manager and Admin, not standard Staff. |
+| **Client updates** | Monitor project conversation threads and reply when the studio owes a response. |
+| **New leads** | Work with incoming enquiries and help make sure people who contacted ATRO receive follow-up. |
+| **My profile** | Review the staff member's own studio identity and profile information. |
 
-### What the diaspora client should be able to do
-- View project progress from abroad
-- See photos, milestones, and updates attached to work
-- Monitor payment progress and balances
-- See what approvals are waiting for them
-- Review decisions already made and issues raised
-- See project responsibilities and key contacts
-- Track whether the project is on schedule or at risk
-- Understand the next steps without requiring frequent phone calls
-- Review records and documentation digitally from anywhere
-- Maintain confidence that the project is being managed properly
+Staff does not have the Admin-only **Admin priorities**, **Portfolio**,
+**Project funds**, or **Access** navigation areas. Admin-only actions remain
+protected on the server as well as being hidden in the interface.
 
-### Dashboard expectations
-This dashboard should feel trustworthy, calm, and structured. It should reduce anxiety and make the client feel informed without creating confusion.
+## Client dashboard manual
 
-### Use cases
-- Monitoring a build while living abroad
-- Approving milestone or payment steps remotely
-- Reviewing evidence and documentation
-- Understanding project health and risks without being in Kenya
-- Seeing the project movement in a digestible format
+Both client experiences use the same project records and core ideas: a client
+can see their progress, review project information, communicate with ATRO, and
+act when the project asks for their input. The dashboards are not two different
+contracts or payment systems; the difference is how the information is
+prioritized and which coordination tools are surfaced.
 
-### Current gaps to fill
-- Stronger trust-focused remote dashboard summary
-- More obvious “what needs your decision” prompts
-- Better payment and balance visibility
-- Better structured evidence and milestone storytelling for remote users
-- More confidence-building status labels and ownership clarity
+### Shared client tabs
 
----
+| Tab | Purpose |
+|---|---|
+| **Overview** | A project home with progress, recent activity, dates to watch, money context, and actions waiting on the client. The Kenya and Diaspora home panels prioritize different information. |
+| **Calendar** | View scheduled project calls and coordination details in the client's relevant time zone. |
+| **Progress / Milestones** | Review project stages and their status. The milestone record includes supporting evidence; an approval action appears when the studio marks a stage ready. |
+| **Money** | Review contract and budget position, payment stages, receipts/documents, and the project's payment instructions. Pay a certified stage from the portal using Paystack checkout. A stage is not marked paid until Paystack confirms it. |
+| **Decisions** | Review choices raised by the studio and submit a response. Open decisions may affect what can proceed next. |
+| **Documents** | Find project paperwork such as contracts, certificates, payment requests, receipts, and statements. Available documents depend on what the studio has issued. |
+| **Messages / Updates** | Read and send project messages. Kenya calls this **Messages**; Diaspora calls it **Updates** to emphasize remote project updates. |
+| **Project circle / Team** | Review the people associated with the project. The Kenya navigation says **Project circle**; the Diaspora navigation says **Team**. |
+| **Profile** | Manage the client's own profile and relevant contact/time-zone details. |
 
-## Shared system logic
+### Kenyan client tabs
 
-The app is currently structured around four major seats:
-- Boss / owner
-- Office / admin lead
-- Local Kenyan client
-- Diaspora client
+The Kenya portal is oriented toward practical involvement in the project and
+local coordination. In addition to the shared tabs, its navigation currently
+surfaces:
 
-The dashboard design should never collapse all of these users into one generic shell. Each seat has a different purpose, information density, and decision flow.
+| Tab | Purpose |
+|---|---|
+| **Approvals** | Review formal project approvals and any client action required. |
+| **Selections** | Review or make project selections where the studio has requested a choice. |
+| **Changes** | Review proposed project variations, their cost or time impact, and respond where a decision is required. |
+| **After handover** | Review defects and care items after handover and respond to requests to check completed fixes. |
 
-### Shared responsibilities
-Across all roles, the product should support:
-- project visibility
-- milestone progress
-- evidence capture
-- approval flows
-- decision log
-- communication history
-- payment visibility
-- account clarity
+The Kenya overview emphasizes the next practical action, project messages, and
+local progress. The portal uses local payment instructions when these have
+been configured for the project.
 
-### What should stay distinct
-- Boss wants strategy and risk overview
-- Office wants operations and daily coordination
-- Local client wants practical progress and next steps
-- Diaspora client wants trust, evidence, and remote oversight
+### Diaspora client tabs
 
----
+The Diaspora portal is arranged for remote oversight: it brings progress,
+decisions, payments, updates, calendar, documents, and the project team into a
+more focused set of navigation choices. Its additional **Abroad** tab provides
+abroad-specific guidance and checklist content.
 
-## Practical gap checklist for development
+The Diaspora overview highlights remote-relevant activity, unread updates,
+open decisions, and payment actions. Dates and calls are presented with the
+client's time-zone context when it is available. The portal uses international
+payment instructions when configured for the project.
 
-### Must-have gaps
-- Clear owner vs office dashboard separation
-- Better role-aware navigation and redirect logic
-- Stronger project health / risk summaries
-- More decisive “what needs my action” panels
-- Better payment wallet/account logic for clients
-- More consistent wording and terminology across the app
-- Stronger trust-building information for diaspora users
+The Kenya portal currently exposes separate **Approvals**, **Selections**,
+**Changes**, and **After handover** tabs; these are not separate top-level
+tabs in the current Diaspora navigation. The underlying project continues to
+use its project records and workflows. Do not interpret the shorter Diaspora
+navigation as different payment verification or project ownership rules.
 
-### Medium-priority gaps
-- More detailed workload assignment in office operations
-- Daily operation queues and follow-up reminders
-- Better project accountability views for staff
-- More contextual value messaging for local and diaspora users
-- More polished role-specific states and empty screens
+## How common workflows fit together
 
-### Nice-to-have gaps
-- Advanced reporting for owners
-- Exportable summaries and reports
-- Better project timeline and critical-path visibility
-- Deeper financial forecasting for portfolio and project cash flow
+### Progress and approval
 
----
+1. Studio staff update milestones and attach evidence to the project record.
+2. The studio marks eligible work ready for client approval.
+3. The client reviews the milestone and evidence, then approves when satisfied.
+4. The project activity and status update so both sides can follow what
+   happened.
 
-## Product rule
+### Decisions and changes
 
-The system should not ask every user to think in the same way. The owner needs oversight, the office needs execution, the client needs clarity, and the diaspora client needs confidence. If we keep those roles clear, the product will feel more intentional and easier to build without duplicate or redundant dashboard work.
+1. The studio raises a decision or variation with the project context and any
+   cost/time impact.
+2. The client reviews it in **Decisions** or **Changes** (where exposed in the
+   portal navigation).
+3. The client responds; the choice is recorded on the project.
+4. The studio can see which decisions remain unanswered and follow up.
+
+### Payments
+
+1. Admin certifies inspected work or approves an agreed fee stage.
+2. The certified stage appears as ready for payment in the client's **Money**
+   tab.
+3. The client starts or continues secure hosted Paystack checkout from their
+   project portal.
+4. The app verifies the result with Paystack. Only verified payment updates the
+   ledger to paid and allows a receipt to be issued.
+5. Admin and Staff can track the stage from the **Client payments / Payments**
+   view. Staff has read-only access; Admin retains certification and other
+   privileged controls.
+
+Bank instructions are project-specific guidance for a client to pay ATRO.
+They do not automatically reconcile a bank transfer or mark the project
+ledger paid. The studio must record and reconcile such payments through its
+approved process.
+
+## Product principles
+
+- **Admin oversees and controls.** Use the portfolio for business-wide
+  decisions and project records for detail.
+- **Staff coordinates and follows through.** The office workspace is
+  operational; payment visibility does not grant financial authority.
+- **Clients act on their own project.** Keep client information and balances
+  project-scoped.
+- **Kenyan and Diaspora are different experiences for the same platform.**
+  They adapt navigation, language, payment instructions, and time context—not
+  the underlying ownership or payment-confirmation rules.
+- **A status must say what actually happened.** Certified means approved for
+  payment; checkout started means the client began checkout; paid means the
+  payment has been recorded after confirmation.
+- **Sample data is not live business data.** Keep demonstration projects
+  visibly separate from client work.

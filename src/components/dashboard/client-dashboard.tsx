@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
+  ArrowLeft,
   Banknote,
   CalendarDays,
   CheckCircle2,
@@ -357,6 +358,12 @@ export function ClientDashboard({
       readOnly={readOnly}
       toolbar={
         <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button asChild size="sm" variant="outline" className="min-h-11 shrink-0">
+            <Link to={abroad ? "/diaspora" : "/"}>
+              <ArrowLeft className="size-4" aria-hidden />
+              Back to {abroad ? "diaspora" : "Kenya"} site
+            </Link>
+          </Button>
           <div className="min-w-0">
             <h1 className="flex flex-wrap items-center gap-2 font-display text-lg leading-tight text-maroon">
               {p.title}
@@ -476,7 +483,11 @@ export function ClientDashboard({
                       disabled={pending === `pay-${pay.id}`}
                       onClick={() => onPay(pay.id)}
                     >
-                      {pay.checkoutStatus === "pending" ? "Continue payment" : "Pay securely"}
+                      {pay.checkoutStatus === "pending"
+                        ? "Continue securely"
+                        : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired"
+                          ? "Try again securely"
+                          : "Pay securely"}
                     </Button>
                   </span>
                 </li>
@@ -1051,7 +1062,11 @@ function PaymentTable({
                 style.cls,
               )}
             >
-              {checkoutPending ? "Checkout started" : style.label}
+              {pay.status === "paid"
+                ? style.label
+                : checkoutPending
+                  ? "Checkout pending"
+                  : style.label}
             </span>
             {pay.status === "certified" ? (
               <Button
@@ -1063,9 +1078,25 @@ function PaymentTable({
                 {pending === key
                   ? "Opening…"
                   : checkoutPending
-                    ? "Continue payment"
-                    : "Pay securely"}
+                    ? "Continue securely"
+                    : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired"
+                      ? "Try again securely"
+                      : "Pay securely"}
               </Button>
+            ) : null}
+            {pay.status === "paid" ? (
+              <p className="mt-2 text-[11px] text-ink/55">
+                {pay.paidDate ? `Paid ${pay.paidDate}` : "Payment recorded"}
+                {pay.method ? ` · ${pay.method}` : ""}
+              </p>
+            ) : checkoutPending ? (
+              <p className="mt-2 text-[11px] text-amber-900">
+                Checkout started; this instalment is not paid until confirmed.
+              </p>
+            ) : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired" ? (
+            <p className="mt-2 text-[11px] text-red-800">
+              The last attempt did not complete. This certified amount is still due.
+            </p>
             ) : null}
           </li>
         );
@@ -1101,6 +1132,20 @@ function PaymentTable({
                       {measuredWork ? "Certificate" : "Stage reference"} {pay.certificate}
                     </span>
                   ) : null}
+                  {pay.status === "paid" ? (
+                    <span className="mt-1 block text-[11px] text-ink/55">
+                      {pay.paidDate ? `Paid ${pay.paidDate}` : "Payment recorded"}
+                      {pay.method ? ` · ${pay.method}` : ""}
+                    </span>
+                  ) : checkoutPending ? (
+                    <span className="mt-1 block text-[11px] text-amber-900">
+                      Checkout started; payment is not yet confirmed.
+                    </span>
+                  ) : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired" ? (
+                    <span className="mt-1 block text-[11px] text-red-800">
+                      Last attempt did not complete; this amount is still due.
+                    </span>
+                  ) : null}
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap text-[13px] text-ink/70">
                   {kes(pay.amount)}
@@ -1112,7 +1157,11 @@ function PaymentTable({
                       style.cls,
                     )}
                   >
-                    {checkoutPending ? "Checkout started" : style.label}
+                    {pay.status === "paid"
+                      ? style.label
+                      : checkoutPending
+                        ? "Checkout pending"
+                        : style.label}
                   </span>
                 </td>
                 <td className="px-5 py-3 text-right">
@@ -1121,8 +1170,10 @@ function PaymentTable({
                       {pending === key
                         ? "Opening…"
                         : checkoutPending
-                          ? "Continue payment"
-                          : "Pay securely"}
+                          ? "Continue securely"
+                          : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired"
+                            ? "Try again"
+                            : "Pay securely"}
                     </Button>
                   ) : null}
                 </td>

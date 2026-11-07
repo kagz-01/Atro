@@ -86,6 +86,28 @@ export type StaffTodayOverview = {
   attention: AttentionItem[];
 };
 
+export type StudioPaymentRow = {
+  projectId: string;
+  projectReference: string;
+  projectTitle: string;
+  clientLabel: string;
+  contractValue: number;
+  paidToDate: number;
+  currentlyCertified: number;
+  paymentId: string;
+  paymentLabel: string;
+  amount: number;
+  status: string;
+  dueDate: string;
+  paidDate: string | null;
+  method: string | null;
+  certificate: string | null;
+  attemptStatus: string | null;
+  attemptReference: string | null;
+  attemptChannel: string | null;
+  attemptCreatedAt: string | null;
+};
+
 const STALLED_DAYS = 10;
 const UNVIEWED_DAYS = 14;
 
@@ -217,6 +239,77 @@ export const getStaffToday = createServerFn({ method: "GET" }).handler(
       newEnquiries: Number(enquiries?.new_enquiries ?? 0),
       attention: await getAttentionItems(sql),
     };
+  },
+);
+
+export const getStudioPayments = createServerFn({ method: "GET" }).handler(
+  async (): Promise<StudioPaymentRow[]> => {
+    await staff();
+    const sql = await getSql();
+    const rows = await sql<{
+      project_id: string;
+      project_reference: string;
+      project_title: string;
+      client_label: string;
+      contract_value: number;
+      paid_to_date: number;
+      currently_certified: number;
+      payment_id: string;
+      payment_label: string;
+      amount: number;
+      status: string;
+      due_date: string;
+      paid_date: string | null;
+      method: string | null;
+      certificate: string | null;
+      attempt_status: string | null;
+      attempt_reference: string | null;
+      attempt_channel: string | null;
+      attempt_created_at: string | null;
+    }>`
+      select
+        project.id as project_id, project.reference as project_reference,
+        project.title as project_title, project.client_label,
+        project.contract_value, project.paid_to_date, project.currently_certified,
+        payment.id as payment_id, payment.label as payment_label, payment.amount,
+        payment.status, payment.due_date, payment.paid_date, payment.method,
+        payment.certificate, latest.status as attempt_status,
+        latest.reference as attempt_reference, latest.payment_channel as attempt_channel,
+        latest.created_at::text as attempt_created_at
+      from portal_projects project
+      join portal_payments payment on payment.project_id = project.id
+      left join lateral (
+        select attempt.status, attempt.reference, attempt.payment_channel, attempt.created_at
+        from portal_paystack_attempt attempt
+        where attempt.project_id = project.id and attempt.payment_id = payment.id
+        order by attempt.created_at desc
+        limit 1
+      ) latest on true
+      where project.source <> 'sample' and project.deleted_at is null
+      order by lower(project.client_label), project.reference, payment.ord
+    `;
+
+    return rows.map((row) => ({
+      projectId: row.project_id,
+      projectReference: row.project_reference,
+      projectTitle: row.project_title,
+      clientLabel: row.client_label,
+      contractValue: Number(row.contract_value),
+      paidToDate: Number(row.paid_to_date),
+      currentlyCertified: Number(row.currently_certified),
+      paymentId: row.payment_id,
+      paymentLabel: row.payment_label,
+      amount: Number(row.amount),
+      status: row.status,
+      dueDate: row.due_date,
+      paidDate: row.paid_date,
+      method: row.method,
+      certificate: row.certificate,
+      attemptStatus: row.attempt_status,
+      attemptReference: row.attempt_reference,
+      attemptChannel: row.attempt_channel,
+      attemptCreatedAt: row.attempt_created_at,
+    }));
   },
 );
 

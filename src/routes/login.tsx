@@ -204,7 +204,7 @@ function Login() {
                 <div className="mt-6 grid gap-2 sm:grid-cols-2">
                   {PREVIEW_PERSONAS.map((persona) => {
                     const labels: Record<PreviewPersonaKey, string> = {
-                      boss: "Owner dashboard",
+                      boss: "Admin dashboard",
                       office: "Office dashboard",
                       local: "Kenyan client portal",
                       abroad: "Diaspora client portal",
@@ -304,8 +304,8 @@ function Login() {
                   matched to your account.
                 </p>
                 <p className="mt-3 text-[13px] leading-relaxed text-ink/70">
-                  ATRO staff use this same sign-in. Approved staff accounts open the office
-                  dashboard automatically.
+                  ATRO admins and office staff use this same sign-in. Approved accounts open the
+                  workspace that matches their role.
                 </p>
 
                 <div className="mt-8">
