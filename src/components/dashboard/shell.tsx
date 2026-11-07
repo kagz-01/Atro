@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Link, useRouterState } from "@tanstack/react-router";
@@ -77,6 +77,7 @@ export function DashboardShell({
 }) {
   const [rail, setRail] = useState(false);
   const [drawer, setDrawer] = useState(false);
+  const drawerTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [openAlerts, setOpenAlerts] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
@@ -110,6 +111,7 @@ export function DashboardShell({
   );
 
   return (
+    <Dialog.Root open={drawer && !hideNav} onOpenChange={setDrawer}>
     <div
       className="dashboard-canvas min-h-dvh"
       style={
@@ -133,10 +135,7 @@ export function DashboardShell({
           )}
         >
           <Link to="/" aria-label="ATRO home" className="flex items-center">
-            <LogoMark
-              alt=""
-              className={cn("w-auto object-contain", rail ? "size-8" : "h-10")}
-            />
+              <LogoMark alt="" className={cn("w-auto object-contain", rail ? "size-8" : "h-10")} />
           </Link>
         </div>
 
@@ -161,10 +160,15 @@ export function DashboardShell({
       </aside>
 
       {/* Drawer — narrow screens */}
-      <Dialog.Root open={drawer && !hideNav} onOpenChange={setDrawer}>
         <Dialog.Portal>
           <Dialog.Overlay className="motion-overlay fixed inset-0 z-40 bg-ink/50 backdrop-blur-[2px]" />
-          <Dialog.Content className="motion-drawer fixed inset-y-0 left-0 z-50 flex max-h-dvh w-[min(280px,calc(100vw-1rem))] flex-col bg-white pb-[env(safe-area-inset-bottom)] shadow-soft focus:outline-none">
+          <Dialog.Content
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              drawerTriggerRef.current?.focus();
+            }}
+            className="motion-drawer fixed inset-y-0 left-0 z-50 flex max-h-dvh w-[min(280px,calc(100vw-1rem))] flex-col bg-white pb-[env(safe-area-inset-bottom)] shadow-soft focus:outline-none"
+          >
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-ink/10 px-5">
               <Dialog.Title asChild>
                 <Link to="/" aria-label="ATRO home">
@@ -174,7 +178,7 @@ export function DashboardShell({
               <Dialog.Close asChild>
                 <button
                   type="button"
-                  className="grid size-9 place-items-center rounded-lg text-muted hover:bg-cream"
+                  className="grid size-11 place-items-center rounded-lg text-muted hover:bg-cream"
                   aria-label="Close navigation"
                 >
                   <X className="size-4" />
@@ -184,7 +188,6 @@ export function DashboardShell({
             <div className="flex-1 overflow-y-auto">{nav(false)}</div>
           </Dialog.Content>
         </Dialog.Portal>
-      </Dialog.Root>
 
       {/* Content column */}
       <div
@@ -195,14 +198,18 @@ export function DashboardShell({
       >
         <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-ink/10 bg-white/95 px-3 backdrop-blur sm:h-16 sm:gap-3 sm:px-6">
           {!hideNav ? (
+              <Dialog.Trigger asChild>
             <button
               type="button"
-              onClick={() => setDrawer(true)}
-              className="grid size-10 shrink-0 place-items-center rounded-xl border border-ink/10 text-maroon transition-colors hover:bg-cream lg:hidden"
+                  onClick={(event) => {
+                    drawerTriggerRef.current = event.currentTarget;
+                  }}
+                  className="grid size-12 shrink-0 place-items-center rounded-xl border border-ink/10 text-maroon transition-colors hover:bg-cream lg:hidden"
               aria-label="Open navigation"
             >
               <Menu className="size-4" />
             </button>
+              </Dialog.Trigger>
           ) : null}
 
           {onSearch ? (
@@ -217,7 +224,7 @@ export function DashboardShell({
                 onChange={(e) => onSearch(e.target.value)}
                 placeholder="Search"
                 title={searchPlaceholder}
-                className="h-10 w-full rounded-xl border border-ink/10 bg-cream pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-gold"
+                  className="h-12 w-full rounded-xl border border-ink/10 bg-cream pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-gold"
               />
             </label>
           ) : (
@@ -234,6 +241,22 @@ export function DashboardShell({
           <div className="border-b border-ink/10 bg-white px-3 py-3 sm:px-6">{toolbar}</div>
         ) : null}
 
+          {readOnly ? (
+            <div
+              role="status"
+              className="flex flex-wrap items-center justify-between gap-2 border-b border-gold/30 bg-gold/10 px-4 py-2 text-xs text-ink/75 sm:px-6"
+            >
+              <span>Read-only preview — changes are disabled.</span>
+              <Link
+                to="/login"
+                search={{ returnTo: undefined }}
+                className="min-h-11 inline-flex items-center font-semibold text-maroon underline underline-offset-2"
+              >
+                Switch preview
+              </Link>
+            </div>
+          ) : null}
+
         {!hideNav && mobileItems?.length ? (
           <nav
             aria-label="Quick sections"
@@ -247,18 +270,18 @@ export function DashboardShell({
                     aria-current={active === item.id ? "page" : undefined}
                     onClick={() => onSelect(item.id)}
                     className={cn(
-                      "inline-flex min-h-10 items-center gap-1 rounded-xl px-1 text-[11px] transition-colors",
+                        "inline-flex min-h-12 items-center gap-2 rounded-xl px-3 text-xs transition-colors",
                       active === item.id
                         ? "bg-maroon text-paper"
                         : "text-ink/65 hover:bg-cream hover:text-maroon",
                     )}
                   >
-                    <item.icon className="size-3 shrink-0" aria-hidden />
+                      <item.icon className="size-3.5 shrink-0" aria-hidden />
                     <span>{item.label}</span>
                     {item.badge ? (
                       <span
                         className={cn(
-                          "rounded-full px-1 py-0.5 text-[9px] font-bold",
+                            "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
                           active === item.id
                             ? "bg-gold/20 text-gold-light"
                             : "bg-burgundy/10 text-burgundy",
@@ -271,23 +294,27 @@ export function DashboardShell({
                 </li>
               ))}
               <li className="shrink-0">
+                  <Dialog.Trigger asChild>
                 <button
                   type="button"
+                      onClick={(event) => {
+                        drawerTriggerRef.current = event.currentTarget;
+                      }}
                   aria-label="More dashboard sections"
                   aria-current={
                     mobileItems.some((item) => item.id === active) ? undefined : "page"
                   }
-                  onClick={() => setDrawer(true)}
                   className={cn(
-                    "inline-flex min-h-10 items-center gap-1 rounded-xl px-1 text-[11px] transition-colors",
+                        "inline-flex min-h-12 items-center gap-2 rounded-xl px-3 text-xs transition-colors",
                     mobileItems.some((item) => item.id === active)
                       ? "text-ink/65 hover:bg-cream hover:text-maroon"
                       : "bg-maroon text-paper",
                   )}
                 >
-                  <Menu className="size-3 shrink-0" aria-hidden />
+                      <Menu className="size-3.5 shrink-0" aria-hidden />
                   <span>More</span>
                 </button>
+                  </Dialog.Trigger>
               </li>
             </ul>
           </nav>
@@ -306,6 +333,7 @@ export function DashboardShell({
         </main>
       </div>
     </div>
+    </Dialog.Root>
   );
 }
 
@@ -321,14 +349,17 @@ function NavButton({
   onSelect: () => void;
 }) {
   const className = cn(
-    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-[background-color,color,transform,box-shadow] duration-200 ease-out",
+    "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-sm transition-[background-color,color,transform,box-shadow] duration-200 ease-out",
     active ? "bg-maroon text-paper shadow-card" : "text-ink/65 hover:bg-cream hover:text-maroon",
     rail && "justify-center px-0",
   );
 
   const content = (
     <>
-      <item.icon className={cn("size-4 shrink-0", active ? "text-gold" : "text-muted")} aria-hidden />
+      <item.icon
+        className={cn("size-4 shrink-0", active ? "text-gold" : "text-muted")}
+        aria-hidden
+      />
       {!rail ? <span className="flex-1 truncate text-left">{item.label}</span> : null}
       {!rail && item.badge ? (
         <span
@@ -357,7 +388,12 @@ function NavButton({
   }
 
   return (
-    <button type="button" onClick={onSelect} className={className} title={rail ? item.label : undefined}>
+    <button
+      type="button"
+      onClick={onSelect}
+      className={className}
+      title={rail ? item.label : undefined}
+    >
       {content}
     </button>
   );
@@ -377,10 +413,8 @@ function AlertsBell({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          className="relative grid size-10 place-items-center rounded-lg border border-ink/10 text-ink/60 transition-colors hover:bg-cream hover:text-maroon"
-          aria-label={
-            alerts.length > 0 ? `Alerts, ${alerts.length} needing attention` : "Alerts"
-          }
+          className="relative grid size-12 place-items-center rounded-lg border border-ink/10 text-ink/60 transition-colors hover:bg-cream hover:text-maroon"
+          aria-label={alerts.length > 0 ? `Alerts, ${alerts.length} needing attention` : "Alerts"}
         >
           <Bell className="size-4" aria-hidden />
           {alerts.length > 0 ? (
@@ -411,7 +445,9 @@ function AlertsBell({
                 className="cursor-pointer rounded-xl px-3 py-2.5 outline-none transition-colors data-[highlighted]:bg-cream"
               >
                 <span className="block text-[13px] text-maroon">{a.title}</span>
-                <span className="mt-0.5 block text-[11px] leading-snug text-ink/55">{a.detail}</span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-ink/55">
+                  {a.detail}
+                </span>
               </DropdownMenu.Item>
             ))
           )}
@@ -421,7 +457,11 @@ function AlertsBell({
   );
 }
 
-function UserChip({ user }: { user: { name: string; role?: string; email?: string; onSignOut?: () => void } }) {
+function UserChip({
+  user,
+}: {
+  user: { name: string; role?: string; email?: string; onSignOut?: () => void };
+}) {
   const initials = user.name
     .split(/[\s@.]+/)
     .filter(Boolean)

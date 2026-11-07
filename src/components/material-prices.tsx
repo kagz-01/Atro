@@ -48,9 +48,7 @@ export function MaterialPrices() {
             </div>
             <div className="rounded-xl border border-line bg-cream p-3">
               <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Locations</p>
-              <p className="mt-1 text-sm font-medium text-maroon">
-                Nairobi + 4 regional towns
-              </p>
+              <p className="mt-1 text-sm font-medium text-maroon">Nairobi + 4 regional towns</p>
             </div>
           </div>
         </div>
@@ -65,7 +63,7 @@ export function MaterialPrices() {
             placeholder="Search materials or specifications"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="h-11 w-full rounded-2xl border border-line/50 bg-cream pl-10 pr-4 text-sm text-ink outline-none transition-colors focus:border-burgundy"
+            className="h-12 w-full rounded-2xl border border-line/50 bg-cream pl-10 pr-4 text-sm text-ink outline-none transition-colors focus:border-burgundy"
           />
         </label>
       </div>
@@ -103,12 +101,21 @@ export function MaterialPrices() {
           </caption>
           <thead className="bg-cream text-[10px] uppercase tracking-[0.12em] text-muted">
             <tr>
-              <th scope="col" className="sticky left-0 z-10 min-w-64 border-b border-line/60 bg-cream px-4 py-3">
+              <th
+                scope="col"
+                className="sticky left-0 z-10 min-w-64 border-b border-line/60 bg-cream px-4 py-3"
+              >
                 Item and specification
               </th>
-              <th scope="col" className="min-w-20 border-b border-line/60 px-3 py-3">Unit</th>
+              <th scope="col" className="min-w-20 border-b border-line/60 px-3 py-3">
+                Unit
+              </th>
               {["Eldoret", "Kisumu", "Mombasa", "Nakuru", "Nairobi", "All towns"].map((town) => (
-                <th scope="col" key={town} className="min-w-28 border-b border-line/60 px-3 py-3 text-right">
+                <th
+                  scope="col"
+                  key={town}
+                  className="min-w-28 border-b border-line/60 px-3 py-3 text-right"
+                >
                   {town}
                 </th>
               ))}
@@ -119,7 +126,9 @@ export function MaterialPrices() {
               <tr key={item.id} className="border-b border-line/40 last:border-0">
                 <th scope="row" className="sticky left-0 bg-paper px-4 py-3 text-left">
                   <span className="block font-medium text-maroon">{item.name}</span>
-                  <span className="mt-0.5 block text-xs font-normal text-muted">{item.specification}</span>
+                  <span className="mt-0.5 block text-xs font-normal text-muted">
+                    {item.specification}
+                  </span>
                 </th>
                 <td className="px-3 py-3 text-xs text-ink/70">{item.unit}</td>
                 {Object.values(item.townPrices).map((price, index) => (
@@ -129,7 +138,11 @@ export function MaterialPrices() {
                       "px-3 py-3 text-right tabular-nums",
                       price === null ? "text-muted" : "text-ink/80",
                     )}
-                    title={price === null ? "Town average not published; PPRA says the all-town reference applies." : undefined}
+                    title={
+                      price === null
+                        ? "Town average not published; PPRA says the all-town reference applies."
+                        : undefined
+                    }
                   >
                     {price === null ? "—" : `KES ${KES.format(price)}`}
                   </td>
@@ -190,7 +203,7 @@ function CategoryButton({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "shrink-0 rounded-2xl px-4 py-2.5 text-sm font-medium transition",
+        "min-h-12 shrink-0 rounded-2xl px-4 py-2.5 text-sm font-medium transition",
         selected
           ? "bg-maroon text-white shadow-soft"
           : "border border-line/50 bg-cream text-ink/70 hover:border-burgundy/50 hover:text-maroon",

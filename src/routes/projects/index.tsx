@@ -26,13 +26,7 @@ const TYPES: ProjectType[] = [
   "School",
   "Renovation",
 ];
-const STATUSES: ProjectStatus[] = [
-  "Completed",
-  "Ongoing",
-  "In design",
-  "Proposed",
-  "Illustrative",
-];
+const STATUSES: ProjectStatus[] = ["Completed", "Ongoing", "In design", "Proposed", "Illustrative"];
 
 function ProjectsPage() {
   const [type, setType] = useState<ProjectType | "All">("All");
@@ -45,18 +39,14 @@ function ProjectsPage() {
       (option) => ({
         value: option,
         label:
-          option === "Ongoing"
-            ? "Active sites"
-            : option === "Illustrative"
-              ? "Concepts"
-              : option,
+          option === "Ongoing" ? "Active sites" : option === "Illustrative" ? "Concepts" : option,
         count: PROJECTS.filter((project) => project.status === option).length,
       }),
     ),
   ];
   const activeFilters = [
     type !== "All" ? type : "",
-    zone !== "All" ? ZONES.find((item) => item.slug === zone)?.name ?? zone : "",
+    zone !== "All" ? (ZONES.find((item) => item.slug === zone)?.name ?? zone) : "",
   ].filter(Boolean);
 
   const filtered = useMemo(() => {
@@ -68,10 +58,7 @@ function ProjectsPage() {
     });
   }, [type, status, zone]);
 
-  function handleStatusKeyDown(
-    event: React.KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) {
+  function handleStatusKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
     let nextIndex = index;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
       nextIndex = (index + 1) % statusTabs.length;
@@ -118,7 +105,7 @@ function ProjectsPage() {
               tabIndex={status === tab.value ? 0 : -1}
               onClick={() => setStatus(tab.value)}
               onKeyDown={(event) => handleStatusKeyDown(event, index)}
-              className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition-colors sm:text-sm ${
+              className={`inline-flex min-h-12 shrink-0 items-center rounded-full border px-4 text-xs font-semibold transition-colors sm:text-sm ${
                 status === tab.value
                   ? "border-burgundy bg-burgundy text-white"
                   : "border-line bg-paper text-ink hover:border-burgundy/40 hover:text-burgundy"
@@ -154,7 +141,7 @@ function ProjectsPage() {
                 aria-label="Filter projects by type"
                 value={type}
                 onChange={(event) => setType(event.target.value as ProjectType | "All")}
-                className="h-10 min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-normal normal-case tracking-normal text-ink"
+                className="h-12 min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-normal normal-case tracking-normal text-ink"
               >
                 <option value="All">All types</option>
                 {TYPES.map((option) => (
@@ -170,7 +157,7 @@ function ProjectsPage() {
                 aria-label="Filter projects by location"
                 value={zone}
                 onChange={(event) => setZone(event.target.value)}
-                className="h-10 min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-normal normal-case tracking-normal text-ink"
+                className="h-12 min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-normal normal-case tracking-normal text-ink"
               >
                 <option value="All">All locations</option>
                 {ZONES.map((option) => (
@@ -187,7 +174,7 @@ function ProjectsPage() {
                   setType("All");
                   setZone("All");
                 }}
-                className="justify-self-start text-xs font-medium text-burgundy underline sm:col-span-2"
+                className="inline-flex min-h-11 items-center justify-self-start text-xs font-medium text-burgundy underline sm:col-span-2"
               >
                 Clear filters
               </button>

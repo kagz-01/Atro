@@ -54,6 +54,7 @@ export const authMiddleware = createMiddleware({ type: "function" })
         emailVerified: session.emailVerified,
         phone: session.phone,
         isGuestPreview: session.isGuestPreview,
+        isLocalPreview: session.isLocalPreview,
       },
     });
   });

@@ -1,4 +1,5 @@
 import { toE164 } from "./phone.ts";
+import { isLocalPreviewRequest } from "./local-preview.server";
 
 type StaffInviteMessage = {
   email: string;
@@ -38,6 +39,12 @@ function escapeHtml(value: string): string {
 }
 
 export async function sendStaffInviteEmail(input: StaffInviteMessage) {
+  if (isLocalPreviewRequest()) {
+    return {
+      sent: false as const,
+      detail: "Email delivery is disabled in local development.",
+    };
+  }
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     return {

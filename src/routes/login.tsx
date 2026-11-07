@@ -12,6 +12,8 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getMyAccess, getMyStaffInvitation } from "@/lib/staff-access";
 import { resolveDashboardRoute } from "@/lib/dashboard-routing";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
+import { PREVIEW_PERSONAS, type PreviewPersonaKey } from "@/lib/preview-personas";
+import { continueAsPreviewPersona } from "@/lib/auth/client";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -69,9 +71,7 @@ function Login() {
     preferredClientRoute,
   });
   const dashboardDestination =
-    resolvedDashboard === "/portal" &&
-    returnTo === "/staff" &&
-    staffInvitation?.pending
+    resolvedDashboard === "/portal" && returnTo === "/staff" && staffInvitation?.pending
       ? "/staff"
       : resolvedDashboard;
 
@@ -174,11 +174,11 @@ function Login() {
   }
 
   return (
-    <main className="min-h-screen bg-paper pt-24 pb-16 md:pt-28">
+    <section className="min-h-screen bg-paper pt-24 pb-16 md:pt-28">
       <div className="mx-auto max-w-2xl px-4 sm:px-8">
         <Link
           to={preferredClientRoute === "/portal/diaspora" ? "/diaspora" : "/"}
-          className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-ink/70 transition-colors hover:text-maroon"
+          className="inline-flex min-h-12 items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-ink/70 transition-colors hover:text-maroon"
         >
           <ArrowLeft className="size-3.5" />
           {preferredClientRoute === "/portal/diaspora" ? "Back to Abroad" : "Back to ATRO"}
@@ -193,9 +193,42 @@ function Login() {
               </span>
             </div>
 
-            {isPending || !hydrated ? (
+            {import.meta.env.DEV ? (
+              <div className="mt-10">
+                <h1 className="font-display text-[2.1rem] leading-none text-maroon">
+                  Choose your workspace
+                </h1>
+                <p className="mt-3 text-[15px] leading-relaxed text-ink/75">
+                  Open the workspace you want to use.
+                </p>
+                <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                  {PREVIEW_PERSONAS.map((persona) => {
+                    const labels: Record<PreviewPersonaKey, string> = {
+                      boss: "Owner dashboard",
+                      office: "Office dashboard",
+                      local: "Kenyan client portal",
+                      abroad: "Diaspora client portal",
+                    };
+                    return (
+                      <Button
+                        key={persona.key}
+                        type="button"
+                        variant="outline"
+                        className="min-h-12 justify-between normal-case tracking-normal"
+                        onClick={() => continueAsPreviewPersona(persona.key)}
+                      >
+                        {labels[persona.key]}
+                        <ArrowRight className="size-4" />
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : isPending || !hydrated ? (
               <div className="mt-10 space-y-4" aria-busy="true">
-                <div className="h-8 w-2/3 animate-pulse rounded-lg bg-ink/8" />
+                <h1 className="font-display text-[2.1rem] leading-none text-maroon">
+                  Sign in or create an account
+                </h1>
                 <div className="h-4 w-1/2 animate-pulse rounded-lg bg-ink/8" />
                 <div className="h-12 w-full animate-pulse rounded-xl bg-ink/8" />
                 <div className="h-12 w-full animate-pulse rounded-xl bg-ink/8" />
@@ -206,7 +239,9 @@ function Login() {
               </p>
             ) : user && !user.isDevFallback ? (
               <div className="mt-10">
-                <h2 className="font-display text-[2.1rem] leading-none text-maroon">You are signed in</h2>
+                <h1 className="font-display text-[2.1rem] leading-none text-maroon">
+                  You are signed in
+                </h1>
                 <p className="mt-3 text-[15px] leading-relaxed text-ink/80">
                   {user.displayName ?? user.primaryEmail ?? "Your account"} — your projects,
                   milestones and documents are one click away.
@@ -216,7 +251,10 @@ function Login() {
                   dashboards automatically.
                 </p>
                 {accessError ? (
-                  <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-800">
+                  <p
+                    role="alert"
+                    className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-800"
+                  >
                     {accessError}
                   </p>
                 ) : null}
@@ -226,7 +264,12 @@ function Login() {
                   <UserButton />
                 </div>
 
-                <Button variant="primary" size="lg" className="mt-6 w-full" onClick={() => void goToPortal()}>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="mt-6 w-full"
+                  onClick={() => void goToPortal()}
+                >
                   {dashboardDestination === "/admin"
                     ? "Open the admin dashboard"
                     : dashboardDestination === "/staff"
@@ -239,19 +282,22 @@ function Login() {
               </div>
             ) : (
               <div className="mt-10">
-                <h2 className="font-display text-[2.1rem] leading-none text-maroon">
+                <h1 className="font-display text-[2.1rem] leading-none text-maroon">
                   Sign in or create an account
-                </h2>
+                </h1>
                 {sessionError ? (
-                  <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-800">
+                  <p
+                    role="alert"
+                    className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-800"
+                  >
                     We could not restore your sign-in session: {sessionError}. Refresh the page and
                     try again.
                   </p>
                 ) : null}
                 <p className="mt-3 text-[15px] leading-relaxed text-ink/80">
                   Your account keeps your project updates, drawings, payment records and decisions
-                  in one private place. Continue with Google or a one-time code by email or phone;
-                  a new account is created if you are new to ATRO.
+                  in one private place. Continue with Google or a one-time code by email or phone; a
+                  new account is created if you are new to ATRO.
                 </p>
                 <p className="mt-2 text-[13px] leading-relaxed text-ink/75">
                   Use the email address or phone number you shared with ATRO so your project can be
@@ -306,7 +352,7 @@ function Login() {
                         type="button"
                         aria-pressed={method === option}
                         onClick={() => setMethod(option)}
-                        className={`rounded-lg px-4 py-2.5 text-sm font-medium capitalize transition-colors ${
+                        className={`min-h-12 rounded-lg px-4 py-2.5 text-sm font-medium capitalize transition-colors ${
                           method === option
                             ? "bg-white text-maroon shadow-sm"
                             : "text-ink/60 hover:text-maroon"
@@ -323,9 +369,7 @@ function Login() {
                   )}
 
                   <div className="mt-6 border-t border-ink/10 pt-5">
-                    <p className="text-center text-[13px] text-ink/75">
-                      Just looking around?
-                    </p>
+                    <p className="text-center text-[13px] text-ink/75">Just looking around?</p>
                     <Button
                       type="button"
                       variant="ghost"
@@ -356,9 +400,10 @@ function Login() {
                 </div>
               </div>
             )}
+
           </section>
         </div>
       </div>
-    </main>
+    </section>
   );
 }

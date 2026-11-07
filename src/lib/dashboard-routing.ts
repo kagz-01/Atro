@@ -1,5 +1,9 @@
 import type { AppUser } from "./auth/use-current-user.ts";
-import { personaKeyFromCookieHeader, previewPersona } from "./preview-personas.ts";
+import {
+  personaKeyFromCookieHeader,
+  previewPersonaWorkspace,
+  previewPersona,
+} from "./preview-personas.ts";
 import { isStaffRole } from "./staff-access-rules.ts";
 
 export type ClientPortalRoute = "/portal" | "/portal/diaspora";
@@ -14,7 +18,14 @@ export function resolveDashboardRoute({
   accessRole?: string | null;
   preferredClientRoute?: ClientPortalRoute;
 }): DashboardRoute {
-  if (!user || user.isGuestPreview) return preferredClientRoute;
+  if (!user) return preferredClientRoute;
+  if (user.isGuestPreview) {
+    if (import.meta.env?.DEV && typeof document !== "undefined") {
+      const previewKey = personaKeyFromCookieHeader(document.cookie);
+      if (previewKey) return previewPersonaWorkspace(previewKey);
+    }
+    return preferredClientRoute;
+  }
   if (accessRole && isStaffRole(accessRole)) {
     return accessRole === "admin" ? "/admin" : "/staff";
   }

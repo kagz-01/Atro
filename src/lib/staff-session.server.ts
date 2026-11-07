@@ -3,17 +3,16 @@
 // a `*.server.*` file, which the build rejects.
 
 import { getSql, type Sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/verify.server";
+import { getSessionUser, requireSession } from "@/lib/auth/verify.server";
 import { refusalFor, type PrivilegedOp } from "@/lib/privileges";
 import { lookupRole, normaliseEmail, type StaffIdentity } from "@/lib/staff";
 
 /** Throws unless the caller is signed in AND on the allowlist. */
 export async function requireStaff(): Promise<StaffIdentity> {
-  const user = await getSessionUser();
-  if (!user) throw new Error("Sign in to continue.");
+  const user = await requireSession();
   const role = await lookupRole(await getSql(), user.email);
   if (!role) throw new Error("This area is for ATRO staff.");
-  return { userId: user.id, email: normaliseEmail(user.email), role };
+  return { userId: user.userId, email: normaliseEmail(user.email), role };
 }
 
 /**

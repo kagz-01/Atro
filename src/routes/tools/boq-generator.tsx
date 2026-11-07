@@ -11,7 +11,8 @@ export const Route = createFileRoute("/tools/boq-generator")({
       { title: `BOQ Worksheet | ${COMPANY.name}` },
       {
         name: "description",
-        content: "Draft an unpriced construction quantities worksheet. Templates contain no assumed quantities or rates; add measured quantities and current project-specific quotations.",
+        content:
+          "Draft an unpriced construction quantities worksheet. Templates contain no assumed quantities or rates; add measured quantities and current project-specific quotations.",
       },
     ],
   }),
@@ -19,24 +20,28 @@ export const Route = createFileRoute("/tools/boq-generator")({
 
 function BoqGeneratorPage() {
   return (
-    <main className="pt-32 pb-24">
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+    <main className="pt-24 pb-24 sm:pt-32">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-8 md:px-12 lg:px-16">
         {/* Breadcrumb */}
         <Link
           to="/tools"
-          className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon mb-8"
+          className="mb-8 inline-flex min-h-12 items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon"
         >
           <ArrowLeft className="size-3.5" />
           All tools
         </Link>
 
         <div className="max-w-2xl mb-12">
-          <Badge tone="maroon" className="mb-4">BOQ Worksheet</Badge>
+          <Badge tone="maroon" className="mb-4">
+            BOQ Worksheet
+          </Badge>
           <h1 className="font-display text-4xl md:text-5xl text-maroon">
             Draft a quantities worksheet
           </h1>
           <p className="mt-5 text-ink/70 text-lg">
-            Templates provide scope prompts only: they contain no assumed quantities or prices. Enter measured quantities and current project-specific rates; any displayed subtotal covers only the lines you have priced.
+            Templates provide scope prompts only: they contain no assumed quantities or prices.
+            Enter measured quantities and current project-specific rates; any displayed subtotal
+            covers only the lines you have priced.
           </p>
         </div>
 
@@ -47,7 +52,8 @@ function BoqGeneratorPage() {
           <div className="max-w-xl">
             <h2 className="font-display text-3xl text-paper">Need a measured cost plan?</h2>
             <p className="mt-3 text-paper/70">
-              This worksheet is only a starting point. For a tender-ready BOQ or project cost plan, a quantity surveyor should verify scope, quantities, specifications and current rates.
+              This worksheet is only a starting point. For a tender-ready BOQ or project cost plan,
+              a quantity surveyor should verify scope, quantities, specifications and current rates.
             </p>
             <Link
               to="/start"

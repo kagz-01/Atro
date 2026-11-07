@@ -1,5 +1,5 @@
 /**
- * The four preview personas — who you can be when sign-in is not configured.
+ * The four local workspace personas — sample identities for development use.
  *
  * A real deployment has one session per person and no way to become someone
  * else. The preview has no sign-in at all, so without this it could only ever
@@ -10,10 +10,11 @@
  * Each persona is a full identity (its own user id, its own address), so
  * switching is not a filter on the same data: the projects, the roles and the
  * consent records all change with it. Keyed by a cookie the server reads on
- * every request and the banner writes before reloading.
+ * every request and the switcher writes before reloading.
  *
- * Impossible to reach on a real deployment for the same reason
- * `previewIdentity` is: Supabase configured means no preview identity at all.
+ * The local role runs against writable PGLite fixtures and the server accepts
+ * it only in Vite development with no DATABASE_URL; production never resolves
+ * this cookie.
  */
 
 /** Cookie that carries the current persona key. Preview-only. */
@@ -33,6 +34,10 @@ export function guestPreviewCookieAssignment(): string {
 
 export function clearGuestPreviewCookieAssignment(): string {
   return `${GUEST_PREVIEW_COOKIE}=; path=/; max-age=0; samesite=lax`;
+}
+
+export function clearPreviewPersonaCookieAssignment(): string {
+  return `${PREVIEW_PERSONA_COOKIE}=; path=/; max-age=0; samesite=lax`;
 }
 
 export type PreviewPersonaKey = "boss" | "office" | "local" | "abroad";
@@ -144,8 +149,11 @@ export function personaCookieAssignment(key: PreviewPersonaKey): string {
 }
 
 /** The workspace each preview seat should open. */
-export function previewPersonaWorkspace(key: PreviewPersonaKey): "/admin" | "/staff" | "/portal" {
+export function previewPersonaWorkspace(
+  key: PreviewPersonaKey,
+): "/admin" | "/staff" | "/portal" | "/portal/diaspora" {
   if (key === "boss") return "/admin";
   if (key === "office") return "/staff";
+  if (key === "abroad") return "/portal/diaspora";
   return "/portal";
 }

@@ -7,11 +7,38 @@ import { cn } from "@/lib/utils";
 import { ZONES, type Zone, type ZoneStatus } from "@/lib/site";
 import { KENYA_COUNTIES, type KenyaCounty } from "@/lib/counties";
 
-const STATUS_CONFIG: Record<ZoneStatus, { icon: typeof MapPin; color: string; bg: string; hex: string; label: string }> = {
-  active: { icon: CheckCircle, color: "text-green-600", bg: "bg-green-500", hex: "#22c55e", label: "Active delivery" },
-  limited: { icon: Clock, color: "text-amber-600", bg: "bg-amber-500", hex: "#f59e0b", label: "Limited availability" },
-  request: { icon: AlertCircle, color: "text-orange-600", bg: "bg-orange-500", hex: "#f97316", label: "By request" },
-  diaspora: { icon: Users, color: "text-burgundy", bg: "bg-burgundy", hex: "#5C1018", label: "Remote-first" },
+const STATUS_CONFIG: Record<
+  ZoneStatus,
+  { icon: typeof MapPin; color: string; bg: string; hex: string; label: string }
+> = {
+  active: {
+    icon: CheckCircle,
+    color: "text-green-600",
+    bg: "bg-green-500",
+    hex: "#22c55e",
+    label: "Active delivery",
+  },
+  limited: {
+    icon: Clock,
+    color: "text-amber-600",
+    bg: "bg-amber-500",
+    hex: "#f59e0b",
+    label: "Limited availability",
+  },
+  request: {
+    icon: AlertCircle,
+    color: "text-orange-600",
+    bg: "bg-orange-500",
+    hex: "#f97316",
+    label: "By request",
+  },
+  diaspora: {
+    icon: Users,
+    color: "text-burgundy",
+    bg: "bg-burgundy",
+    hex: "#5C1018",
+    label: "Remote-first",
+  },
 };
 
 // Kenya center for initial view
@@ -85,7 +112,8 @@ export function ZoneMap({ compact = false }: { compact?: boolean }) {
             permanent: false,
             direction: "top",
             offset: [0, -8],
-            className: "bg-paper text-maroon text-xs font-medium px-2 py-1 rounded-lg shadow-sm border border-line",
+            className:
+              "bg-paper text-maroon text-xs font-medium px-2 py-1 rounded-lg shadow-sm border border-line",
           })
           .on("click", () => {
             setSelectedCounty(null);
@@ -127,14 +155,21 @@ export function ZoneMap({ compact = false }: { compact?: boolean }) {
   // Fly to selected zone
   useEffect(() => {
     if (!selected || !mapInstance.current) return;
-    const map = mapInstance.current as { flyTo: (latlng: [number, number], zoom: number, options?: object) => void };
+    const map = mapInstance.current as {
+      flyTo: (latlng: [number, number], zoom: number, options?: object) => void;
+    };
     map.flyTo([selected.lat, selected.lng], 9, { duration: 1.2 });
   }, [selected]);
 
   return (
-    <div className={cn("grid gap-8", compact ? "lg:grid-cols-2" : "lg:grid-cols-12")}>
+    <div
+      className={cn(
+        "grid min-w-0 grid-cols-1 gap-8",
+        compact ? "lg:grid-cols-2" : "lg:grid-cols-12",
+      )}
+    >
       {/* Map */}
-      <div className={cn(compact ? "order-2" : "lg:col-span-7")}>
+      <div className={cn("min-w-0", compact ? "order-2" : "order-2 lg:col-span-7 lg:order-1")}>
         <div className="relative bg-cream border border-line rounded-xl overflow-hidden">
           {/* Leaflet map container */}
           <div
@@ -145,21 +180,24 @@ export function ZoneMap({ compact = false }: { compact?: boolean }) {
 
           {/* Legend overlay */}
           <div className="absolute bottom-4 left-4 bg-paper/90 backdrop-blur-sm border border-line rounded-xl px-4 py-3 flex flex-wrap gap-4 text-[10px] uppercase tracking-[0.12em]">
-            {Object.entries(STATUS_CONFIG).filter(([k]) => k !== "diaspora").map(([status, config]) => (
-              <div key={status} className="flex items-center gap-1.5">
-                <div className={cn("size-2 rounded-full", config.bg)} />
-                <span className="text-muted">{config.label}</span>
-              </div>
-            ))}
+            {Object.entries(STATUS_CONFIG)
+              .filter(([k]) => k !== "diaspora")
+              .map(([status, config]) => (
+                <div key={status} className="flex items-center gap-1.5">
+                  <div className={cn("size-2 rounded-full", config.bg)} />
+                  <span className="text-muted">{config.label}</span>
+                </div>
+              ))}
           </div>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-muted">
-          Pins and circles show the existing service-area centres; they are illustrative, not county boundaries or a promise of service throughout a radius.
+          Pins and circles show the existing service-area centres; they are illustrative, not county
+          boundaries or a promise of service throughout a radius.
         </p>
       </div>
 
       {/* Zone list / detail */}
-      <div className={cn(compact ? "order-1" : "lg:col-span-5")}>
+      <div className={cn("min-w-0", compact ? "order-1" : "order-1 lg:col-span-5 lg:order-2")}>
         {selectedCounty ? (
           <CountyDetail
             county={selectedCounty}
@@ -176,7 +214,7 @@ export function ZoneMap({ compact = false }: { compact?: boolean }) {
             onSearch={setCountySearch}
             onSelect={(county) => {
               const zone = county.serviceZoneSlug
-                ? ZONES.find((item) => item.slug === county.serviceZoneSlug) ?? null
+                ? (ZONES.find((item) => item.slug === county.serviceZoneSlug) ?? null)
                 : null;
               setSelected(zone);
               setSelectedCounty(county);
@@ -200,9 +238,7 @@ function CountyDirectory({
   const counties = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     return query
-      ? KENYA_COUNTIES.filter((county) =>
-          county.name.toLocaleLowerCase().includes(query),
-        )
+      ? KENYA_COUNTIES.filter((county) => county.name.toLocaleLowerCase().includes(query))
       : KENYA_COUNTIES;
   }, [search]);
 
@@ -210,7 +246,8 @@ function CountyDirectory({
     <div>
       <h3 className="font-display text-[1.7rem] leading-none text-maroon">Find your county</h3>
       <p className="mt-2 text-sm text-ink/70">
-        Search all 47 counties. We show published delivery areas; elsewhere, availability is confirmed after an enquiry.
+        Search all 47 counties. We show published delivery areas; elsewhere, availability is
+        confirmed after an enquiry.
       </p>
       <p className="mt-2 text-xs text-muted">
         County names follow the{" "}
@@ -224,14 +261,16 @@ function CountyDirectory({
         </a>
         .
       </p>
-      <label className="sr-only" htmlFor="county-search">Search counties</label>
+      <label className="sr-only" htmlFor="county-search">
+        Search counties
+      </label>
       <input
         id="county-search"
         type="search"
         value={search}
         onChange={(event) => onSearch(event.target.value)}
         placeholder="Search counties, e.g. Nairobi, Kiambu, Mombasa"
-        className="mt-5 h-11 w-full rounded-2xl border border-line/60 bg-paper px-4 text-sm text-ink outline-none transition focus:border-burgundy"
+        className="mt-5 h-12 w-full rounded-2xl border border-line/60 bg-paper px-4 text-sm text-ink outline-none transition focus:border-burgundy"
       />
       <p className="mt-3 text-xs text-muted" aria-live="polite">
         {counties.length} {counties.length === 1 ? "county" : "counties"}
@@ -246,14 +285,12 @@ function CountyDirectory({
               <button
                 type="button"
                 onClick={() => onSelect(county)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-paper p-3 text-left transition-colors hover:border-burgundy"
+                className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-line bg-paper p-3 text-left transition-colors hover:border-burgundy"
               >
                 <span>
                   <span className="block font-medium text-maroon">{county.name}</span>
                   {zone ? (
-                    <span className="mt-0.5 block text-xs text-muted">
-                      {zone.name} area
-                    </span>
+                    <span className="mt-0.5 block text-xs text-muted">{zone.name} area</span>
                   ) : null}
                 </span>
                 <Badge tone={zone?.status === "active" ? "gold" : zone ? "maroon" : "stone"}>
@@ -273,13 +310,7 @@ function CountyDirectory({
   );
 }
 
-function CountyDetail({
-  county,
-  onBack,
-}: {
-  county: KenyaCounty;
-  onBack: () => void;
-}) {
+function CountyDetail({ county, onBack }: { county: KenyaCounty; onBack: () => void }) {
   const zone = county.serviceZoneSlug
     ? ZONES.find((item) => item.slug === county.serviceZoneSlug)
     : undefined;
@@ -289,7 +320,7 @@ function CountyDetail({
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon"
+        className="mb-4 inline-flex min-h-12 items-center text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon"
       >
         ← All counties
       </button>
@@ -310,23 +341,22 @@ function CountyDetail({
       </p>
       {zone?.status === "limited" || zone?.status === "request" || !zone ? (
         <p className="mt-4 rounded-xl border border-line bg-cream p-4 text-sm leading-relaxed text-ink/70">
-          This is an enquiry, not a project start or an offer of service. ATRO will review the brief with you and confirm whether it can be resourced.
+          This is an enquiry, not a project start or an offer of service. ATRO will review the brief
+          with you and confirm whether it can be resourced.
         </p>
       ) : null}
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <Button asChild size="sm">
+        <Button asChild size="sm" className="min-h-12 sm:min-h-9">
           <Link to="/start" search={{ zone: county.slug }}>
             Request a call about this county
           </Link>
         </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link to="/tools/material-prices">
-            Compare material prices
-          </Link>
+        <Button asChild size="sm" variant="outline" className="min-h-12 sm:min-h-9">
+          <Link to="/tools/material-prices">Compare material prices</Link>
         </Button>
         {zone ? (
-          <Button asChild size="sm" variant="outline">
+          <Button asChild size="sm" variant="outline" className="min-h-12 sm:min-h-9">
             <Link to="/zones/$slug" params={{ slug: zone.slug }}>
               Area details
             </Link>
@@ -345,7 +375,7 @@ function ZoneDetail({ zone, onBack }: { zone: Zone; onBack: () => void }) {
       <button
         type="button"
         onClick={onBack}
-        className="text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon mb-4"
+        className="mb-4 inline-flex min-h-12 items-center text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon"
       >
         ← All zones
       </button>
@@ -375,7 +405,9 @@ function ZoneDetail({ zone, onBack }: { zone: Zone; onBack: () => void }) {
 
       {zone.faqs.length > 0 && (
         <div className="mt-6 pt-6 border-t border-line">
-          <p className="text-[10px] uppercase tracking-[0.14em] text-muted mb-3">Common questions</p>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-muted mb-3">
+            Common questions
+          </p>
           {zone.faqs.map((faq, i) => (
             <div key={i} className="mb-4 last:mb-0">
               <p className="font-medium text-sm text-maroon">{faq.q}</p>
@@ -386,13 +418,15 @@ function ZoneDetail({ zone, onBack }: { zone: Zone; onBack: () => void }) {
       )}
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <Button asChild size="sm">
+        <Button asChild size="sm" className="min-h-12 sm:min-h-9">
           <Link to="/zones/$slug" params={{ slug: zone.slug }}>
             Full zone page
           </Link>
         </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link to="/start" search={{ zone: zone.slug }}>Request a call</Link>
+        <Button asChild size="sm" variant="outline" className="min-h-12 sm:min-h-9">
+          <Link to="/start" search={{ zone: zone.slug }}>
+            Request a call
+          </Link>
         </Button>
       </div>
     </div>

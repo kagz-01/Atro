@@ -530,6 +530,17 @@ async function attemptSend(
   projectRef: string,
 ): Promise<void> {
   const channel = row.channel as Channel;
+  if (
+    channel !== "inapp" &&
+    (await import("@/lib/local-preview.server")).isLocalPreviewRequest()
+  ) {
+    await sql`
+      update portal_notification
+      set status = 'skipped', detail = 'External delivery is disabled in local preview'
+      where id = ${row.id}
+    `;
+    return;
+  }
   const config = CONFIG[channel]();
   if (!config.configured) {
     await sql`

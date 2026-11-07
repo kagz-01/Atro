@@ -263,14 +263,16 @@ export const inviteStaff = createServerFn({ method: "POST" })
       phone: z.string().trim().optional(),
     }),
   )
-  .handler(async ({ data }): Promise<{
+  .handler(
+    async ({
+      data,
+    }): Promise<{
     ok: true;
     email: string;
     resent: boolean;
     inviteUrl: string;
     delivery:
-      | { channel: "email"; sent: boolean; detail: string }
-      | { channel: "whatsapp"; url: string };
+        { channel: "email"; sent: boolean; detail: string } | { channel: "whatsapp"; url: string };
   }> => {
     const admin = await requireAdmin("grant-access");
     const sql = await getSql();
@@ -306,8 +308,7 @@ export const inviteStaff = createServerFn({ method: "POST" })
       await import("@/lib/staff-invites.server");
     const inviteUrl = staffInviteUrl();
     let delivery:
-      | { channel: "email"; sent: boolean; detail: string }
-      | { channel: "whatsapp"; url: string };
+        { channel: "email"; sent: boolean; detail: string } | { channel: "whatsapp"; url: string };
     if (data.channel === "email") {
       delivery = {
         channel: "email",
@@ -337,7 +338,8 @@ export const inviteStaff = createServerFn({ method: "POST" })
       };
     }
     return { ok: true, email, resent, inviteUrl, delivery };
-  });
+    },
+  );
 
 /** Whether the signed-in user's email has a pending staff invitation. */
 export const getMyStaffInvitation = createServerFn({ method: "GET" })

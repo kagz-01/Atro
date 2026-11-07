@@ -1,6 +1,7 @@
 import { getRequest } from "@tanstack/react-start/server";
 import { configured, previewIdentity, ACCESS_TOKEN_COOKIE } from "@/lib/supabase/config";
 import { verifyAccessToken } from "@/lib/supabase/server";
+import { getLocalPreviewPersona } from "@/lib/local-preview.server";
 import {
   GUEST_PREVIEW_USER_ID,
   isGuestPreviewCookie,
@@ -59,7 +60,20 @@ export type VerifiedUser = {
  */
 export async function getSessionUser(bearerToken?: string): Promise<VerifiedUser | null> {
   const request = getRequest();
-  const guestPreview = isGuestPreviewCookie(request?.headers.get("cookie"));
+  const cookie = request?.headers.get("cookie");
+  const guestPreview = isGuestPreviewCookie(cookie);
+
+  // Local personas use the seeded PGLite identities and never reach a
+  // configured or production database.
+  const persona = getLocalPreviewPersona();
+  if (persona) {
+    return {
+      id: persona.userId,
+      email: persona.email,
+      emailVerified: true,
+      isGuestPreview: false,
+    };
+  }
 
   // No Supabase means no way to sign in, so preview — as whoever the
   // persona cookie says, or as the seeded local client when it says nothing.
@@ -143,6 +157,7 @@ export type SessionIdentity = {
   emailVerified: boolean;
   phone: string | null;
   isGuestPreview: boolean;
+  isLocalPreview: boolean;
 };
 
 export async function requireSession(bearerToken?: string): Promise<SessionIdentity> {
@@ -154,12 +169,16 @@ export async function requireSession(bearerToken?: string): Promise<SessionIdent
   }
   const user = await getSessionUser(bearerToken);
   if (!user) throw new UnauthorizedError();
+  if (user.isGuestPreview && getRequest()?.method !== "GET") {
+    throw new Error("This preview is read-only. Sign in to make changes.");
+  }
   return {
     userId: user.id,
     email: user.email ?? "",
     emailVerified: user.emailVerified,
     phone: user.phone ?? null,
     isGuestPreview: user.isGuestPreview,
+    isLocalPreview: Boolean(getLocalPreviewPersona()),
   };
 }
 

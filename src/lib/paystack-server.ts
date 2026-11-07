@@ -17,6 +17,9 @@ export const startPaystackCheckout = createServerFn({ method: "POST" })
   .validator(CheckoutInput)
   .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
+    if (context.isLocalPreview) {
+      throw new Error("Online payments are unavailable in local development.");
+    }
     const { beginPaystackCheckout } = await import("./paystack-provider.server");
     return beginPaystackCheckout(
       await getSql(),
@@ -31,6 +34,9 @@ export const verifyPaystackPayment = createServerFn({ method: "POST" })
   .validator(VerifyInput)
   .middleware([accountMiddleware])
   .handler(async ({ context, data }) => {
+    if (context.isLocalPreview) {
+      throw new Error("Online payments are unavailable in local development.");
+    }
     const { verifyPaystackPaymentForUser } = await import("./paystack-provider.server");
     return verifyPaystackPaymentForUser(await getSql(), context.userId, data.reference);
   });

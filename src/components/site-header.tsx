@@ -1,7 +1,19 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import * as Dialog from "@radix-ui/react-dialog";
 import { motion } from "motion/react";
-import { Menu, X, Home, Briefcase, Wrench, Info, Phone, Globe, ArrowRight, LogIn } from "lucide-react";
+import {
+  Menu,
+  X,
+  Home,
+  Briefcase,
+  Wrench,
+  Info,
+  Phone,
+  Globe,
+  ArrowRight,
+  LogIn,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { HeaderLogo } from "@/components/logo";
 import { UserButton } from "@/lib/auth/gates";
@@ -32,16 +44,15 @@ function AuthSlot() {
     pathname.startsWith("/diaspora") ||
     (pathname === "/login" && returnTo === "/portal/diaspora") ||
     (pathname === "/start" && enquiryOrigin === "diaspora")
-    ? "/portal/diaspora"
-    : "/portal";
+      ? "/portal/diaspora"
+      : "/portal";
   const pill =
     "h-9 px-3.5 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] border rounded-full transition-all duration-300 whitespace-nowrap";
   return (
     <Link
       to="/login"
       search={{
-        returnTo:
-          preferredClientRoute === "/portal/diaspora" ? preferredClientRoute : undefined,
+        returnTo: preferredClientRoute === "/portal/diaspora" ? preferredClientRoute : undefined,
       }}
       aria-label="Sign in or create an account"
       className={cn(
@@ -69,8 +80,8 @@ function MobileAccountRow() {
     pathname.startsWith("/diaspora") ||
     (pathname === "/login" && returnTo === "/portal/diaspora") ||
     (pathname === "/start" && enquiryOrigin === "diaspora")
-    ? "/portal/diaspora"
-    : "/portal";
+      ? "/portal/diaspora"
+      : "/portal";
   const { data: access } = useQuery({
     queryKey: ["my-access"],
     queryFn: () => getMyAccess({ data: undefined }),
@@ -114,8 +125,8 @@ function MobileAccountRow() {
                 : isStaffWorkspace
                   ? "Open the staff dashboard"
                   : isDiasporaWorkspace
-                  ? "Open your diaspora project portal"
-                  : "Open your Kenya project portal"}
+                    ? "Open your diaspora project portal"
+                    : "Open your Kenya project portal"}
             </span>
           </span>
           <ArrowRight className="size-5 text-gold shrink-0" />
@@ -128,8 +139,7 @@ function MobileAccountRow() {
     <Link
       to="/login"
       search={{
-        returnTo:
-          preferredClientRoute === "/portal/diaspora" ? preferredClientRoute : undefined,
+        returnTo: preferredClientRoute === "/portal/diaspora" ? preferredClientRoute : undefined,
       }}
       className="mt-3 flex items-center gap-4 rounded-2xl border border-line p-4 text-ink transition-colors hover:border-burgundy"
     >
@@ -147,25 +157,23 @@ function MobileAccountRow() {
 
 export function SiteHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const returnTo = useRouterState({ select: (s) => s.location.search.returnTo });
+  const enquiryOrigin = useRouterState({ select: (s) => s.location.search.from });
   const [open, setOpen] = useState(false);
+  const isDiasporaJourney =
+    pathname.startsWith("/diaspora") ||
+    (pathname === "/login" && returnTo === "/portal/diaspora") ||
+    (pathname === "/start" && enquiryOrigin === "diaspora");
+  const homeRoute = isDiasporaJourney ? "/diaspora" : "/";
 
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
   return (
     <>
       {/* ── Desktop header ── */}
-      <header
-        className="pointer-events-none fixed inset-x-4 top-3 z-40 hidden md:block"
-      >
+      <header className="pointer-events-none fixed inset-x-4 top-3 z-40 hidden md:block">
         <div className="pointer-events-auto mx-auto flex h-14 max-w-[1260px] items-center gap-3 rounded-full border border-gold/20 bg-[linear-gradient(110deg,#3d0406_0%,#4a090b_48%,#310305_100%)] px-2.5 text-paper shadow-[0_14px_44px_rgba(16,12,10,0.28)] backdrop-blur-xl sm:gap-4 sm:px-3">
           <HeaderLogo />
 
@@ -174,8 +182,7 @@ export function SiteHeader() {
             aria-label="Primary"
           >
             {DESKTOP_NAV.map((item) => {
-              const active =
-                pathname === item.to || pathname.startsWith(`${item.to}/`);
+              const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
               return (
                 <Link
                   key={item.to}
@@ -183,9 +190,7 @@ export function SiteHeader() {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "motion-link relative inline-flex h-8 items-center gap-1 rounded-full px-1.5 text-[9px] font-medium uppercase tracking-[0.12em] whitespace-nowrap sm:px-2 lg:px-2.5 xl:text-[10px]",
-                    active
-                      ? "text-gold"
-                      : "text-paper/70 hover:bg-white/[0.07] hover:text-paper",
+                    active ? "text-gold" : "text-paper/70 hover:bg-white/[0.07] hover:text-paper",
                   )}
                 >
                   {active ? (
@@ -212,87 +217,97 @@ export function SiteHeader() {
       </header>
 
       {/* ── Mobile header ── */}
-      <header className="md:hidden fixed inset-x-3 top-3 z-40 rounded-full border border-gold/20 bg-[linear-gradient(110deg,#3d0406_0%,#4a090b_48%,#310305_100%)] shadow-[0_12px_36px_rgba(16,12,10,0.28)] backdrop-blur-xl">
-        <div className="flex h-14 items-center justify-between px-2.5">
-          <HeaderLogo />
-          <button
-            type="button"
-            className="inline-flex size-10 items-center justify-center rounded-full text-paper transition-colors hover:bg-white/10"
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? <X className="size-5" /> : <Menu className="size-5" />}
-          </button>
-        </div>
-      </header>
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <header className="md:hidden fixed inset-x-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 rounded-full border border-gold/20 bg-[linear-gradient(110deg,#3d0406_0%,#4a090b_48%,#310305_100%)] shadow-[0_12px_36px_rgba(16,12,10,0.28)] backdrop-blur-xl">
+          <div className="flex h-14 items-center justify-between px-2.5">
+            <HeaderLogo />
+            <Dialog.Trigger asChild>
+              <button
+                type="button"
+                className="inline-flex size-12 items-center justify-center rounded-full text-paper transition-colors hover:bg-white/10"
+                aria-label={open ? "Close menu" : "Open menu"}
+              >
+                {open ? <X className="size-5" /> : <Menu className="size-5" />}
+              </button>
+            </Dialog.Trigger>
+          </div>
+        </header>
 
-      {/* ── Mobile slide-down menu ── */}
-      {open ? (
-        <div className="md:hidden fixed inset-x-3 top-[4.75rem] bottom-4 z-30 overflow-y-auto rounded-3xl border border-line bg-paper/98 shadow-card-hover backdrop-blur-xl animate-[slide-up_300ms_var(--ease-out)]">
-          <nav className="flex flex-col gap-3 p-4" aria-label="Mobile">
-            <div className="rounded-2xl border border-line bg-cream/70 p-3">
-              <MobileAccountRow />
-            </div>
+        <Dialog.Portal>
+          <Dialog.Overlay className="motion-overlay fixed inset-0 z-30 bg-ink/15 backdrop-blur-[1px] md:hidden" />
+          <Dialog.Content className="motion-sheet fixed inset-x-3 top-[calc(4.75rem+env(safe-area-inset-top))] bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 overflow-y-auto rounded-3xl border border-line bg-paper/98 shadow-card-hover backdrop-blur-xl focus:outline-none md:hidden">
+            <Dialog.Title className="sr-only">Mobile navigation</Dialog.Title>
+            <nav className="flex flex-col gap-3 p-4" aria-label="Mobile">
+              <div className="rounded-2xl border border-line bg-cream/70 p-3">
+                <MobileAccountRow />
+              </div>
 
-            {NAV.map((item) => {
-              const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
-              const Icon = NAV_ICONS[item.to] || Home;
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "flex items-center gap-3 rounded-2xl px-3 py-3 transition-all duration-300",
-                    active
-                      ? "bg-maroon text-paper shadow-soft"
-                      : "text-ink hover:bg-maroon/5",
-                  )}
-                >
-                  <span className={cn(
-                    "grid size-9 place-items-center rounded-xl",
-                    active ? "bg-white/10" : "bg-ink/5",
-                  )}>
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="font-display text-[0.96rem] leading-none">{item.label}</span>
-                  {"badge" in item && item.badge && (
-                    <span className="ml-auto rounded-full bg-gradient-to-r from-gold to-gold-light px-2 py-1 text-[9px] font-bold text-maroon">
-                      {item.badge}
+              {NAV.map((item) => {
+                const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+                const Icon = NAV_ICONS[item.to] || Home;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-12 items-center gap-3 rounded-2xl px-3 py-3 transition-all duration-300",
+                      active ? "bg-maroon text-paper shadow-soft" : "text-ink hover:bg-maroon/5",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "grid size-9 place-items-center rounded-xl",
+                        active ? "bg-white/10" : "bg-ink/5",
+                      )}
+                    >
+                      <Icon className="size-4" />
                     </span>
-                  )}
-                </Link>
-              );
-            })}
+                    <span className="font-display text-[0.96rem] leading-none">{item.label}</span>
+                    {"badge" in item && item.badge && (
+                      <span className="ml-auto rounded-full bg-gradient-to-r from-gold to-gold-light px-2 py-1 text-[9px] font-bold text-maroon">
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
 
-            <Link
-              to={DIASPORA_LINK.to}
-              className={cn(
-                "mt-1 flex items-center gap-3 rounded-2xl border p-3 transition-all duration-300",
-                pathname === "/diaspora"
-                  ? "border-gold/30 bg-gold/10 text-maroon"
-                  : "border-gold/20 text-ink hover:bg-gold/5",
-              )}
-            >
-              <div className="grid size-9 place-items-center rounded-xl bg-gold/10 text-gold">
-                <Globe className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="block font-display text-[0.98rem] leading-none">Building from abroad?</span>
-                <span className="mt-1 block text-[11.5px] leading-snug text-muted">
-                  How ATRO manages projects for Kenyans overseas
-                </span>
-              </div>
-              <ArrowRight className="size-4 text-gold shrink-0" />
-            </Link>
-          </nav>
-        </div>
-      ) : null}
+              <Link
+                to={DIASPORA_LINK.to}
+                aria-current={pathname === "/diaspora" ? "page" : undefined}
+                className={cn(
+                  "mt-1 flex min-h-12 items-center gap-3 rounded-2xl border p-3 transition-all duration-300",
+                  pathname === "/diaspora"
+                    ? "border-gold/30 bg-gold/10 text-maroon"
+                    : "border-gold/20 text-ink hover:bg-gold/5",
+                )}
+              >
+                <div className="grid size-9 place-items-center rounded-xl bg-gold/10 text-gold">
+                  <Globe className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block font-display text-[0.98rem] leading-none">
+                    Building from abroad?
+                  </span>
+                  <span className="mt-1 block text-[11.5px] leading-snug text-muted">
+                    How ATRO manages projects for Kenyans overseas
+                  </span>
+                </div>
+                <ArrowRight className="size-4 text-gold shrink-0" />
+              </Link>
+            </nav>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       {!open && pathname !== "/start" ? (
-        <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 flex items-center justify-around px-2 py-2 glass rounded-full border border-line/50 shadow-card">
+        <nav
+          aria-label="Primary mobile"
+          className="md:hidden fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 flex items-center justify-around px-2 py-2 glass rounded-full border border-line/50 shadow-card"
+        >
           {[
-            { to: "/", icon: Home, label: "Home" },
+            { to: homeRoute, icon: Home, label: "Home" },
             { to: "/projects", icon: Briefcase, label: "Work" },
             { to: "/services", icon: Briefcase, label: "Services" },
             { to: "/tools", icon: Wrench, label: "Tools" },
@@ -302,13 +317,16 @@ export function SiteHeader() {
               <Link
                 key={item.to}
                 to={item.to}
+                aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-w-[56px] flex-col items-center gap-1 rounded-full px-3 py-2 transition-all duration-300",
+                  "flex min-h-12 min-w-[56px] flex-col items-center gap-1 rounded-full px-3 py-2 transition-all duration-300",
                   active ? "bg-maroon text-white shadow-ribbon" : "text-muted hover:text-maroon",
                 )}
               >
                 <item.icon className="size-4" />
-                <span className="text-[9px] uppercase tracking-wider font-medium">{item.label}</span>
+                <span className="text-[9px] uppercase tracking-wider font-medium">
+                  {item.label}
+                </span>
               </Link>
             );
           })}

@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useState, type KeyboardEvent } from "react";
 import {
   AlertTriangle,
@@ -34,8 +33,6 @@ import {
   abroadService,
 } from "@/lib/diaspora/abroad";
 import { MYHARDWARE_URL, SERVICES } from "@/lib/site";
-import { getDiasporaHome } from "@/lib/diaspora-home";
-import { stampIn } from "@/lib/tz";
 
 export const Route = createFileRoute("/diaspora")({
   component: DiasporaPage,
@@ -73,72 +70,6 @@ const PROCESS_ICON: Record<string, typeof Phone> = {
   check: CheckCircle2,
 };
 
-/**
- * The same URL as a home: for the signed-in client, the projects with the
- * milestone being built now and the last thing the studio said — the doorstep
- * view, with the portal one click further. Nobody signed in, or no project
- * yet, and this band is not there: the page stays the pitch it always was.
- */
-function YourProjects() {
-  const { data } = useQuery({
-    queryKey: ["diaspora-home"],
-    queryFn: () => getDiasporaHome({ data: undefined }),
-  });
-  if (!data?.signedIn || data.projects.length === 0) return null;
-  const first = data.name?.trim().split(/\s+/)[0] ?? null;
-  return (
-    <section className="border-b border-ink/10 bg-cream">
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 py-12 md:py-14">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <Badge tone="gold">Your projects</Badge>
-            <h2 className="mt-3 font-display text-2xl md:text-3xl text-maroon">
-              {first ? `${first}, this is where your project stands.` : "This is where your project stands."}
-            </h2>
-          </div>
-          <Button asChild>
-            <Link to="/portal/diaspora">
-              Open the portal
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </div>
-
-        <ul className="mt-8 grid gap-4 md:grid-cols-2">
-          {data.projects.map((p) => (
-            <li
-              key={p.reference}
-              className="flex flex-col rounded-3xl border border-ink/10 bg-white p-6"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-                {p.reference}
-              </p>
-              <h3 className="mt-1 font-display text-xl text-maroon">{p.title}</h3>
-              {p.activeMilestone ? (
-                <p className="mt-2 text-[13px] text-ink/65">
-                  Now building: <span className="text-maroon">{p.activeMilestone}</span>
-                </p>
-              ) : null}
-              {p.lastActivityTitle ? (
-                <p className="mt-2 text-[12px] leading-relaxed text-ink/55">
-                  Last from the studio — {p.lastActivityTitle}
-                  {p.lastActivityAt ? `, ${stampIn(p.lastActivityAt, "Africa/Nairobi")}` : ""}
-                </p>
-              ) : null}
-              <Button asChild variant="outline" size="sm" className="mt-5 self-start">
-                <Link to="/portal/diaspora">
-                  Open in the portal
-                  <ArrowRight className="size-3.5" />
-                </Link>
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  );
-}
-
 function DiasporaProjectEvidence() {
   const project = PROJECTS.find((item) => item.slug === "sigona-villa");
   if (!project) return null;
@@ -147,7 +78,9 @@ function DiasporaProjectEvidence() {
     <section className="border-b border-ink/10 bg-[#f5efe7] py-12 md:py-16">
       <div className="mx-auto grid max-w-[1400px] gap-7 px-6 sm:px-8 md:px-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:px-16">
         <div>
-          <Badge tone="gold" className="mb-3">Design to site</Badge>
+          <Badge tone="gold" className="mb-3">
+            Design to site
+          </Badge>
           <h2 className="font-display text-[2rem] leading-none text-maroon md:text-[2.8rem]">
             See the plan beside the progress.
           </h2>
@@ -199,7 +132,9 @@ function DiasporaJourney() {
     <section id="process" className="bg-white py-12 md:py-16">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div className="max-w-3xl">
-          <Badge tone="maroon" className="mb-3">From your time zone to the site</Badge>
+          <Badge tone="maroon" className="mb-3">
+            From your time zone to the site
+          </Badge>
           <h2 className="font-display text-[2.1rem] leading-none text-maroon md:text-[2.8rem]">
             A decision trail you can follow from abroad.
           </h2>
@@ -207,10 +142,26 @@ function DiasporaJourney() {
 
         <ol className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            ["01", "Agree the scope", "Brief, site and land checks establish what the project needs."],
-            ["02", "Review the plan", "Drawings, quantities and current quotations inform the next decision."],
-            ["03", "See verified progress", "Written updates and site evidence show what has happened."],
-            ["04", "Approve and pay", "Recorded approvals and certified work connect decisions to payments."],
+            [
+              "01",
+              "Agree the scope",
+              "Brief, site and land checks establish what the project needs.",
+            ],
+            [
+              "02",
+              "Review the plan",
+              "Drawings, quantities and current quotations inform the next decision.",
+            ],
+            [
+              "03",
+              "See verified progress",
+              "Written updates and site evidence show what has happened.",
+            ],
+            [
+              "04",
+              "Approve and pay",
+              "Recorded approvals and certified work connect decisions to payments.",
+            ],
           ].map(([number, title, detail]) => (
             <li key={number} className="rounded-2xl border border-ink/10 bg-[#fbf8f3] p-4 sm:p-5">
               <span className="font-display text-2xl text-gold">{number}</span>
@@ -223,7 +174,10 @@ function DiasporaJourney() {
         <details className="group mt-4 rounded-2xl border border-ink/10 bg-[#fbf8f3] px-5">
           <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-maroon marker:hidden">
             Explore the detailed eight-step process
-            <span className="text-xl text-gold transition-transform group-open:rotate-45" aria-hidden>
+            <span
+              className="text-xl text-gold transition-transform group-open:rotate-45"
+              aria-hidden
+            >
               +
             </span>
           </summary>
@@ -255,17 +209,24 @@ function DiasporaJourney() {
 
 type AssuranceStage = "progress" | "costs" | "approval" | "payment";
 
-const ASSURANCE_STAGES: { id: AssuranceStage; label: string; summary: string; safeguards: string[] }[] = [
+const ASSURANCE_STAGES: {
+  id: AssuranceStage;
+  label: string;
+  summary: string;
+  safeguards: string[];
+}[] = [
   {
     id: "progress",
     label: "See progress",
-    summary: "A named project manager, site evidence and a regular written record keep you close to what is happening.",
+    summary:
+      "A named project manager, site evidence and a regular written record keep you close to what is happening.",
     safeguards: ["Weekly written reports", "Named project manager", "Independent verification"],
   },
   {
     id: "costs",
     label: "Review costs",
-    summary: "Understand the measured scope, pricing basis and assumptions before construction is contracted.",
+    summary:
+      "Understand the measured scope, pricing basis and assumptions before construction is contracted.",
     safeguards: ["BOQ before construction", "Open-book costing"],
   },
   {
@@ -277,7 +238,8 @@ const ASSURANCE_STAGES: { id: AssuranceStage; label: string; summary: string; sa
   {
     id: "payment",
     label: "Pay certified stages",
-    summary: "Payments are tied to agreed deliverables, inspection and written approval—not promises.",
+    summary:
+      "Payments are tied to agreed deliverables, inspection and written approval—not promises.",
     safeguards: ["Milestone-based payments"],
   },
 ];
@@ -315,7 +277,9 @@ function DiasporaAssurance() {
     <section className="bg-stone/50 py-12 md:py-16">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
         <div className="max-w-3xl">
-          <Badge tone="gold" className="mb-3">How remote oversight works</Badge>
+          <Badge tone="gold" className="mb-3">
+            How remote oversight works
+          </Badge>
           <h2 className="font-display text-[2.1rem] leading-none text-maroon md:text-[2.8rem]">
             From site evidence to an informed payment.
           </h2>
@@ -344,9 +308,11 @@ function DiasporaAssurance() {
                     : "text-ink/60 hover:bg-white hover:text-maroon"
                 }`}
               >
-                <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[10px] ${
-                  activeStage === stage.id ? "bg-gold text-maroon" : "bg-maroon/8 text-burgundy"
-                }`}>
+                <span
+                  className={`grid size-6 shrink-0 place-items-center rounded-full text-[10px] ${
+                    activeStage === stage.id ? "bg-gold text-maroon" : "bg-maroon/8 text-burgundy"
+                  }`}
+                >
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 {stage.label}
@@ -365,8 +331,12 @@ function DiasporaAssurance() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-burgundy">
                 Step {String(selectedIndex + 1).padStart(2, "0")} of 04
               </p>
-              <h3 className="mt-2 font-display text-2xl text-maroon sm:text-3xl">{selectedStage.label}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-ink/65 sm:text-base">{selectedStage.summary}</p>
+              <h3 className="mt-2 font-display text-2xl text-maroon sm:text-3xl">
+                {selectedStage.label}
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-ink/65 sm:text-base">
+                {selectedStage.summary}
+              </p>
             </div>
 
             {activeStage === "payment" ? (
@@ -378,7 +348,9 @@ function DiasporaAssurance() {
                     </span>
                     <h4 className="mt-1 text-sm font-medium text-maroon">{item.phase}</h4>
                     <p className="mt-1 text-xs leading-relaxed text-ink/65">{item.pay}</p>
-                    <p className="mt-2 border-t border-ink/8 pt-2 text-[11px] leading-relaxed text-ink/55">{item.protect}</p>
+                    <p className="mt-2 border-t border-ink/8 pt-2 text-[11px] leading-relaxed text-ink/55">
+                      {item.protect}
+                    </p>
                   </li>
                 ))}
               </ol>
@@ -404,17 +376,29 @@ function DiasporaAssurance() {
         <details className="group mt-4 rounded-2xl border border-ink/10 bg-paper px-5">
           <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-maroon marker:hidden">
             See all safeguards, communication standards and red flags
-            <span className="text-xl text-gold transition-transform group-open:rotate-45" aria-hidden>+</span>
+            <span
+              className="text-xl text-gold transition-transform group-open:rotate-45"
+              aria-hidden
+            >
+              +
+            </span>
           </summary>
           <div className="border-t border-ink/10 py-5">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {ABROAD_INCLUDED.map((signal) => {
                 const Icon = INCLUDED_ICON[signal.icon] ?? BadgeCheck;
                 return (
-                  <article key={signal.title} className="rounded-xl border border-ink/10 bg-white p-3 sm:p-4">
+                  <article
+                    key={signal.title}
+                    className="rounded-xl border border-ink/10 bg-white p-3 sm:p-4"
+                  >
                     <Icon className="size-4 text-maroon sm:size-5" aria-hidden />
-                    <h3 className="mt-2 text-xs font-medium leading-tight text-maroon sm:text-base">{signal.title}</h3>
-                    <p className="mt-1 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">{signal.desc}</p>
+                    <h3 className="mt-2 text-xs font-medium leading-tight text-maroon sm:text-base">
+                      {signal.title}
+                    </h3>
+                    <p className="mt-1 text-[10px] leading-snug text-ink/65 sm:text-sm sm:leading-relaxed">
+                      {signal.desc}
+                    </p>
                   </article>
                 );
               })}
@@ -423,7 +407,10 @@ function DiasporaAssurance() {
             <h3 className="mt-7 font-display text-xl text-maroon">How we stay in touch</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {ABROAD_CHANNELS.map((channel) => (
-                <article key={channel.name} className="rounded-xl border border-ink/10 bg-white p-3 sm:p-4">
+                <article
+                  key={channel.name}
+                  className="rounded-xl border border-ink/10 bg-white p-3 sm:p-4"
+                >
                   <h4 className="text-xs font-medium text-maroon sm:text-base">{channel.name}</h4>
                   <p className="text-[9px] leading-snug text-ink/55 sm:text-xs">
                     {channel.frequency} · {channel.format}
@@ -493,7 +480,8 @@ function DiasporaPage() {
           </h1>
 
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-paper/75 sm:text-lg">
-            Wherever you live, plan and build in Kenya with a local team coordinating design, costs and construction—and clear project updates on your time.
+            Wherever you live, plan and build in Kenya with a local team coordinating design, costs
+            and construction—and clear project updates on your time.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
@@ -503,7 +491,11 @@ function DiasporaPage() {
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
-            <Button asChild variant="outline" className="min-h-12 border-paper/25 px-6 text-paper hover:bg-paper/10">
+            <Button
+              asChild
+              variant="outline"
+              className="min-h-12 border-paper/25 px-6 text-paper hover:bg-paper/10"
+            >
               <a href="#process">
                 How it works
                 <ArrowRight className="size-4" />
@@ -521,7 +513,6 @@ function DiasporaPage() {
         </div>
       </section>
 
-      <YourProjects />
       <DiasporaProjectEvidence />
       <DiasporaJourney />
       <PortalPreview experience="diaspora" />
@@ -534,7 +525,9 @@ function DiasporaPage() {
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
                 One team, from design to handover
               </p>
-              <p className="mt-1 text-sm leading-relaxed text-ink/70 md:text-base">{service.lede}</p>
+              <p className="mt-1 text-sm leading-relaxed text-ink/70 md:text-base">
+                {service.lede}
+              </p>
             </div>
             <Link
               to="/services"
@@ -552,7 +545,9 @@ function DiasporaPage() {
       <section className="bg-stone/50 py-12 md:py-16">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
           <div className="max-w-3xl">
-            <Badge tone="maroon" className="mb-3">Useful tools</Badge>
+            <Badge tone="maroon" className="mb-3">
+              Useful tools
+            </Badge>
             <h2 className="font-display text-[2.2rem] leading-none text-maroon md:text-[2.8rem]">
               Practical support before the project starts.
             </h2>
@@ -560,12 +555,18 @@ function DiasporaPage() {
 
           <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-7 lg:grid-cols-3">
             {ABROAD_FEATURES.filter((f) => f.to !== "/portal/diaspora").map((f) => {
-              const Icon = f.to === "/portal/diaspora" ? ClipboardCheck
-                : f.to === "/verify" ? BadgeCheck
-                : f.to === "/scam-check" ? AlertTriangle
-                : f.to === "/guides/journey" ? Eye
-                : f.to === "/guides" ? FileText
-                : CreditCard;
+              const Icon =
+                f.to === "/portal/diaspora"
+                  ? ClipboardCheck
+                  : f.to === "/verify"
+                    ? BadgeCheck
+                    : f.to === "/scam-check"
+                      ? AlertTriangle
+                      : f.to === "/guides/journey"
+                        ? Eye
+                        : f.to === "/guides"
+                          ? FileText
+                          : CreditCard;
               const accent = f.to === "/portal/diaspora";
               return (
                 <Link
@@ -628,12 +629,15 @@ function DiasporaPage() {
         <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
           <div className="flex flex-col gap-5 rounded-[2rem] border border-[#d8c9ad] bg-[#f3ead9] p-6 md:p-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">Materials support</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">
+                Materials support
+              </p>
               <h2 className="mt-2 font-display text-[2rem] leading-none text-maroon md:text-[2.6rem]">
                 Need product comparison while you are abroad?
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-ink/70 md:text-base">
-                MyHardware helps with supplier supporting materials and product checks while ATRO handles design, planning and delivery oversight in Kenya.
+                MyHardware helps with supplier supporting materials and product checks while ATRO
+                handles design, planning and delivery oversight in Kenya.
               </p>
             </div>
             <a
@@ -654,7 +658,9 @@ function DiasporaPage() {
       {/* ── FAQs ── */}
       <section className="mx-auto max-w-[1400px] px-6 py-12 sm:px-8 md:px-12 md:py-16 lg:px-16">
         <div className="max-w-3xl mb-6">
-          <Badge tone="gold" className="mb-3">Common questions</Badge>
+          <Badge tone="gold" className="mb-3">
+            Common questions
+          </Badge>
           <h2 className="font-display text-3xl text-maroon md:text-4xl">
             What diaspora clients ask.
           </h2>
@@ -665,7 +671,10 @@ function DiasporaPage() {
             <details key={faq.q} className="group rounded-xl border border-ink/10 bg-paper px-4">
               <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 font-medium text-maroon marker:hidden">
                 {faq.q}
-                <span className="shrink-0 text-xl text-gold transition-transform group-open:rotate-45" aria-hidden>
+                <span
+                  className="shrink-0 text-xl text-gold transition-transform group-open:rotate-45"
+                  aria-hidden
+                >
                   +
                 </span>
               </summary>

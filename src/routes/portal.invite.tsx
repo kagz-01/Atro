@@ -64,10 +64,11 @@ function ProjectCircleInvitePage() {
     <main className="min-h-[75vh] bg-paper px-5 pt-32 pb-16">
       <div className="mx-auto max-w-xl">
         <BackLink to={portalRoute}>Back to your portal</BackLink>
-        <Panel
-          title="Project invitation"
-          subtitle="A project owner has invited you to join a limited project circle."
-        >
+        <h1 className="mb-2 font-display text-2xl text-maroon">Project invitation</h1>
+        <p className="mb-5 text-sm leading-relaxed text-ink/70">
+          A project owner has invited you to join a limited project circle.
+        </p>
+        <Panel>
           {!token ? (
             <p role="alert" className="text-[13px] text-red-700">
               This invitation link is missing its secure code. Ask the project owner to create a
@@ -79,7 +80,7 @@ function ProjectCircleInvitePage() {
                 Sign in using the account whose verified email address received this invitation. The
                 link is single-use and expires after 7 days.
               </p>
-              <Button asChild className="mt-5">
+              <Button asChild className="mt-5 min-h-12">
                 <a href={`/login?returnTo=${encodeURIComponent(returnTo)}`}>
                   Sign in to review the invitation
                   <ArrowRight className="size-4" />
@@ -102,7 +103,7 @@ function ProjectCircleInvitePage() {
                 Acceptance requires a verified sign-in email that matches the invitation. Ask the
                 owner to send a new link if it has expired.
               </p>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="min-h-12">
                 <Link to={portalRoute}>Open your portal</Link>
               </Button>
             </div>
@@ -137,7 +138,7 @@ function ProjectCircleInvitePage() {
                     Guest preview is read-only. Sign in or create an account to accept this
                     invitation.
                   </p>
-                  <Button asChild className="mt-4">
+                  <Button asChild className="mt-4 min-h-12">
                     <a href={`/login?returnTo=${encodeURIComponent(returnTo)}`}>
                       Sign in to accept
                     </a>
@@ -146,13 +147,14 @@ function ProjectCircleInvitePage() {
               ) : (
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Button
+                    className="min-h-12"
                     disabled={accept.isPending || Boolean(acceptedProjectId)}
                     onClick={() => accept.mutate({ data: { token } })}
                   >
                     {accept.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
                     {accept.isPending ? "Accepting…" : "Accept project access"}
                   </Button>
-                  <Button asChild variant="outline">
+                  <Button asChild variant="outline" className="min-h-12">
                     <Link to={portalRoute}>Not now</Link>
                   </Button>
                 </div>

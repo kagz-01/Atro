@@ -61,11 +61,11 @@ function StartPage() {
       <div className="mx-auto max-w-[1400px] px-4 sm:px-8 md:px-12 lg:px-16">
         {/* Breadcrumb */}
         <Link
-          to="/"
-          className="mb-5 inline-flex min-h-10 items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon sm:mb-8"
+          to={isDiaspora ? "/diaspora" : "/"}
+          className="mb-5 inline-flex min-h-12 items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon sm:mb-8"
         >
           <ArrowLeft className="size-3.5" />
-          Home
+          {isDiaspora ? "Abroad" : "Home"}
         </Link>
 
         <div className="mb-6 lg:hidden">
@@ -91,7 +91,8 @@ function StartPage() {
               Tell us about your project.
             </h1>
             <p className="mt-5 text-base leading-relaxed text-ink/70 sm:text-lg">
-              Share what you are planning, where the project is, and how to reach you. We will review the brief and follow up with a practical next step.
+              Share what you are planning, where the project is, and how to reach you. We will
+              review the brief and follow up with a practical next step.
             </p>
 
             {selectedService ? (

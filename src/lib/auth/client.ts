@@ -1,8 +1,12 @@
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/supabase/config";
 import {
+  clearPreviewPersonaCookieAssignment,
   clearGuestPreviewCookieAssignment,
   guestPreviewCookieAssignment,
+  personaCookieAssignment,
+  previewPersonaWorkspace,
+  type PreviewPersonaKey,
 } from "@/lib/preview-personas";
 
 /**
@@ -39,9 +43,25 @@ function setAccessTokenCookie(token: string | null) {
 
 function setGuestPreview(enabled: boolean) {
   if (typeof document === "undefined") return;
-  document.cookie = enabled
-    ? guestPreviewCookieAssignment()
-    : clearGuestPreviewCookieAssignment();
+  document.cookie = enabled ? guestPreviewCookieAssignment() : clearGuestPreviewCookieAssignment();
+}
+
+function clearPreviewSelection() {
+  if (typeof document === "undefined") return;
+  document.cookie = clearPreviewPersonaCookieAssignment();
+  setGuestPreview(false);
+}
+
+/** Enter a local workspace persona without creating an account. */
+export function continueAsPreviewPersona(key: PreviewPersonaKey): void {
+  if (!import.meta.env.DEV) {
+    throw new Error("Dashboard personas are available only in local development.");
+  }
+  if (typeof window === "undefined") return;
+  document.cookie = personaCookieAssignment(key);
+  setGuestPreview(false);
+  setAccessTokenCookie(null);
+  window.location.assign(previewPersonaWorkspace(key));
 }
 
 /** Enter the sample client portal without establishing an account session. */
@@ -55,6 +75,7 @@ export function continueAsGuest(redirectTo = "/portal"): void {
   ) {
     throw new Error("The guest preview return address is not allowed.");
   }
+  document.cookie = clearPreviewPersonaCookieAssignment();
   setGuestPreview(true);
   window.location.assign(`${destination.pathname}${destination.search}${destination.hash}`);
 }
@@ -106,7 +127,7 @@ export async function sendPhoneCode(rawPhone: string): Promise<{ error: string |
   }
   const supabase = supabaseBrowser();
   if (!supabase) return { error: "Sign-in is unavailable." };
-  setGuestPreview(false);
+  clearPreviewSelection();
   const { error } = await supabase.auth.signInWithOtp({
     phone,
     options: { shouldCreateUser: true },
@@ -128,7 +149,7 @@ export async function verifyPhoneCode(
   if (!phone) return { error: "That phone number is not in a usable format." };
   const supabase = supabaseBrowser();
   if (!supabase) return { error: "Sign-in is unavailable." };
-  setGuestPreview(false);
+  clearPreviewSelection();
   const { error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
   if (!error) {
     const { data } = await supabase.auth.getSession();
@@ -145,7 +166,7 @@ export async function sendEmailCode(rawEmail: string): Promise<{ error: string |
   }
   const supabase = supabaseBrowser();
   if (!supabase) return { error: "Sign-in is unavailable." };
-  setGuestPreview(false);
+  clearPreviewSelection();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: { shouldCreateUser: true },
@@ -164,7 +185,7 @@ export async function verifyEmailCode(
   }
   const supabase = supabaseBrowser();
   if (!supabase) return { error: "Sign-in is unavailable." };
-  setGuestPreview(false);
+  clearPreviewSelection();
   const { error } = await supabase.auth.verifyOtp({
     email,
     token: token.trim(),
@@ -181,7 +202,7 @@ export async function verifyEmailCode(
 export async function signInWithGoogle(redirectTo: string): Promise<{ error: string | null }> {
   const supabase = supabaseBrowser();
   if (!supabase) return { error: "Sign-in is unavailable." };
-  setGuestPreview(false);
+  clearPreviewSelection();
   const callback = new URL(redirectTo, window.location.origin);
   if (callback.origin !== window.location.origin) {
     return { error: "The sign-in return address is not allowed." };
@@ -200,6 +221,7 @@ export async function signInWithGoogle(redirectTo: string): Promise<{ error: str
 export async function signOut(redirectTo = "/"): Promise<void> {
   const supabase = supabaseBrowser();
   await supabase?.auth.signOut();
+  clearPreviewSelection();
   setAccessTokenCookie(null);
   if (typeof window !== "undefined") window.location.href = redirectTo;
 }

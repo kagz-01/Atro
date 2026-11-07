@@ -177,7 +177,12 @@ export const saveMyStaffProfile = createServerFn({ method: "POST" })
         timezone = excluded.timezone,
         updated_at = now()
     `;
-    const [profile] = await sql<{ display_name: string; work_focus: string; timezone: string; updated_at: unknown }>`
+    const [profile] = await sql<{
+      display_name: string;
+      work_focus: string;
+      timezone: string;
+      updated_at: unknown;
+    }>`
       select display_name, work_focus, timezone, updated_at
       from staff_profile where user_id = ${staff.userId} limit 1
     `;
@@ -228,7 +233,8 @@ export const getDeliveryLog = createServerFn({ method: "GET" })
     const sql = await getSql();
     // Opening the log is one of the arrivals that runs the drain: what the
     // client's morning has released is attempted before it is read.
-    await drainDue(sql);
+    const { getSessionUser } = await import("@/lib/auth/verify.server");
+    if (!(await getSessionUser())?.isGuestPreview) await drainDue(sql);
     return {
       channels: channelStatus(),
       log: await notificationLog(sql, data.projectId),
@@ -924,9 +930,7 @@ export async function certifyPaymentFor(
   const measuredWork = usesMeasuredWorkCertification(payment.track);
   const amount = Number(payment.amount ?? 0);
   const wasCertified = payment.status === "certified";
-  const reference = measuredWork
-    ? data.certificate
-    : data.certificate.replace(/^QS\//, "STAGE/");
+  const reference = measuredWork ? data.certificate : data.certificate.replace(/^QS\//, "STAGE/");
 
   await sql`
       update portal_payments set status = 'certified', certificate = ${data.certificate}
@@ -949,7 +953,9 @@ export async function certifyPaymentFor(
     sql,
     data.projectId,
     "payment",
-    measuredWork ? `Payment certified: ${payment.label}` : `Payment stage approved: ${payment.label}`,
+    measuredWork
+      ? `Payment certified: ${payment.label}`
+      : `Payment stage approved: ${payment.label}`,
     `${reference} — KES ${amount.toLocaleString("en-KE")} confirmed and awaiting payment.`,
   );
   const certificate = measuredWork

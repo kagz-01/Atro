@@ -811,7 +811,7 @@ async function buildProjectPayload(
       p.checkout_status === "success"
         ? p.checkout_status
         : undefined,
-    checkoutUrl: p.checkout_status === "pending" ? p.authorization_url ?? undefined : undefined,
+    checkoutUrl: p.checkout_status === "pending" ? (p.authorization_url ?? undefined) : undefined,
   }));
 
   const documents: VaultDoc[] = documentRows.map((d) => ({
@@ -916,12 +916,7 @@ async function buildProjectPayload(
 
 /* ── validators re-exported so the RPC layer and the tests share one source ── */
 
-export {
-  ProjectInput,
-  MilestoneActionInput,
-  DecisionActionInput,
-  ProjectRefInput,
-};
+export { ProjectInput, MilestoneActionInput, DecisionActionInput, ProjectRefInput };
 export type { ProjectBrief };
 
 /** Normalise an email for comparison; providers differ on case and nothing else. */
@@ -1027,8 +1022,9 @@ export async function loadPortal(
   sql: Sql,
   userId: string,
   session: { email: string; phone: string | null },
+  readOnlyPreview = false,
 ): Promise<PortalPayload> {
-  await claimProvisionedProjects(sql, userId, session);
+  if (!readOnlyPreview) await claimProvisionedProjects(sql, userId, session);
   let rows = await selectOwnedProjects(sql, userId);
   if (rows.length === 0) {
     const [circle] = await sql<{ id: string }>`
@@ -1040,12 +1036,13 @@ export async function loadPortal(
     if (circle) {
       throw new Error("Open your project circle to see the project shared with you.");
     }
+    if (readOnlyPreview) throw new Error("No sample project is available for this preview.");
     await seedSampleProject(sql, userId);
     rows = await selectOwnedProjects(sql, userId);
   }
   const row = rows[0];
   if (!row) throw new Error("No project available for this account.");
-  return buildProjectPayload(sql, row, true, userId);
+  return buildProjectPayload(sql, row, !readOnlyPreview, userId);
 }
 
 /** Any single project, for staff. Callers must gate with `requireStaff()` first. */
@@ -1224,10 +1221,15 @@ export async function deleteProjectFor(
 export const getPortal = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) =>
-    loadPortal(await getSql(), context.userId, {
-      email: context.email,
-      phone: context.phone,
-    }),
+    loadPortal(
+      await getSql(),
+      context.userId,
+      {
+        email: context.email,
+        phone: context.phone,
+      },
+      context.isGuestPreview,
+    ),
   );
 
 export const createPortalProject = createServerFn({ method: "POST" })

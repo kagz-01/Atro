@@ -664,7 +664,9 @@ function ProjectDetail({
                 <ArrowLeft className="size-4" />
                 All projects
               </Button>
-              <h2 className="mt-3 font-display text-[1.6rem] leading-none text-maroon">{p.title}</h2>
+              <h2 className="mt-3 font-display text-[1.6rem] leading-none text-maroon">
+                {p.title}
+              </h2>
               <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
                 <span className="font-mono">{p.reference}</span>
                 <span>{p.clientLabel}</span>
@@ -728,7 +730,9 @@ function ProjectDetail({
               icon={Banknote}
             />
             <StatCard
-              label={measuredWork ? "Certified, awaiting payment" : "Stages approved, awaiting payment"}
+              label={
+                measuredWork ? "Certified, awaiting payment" : "Stages approved, awaiting payment"
+              }
               value={kesShort(p.budget.currentlyCertified)}
               exact={kes(p.budget.currentlyCertified)}
               sub={`${kes(p.budget.retentionHeld)} held in retention`}
@@ -801,7 +805,9 @@ function ProjectDetail({
                     kes(p.budget.certifiedToDate),
                   ],
                   [
-                    measuredWork ? "Certified, awaiting payment" : "Approved stages awaiting payment",
+                    measuredWork
+                      ? "Certified, awaiting payment"
+                      : "Approved stages awaiting payment",
                     kes(p.budget.currentlyCertified),
                   ],
                   [`Retention · ${p.budget.retentionPct}%`, kes(p.budget.retentionHeld)],
@@ -1103,7 +1109,9 @@ function ProjectDetail({
           </dl>
           <div className="mt-6">
             <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
-              {measuredWork ? "Certified payments awaiting payment" : "Approved stages awaiting payment"}
+              {measuredWork
+                ? "Certified payments awaiting payment"
+                : "Approved stages awaiting payment"}
             </h3>
             {certifiedPayments.length === 0 ? (
               <p className="mt-2 rounded-xl border border-ink/8 bg-white px-4 py-3 text-[12px] text-ink/55">
@@ -1522,7 +1530,9 @@ function ProjectDetail({
                                 certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
                               },
                             }),
-                          measuredWork ? "Work certified and payment request issued." : "Stage approved and payment request issued.",
+                          measuredWork
+                            ? "Work certified and payment request issued."
+                            : "Stage approved and payment request issued.",
                         )
                       }
                     >
@@ -1753,7 +1763,9 @@ function ProjectsTable({
   const pageProjects = sorted.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
   const firstVisible = sorted.length === 0 ? 0 : currentPage * pageSize + 1;
   const lastVisible = Math.min((currentPage + 1) * pageSize, sorted.length);
-  const activeAttention = visibleProjects.filter((project) => project.blockedStages > 0 || project.openDecisions > 0).length;
+  const activeAttention = visibleProjects.filter(
+    (project) => project.blockedStages > 0 || project.openDecisions > 0,
+  ).length;
   const portfolioRisk = visibleProjects.reduce(
     (sum, project) => sum + project.blockedStages + project.openDecisions,
     0,
@@ -1845,7 +1857,9 @@ function ProjectsTable({
           ) : null}
           <div className="grid gap-3 border-b border-ink/8 bg-cream/40 px-5 py-4 md:grid-cols-4">
             <div className="rounded-2xl border border-ink/10 bg-white p-3">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">In view</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                In view
+              </p>
               <p className="mt-2 font-display text-[1.5rem] leading-none text-maroon">
                 {visibleProjects.length}
               </p>
@@ -1988,7 +2002,9 @@ function ProjectsTable({
                     >
                       <span className="flex items-start justify-between gap-3">
                         <span className="min-w-0">
-                          <span className="block text-[13px] font-medium text-maroon">{p.title}</span>
+                            <span className="block text-[13px] font-medium text-maroon">
+                              {p.title}
+                            </span>
                           <span className="font-mono text-[11px] text-muted">{p.reference}</span>
                           <span className="mt-1 block text-[12px] text-ink/65">
                             {p.clientLabel || "Client not named"}
@@ -2081,7 +2097,9 @@ function ProjectsTable({
                       className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
                     >
                       <td className="px-5 py-3">
-                        <span className="block text-[13px] font-medium text-maroon">{p.title}</span>
+                          <span className="block text-[13px] font-medium text-maroon">
+                            {p.title}
+                          </span>
                         <span className="font-mono text-[11px] text-muted">{p.reference}</span>
                       </td>
                       <td className="px-3 py-3 text-[13px] text-ink/70">
@@ -2345,7 +2363,9 @@ function StaffProjectsDirectory({
                       <span className="block text-[13px] font-medium text-maroon">
                         {project.title}
                       </span>
-                      <span className="font-mono text-[11px] text-muted">{project.reference}</span>
+                        <span className="font-mono text-[11px] text-muted">
+                          {project.reference}
+                        </span>
                       <span className="mt-1 block text-[12px] text-ink/65">
                         {project.clientLabel || "Client not named"}
                         {project.clientCity ? ` · ${project.clientCity}` : ""}
@@ -2353,7 +2373,8 @@ function StaffProjectsDirectory({
                     </span>
                     <Badge
                       tone={
-                        project.lifecycleState === "closed" || project.lifecycleState === "archived"
+                          project.lifecycleState === "closed" ||
+                          project.lifecycleState === "archived"
                           ? "maroon"
                           : "gold"
                       }
@@ -2362,7 +2383,9 @@ function StaffProjectsDirectory({
                     </Badge>
                   </span>
                   {project.source === "sample" ? <Badge tone="gold">Sample</Badge> : null}
-                  {project.clientType === "diaspora" ? <Badge tone="gold">From abroad</Badge> : null}
+                    {project.clientType === "diaspora" ? (
+                      <Badge tone="gold">From abroad</Badge>
+                    ) : null}
                   <span className="flex items-center justify-between gap-3 text-[11px] text-ink/60">
                     <span className="truncate">{project.stage || "Stage not set"}</span>
                     <span className="shrink-0">{programme}</span>
@@ -2463,7 +2486,9 @@ function StaffProjectsDirectory({
                       <span className="block text-[13px] font-medium text-maroon">
                         {project.title}
                       </span>
-                      <span className="font-mono text-[11px] text-muted">{project.reference}</span>
+                        <span className="font-mono text-[11px] text-muted">
+                          {project.reference}
+                        </span>
                       {project.source === "sample" ? (
                         <span className="mt-1 block">
                           <Badge tone="gold" className="h-4 text-[8px]">
@@ -2588,7 +2613,9 @@ function StaffToday({
             <p className="mt-2 font-display text-[1.8rem] leading-none text-amber-900">
               {flaggedProjects}
             </p>
-            <p className="mt-1 text-[11px] text-amber-800">projects with blocked work or open decisions</p>
+            <p className="mt-1 text-[11px] text-amber-800">
+              projects with blocked work or open decisions
+            </p>
           </div>
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-900">
@@ -2606,7 +2633,9 @@ function StaffToday({
             <p className="mt-2 font-display text-[1.8rem] leading-none text-sky-900">
               {attentionItems.length}
             </p>
-            <p className="mt-1 text-[11px] text-sky-800">items waiting for review in the studio queue</p>
+            <p className="mt-1 text-[11px] text-sky-800">
+              items waiting for review in the studio queue
+            </p>
           </div>
         </div>
       </Panel>
@@ -2950,7 +2979,9 @@ function Overview({
       >
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-ink/10 bg-cream/60 p-3 sm:p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Live projects</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+              Live projects
+            </p>
             <p className="mt-2 font-display text-[1.9rem] leading-none text-maroon">
               {liveProjectCount}
             </p>
@@ -3381,10 +3412,7 @@ function IssuedDocuments({
       {isAdmin ? (
         <div className="mt-5">
           {!quoteOpen ? (
-            <Button
-              variant="outline"
-              onClick={() => setQuoteOpen(true)}
-            >
+            <Button variant="outline" onClick={() => setQuoteOpen(true)}>
               Prepare quotation
             </Button>
           ) : (
@@ -3429,7 +3457,9 @@ function RequestAccessCard() {
         <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-maroon/10 text-maroon">
           <Lock className="size-6" />
         </span>
-        <h1 className="mt-6 font-display text-[1.75rem] leading-none text-maroon">Request studio access</h1>
+        <h1 className="mt-6 font-display text-[1.75rem] leading-none text-maroon">
+          Request studio access
+        </h1>
         <p className="mt-3 text-[14px] leading-relaxed text-ink/65">
           You are signed in as <strong>{me?.email || "this account"}</strong>, which is not on the
           studio access list. Ask below and an existing admin approves it — usually the same day.
@@ -3548,8 +3578,7 @@ function AccessPanel({ isAdmin }: { isAdmin: boolean }) {
     email: string;
     inviteUrl: string;
     delivery:
-      | { channel: "email"; sent: boolean; detail: string }
-      | { channel: "whatsapp"; url: string };
+      { channel: "email"; sent: boolean; detail: string } | { channel: "whatsapp"; url: string };
   } | null>(null);
 
   const { data, refetch } = useQuery({
@@ -4167,15 +4196,32 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
           items: [
             { id: "work", label: "Owner priorities", icon: ClipboardList },
             { id: "overview", label: "Portfolio", icon: LayoutDashboard },
-            { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
-            { id: "enquiries", label: "New leads", icon: Inbox, badge: overview?.funnel.enquiriesNew || undefined },
+            {
+              id: "projects",
+              label: "Projects",
+              icon: FolderKanban,
+              badge: all.length || undefined,
+            },
+            {
+              id: "enquiries",
+              label: "New leads",
+              icon: Inbox,
+              badge: overview?.funnel.enquiriesNew || undefined,
+            },
           ],
         },
         {
           title: "Controls",
           items: [
             { id: "funds", label: "Project funds", icon: Banknote },
-            { id: "communications", label: "Client updates", icon: MessageSquare, badge: messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole)).length || undefined },
+            {
+              id: "communications",
+              label: "Client updates",
+              icon: MessageSquare,
+              badge:
+                messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole))
+                  .length || undefined,
+            },
             { id: "access", label: "Access", icon: Users },
           ],
         },
@@ -4185,20 +4231,45 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
           title: "Operations",
           items: [
             { id: "overview", label: "Today", icon: LayoutDashboard },
-            { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
-            ...(canViewCalendar ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }] : []),
-            { id: "communications", label: "Client updates", icon: MessageSquare, badge: messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole)).length || undefined },
+            {
+              id: "projects",
+              label: "Projects",
+              icon: FolderKanban,
+              badge: all.length || undefined,
+            },
+            ...(canViewCalendar
+              ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }]
+              : []),
+            {
+              id: "communications",
+              label: "Client updates",
+              icon: MessageSquare,
+              badge:
+                messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole))
+                  .length || undefined,
+            },
             { id: "profile", label: "My profile", icon: UserRound },
-            { id: "enquiries", label: "New leads", icon: Inbox, badge: staffToday?.newEnquiries || undefined },
+            {
+              id: "enquiries",
+              label: "New leads",
+              icon: Inbox,
+              badge: staffToday?.newEnquiries || undefined,
+            },
           ],
         },
       ];
-  const mobileItems = (isOwner
+  const mobileItems = (
+    isOwner
     ? [
         { id: "work", label: "Priorities", icon: ClipboardList },
         { id: "overview", label: "Portfolio", icon: LayoutDashboard },
         { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
-        { id: "enquiries", label: "Leads", icon: Inbox, badge: overview?.funnel.enquiriesNew || undefined },
+          {
+            id: "enquiries",
+            label: "Leads",
+            icon: Inbox,
+            badge: overview?.funnel.enquiriesNew || undefined,
+          },
         { id: "funds", label: "Funds", icon: Banknote },
       ]
     : [
@@ -4210,8 +4281,8 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
           label: "Updates",
           icon: MessageSquare,
           badge:
-            messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole)).length ||
-            undefined,
+              messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole))
+                .length || undefined,
         },
         {
           id: "enquiries",
@@ -4219,7 +4290,8 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
           icon: Inbox,
           badge: staffToday?.newEnquiries || undefined,
         },
-      ]).slice(0, 4);
+        ]
+  ).slice(0, 4);
 
   return (
     <DashboardShell
@@ -4242,6 +4314,7 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
           roleState?.role === "office_manager" ? "Office Manager" : (roleState?.role ?? undefined),
         email: roleState?.email ?? undefined,
       }}
+      readOnly={user?.isGuestPreview}
       search={search}
       onSearch={setSearch}
       searchPlaceholder="Search projects, clients, references"

@@ -20,18 +20,20 @@ export const Route = createFileRoute("/tools/cost-calculator")({
 
 function MaterialPriceReferencePage() {
   return (
-    <main className="pt-32 pb-24">
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
+    <main className="pt-24 pb-24 sm:pt-32">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-8 md:px-12 lg:px-16">
         <Link
           to="/tools"
-          className="mb-8 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon"
+          className="mb-8 inline-flex min-h-12 items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-burgundy hover:text-maroon"
         >
           <ArrowLeft className="size-3.5" />
           All tools
         </Link>
 
         <div className="mb-10 max-w-3xl">
-          <Badge tone="maroon" className="mb-4">Material Price Reference</Badge>
+          <Badge tone="maroon" className="mb-4">
+            Material Price Reference
+          </Badge>
           <h1 className="font-display text-4xl text-maroon md:text-5xl">
             What do common materials cost?
           </h1>

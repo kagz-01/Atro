@@ -65,19 +65,19 @@ function ServicesPage() {
     const image = relatedProject?.image ?? featureService?.image;
     const imageAlt = relatedProject
       ? `${relatedProject.name} — ${relatedProject.type.toLowerCase()} project in ${relatedProject.location}`
-      : featureService?.title ?? category.title;
+      : (featureService?.title ?? category.title);
 
-    return [{
-      ...category,
-      services,
-      image,
-      imageAlt,
-      relatedProject,
-    }];
+    return [
+      {
+        ...category,
+        services,
+        image,
+        imageAlt,
+        relatedProject,
+      },
+    ];
   });
-  const selectedService = selectedServiceSlug
-    ? serviceBySlug(selectedServiceSlug)
-    : undefined;
+  const selectedService = selectedServiceSlug ? serviceBySlug(selectedServiceSlug) : undefined;
   const [activeStage, setActiveStage] = useState<ServiceCategory>(
     selectedService?.category ?? "advisory",
   );
@@ -142,13 +142,16 @@ function ServicesPage() {
         <div className="relative container-wide">
           <div className="reveal mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
             <div className="size-1.5 rounded-full bg-gold" />
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-paper/80">Services</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-paper/80">
+              Services
+            </p>
           </div>
           <h1 className="reveal reveal-delay-1 max-w-5xl font-display text-[2.2rem] leading-[0.92] tracking-[-0.05em] text-white sm:text-[2.8rem] md:text-[3.2rem] lg:text-[3.8rem]">
             Design, cost planning and construction—clearly scoped.
           </h1>
           <p className="reveal reveal-delay-2 mt-5 max-w-3xl text-base leading-relaxed text-paper/75 sm:text-lg">
-            See what each service covers, what your project needs, and how the work can move from drawings and quantities to construction.
+            See what each service covers, what your project needs, and how the work can move from
+            drawings and quantities to construction.
           </p>
         </div>
       </section>
@@ -195,13 +198,17 @@ function ServicesPage() {
                     onClick={() => selectStage(stage.id)}
                     onKeyDown={(event) => handleStageKeyDown(event, index)}
                     className={`flex min-h-12 items-center gap-2 rounded-xl px-3 py-2 text-left text-[11px] font-medium transition-colors sm:min-h-14 sm:px-4 sm:text-xs ${
-                      selected ? "bg-maroon text-paper" : "text-ink/60 hover:bg-cream hover:text-maroon"
+                      selected
+                        ? "bg-maroon text-paper"
+                        : "text-ink/60 hover:bg-cream hover:text-maroon"
                     }`}
                   >
                     <Icon className="size-4 shrink-0" aria-hidden />
                     <span className="min-w-0">
                       <span className="block leading-tight">{stage.title}</span>
-                      <span className={`mt-0.5 block text-[9px] ${selected ? "text-paper/65" : "text-ink/45"}`}>
+                      <span
+                        className={`mt-0.5 block text-[9px] ${selected ? "text-paper/65" : "text-ink/45"}`}
+                      >
                         Stage {String(index + 1).padStart(2, "0")}
                       </span>
                     </span>
@@ -260,7 +267,7 @@ function ServicesPage() {
                       <Link
                         to="/projects/$slug"
                         params={{ slug: selectedStage.relatedProject.slug }}
-                        className="inline-flex min-h-10 items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-burgundy underline decoration-gold underline-offset-4"
+                        className="inline-flex min-h-12 items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-burgundy underline decoration-gold underline-offset-4"
                       >
                         See example <ArrowRight className="size-3.5" aria-hidden />
                       </Link>
@@ -305,10 +312,7 @@ function ServicesPage() {
                   </div>
 
                   {selectedService?.category === selectedStage.id ? (
-                    <ServiceDetails
-                      service={selectedService}
-                      onClose={clearSelectedService}
-                    />
+                    <ServiceDetails service={selectedService} onClose={clearSelectedService} />
                   ) : null}
 
                   <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line/50 pt-4">
@@ -319,9 +323,13 @@ function ServicesPage() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => selectStage(stages[(selectedIndex - 1 + stages.length) % stages.length].id)}
+                        onClick={() =>
+                          selectStage(
+                            stages[(selectedIndex - 1 + stages.length) % stages.length].id,
+                          )
+                        }
                         aria-label="Previous service stage"
-                        className="grid size-9 place-items-center rounded-full border border-line text-maroon hover:bg-cream"
+                        className="grid size-12 place-items-center rounded-full border border-line text-maroon hover:bg-cream"
                       >
                         <ChevronLeft className="size-4" aria-hidden />
                       </button>
@@ -329,7 +337,7 @@ function ServicesPage() {
                         type="button"
                         onClick={() => selectStage(stages[(selectedIndex + 1) % stages.length].id)}
                         aria-label="Next service stage"
-                        className="grid size-9 place-items-center rounded-full border border-line text-maroon hover:bg-cream"
+                        className="grid size-12 place-items-center rounded-full border border-line text-maroon hover:bg-cream"
                       >
                         <ChevronRight className="size-4" aria-hidden />
                       </button>
@@ -346,12 +354,16 @@ function ServicesPage() {
         <div className="container-wide">
           <div className="flex flex-col gap-5 rounded-[2rem] border border-[#d9cab4] bg-[#f3ead9] p-6 md:p-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">Materials support</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">
+                Materials support
+              </p>
               <h2 className="mt-2 font-display text-[2rem] leading-none text-maroon md:text-[2.6rem]">
                 Need product and supplier support?
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-ink/70 md:text-base">
-                MyHardware is available as a complementary sourcing platform for product comparison, materials checks and supplier support while ATRO manages design, planning and project delivery.
+                MyHardware is available as a complementary sourcing platform for product comparison,
+                materials checks and supplier support while ATRO manages design, planning and
+                project delivery.
               </p>
             </div>
             <a
@@ -372,13 +384,7 @@ function ServicesPage() {
   );
 }
 
-function ServiceDetails({
-  service,
-  onClose,
-}: {
-  service: Service;
-  onClose: () => void;
-}) {
+function ServiceDetails({ service, onClose }: { service: Service; onClose: () => void }) {
   const projectExamples = PROJECTS.filter((project) =>
     service.projectSlugs?.includes(project.slug),
   ).slice(0, 2);
@@ -396,7 +402,7 @@ function ServiceDetails({
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-line px-3 text-[10px] font-semibold text-ink/70 transition-colors hover:border-burgundy hover:text-burgundy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-burgundy"
+          className="inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-full border border-line px-3 text-[10px] font-semibold text-ink/70 transition-colors hover:border-burgundy hover:text-burgundy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-burgundy sm:min-h-9"
         >
           <X className="size-3.5" aria-hidden />
           Close
@@ -428,10 +434,10 @@ function ServiceDetails({
 
       <div className="mt-5 flex flex-col gap-3 border-t border-line/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-xl text-xs leading-relaxed text-ink/60">
-          Your enquiry will include this service, so you can continue without repeating what
-          brought you here.
+          Your enquiry will include this service, so you can continue without repeating what brought
+          you here.
         </p>
-        <Button asChild className="min-h-11 shrink-0 px-4 text-[10px] sm:text-[11px]">
+        <Button asChild className="min-h-12 shrink-0 px-4 text-[10px] sm:min-h-11 sm:text-[11px]">
           <Link to="/start" search={{ service: service.slug }}>
             Discuss {service.title}
             <ArrowRight className="size-4" aria-hidden />

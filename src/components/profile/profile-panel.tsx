@@ -510,7 +510,7 @@ function ProfileForm({
 }
 
 function AccountIdentity({ account }: { account: ReturnType<typeof useCurrentUser> }) {
-  if (!account) return null;
+  if (!account || account.isLocalPreview) return null;
   const identities = [
     account.primaryEmail ? ["Email", account.primaryEmail, account.primaryEmailVerified] : null,
     account.primaryPhone

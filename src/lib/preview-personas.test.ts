@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   isPreviewPersonaKey,
+  clearPreviewPersonaCookieAssignment,
   personaCookieAssignment,
   personaKeyFromCookieHeader,
   PREVIEW_PERSONA_COOKIE,
@@ -78,11 +79,18 @@ describe("preview personas", () => {
     assert.equal(personaCookieAssignment("local").startsWith("atro-preview-persona="), true);
   });
 
+  it("clears the local persona cookie when leaving preview", () => {
+    assert.equal(
+      clearPreviewPersonaCookieAssignment(),
+      "atro-preview-persona=; path=/; max-age=0; samesite=lax",
+    );
+  });
+
   it("routes each preview seat to its matching workspace", () => {
     assert.equal(previewPersonaWorkspace("boss"), "/admin");
     assert.equal(previewPersonaWorkspace("office"), "/staff");
     assert.equal(previewPersonaWorkspace("local"), "/portal");
-    assert.equal(previewPersonaWorkspace("abroad"), "/portal");
+    assert.equal(previewPersonaWorkspace("abroad"), "/portal/diaspora");
   });
 
   it("keeps local and diaspora client destinations distinct from staff workspaces", () => {
@@ -96,6 +104,7 @@ describe("preview personas", () => {
       profileImageUrl: null,
       isDevFallback: false,
       isGuestPreview: false,
+      isLocalPreview: false,
     };
 
     assert.equal(resolveDashboardRoute({ user }), "/portal");
@@ -142,6 +151,7 @@ describe("preview personas", () => {
           profileImageUrl: null,
           isDevFallback: true,
           isGuestPreview: true,
+          isLocalPreview: false,
         },
         accessRole: "admin",
         preferredClientRoute: "/portal/diaspora",

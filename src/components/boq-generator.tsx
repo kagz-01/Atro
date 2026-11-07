@@ -1,11 +1,16 @@
 import { useState, useMemo } from "react";
 import {
-  Plus, Trash2, Download, ChevronDown, ChevronRight,
-  Calculator, Copy, LayoutGrid,
+  Plus,
+  Trash2,
+  Download,
+  ChevronDown,
+  ChevronRight,
+  Calculator,
+  Copy,
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import {
   BOQ_CATEGORIES,
   BOQ_TEMPLATES,
@@ -69,11 +74,7 @@ export function BoqGenerator() {
   };
 
   const updateItem = (id: string, field: keyof BoqLineItem, value: string | number) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, [field]: value } : item,
-      ),
-    );
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
   };
 
   const removeItem = (id: string) => {
@@ -84,7 +85,10 @@ export function BoqGenerator() {
     setItems((prev) => {
       const item = prev.find((i) => i.id === id);
       if (!item) return prev;
-      const newItem = { ...item, id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` };
+      const newItem = {
+        ...item,
+        id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      };
       const idx = prev.findIndex((i) => i.id === id);
       return [...prev.slice(0, idx + 1), newItem, ...prev.slice(idx + 1)];
     });
@@ -95,7 +99,7 @@ export function BoqGenerator() {
   };
 
   return (
-    <div className="bg-cream border border-line rounded-xl overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-line bg-cream">
       {/* Header */}
       <div className="p-6 border-b border-line bg-paper">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
@@ -106,11 +110,22 @@ export function BoqGenerator() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={handleDownload} disabled={items.length === 0}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-h-12 sm:min-h-9"
+              onClick={handleDownload}
+              disabled={items.length === 0}
+            >
               <Download className="size-4 mr-1.5" />
               Download .txt
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowSummary(!showSummary)}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-h-12 sm:min-h-9"
+              onClick={() => setShowSummary(!showSummary)}
+            >
               <Calculator className="size-4 mr-1.5" />
               Priced lines
             </Button>
@@ -120,21 +135,25 @@ export function BoqGenerator() {
         {/* Project details */}
         <div className="mt-4 grid sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-[10px] uppercase tracking-[0.12em] text-muted block mb-1">Project name</label>
+            <label className="text-[10px] uppercase tracking-[0.12em] text-muted block mb-1">
+              Project name
+            </label>
             <input
               type="text"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder="e.g. Karen Courtyard House"
-              className="w-full h-10 px-3 bg-cream border border-line rounded-lg text-sm text-ink outline-none focus:border-burgundy transition-colors"
+              className="w-full h-12 px-3 bg-cream border border-line rounded-lg text-sm text-ink outline-none focus:border-burgundy transition-colors sm:h-10"
             />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-[0.12em] text-muted block mb-1">Project type</label>
+            <label className="text-[10px] uppercase tracking-[0.12em] text-muted block mb-1">
+              Project type
+            </label>
             <select
               value={projectType}
               onChange={(e) => setProjectType(e.target.value)}
-              className="w-full h-10 px-3 bg-cream border border-line rounded-lg text-sm text-ink outline-none focus:border-burgundy appearance-none cursor-pointer"
+              className="w-full h-12 px-3 bg-cream border border-line rounded-lg text-sm text-ink outline-none focus:border-burgundy appearance-none cursor-pointer sm:h-10"
             >
               <option>3-Bedroom Bungalow</option>
               <option>2-Bedroom Apartment</option>
@@ -167,9 +186,18 @@ export function BoqGenerator() {
       <div className="border-b border-line bg-paper/60 p-5">
         <div className="grid gap-3 md:grid-cols-3">
           {[
-            { title: "1. Start with a template", text: "Templates provide scope prompts only; no quantities or prices are assumed." },
-            { title: "2. Measure and price", text: "Enter measured quantities and current, project-specific supplier or contractor rates." },
-            { title: "3. Export for review", text: "Priced line subtotals are not a whole-project total. Have a QS check scope and quantities." },
+            {
+              title: "1. Start with a template",
+              text: "Templates provide scope prompts only; no quantities or prices are assumed.",
+            },
+            {
+              title: "2. Measure and price",
+              text: "Enter measured quantities and current, project-specific supplier or contractor rates.",
+            },
+            {
+              title: "3. Export for review",
+              text: "Priced line subtotals are not a whole-project total. Have a QS check scope and quantities.",
+            },
           ].map((step) => (
             <div key={step.title} className="rounded-2xl border border-line/60 bg-cream p-4">
               <p className="text-[10px] uppercase tracking-[0.14em] text-muted">{step.title}</p>
@@ -195,9 +223,13 @@ export function BoqGenerator() {
                 className="text-left p-5 bg-paper border border-line/50 rounded-2xl hover:border-burgundy/50 hover:shadow-card card-lift transition-all duration-200 group"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <Badge tone="maroon" className="text-[9px]">{t.items.length} items</Badge>
+                  <Badge tone="maroon" className="text-[9px]">
+                    {t.items.length} items
+                  </Badge>
                 </div>
-                <p className="font-display text-base text-maroon group-hover:text-burgundy transition-colors">{t.name}</p>
+                <p className="font-display text-base text-maroon group-hover:text-burgundy transition-colors">
+                  {t.name}
+                </p>
                 <p className="text-xs text-ink/50 mt-2 line-clamp-2">{t.description}</p>
               </button>
             ))}
@@ -210,9 +242,13 @@ export function BoqGenerator() {
         <div className="p-6 border-b border-line bg-paper">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Priced lines subtotal</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                Priced lines subtotal
+              </p>
               <p className="font-display text-2xl text-maroon tabular-nums mt-1">
-                {pricedLineCount > 0 ? `KES ${pricedSubtotal.toLocaleString("en-KE")}` : "No rates entered"}
+                {pricedLineCount > 0
+                  ? `KES ${pricedSubtotal.toLocaleString("en-KE")}`
+                  : "No rates entered"}
               </p>
             </div>
             <div>
@@ -239,7 +275,7 @@ export function BoqGenerator() {
               <button
                 type="button"
                 onClick={() => toggleCategory(cat.id)}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-paper/50 transition-colors"
+                className="w-full min-h-12 px-4 py-4 flex items-center justify-between hover:bg-paper/50 transition-colors sm:px-6"
               >
                 <div className="flex items-center gap-3">
                   {isExpanded ? (
@@ -252,7 +288,9 @@ export function BoqGenerator() {
                       <span className="text-[10px] text-muted">{cat.section}</span>
                       <span className="font-medium text-maroon">{cat.name}</span>
                       {catItems.length > 0 && (
-                        <Badge tone="stone" className="text-[9px]">{catItems.length}</Badge>
+                        <Badge tone="stone" className="text-[9px]">
+                          {catItems.length}
+                        </Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted mt-0.5 ml-0">{cat.description}</p>
@@ -272,7 +310,7 @@ export function BoqGenerator() {
                     <button
                       type="button"
                       onClick={() => addItem(cat.id)}
-                      className="w-full p-4 border border-dashed border-line rounded-xl text-sm text-muted hover:border-burgundy hover:text-maroon transition-colors flex items-center justify-center gap-2"
+                      className="w-full min-h-12 p-4 border border-dashed border-line rounded-xl text-sm text-muted hover:border-burgundy hover:text-maroon transition-colors flex items-center justify-center gap-2"
                     >
                       <Plus className="size-4" />
                       Add line item
@@ -301,33 +339,39 @@ export function BoqGenerator() {
                               value={item.description}
                               onChange={(e) => updateItem(item.id, "description", e.target.value)}
                               placeholder="Item description"
-                              className="w-full h-9 px-3 bg-cream border border-line/50 rounded-xl text-sm text-ink outline-none focus:border-burgundy"
+                              className="w-full h-12 px-3 bg-cream border border-line/50 rounded-xl text-sm text-ink outline-none focus:border-burgundy sm:h-9"
                             />
                             <div className="grid grid-cols-3 gap-2">
                               <select
                                 value={item.unit}
                                 onChange={(e) => updateItem(item.id, "unit", e.target.value)}
-                                className="h-9 px-2 bg-cream border border-line/50 rounded-xl text-xs text-ink outline-none focus:border-burgundy appearance-none cursor-pointer"
+                                className="h-12 min-w-0 px-2 bg-cream border border-line/50 rounded-xl text-xs text-ink outline-none focus:border-burgundy appearance-none cursor-pointer sm:h-9"
                               >
                                 {UNITS.map((u) => (
-                                  <option key={u} value={u}>{u}</option>
+                                  <option key={u} value={u}>
+                                    {u}
+                                  </option>
                                 ))}
                               </select>
                               <input
                                 type="number"
                                 value={item.quantity || ""}
-                                onChange={(e) => updateItem(item.id, "quantity", Number(e.target.value))}
+                                onChange={(e) =>
+                                  updateItem(item.id, "quantity", Number(e.target.value))
+                                }
                                 min={0}
                                 placeholder="Qty"
-                                className="h-9 px-3 bg-cream border border-line/50 rounded-xl text-xs text-ink text-right tabular-nums outline-none focus:border-burgundy"
+                                className="h-12 min-w-0 px-2 bg-cream border border-line/50 rounded-xl text-xs text-ink text-right tabular-nums outline-none focus:border-burgundy sm:h-9 sm:px-3"
                               />
                               <input
                                 type="number"
                                 value={item.rate || ""}
-                                onChange={(e) => updateItem(item.id, "rate", Number(e.target.value))}
+                                onChange={(e) =>
+                                  updateItem(item.id, "rate", Number(e.target.value))
+                                }
                                 min={0}
                                 placeholder="Rate"
-                                className="h-9 px-3 bg-cream border border-line/50 rounded-xl text-xs text-ink text-right tabular-nums outline-none focus:border-burgundy"
+                                className="h-12 min-w-0 px-2 bg-cream border border-line/50 rounded-xl text-xs text-ink text-right tabular-nums outline-none focus:border-burgundy sm:h-9 sm:px-3"
                               />
                             </div>
                             <div className="flex items-center justify-between">
@@ -340,16 +384,18 @@ export function BoqGenerator() {
                                 <button
                                   type="button"
                                   onClick={() => duplicateItem(item.id)}
-                                  className="size-8 flex items-center justify-center rounded-xl hover:bg-stone/30 text-muted hover:text-maroon transition-colors"
+                                  className="size-12 flex items-center justify-center rounded-xl hover:bg-stone/30 text-muted hover:text-maroon transition-colors sm:size-8"
                                   title="Duplicate"
+                                  aria-label={`Duplicate ${item.description || "item"}`}
                                 >
                                   <Copy className="size-3.5" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => removeItem(item.id)}
-                                  className="size-8 flex items-center justify-center rounded-xl hover:bg-red-50 text-muted hover:text-red-600 transition-colors"
+                                  className="size-12 flex items-center justify-center rounded-xl hover:bg-red-50 text-muted hover:text-red-600 transition-colors sm:size-8"
                                   title="Remove"
+                                  aria-label={`Remove ${item.description || "item"}`}
                                 >
                                   <Trash2 className="size-3.5" />
                                 </button>
@@ -372,13 +418,17 @@ export function BoqGenerator() {
                               className="w-full h-9 px-2 bg-cream border border-line/50 rounded-xl text-sm text-ink outline-none focus:border-burgundy appearance-none cursor-pointer"
                             >
                               {UNITS.map((u) => (
-                                <option key={u} value={u}>{u}</option>
+                                <option key={u} value={u}>
+                                  {u}
+                                </option>
                               ))}
                             </select>
                             <input
                               type="number"
                               value={item.quantity || ""}
-                              onChange={(e) => updateItem(item.id, "quantity", Number(e.target.value))}
+                              onChange={(e) =>
+                                updateItem(item.id, "quantity", Number(e.target.value))
+                              }
                               min={0}
                               className="w-full h-9 px-3 bg-cream border border-line/50 rounded-xl text-sm text-ink text-right tabular-nums outline-none focus:border-burgundy"
                             />
@@ -398,16 +448,18 @@ export function BoqGenerator() {
                               <button
                                 type="button"
                                 onClick={() => duplicateItem(item.id)}
-                                className="size-8 flex items-center justify-center rounded-xl hover:bg-stone/30 text-muted hover:text-maroon transition-colors"
+                                className="size-12 flex items-center justify-center rounded-xl hover:bg-stone/30 text-muted hover:text-maroon transition-colors sm:size-8"
                                 title="Duplicate"
+                                aria-label={`Duplicate ${item.description || "item"}`}
                               >
                                 <Copy className="size-3.5" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => removeItem(item.id)}
-                                className="size-8 flex items-center justify-center rounded-xl hover:bg-red-50 text-muted hover:text-red-600 transition-colors"
+                                className="size-12 flex items-center justify-center rounded-xl hover:bg-red-50 text-muted hover:text-red-600 transition-colors sm:size-8"
                                 title="Remove"
+                                aria-label={`Remove ${item.description || "item"}`}
                               >
                                 <Trash2 className="size-3.5" />
                               </button>
@@ -419,7 +471,7 @@ export function BoqGenerator() {
                       <button
                         type="button"
                         onClick={() => addItem(cat.id)}
-                        className="w-full py-2 border border-dashed border-line rounded-xl text-xs text-muted hover:border-burgundy hover:text-maroon transition-colors flex items-center justify-center gap-1.5"
+                        className="w-full min-h-12 py-2 border border-dashed border-line rounded-xl text-xs text-muted hover:border-burgundy hover:text-maroon transition-colors flex items-center justify-center gap-1.5"
                       >
                         <Plus className="size-3.5" />
                         Add item
@@ -438,27 +490,42 @@ export function BoqGenerator() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <p className="text-xs text-muted">
-              Template lines are prompts only. Measure each item and enter current project-specific rates; have a quantity surveyor verify the scope before tendering.
+              Template lines are prompts only. Measure each item and enter current project-specific
+              rates; have a quantity surveyor verify the scope before tendering.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.14em] text-muted">
-            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">No assumed prices</span>
-            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">Worksheet, not tender</span>
-            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">Review before procurement</span>
+            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">
+              No assumed prices
+            </span>
+            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">
+              Worksheet, not tender
+            </span>
+            <span className="rounded-full border border-line bg-cream px-2.5 py-1.5">
+              Review before procurement
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Sticky summary bar (mobile) */}
+      {/* Mobile summary and download */}
       {items.length > 0 && (
-        <div className="sticky bottom-0 z-10 bg-maroon text-paper px-6 py-3 flex items-center justify-between shadow-lg sm:hidden">
+        <div className="flex items-center justify-between gap-3 bg-maroon px-4 py-3 text-paper shadow-lg sm:hidden">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.14em] text-gold">Priced lines subtotal</p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-gold">
+              Priced lines subtotal
+            </p>
             <p className="font-display text-xl tabular-nums">
-              {pricedLineCount > 0 ? `KES ${pricedSubtotal.toLocaleString("en-KE")}` : "No rates entered"}
+              {pricedLineCount > 0
+                ? `KES ${pricedSubtotal.toLocaleString("en-KE")}`
+                : "No rates entered"}
             </p>
           </div>
-          <Button size="sm" onClick={handleDownload} className="bg-gold text-maroon hover:bg-gold-light">
+          <Button
+            size="sm"
+            onClick={handleDownload}
+            className="bg-gold text-maroon hover:bg-gold-light"
+          >
             <Download className="size-4 mr-1.5" />
             Download .txt
           </Button>

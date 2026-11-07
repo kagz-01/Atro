@@ -26,6 +26,8 @@ export type AppUser = {
   isDevFallback: boolean;
   /** Guest preview users can browse sample portal data but cannot make changes. */
   isGuestPreview: boolean;
+  /** Selected development persona backed only by local PGLite data. */
+  isLocalPreview: boolean;
 };
 
 /**
@@ -53,6 +55,23 @@ let previewUser: AppUser | null = null;
 
 function previewAppUser(): AppUser {
   if (previewUser) return previewUser;
+  const personaKey = import.meta.env.DEV ? personaKeyFromCookieHeader(document.cookie) : null;
+  if (personaKey) {
+    const persona = previewPersona(personaKey);
+    previewUser = {
+      id: persona.userId,
+      displayName: persona.name,
+      primaryEmail: persona.email,
+      primaryEmailVerified: true,
+      primaryPhone: null,
+      primaryPhoneVerified: false,
+      profileImageUrl: null,
+      isDevFallback: false,
+      isGuestPreview: false,
+      isLocalPreview: true,
+    };
+    return previewUser;
+  }
   if (document.cookie.split(";").some((cookie) => cookie.trim() === `${GUEST_PREVIEW_COOKIE}=1`)) {
     previewUser = {
       id: GUEST_PREVIEW_USER_ID,
@@ -64,6 +83,7 @@ function previewAppUser(): AppUser {
       profileImageUrl: null,
       isDevFallback: true,
       isGuestPreview: true,
+      isLocalPreview: false,
     };
     return previewUser;
   }
@@ -79,6 +99,7 @@ function previewAppUser(): AppUser {
     profileImageUrl: null,
     isDevFallback: true,
     isGuestPreview: false,
+    isLocalPreview: false,
   };
   return previewUser;
 }
@@ -118,6 +139,11 @@ function set(next: Partial<Cache>) {
  */
 function start() {
   if (started || typeof window === "undefined") return;
+  if (import.meta.env.DEV && personaKeyFromCookieHeader(document.cookie)) {
+    started = true;
+    set({ user: previewAppUser(), isPending: false, sessionError: null });
+    return;
+  }
   const supabase = supabaseBrowser();
   if (!supabase) {
     // Unconfigured: behave as whoever the persona cookie says, never pending.
@@ -166,9 +192,7 @@ function start() {
 }
 
 function guestUserOrNull(): AppUser | null {
-  return document.cookie
-    .split(";")
-    .some((cookie) => cookie.trim() === `${GUEST_PREVIEW_COOKIE}=1`)
+  return document.cookie.split(";").some((cookie) => cookie.trim() === `${GUEST_PREVIEW_COOKIE}=1`)
     ? previewAppUser()
     : null;
 }
@@ -195,6 +219,7 @@ function mapUser(user: {
     profileImageUrl: null,
     isDevFallback: false,
     isGuestPreview: false,
+    isLocalPreview: false,
   };
 }
 
