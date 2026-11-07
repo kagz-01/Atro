@@ -106,24 +106,23 @@ function ToolsIndex() {
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">
-                Materials support
+                MyHardware by ATRO
               </p>
               <h2 className="mt-2 font-display text-xl leading-tight text-maroon sm:text-2xl md:text-[2.5rem]">
-                Need product comparison or sourcing help?
+                Ready to compare or source materials?
               </h2>
               <p className="mt-2 text-xs leading-relaxed text-ink/70 sm:text-sm md:mt-3 md:text-base">
-                MyHardware is a complementary materials platform for clients who want a simpler
-                route to product comparison, suppliers and build-package checks alongside ATRO
-                project planning.
+                Use ATRO's dated price references for planning, then visit MyHardware to explore
+                product comparisons and sourcing options.
               </p>
             </div>
             <a
               href={MYHARDWARE_URL}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full bg-maroon px-3 py-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-paper transition-colors hover:bg-[#5b1c26] sm:gap-2 sm:px-5 sm:text-[11px] sm:tracking-[0.14em]"
             >
-              Open MyHardware
+            Explore MyHardware
               <ArrowRight className="size-4" />
             </a>
           </div>

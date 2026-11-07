@@ -40,7 +40,7 @@ function Home() {
       <Services />
       <PortalPreview experience="kenya" />
       <Tools />
-      <HardwarePartner />
+      <MyHardwareFeature />
       <CtaBand />
       <script
         type="application/ld+json"
@@ -397,67 +397,30 @@ function Services() {
   );
 }
 
-/* ─── Hardware Partner ─── */
-function HardwarePartner() {
-  const items = [
-    "Compare materials and product options",
-    "Check local sourcing and quantity planning",
-    "Support faster purchasing decisions before site execution",
-  ];
-
+/* ─── MyHardware ─── */
+function MyHardwareFeature() {
   return (
-    <section className="bg-[#f3ede5] py-16 md:py-20">
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16">
-        <div className="grid items-center gap-8 rounded-[2rem] border border-[#d9cab4] bg-[#f9f5ee] p-6 shadow-[0_18px_40px_-28px_rgba(60,5,8,0.22)] sm:p-8 lg:grid-cols-[1.1fr_0.9fr] lg:p-10">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-burgundy">Sister platform</p>
-            <h2 className="mt-3 font-display text-[2.2rem] text-maroon md:text-[2.9rem]">
-              Need materials and supply support? MyHardware can help.
+    <section className="border-y border-line/50 bg-[#f3ede5] py-8 md:py-10">
+      <div className="container-wide">
+        <div className="flex flex-col gap-4 rounded-2xl border border-[#d9cab4] bg-[#f9f5ee] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="max-w-3xl">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">Materials & sourcing</p>
+            <h2 className="mt-2 font-display text-2xl text-maroon md:text-3xl">
+              Looking for building materials?
             </h2>
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink/70 md:text-lg">
-              ATRO leads the design, planning and project delivery journey. MyHardware is a complementary sourcing platform for clients who want a simpler route to product comparison, material checks and hardware purchasing support.
+            <p className="mt-2 text-sm leading-relaxed text-ink/70 md:text-base">
+              MyHardware by ATRO helps you compare products and explore sourcing options. ATRO remains your route for design, planning and project delivery.
             </p>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <a
-                href={MYHARDWARE_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-maroon px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-paper transition-colors hover:bg-[#5b1c26]"
-              >
-                Visit MyHardware
-                <ArrowUpRight className="size-4" aria-hidden />
-              </a>
-              <Link
-                to="/services"
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-maroon/25 bg-transparent px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-maroon transition-colors hover:border-maroon hover:bg-white/50"
-              >
-                See our services
-              </Link>
-            </div>
           </div>
-
-          <div className="rounded-[1.5rem] border border-[#ceb892] bg-[#f1e7d9] p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-4 border-b border-[#d8c49b] pb-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-burgundy">MyHardware</p>
-                <p className="mt-2 font-display text-2xl text-maroon md:text-3xl">Materials, sourcing & options</p>
-              </div>
-              <span className="flex size-11 items-center justify-center rounded-full bg-white text-maroon shadow-sm">
-                <ArrowUpRight className="size-4" aria-hidden />
-              </span>
-            </div>
-
-            <ul className="mt-5 space-y-4">
-              {items.map((item) => (
-                <li key={item} className="flex items-start gap-3 text-sm leading-relaxed text-ink/75 sm:text-base">
-                  <span className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full bg-gold/20 text-[11px] font-semibold text-maroon">
-                    ✓
-                  </span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <a
+            href={MYHARDWARE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start rounded-full border border-maroon/25 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-maroon transition-colors hover:border-maroon hover:bg-white/60 sm:self-auto"
+          >
+            Explore MyHardware by ATRO
+            <ArrowUpRight className="size-4" aria-hidden />
+          </a>
         </div>
       </div>
     </section>

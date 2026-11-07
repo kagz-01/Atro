@@ -630,23 +630,23 @@ function DiasporaPage() {
           <div className="flex flex-col gap-5 rounded-[2rem] border border-[#d8c9ad] bg-[#f3ead9] p-6 md:p-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">
-                Materials support
+                MyHardware by ATRO
               </p>
               <h2 className="mt-2 font-display text-[2rem] leading-none text-maroon md:text-[2.6rem]">
-                Need product comparison while you are abroad?
+                Explore materials for your Kenya project
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-ink/70 md:text-base">
-                MyHardware helps with supplier supporting materials and product checks while ATRO
-                handles design, planning and delivery oversight in Kenya.
+                Browse product comparisons and sourcing options through MyHardware. ATRO remains
+                responsible for design, planning and delivery oversight in Kenya.
               </p>
             </div>
             <a
               href={MYHARDWARE_URL}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-maroon px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-paper transition-colors hover:bg-[#5b1c26]"
             >
-              Explore MyHardware
+              Explore MyHardware by ATRO
               <ArrowRight className="size-4" />
             </a>
           </div>

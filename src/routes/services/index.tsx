@@ -355,24 +355,23 @@ function ServicesPage() {
           <div className="flex flex-col gap-5 rounded-[2rem] border border-[#d9cab4] bg-[#f3ead9] p-6 md:p-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-burgundy">
-                Materials support
+                MyHardware by ATRO
               </p>
               <h2 className="mt-2 font-display text-[2rem] leading-none text-maroon md:text-[2.6rem]">
-                Need product and supplier support?
+                Looking for materials alongside your project?
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-ink/70 md:text-base">
-                MyHardware is available as a complementary sourcing platform for product comparison,
-                materials checks and supplier support while ATRO manages design, planning and
-                project delivery.
+                Explore product comparisons and sourcing options through MyHardware. ATRO remains
+                your point of contact for design, planning and project delivery.
               </p>
             </div>
             <a
               href={MYHARDWARE_URL}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-maroon px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-paper transition-colors hover:bg-[#5b1c26]"
             >
-              Visit MyHardware
+              Explore MyHardware
               <ArrowRight className="size-4" />
             </a>
           </div>
