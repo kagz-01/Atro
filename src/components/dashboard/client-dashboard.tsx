@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
-  ArrowLeft,
   Banknote,
   CalendarDays,
   CheckCircle2,
@@ -63,6 +62,7 @@ import { getMyProfile } from "@/lib/profile-server";
 import type { ActivityItem, PortalPayload, ProjectSummary } from "@/lib/diaspora/server";
 import type { DocumentSummary } from "@/lib/invoice-server";
 import { cn } from "@/lib/utils";
+import { DashboardBackLink } from "@/components/dashboard/shell";
 
 /**
  * The client's side of the same dashboard.
@@ -244,7 +244,7 @@ export function ClientDashboard({
           id: "decisions",
           label: "Decisions",
           icon: MessageSquareWarning,
-          badge: (openDecisions.length + blockingApprovals) || undefined,
+          badge: openDecisions.length + blockingApprovals || undefined,
         },
         {
           id: "money",
@@ -331,9 +331,11 @@ export function ClientDashboard({
           items: [{ id: "profile", label: "Profile", icon: UserRound }],
         },
       ]}
-      mobileItems={projectTabs.filter((item) =>
-        ["overview", "milestones", "decisions", "money", "messages"].includes(item.id),
-      ).slice(0, 4)}
+      mobileItems={projectTabs
+        .filter((item) =>
+          ["overview", "milestones", "decisions", "money", "messages"].includes(item.id),
+        )
+        .slice(0, 4)}
       active={section}
       onSelect={(id) => setSection(id as Section)}
       alerts={[
@@ -357,15 +359,9 @@ export function ClientDashboard({
       user={{ name: p.clientLabel || "Your account", email: p.clientLabel }}
       readOnly={readOnly}
       toolbar={
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button asChild size="sm" variant="outline" className="min-h-11 shrink-0">
-            <Link to={abroad ? "/diaspora" : "/"}>
-              <ArrowLeft className="size-4" aria-hidden />
-              Back to {abroad ? "diaspora" : "Kenya"} site
-            </Link>
-          </Button>
-          <div className="min-w-0">
-            <h1 className="flex flex-wrap items-center gap-2 font-display text-lg leading-tight text-maroon">
+        <div className="grid grid-cols-2 items-center gap-x-3 gap-y-2 sm:gap-y-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+          <div className="col-span-2 row-start-1 min-w-0 text-center md:col-span-1 md:col-start-2">
+            <h1 className="flex flex-wrap items-center justify-center gap-2 font-display text-lg leading-tight text-maroon">
               {p.title}
               {p.isSample ? <Badge tone="gold">Demonstration</Badge> : null}
             </h1>
@@ -374,7 +370,15 @@ export function ClientDashboard({
               handover
             </p>
           </div>
-          {children}
+          <DashboardBackLink
+            to={abroad ? "/diaspora" : "/"}
+            className="col-start-1 row-start-2 justify-self-start md:col-start-1 md:row-start-1"
+          >
+            Back to {abroad ? "diaspora" : "Kenya"} site
+          </DashboardBackLink>
+          <div className="col-start-2 row-start-2 justify-self-end md:col-start-3 md:row-start-1">
+            {children}
+          </div>
         </div>
       }
     >
@@ -718,7 +722,10 @@ export function ClientDashboard({
 
       {section === "money" ? (
         <div className="space-y-5">
-          <Panel title="Project funds" subtitle="Each verified payment belongs to this project ledger">
+          <Panel
+            title="Project funds"
+            subtitle="Each verified payment belongs to this project ledger"
+          >
             <p className="text-[13px] leading-relaxed text-ink/65">
               {measuredWork
                 ? "For construction and renovation, pay only against work inspected and certified under your agreement."
@@ -728,7 +735,8 @@ export function ClientDashboard({
             </p>
             <p className="mt-3 text-[12px] leading-relaxed text-ink/55">
               ATRO’s Paystack balance settles to ATRO’s configured bank account. This project ledger
-              records your project’s payments separately; it is not a separate bank or escrow account.
+              records your project’s payments separately; it is not a separate bank or escrow
+              account.
             </p>
           </Panel>
 
@@ -737,10 +745,16 @@ export function ClientDashboard({
               <dl className="space-y-3">
                 {[
                   ["Contract value (BOQ priced)", kes(p.contractValue), false],
-                  [measuredWork ? "Work certified to date" : "Stages approved to date", kes(b.certifiedToDate), false],
+                  [
+                    measuredWork ? "Work certified to date" : "Stages approved to date",
+                    kes(b.certifiedToDate),
+                    false,
+                  ],
                   ["Paid to date", kes(b.paidToDate), false],
                   [
-                    measuredWork ? "Certified, awaiting payment" : "Approved stages awaiting payment",
+                    measuredWork
+                      ? "Certified, awaiting payment"
+                      : "Approved stages awaiting payment",
                     kes(b.currentlyCertified),
                     true,
                   ],
@@ -822,11 +836,7 @@ export function ClientDashboard({
       {section === "profile" ? <ProfilePanel /> : null}
 
       {section === "people" ? (
-        <ProjectCircleOwnerPanel
-          projectId={p.id}
-          experience={experience}
-          disabled={p.isSample}
-        />
+        <ProjectCircleOwnerPanel projectId={p.id} experience={experience} disabled={p.isSample} />
       ) : null}
 
       {section === "abroad" ? (
@@ -1038,151 +1048,153 @@ function PaymentTable({
 }) {
   return (
     <>
-    <ul className="space-y-3 p-3 sm:hidden">
-      {payments.map((pay) => {
-        const style = PAYMENT_STATUS[pay.status] ?? PAYMENT_STATUS.scheduled;
-        const key = `pay-${pay.id}`;
-        const checkoutPending = pay.checkoutStatus === "pending";
-        return (
-          <li key={pay.id} className="rounded-xl border border-ink/10 bg-white p-3">
-            <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0">
-                <span className="block text-[13px] font-medium text-maroon">{pay.label}</span>
-                {pay.certificate ? (
-                  <span className="font-mono text-[11px] text-muted">
-                    {measuredWork ? "Certificate" : "Stage reference"} {pay.certificate}
-                  </span>
-                ) : null}
-              </span>
-              <span className="shrink-0 text-[13px] font-medium text-maroon">{kes(pay.amount)}</span>
-            </div>
-            <span
-              className={cn(
-                "mt-3 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]",
-                style.cls,
-              )}
-            >
-              {pay.status === "paid"
-                ? style.label
-                : checkoutPending
-                  ? "Checkout pending"
-                  : style.label}
-            </span>
-            {pay.status === "certified" ? (
-              <Button
-                className="mt-3 w-full"
-                size="sm"
-                disabled={pending === key}
-                onClick={() => onPay(pay.id)}
-              >
-                {pending === key
-                  ? "Opening…"
-                  : checkoutPending
-                    ? "Continue securely"
-                    : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired"
-                      ? "Try again securely"
-                      : "Pay securely"}
-              </Button>
-            ) : null}
-            {pay.status === "paid" ? (
-              <p className="mt-2 text-[11px] text-ink/55">
-                {pay.paidDate ? `Paid ${pay.paidDate}` : "Payment recorded"}
-                {pay.method ? ` · ${pay.method}` : ""}
-              </p>
-            ) : checkoutPending ? (
-              <p className="mt-2 text-[11px] text-amber-900">
-                Checkout started; this instalment is not paid until confirmed.
-              </p>
-            ) : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired" ? (
-            <p className="mt-2 text-[11px] text-red-800">
-              The last attempt did not complete. This certified amount is still due.
-            </p>
-            ) : null}
-          </li>
-        );
-      })}
-    </ul>
-    <div className="hidden overflow-x-auto sm:block">
-      <table className="w-full min-w-[520px] border-collapse text-left">
-        <thead>
-          <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
-            <th scope="col" className="px-5 py-3 font-bold">
-              Stage
-            </th>
-            <th scope="col" className="px-3 py-3 font-bold">
-              Amount
-            </th>
-            <th scope="col" className="px-3 py-3 font-bold">
-              Status
-            </th>
-            <th scope="col" className="px-5 py-3 font-bold" />
-          </tr>
-        </thead>
-        <tbody>
-          {payments.map((pay) => {
-            const style = PAYMENT_STATUS[pay.status] ?? PAYMENT_STATUS.scheduled;
-            const key = `pay-${pay.id}`;
-            const checkoutPending = pay.checkoutStatus === "pending";
-            return (
-              <tr key={pay.id} className="border-b border-ink/6 last:border-0">
-                <td className="px-5 py-3">
-                  <span className="block text-[13px] text-maroon">{pay.label}</span>
+      <ul className="space-y-3 p-3 sm:hidden">
+        {payments.map((pay) => {
+          const style = PAYMENT_STATUS[pay.status] ?? PAYMENT_STATUS.scheduled;
+          const key = `pay-${pay.id}`;
+          const checkoutPending = pay.checkoutStatus === "pending";
+          return (
+            <li key={pay.id} className="rounded-xl border border-ink/10 bg-white p-3">
+              <div className="flex items-start justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-medium text-maroon">{pay.label}</span>
                   {pay.certificate ? (
                     <span className="font-mono text-[11px] text-muted">
                       {measuredWork ? "Certificate" : "Stage reference"} {pay.certificate}
                     </span>
                   ) : null}
-                  {pay.status === "paid" ? (
-                    <span className="mt-1 block text-[11px] text-ink/55">
-                      {pay.paidDate ? `Paid ${pay.paidDate}` : "Payment recorded"}
-                      {pay.method ? ` · ${pay.method}` : ""}
-                    </span>
-                  ) : checkoutPending ? (
-                    <span className="mt-1 block text-[11px] text-amber-900">
-                      Checkout started; payment is not yet confirmed.
-                    </span>
-                  ) : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired" ? (
-                    <span className="mt-1 block text-[11px] text-red-800">
-                      Last attempt did not complete; this amount is still due.
-                    </span>
-                  ) : null}
-                </td>
-                <td className="px-3 py-3 whitespace-nowrap text-[13px] text-ink/70">
+                </span>
+                <span className="shrink-0 text-[13px] font-medium text-maroon">
                   {kes(pay.amount)}
-                </td>
-                <td className="px-3 py-3">
-                  <span
-                    className={cn(
-                      "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
-                      style.cls,
-                    )}
-                  >
-                    {pay.status === "paid"
-                      ? style.label
-                      : checkoutPending
-                        ? "Checkout pending"
-                        : style.label}
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-right">
-                  {pay.status === "certified" ? (
-                    <Button size="sm" disabled={pending === key} onClick={() => onPay(pay.id)}>
-                      {pending === key
-                        ? "Opening…"
+                </span>
+              </div>
+              <span
+                className={cn(
+                  "mt-3 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]",
+                  style.cls,
+                )}
+              >
+                {pay.status === "paid"
+                  ? style.label
+                  : checkoutPending
+                    ? "Checkout pending"
+                    : style.label}
+              </span>
+              {pay.status === "certified" ? (
+                <Button
+                  className="mt-3 w-full"
+                  size="sm"
+                  disabled={pending === key}
+                  onClick={() => onPay(pay.id)}
+                >
+                  {pending === key
+                    ? "Opening…"
+                    : checkoutPending
+                      ? "Continue securely"
+                      : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired"
+                        ? "Try again securely"
+                        : "Pay securely"}
+                </Button>
+              ) : null}
+              {pay.status === "paid" ? (
+                <p className="mt-2 text-[11px] text-ink/55">
+                  {pay.paidDate ? `Paid ${pay.paidDate}` : "Payment recorded"}
+                  {pay.method ? ` · ${pay.method}` : ""}
+                </p>
+              ) : checkoutPending ? (
+                <p className="mt-2 text-[11px] text-amber-900">
+                  Checkout started; this instalment is not paid until confirmed.
+                </p>
+              ) : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired" ? (
+                <p className="mt-2 text-[11px] text-red-800">
+                  The last attempt did not complete. This certified amount is still due.
+                </p>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full min-w-[520px] border-collapse text-left">
+          <thead>
+            <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+              <th scope="col" className="px-5 py-3 font-bold">
+                Stage
+              </th>
+              <th scope="col" className="px-3 py-3 font-bold">
+                Amount
+              </th>
+              <th scope="col" className="px-3 py-3 font-bold">
+                Status
+              </th>
+              <th scope="col" className="px-5 py-3 font-bold" />
+            </tr>
+          </thead>
+          <tbody>
+            {payments.map((pay) => {
+              const style = PAYMENT_STATUS[pay.status] ?? PAYMENT_STATUS.scheduled;
+              const key = `pay-${pay.id}`;
+              const checkoutPending = pay.checkoutStatus === "pending";
+              return (
+                <tr key={pay.id} className="border-b border-ink/6 last:border-0">
+                  <td className="px-5 py-3">
+                    <span className="block text-[13px] text-maroon">{pay.label}</span>
+                    {pay.certificate ? (
+                      <span className="font-mono text-[11px] text-muted">
+                        {measuredWork ? "Certificate" : "Stage reference"} {pay.certificate}
+                      </span>
+                    ) : null}
+                    {pay.status === "paid" ? (
+                      <span className="mt-1 block text-[11px] text-ink/55">
+                        {pay.paidDate ? `Paid ${pay.paidDate}` : "Payment recorded"}
+                        {pay.method ? ` · ${pay.method}` : ""}
+                      </span>
+                    ) : checkoutPending ? (
+                      <span className="mt-1 block text-[11px] text-amber-900">
+                        Checkout started; payment is not yet confirmed.
+                      </span>
+                    ) : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired" ? (
+                      <span className="mt-1 block text-[11px] text-red-800">
+                        Last attempt did not complete; this amount is still due.
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap text-[13px] text-ink/70">
+                    {kes(pay.amount)}
+                  </td>
+                  <td className="px-3 py-3">
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
+                        style.cls,
+                      )}
+                    >
+                      {pay.status === "paid"
+                        ? style.label
                         : checkoutPending
-                          ? "Continue securely"
-                          : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired"
-                            ? "Try again"
-                            : "Pay securely"}
-                    </Button>
-                  ) : null}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                          ? "Checkout pending"
+                          : style.label}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    {pay.status === "certified" ? (
+                      <Button size="sm" disabled={pending === key} onClick={() => onPay(pay.id)}>
+                        {pending === key
+                          ? "Opening…"
+                          : checkoutPending
+                            ? "Continue securely"
+                            : pay.checkoutStatus === "failed" || pay.checkoutStatus === "expired"
+                              ? "Try again"
+                              : "Pay securely"}
+                      </Button>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
@@ -1344,108 +1356,108 @@ function VaultPanel({
           </div>
         ) : (
           <>
-          <ul className="space-y-3 p-3 sm:hidden">
-            {documents.map((doc) => (
-              <li key={doc.id} className="rounded-xl border border-ink/10 bg-white p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-medium text-maroon">
-                      {KIND_LABEL[doc.kind]}
-                    </span>
-                    <span className="block font-mono text-[11px] text-muted">{doc.number}</span>
-                  </span>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
-                      doc.status === "void"
-                        ? "border-red-200 bg-red-50 text-red-800"
-                        : DOC_TONE[doc.kind],
-                    )}
-                  >
-                    {doc.status === "void" ? "Void" : "Issued"}
-                  </span>
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <span className="text-[11px] text-ink/55">
-                    {new Date(doc.issuedAt).toLocaleDateString("en-KE", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </span>
-                  <span className="text-[12px] font-medium text-maroon">{kes(doc.total)}</span>
-                </div>
-                <Link
-                  to="/portal/document/$id"
-                  params={{ id: doc.id }}
-                  search={{ experience }}
-                  className="mt-3 inline-flex min-h-10 items-center text-[12px] font-medium text-burgundy underline decoration-gold decoration-2 underline-offset-4"
-                >
-                  Open document
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full min-w-[520px] border-collapse text-left">
-              <thead>
-                <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
-                  <th scope="col" className="px-5 py-3 font-bold">
-                    Document
-                  </th>
-                  <th scope="col" className="px-3 py-3 font-bold">
-                    Issued
-                  </th>
-                  <th scope="col" className="px-3 py-3 font-bold">
-                    Amount
-                  </th>
-                  <th scope="col" className="px-5 py-3 font-bold" />
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((doc) => (
-                  <tr key={doc.id} className="border-b border-ink/6 last:border-0">
-                    <td className="px-5 py-3">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="text-[13px] text-maroon">{KIND_LABEL[doc.kind]}</span>
-                        <span
-                          className={cn(
-                            "rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
-                            doc.status === "void"
-                              ? "border-red-200 bg-red-50 text-red-800"
-                              : DOC_TONE[doc.kind],
-                          )}
-                        >
-                          {doc.status === "void" ? "Void" : "Issued"}
-                        </span>
+            <ul className="space-y-3 p-3 sm:hidden">
+              {documents.map((doc) => (
+                <li key={doc.id} className="rounded-xl border border-ink/10 bg-white p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-medium text-maroon">
+                        {KIND_LABEL[doc.kind]}
                       </span>
                       <span className="block font-mono text-[11px] text-muted">{doc.number}</span>
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-[13px] text-ink/70">
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+                        doc.status === "void"
+                          ? "border-red-200 bg-red-50 text-red-800"
+                          : DOC_TONE[doc.kind],
+                      )}
+                    >
+                      {doc.status === "void" ? "Void" : "Issued"}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-[11px] text-ink/55">
                       {new Date(doc.issuedAt).toLocaleDateString("en-KE", {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
                       })}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-[13px] text-ink/70">
-                      {kes(doc.total)}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <Link
-                        to="/portal/document/$id"
-                        params={{ id: doc.id }}
-                        search={{ experience }}
-                        className="text-[12px] text-burgundy underline decoration-gold decoration-2 underline-offset-4"
-                      >
-                        Open
-                      </Link>
-                    </td>
+                    </span>
+                    <span className="text-[12px] font-medium text-maroon">{kes(doc.total)}</span>
+                  </div>
+                  <Link
+                    to="/portal/document/$id"
+                    params={{ id: doc.id }}
+                    search={{ experience }}
+                    className="mt-3 inline-flex min-h-10 items-center text-[12px] font-medium text-burgundy underline decoration-gold decoration-2 underline-offset-4"
+                  >
+                    Open document
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[520px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                    <th scope="col" className="px-5 py-3 font-bold">
+                      Document
+                    </th>
+                    <th scope="col" className="px-3 py-3 font-bold">
+                      Issued
+                    </th>
+                    <th scope="col" className="px-3 py-3 font-bold">
+                      Amount
+                    </th>
+                    <th scope="col" className="px-5 py-3 font-bold" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {documents.map((doc) => (
+                    <tr key={doc.id} className="border-b border-ink/6 last:border-0">
+                      <td className="px-5 py-3">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-[13px] text-maroon">{KIND_LABEL[doc.kind]}</span>
+                          <span
+                            className={cn(
+                              "rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+                              doc.status === "void"
+                                ? "border-red-200 bg-red-50 text-red-800"
+                                : DOC_TONE[doc.kind],
+                            )}
+                          >
+                            {doc.status === "void" ? "Void" : "Issued"}
+                          </span>
+                        </span>
+                        <span className="block font-mono text-[11px] text-muted">{doc.number}</span>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-[13px] text-ink/70">
+                        {new Date(doc.issuedAt).toLocaleDateString("en-KE", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-[13px] text-ink/70">
+                        {kes(doc.total)}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <Link
+                          to="/portal/document/$id"
+                          params={{ id: doc.id }}
+                          search={{ experience }}
+                          className="text-[12px] text-burgundy underline decoration-gold decoration-2 underline-offset-4"
+                        >
+                          Open
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </Panel>

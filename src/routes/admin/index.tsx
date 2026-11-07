@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,6 +17,7 @@ import {
   Lock,
   Mail,
   MessageSquare,
+  RefreshCw,
   Search,
   Users,
   UserRound,
@@ -28,7 +29,7 @@ import { Input, Label, Select, Textarea } from "@/components/ui/field";
 import { Panel } from "@/components/ui/panel";
 import { StatCard } from "@/components/ui/stat-card";
 import { Accordion, AccordionItem } from "@/components/ui/accordion";
-import { DashboardShell } from "@/components/dashboard/shell";
+import { DashboardBackLink, DashboardShell } from "@/components/dashboard/shell";
 import { Donut, GroupedBars, MonthlyColumns, type Slice } from "@/components/dashboard/charts";
 import { EnquiriesInbox, type EnquiryFilterStatus } from "@/components/admin/enquiries-inbox";
 import { QuotationComposer } from "@/components/admin/quotation-composer";
@@ -443,6 +444,78 @@ function HowToPayBlock({
   );
 }
 
+function ProjectWorkspaceTask({
+  id,
+  selectedTask,
+  onSelect,
+  onBack,
+  section,
+  title,
+  summary,
+  badge,
+  children,
+}: {
+  id: string;
+  selectedTask: string | null;
+  onSelect: () => void;
+  onBack: () => void;
+  section: string;
+  title: string;
+  summary: string;
+  badge?: string | number;
+  children: ReactNode;
+}) {
+  if (selectedTask !== id) {
+    if (selectedTask) return null;
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        className="group flex min-h-24 w-full items-center justify-between gap-4 rounded-2xl border border-ink/10 bg-white p-4 text-left shadow-card transition-colors hover:border-burgundy/30 hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2 sm:p-5"
+      >
+        <span className="min-w-0">
+          <span className="flex items-center gap-2">
+            <span className="font-display text-[15px] leading-snug text-maroon">{title}</span>
+            {badge ? (
+              <span className="rounded-full bg-burgundy/10 px-2 py-0.5 text-[10px] font-bold text-burgundy">
+                {badge}
+              </span>
+            ) : null}
+          </span>
+          <span className="mt-1 block text-[12px] leading-relaxed text-ink/55">{summary}</span>
+        </span>
+        <ArrowRight
+          className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5"
+          aria-hidden
+        />
+      </button>
+    );
+  }
+
+  return (
+    <Panel
+      title={title}
+      subtitle={summary}
+      className="col-span-full"
+      actions={
+        <Button
+          variant="outline"
+          size="sm"
+          className="min-h-11"
+          onClick={onBack}
+          aria-label={`Back to ${section}`}
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          <span className="hidden sm:inline">Back to {section}</span>
+          <span className="sm:hidden">Back</span>
+        </Button>
+      }
+    >
+      {children}
+    </Panel>
+  );
+}
+
 function ProjectDetail({
   projectId,
   clientType,
@@ -465,6 +538,9 @@ function ProjectDetail({
   onChanged: () => void;
   onOpenMessages: () => void;
 }) {
+  const [activeSection, setActiveSection] = useState<
+    "overview" | "delivery" | "client" | "money" | "documents"
+  >("overview");
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["staff-project", projectId],
     queryFn: () => getStaffProject({ data: { projectId } }),
@@ -516,7 +592,7 @@ function ProjectDetail({
   const [docState, setDocState] = useState<(typeof DOC_STATES)[number]["value"]>("awaiting");
   const [lifecycleReason, setLifecycleReason] = useState("");
   const [lifecycleReview, setLifecycleReview] = useState(false);
-  const [sectionRequest, setSectionRequest] = useState({ target: "", nonce: 0 });
+  const [selectedTask, setSelectedTask] = useState<string | null>(null);
 
   const [pending, setPending] = useState("");
 
@@ -654,53 +730,177 @@ function ProjectDetail({
         ]
       : []),
   ];
+  const projectSections = [
+    { id: "overview", label: "Overview", badge: undefined },
+    {
+      id: "delivery",
+      label: "Delivery",
+      badge: blockedMilestones + readyForClient || undefined,
+    },
+    {
+      id: "client",
+      label: "Client",
+      badge: stillOpen + waitingToReply + presenceOpen || undefined,
+    },
+    {
+      id: "money",
+      label: "Money",
+      badge: certifiedPayments.length + uncertified.length || undefined,
+    },
+    { id: "documents", label: "Documents", badge: undefined },
+  ] as const;
+  const selectProjectSection = (section: (typeof projectSections)[number]["id"]) => {
+    setActiveSection(section);
+    setSelectedTask(null);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  };
+  const openProjectTask = (
+    section: (typeof projectSections)[number]["id"],
+    task: string,
+  ) => {
+    setActiveSection(section);
+    setSelectedTask(task);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  };
+  const attentionDestinations: Record<
+    string,
+    { section: (typeof projectSections)[number]["id"]; task: string }
+  > = {
+    "milestone-evidence": { section: "delivery", task: "milestones" },
+    approvals: { section: "delivery", task: "approvals" },
+    "financial-summary": { section: "money", task: "financial" },
+    "client-decisions": { section: "client", task: "decisions" },
+    "message-thread": { section: "client", task: "messages" },
+    "site-presence": { section: "client", task: "visits" },
+  };
+  const renderAttentionPanel = (title: string) => (
+    <Panel
+      title={title}
+      subtitle="Open items from the project record — not a substitute for a site inspection."
+    >
+      {ownerActions.length === 0 ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
+          No tracked decisions, blocked milestones, payment stages, messages, visit requests, or
+          client sign-offs are waiting.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {ownerActions.map((action) => (
+            <li key={action.label}>
+              <button
+                type="button"
+                aria-label={`Review ${action.label}: ${action.detail}`}
+                onClick={() => {
+                  if (action.milestoneId) setMilestoneId(action.milestoneId);
+                  const destination = attentionDestinations[action.section];
+                  if (destination) openProjectTask(destination.section, destination.task);
+                }}
+                className="flex w-full items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-left transition-colors hover:border-amber-400 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
+              >
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-800" aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-medium text-maroon">{action.label}</span>
+                  <span className="mt-0.5 block text-[12px] text-ink/60">{action.detail}</span>
+                  <span className="mt-1 block text-[11px] font-medium text-burgundy">
+                    Review this item
+                  </span>
+                </span>
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[12px] text-amber-900">
+                  {action.count}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
 
   return (
     <div className="space-y-6">
-      {isAdmin ? (
-        <section className="space-y-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <Button variant="ghost" size="sm" onClick={onBack}>
-                <ArrowLeft className="size-4" />
-                All projects
-              </Button>
-              <h2 className="mt-3 font-display text-[1.6rem] leading-none text-maroon">
+      <div className="sticky top-14 z-20 -mx-3 -mt-4 mb-5 border-b border-ink/10 bg-white/95 px-3 py-2 backdrop-blur sm:top-16 sm:-mx-6 sm:-mt-6 sm:mb-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="min-h-11 shrink-0 gap-1.5 px-2 text-[11px] sm:px-3"
+            >
+              <ArrowLeft className="size-4" aria-hidden />
+              All projects
+            </Button>
+            <div className="hidden min-w-0 sm:block">
+              <h1 className="truncate font-display text-[15px] leading-tight text-maroon">
                 {p.title}
-              </h2>
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
-                <span className="font-mono">{p.reference}</span>
-                <span>{p.clientLabel}</span>
-                {p.clientCity ? <span>{p.clientCity}</span> : null}
-                {clientType === "diaspora" ? (
-                  <Badge tone="gold" className="h-5 text-[9px]">
-                    From abroad
-                  </Badge>
-                ) : null}
-                <span>
-                  {p.startedLabel} → {p.targetLabel}
-                </span>
-                {p.isSample ? (
-                  <Badge tone="gold" className="h-5 text-[9px]">
-                    Sample
-                  </Badge>
-                ) : null}
+              </h1>
+              <p className="truncate text-[10px] text-muted">
+                {p.reference} · {p.clientLabel}
+                {clientType === "diaspora" ? " · Abroad" : ""}
+                {p.isSample ? " · Sample" : ""}
               </p>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-4">
-              {!p.isSample ? (
-                <Button size="sm" variant="outline" onClick={onOpenMessages}>
-                  <MessageSquare className="size-4" />
-                  Open conversation
-                </Button>
-              ) : null}
-              <div className="text-right">
-                <p className="font-display text-[1.8rem] leading-none text-maroon">{p.progress}%</p>
-                <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
-              </div>
-            </div>
           </div>
-
+          <label className="relative shrink-0 sm:hidden">
+            <span className="sr-only">Project section</span>
+            <select
+              value={activeSection}
+              onChange={(event) =>
+                selectProjectSection(event.target.value as (typeof projectSections)[number]["id"])
+              }
+              className="min-h-11 max-w-[145px] rounded-xl border border-ink/12 bg-white px-3 text-[12px] font-medium text-maroon outline-none focus-visible:ring-2 focus-visible:ring-gold"
+            >
+              {projectSections.map((section) => (
+                <option key={section.id} value={section.id}>
+                  {section.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="mt-1 min-w-0 sm:hidden">
+          <h1 className="truncate font-display text-[15px] leading-tight text-maroon">{p.title}</h1>
+          <p className="truncate text-[10px] text-muted">
+            {p.reference} · {p.clientLabel}
+            {clientType === "diaspora" ? " · Abroad" : ""}
+            {p.isSample ? " · Sample" : ""}
+          </p>
+        </div>
+        <nav className="hidden gap-1 overflow-x-auto pt-2 sm:flex" aria-label="Project sections">
+          {projectSections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              aria-current={activeSection === section.id ? "page" : undefined}
+              onClick={() => selectProjectSection(section.id)}
+              className={cn(
+                "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-xs transition-colors",
+                activeSection === section.id
+                  ? "bg-maroon text-paper"
+                  : "text-ink/65 hover:bg-cream hover:text-maroon",
+              )}
+            >
+              {section.label}
+              {section.badge ? (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                    activeSection === section.id
+                      ? "bg-gold/20 text-gold-light"
+                      : "bg-burgundy/10 text-burgundy",
+                  )}
+                >
+                  {section.badge}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </nav>
+      </div>
+      {activeSection === "overview" ? (
+        <>
+          {isAdmin ? (
+        <section className="space-y-5">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <StatCard
               label="Build progress"
@@ -743,55 +943,7 @@ function ProjectDetail({
           </div>
 
           <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-            <Panel
-              title="Needs your attention"
-              subtitle="Open items from the project record — not a substitute for a site inspection."
-            >
-              {ownerActions.length === 0 ? (
-                <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-900">
-                  No tracked decisions, blocked milestones, payment stages, messages, visit
-                  requests, or client sign-offs are waiting.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {ownerActions.map((action) => (
-                    <li key={action.label}>
-                      <button
-                        type="button"
-                        aria-label={`Review ${action.label}: ${action.detail}`}
-                        onClick={() => {
-                          if (action.milestoneId) setMilestoneId(action.milestoneId);
-                          setSectionRequest((current) => ({
-                            target: action.section,
-                            nonce: current.nonce + 1,
-                          }));
-                        }}
-                        className="flex w-full items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-left transition-colors hover:border-amber-400 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon focus-visible:ring-offset-2"
-                      >
-                        <AlertTriangle
-                          className="mt-0.5 size-4 shrink-0 text-amber-800"
-                          aria-hidden
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[13px] font-medium text-maroon">
-                            {action.label}
-                          </span>
-                          <span className="mt-0.5 block text-[12px] text-ink/60">
-                            {action.detail}
-                          </span>
-                          <span className="mt-1 block text-[11px] font-medium text-burgundy">
-                            Review this item
-                          </span>
-                        </span>
-                        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[12px] text-amber-900">
-                          {action.count}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
+            {renderAttentionPanel("Needs your attention")}
 
             <Panel
               title="Financial position"
@@ -855,36 +1007,31 @@ function ProjectDetail({
           ) : null}
         </section>
       ) : (
-        <section className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="size-4" />
-              All projects
-            </Button>
-            <h2 className="mt-3 font-display text-[1.6rem] leading-none text-maroon">{p.title}</h2>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink/55">
-              <span className="font-mono">{p.reference}</span>
-              <span>{p.clientLabel}</span>
-              {p.clientCity ? <span>{p.clientCity}</span> : null}
-              {clientType === "diaspora" ? (
-                <Badge tone="gold" className="h-5 text-[9px]">
-                  From abroad
-                </Badge>
-              ) : null}
-              <span>
-                {p.startedLabel} → {p.targetLabel}
-              </span>
-              {p.isSample ? (
-                <Badge tone="gold" className="h-5 text-[9px]">
-                  Sample
-                </Badge>
-              ) : null}
-            </p>
+        <section className="space-y-5">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <StatCard
+              label="Build progress"
+              value={`${p.progress}%`}
+              sub={`${data.milestones.filter((milestone) => milestone.status === "complete").length} of ${data.milestones.length} tracked milestones complete`}
+              icon={CheckCircle2}
+              tone={p.progress >= 100 ? "good" : "default"}
+            />
+            <StatCard
+              label="Programme"
+              value={p.schedule.onTrack ? "On track" : "Needs review"}
+              sub={
+                p.schedule.note ||
+                (p.schedule.varianceDays !== 0
+                  ? `Recorded variance: ${Math.abs(p.schedule.varianceDays)} days`
+                  : p.schedule.daysRemaining > 0
+                    ? `${p.schedule.daysRemaining} days remaining`
+                    : "Based on the programme status recorded for this project")
+              }
+              icon={CalendarClock}
+              tone={p.schedule.onTrack ? "good" : "warn"}
+            />
           </div>
-          <div className="text-right">
-            <p className="font-display text-[1.8rem] leading-none text-maroon">{p.progress}%</p>
-            <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{p.stage}</p>
-          </div>
+          {renderAttentionPanel("Project follow-up")}
         </section>
       )}
 
@@ -1054,43 +1201,158 @@ function ProjectDetail({
           )}
         </div>
       </Panel>
-
-      {!p.isSample ? (
-        <ProjectWorkflowChecklist projectId={projectId} documents={data.documents} />
+        </>
       ) : null}
 
-      <Accordion className="space-y-4">
-        <AccordionItem title="Client & consent">
+      {activeSection === "client" ? (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-xl text-maroon">Client & coordination</h2>
+              <p className="mt-1 text-[12px] text-ink/55">
+                Messages, decisions, visits and the client record.
+              </p>
+            </div>
+            {!p.isSample ? (
+              <Button size="sm" variant="outline" onClick={onOpenMessages} className="min-h-11">
+                <MessageSquare className="size-4" aria-hidden />
+                Open conversation
+              </Button>
+            ) : null}
+          </div>
+          {selectedTask === null ? (
+            <p className="text-[12px] text-ink/55">
+              Choose a client task. Anything waiting for a response is marked.
+            </p>
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+        <ProjectWorkspaceTask
+          id="consent"
+          selectedTask={selectedTask}
+          section="Client"
+          title="Client & consent"
+          summary="Contact details, project context and consent."
+          onSelect={() => setSelectedTask("consent")}
+          onBack={() => setSelectedTask(null)}
+        >
           <ClientCard projectId={projectId} />
-        </AccordionItem>
-        <AccordionItem
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="activity"
+          selectedTask={selectedTask}
+          section="Client"
           title="Activity"
-          hint={data.activity.length ? `${data.activity.length}` : undefined}
+          summary="A dated record of updates and project actions."
+          badge={data.activity.length || undefined}
+          onSelect={() => setSelectedTask("activity")}
+          onBack={() => setSelectedTask(null)}
         >
           <StudioActivityFeed items={data.activity} />
-        </AccordionItem>
-        <AccordionItem
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="messages"
+          selectedTask={selectedTask}
+          section="Client"
           title="Message thread"
-          hint={waitingToReply ? `${waitingToReply} waiting` : undefined}
-          defaultOpen={waitingToReply > 0}
-          sectionId="project-message-thread"
-          openRequest={sectionRequest.target === "message-thread" ? sectionRequest.nonce : 0}
+          summary="Read the conversation and reply to the client."
+          badge={waitingToReply ? `${waitingToReply} waiting` : undefined}
+          onSelect={() => setSelectedTask("messages")}
+          onBack={() => setSelectedTask(null)}
         >
           <StudioMessagesPanel projectId={projectId} />
-        </AccordionItem>
-        <AccordionItem
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="visits"
+          selectedTask={selectedTask}
+          section="Client"
           title="Site presence"
-          hint={presenceOpen ? `${presenceOpen} waiting` : undefined}
-          defaultOpen={presenceOpen > 0}
-          sectionId="project-site-presence"
-          openRequest={sectionRequest.target === "site-presence" ? sectionRequest.nonce : 0}
+          summary="Review visit and site-presence requests."
+          badge={presenceOpen ? `${presenceOpen} waiting` : undefined}
+          onSelect={() => setSelectedTask("visits")}
+          onBack={() => setSelectedTask(null)}
         >
           <PresencePanel projectId={projectId} onChanged={onChanged} />
-        </AccordionItem>
-        <AccordionItem
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="decisions"
+          selectedTask={selectedTask}
+          section="Client"
+          title="Client decisions"
+          summary="Review choices raised with the client and what they decided."
+          badge={stillOpen ? `${stillOpen} awaiting` : undefined}
+          onSelect={() => setSelectedTask("decisions")}
+          onBack={() => setSelectedTask(null)}
+        >
+          {data.decisions.length === 0 ? (
+            <p className="text-[13px] text-ink/55">No decisions on this project yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {data.decisions.map((decision) => (
+                <li key={decision.id} className="rounded-xl border border-ink/10 bg-white p-4">
+                  <p className="text-[14px] text-maroon">{decision.title}</p>
+                  <p className="mt-1 text-[12px] text-ink/55">
+                    {decision.state === "decided"
+                      ? `Chose: ${decision.chosen}`
+                      : "Awaiting the client"}{" "}
+                    · {decision.date}
+                    {decision.state !== "decided" && decision.dueDate
+                      ? ` · Reply by ${decision.dueDate}`
+                      : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {data.decisions.length > 0 && stillOpen === 0 ? (
+            <p className="mt-4 text-[12px] text-muted">
+              Every decision on this project has been recorded.
+            </p>
+          ) : null}
+        </ProjectWorkspaceTask>
+          </div>
+        </section>
+      ) : null}
+
+      {activeSection === "money" ? (
+        <section className="space-y-4">
+          <Panel
+            title="Financial position"
+            subtitle="A quick view of this project's recorded money."
+          >
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                ["Contract", kesShort(p.contractValue)],
+                ["Paid to date", kesShort(p.budget.paidToDate)],
+                [
+                  measuredWork ? "Certified, unpaid" : "Approved, unpaid",
+                  kesShort(p.budget.currentlyCertified),
+                ],
+                ["Retention held", kesShort(p.budget.retentionHeld)],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-ink/8 bg-cream/50 p-3">
+                  <dt className="text-[11px] text-muted">{label}</dt>
+                  <dd className="mt-1 text-[13px] font-medium text-maroon">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </Panel>
+          {selectedTask === null ? (
+            <p className="text-[12px] text-ink/55">
+              {isAdmin
+                ? "Choose a task to review the ledger, certify stages, issue a statement, or manage retention."
+                : "Open Financial summary to review the ledger and payment instructions."}
+            </p>
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+        <ProjectWorkspaceTask
+          id="financial"
+          selectedTask={selectedTask}
+          section="Money"
           title="Financial summary"
-          sectionId="project-financial-summary"
-          openRequest={sectionRequest.target === "financial-summary" ? sectionRequest.nonce : 0}
+          summary="Review the project ledger, outstanding stages and payment instructions."
+          badge={certifiedPayments.length ? `${certifiedPayments.length} awaiting payment` : undefined}
+          onSelect={() => setSelectedTask("financial")}
+          onBack={() => setSelectedTask(null)}
         >
           <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-ink/8 pt-5 text-[12px] md:grid-cols-4">
             {[
@@ -1142,14 +1404,153 @@ function ProjectDetail({
           <div className="mt-6">
             <HowToPayBlock projectId={projectId} run={run} onChanged={onChanged} />
           </div>
-        </AccordionItem>
-        <AccordionItem
-          title="Milestone & evidence"
-          sectionId="project-milestone-evidence"
-          openRequest={sectionRequest.target === "milestone-evidence" ? sectionRequest.nonce : 0}
+        </ProjectWorkspaceTask>
+        {isAdmin && uncertified.length > 0 ? (
+          <ProjectWorkspaceTask
+            id="certify"
+            selectedTask={selectedTask}
+            section="Money"
+            title={measuredWork ? "Certify completed work" : "Approve an agreed fee stage"}
+            summary="Review stages ready for admin certification or approval."
+            badge={uncertified.length}
+            onSelect={() => setSelectedTask("certify")}
+            onBack={() => setSelectedTask(null)}
+          >
+            <p className="text-[12px] text-ink/55">
+              {measuredWork
+                ? "Confirm the work has been inspected and measured against the agreement. The client receives a payment certificate and a separate payment request."
+                : "Confirm the agreed deliverable or fee stage is complete under the signed engagement. The client receives a payment request, not a QS certificate."}
+            </p>
+            <ul className="mt-4 space-y-2">
+              {uncertified.map((pay) => (
+                <li
+                  key={pay.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
+                >
+                  <span>
+                    <span className="block text-[14px] text-maroon">{pay.label}</span>
+                    <span className="text-[12px] text-ink/50">{kes(pay.amount)}</span>
+                  </span>
+                  {isAdmin ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        void run(
+                          "inline",
+                          () =>
+                            certifyPayment({
+                              data: {
+                                projectId,
+                                paymentId: pay.id,
+                                certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
+                              },
+                            }),
+                          measuredWork
+                            ? "Work certified and payment request issued."
+                            : "Stage approved and payment request issued.",
+                        )
+                      }
+                    >
+                      {measuredWork ? "Certify work" : "Approve stage"}
+                    </Button>
+                  ) : (
+                    <span className="text-[11px] text-muted">Admins only</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </ProjectWorkspaceTask>
+        ) : null}
+        {isAdmin ? (
+          <ProjectWorkspaceTask
+            id="statement"
+            selectedTask={selectedTask}
+            section="Money"
+            title="Statement of account"
+            summary="Issue an updated record of where the project money stands."
+            onSelect={() => setSelectedTask("statement")}
+            onBack={() => setSelectedTask(null)}
+          >
+            <p className="text-[12px] leading-relaxed text-ink/55">
+              A record of where the money stands — not a demand. The client sees it in their
+              documents.
+            </p>
+            <Button
+              className="mt-4 min-h-11"
+              variant="outline"
+              onClick={() =>
+                void run(
+                  "statement",
+                  () => issueStatementForProject({ data: { projectId } }),
+                  "Statement issued.",
+                )
+              }
+              disabled={pending === "statement"}
+            >
+              Issue a statement
+            </Button>
+          </ProjectWorkspaceTask>
+        ) : null}
+        {isAdmin ? (
+          <ProjectWorkspaceTask
+            id="retention"
+            selectedTask={selectedTask}
+            section="Money"
+            title="Retention"
+            summary="Review retained funds and release them when eligible."
+            badge={p.budget.retentionHeld ? kesShort(p.budget.retentionHeld) : undefined}
+            onSelect={() => setSelectedTask("retention")}
+            onBack={() => setSelectedTask(null)}
+          >
+            <p className="text-[12px] leading-relaxed text-ink/55">
+              Held against defects. Releasing it records that the defects liability period has
+              closed and pays the money out.
+            </p>
+            <Button
+              className="mt-4 min-h-11"
+              variant="outline"
+              onClick={() =>
+                void run(
+                  "retention",
+                  () => releaseRetention({ data: { projectId } }),
+                  "Retention released.",
+                )
+              }
+              disabled={pending === "retention"}
+            >
+              Release retention
+            </Button>
+          </ProjectWorkspaceTask>
+        ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {activeSection === "delivery" ? (
+        <section>
+          {selectedTask === null && !p.isSample ? (
+            <div className="mb-4">
+              <ProjectWorkflowChecklist projectId={projectId} documents={data.documents} />
+            </div>
+          ) : null}
+          {selectedTask === null ? (
+            <p className="mb-3 text-[12px] text-ink/55">
+              Choose a delivery task to inspect its records or update the project.
+            </p>
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+        <ProjectWorkspaceTask
+          id="milestones"
+          selectedTask={selectedTask}
+          section="Delivery"
+          title="Milestone status"
+          summary="Update a stage, record its client-facing status and mark it ready for approval."
+          badge={blockedMilestones ? `${blockedMilestones} blocked` : undefined}
+          onSelect={() => setSelectedTask("milestones")}
+          onBack={() => setSelectedTask(null)}
         >
-          <div className="grid gap-6 lg:grid-cols-2">
-            <WriteBlock
+          <WriteBlock
               title="Update a milestone"
               hint="Set the stage status the client sees. Completing one opens the next automatically."
               hideHeading
@@ -1224,8 +1625,18 @@ function ProjectDetail({
                   placeholder="Frame completed to first floor ring beam; ring beam cast 12 May."
                 />
               </div>
-            </WriteBlock>
-
+          </WriteBlock>
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="evidence"
+          selectedTask={selectedTask}
+          section="Delivery"
+          title="Evidence"
+          summary="Add inspection notes and site photographs to milestone records."
+          onSelect={() => setSelectedTask("evidence")}
+          onBack={() => setSelectedTask(null)}
+        >
+          <div className="grid gap-6 lg:grid-cols-2">
             <WriteBlock
               title="Add evidence"
               hint="A site photograph or inspection note against a stage. The client sees this in the milestone record."
@@ -1272,7 +1683,6 @@ function ProjectDetail({
                 />
               </div>
             </WriteBlock>
-
             <WriteBlock
               title="Post a photograph"
               hint="The picture that proves the stage happened. It appears against the milestone in the client's Evidence tab."
@@ -1289,8 +1699,18 @@ function ProjectDetail({
                 onUploaded={() => void refetch()}
               />
             </WriteBlock>
-
-            <WriteBlock
+          </div>
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="raise-decision"
+          selectedTask={selectedTask}
+          section="Delivery"
+          title="Ask the client to decide"
+          summary="Send a clear choice to the client and set an optional reply date."
+          onSelect={() => setSelectedTask("raise-decision")}
+          onBack={() => setSelectedTask(null)}
+        >
+          <WriteBlock
               title="Raise a decision"
               hint="Puts a choice to the client. One option per line. They record it in the decision log."
               hideHeading
@@ -1352,9 +1772,18 @@ function ProjectDetail({
                   onChange={(e) => setDecisionDueDate(e.target.value)}
                 />
               </div>
-            </WriteBlock>
-
-            <WriteBlock
+          </WriteBlock>
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="post-update"
+          selectedTask={selectedTask}
+          section="Delivery"
+          title="Post a project update"
+          summary="Share a dated update that appears in the client's activity feed."
+          onSelect={() => setSelectedTask("post-update")}
+          onBack={() => setSelectedTask(null)}
+        >
+          <WriteBlock
               title="Post an update"
               hint="Appears in the client's activity feed and counts as new since their last visit."
               hideHeading
@@ -1397,26 +1826,76 @@ function ProjectDetail({
                   placeholder="Frame on track. Slab deck poured Thursday. Rain expected week 9."
                 />
               </div>
-            </WriteBlock>
-          </div>
-        </AccordionItem>
-        <AccordionItem
+          </WriteBlock>
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="approvals"
+          selectedTask={selectedTask}
+          section="Delivery"
           title="Approvals"
-          sectionId="project-approvals"
-          openRequest={sectionRequest.target === "approvals" ? sectionRequest.nonce : 0}
+          summary="Review client approvals and items blocking progress."
+          badge={readyForClient ? `${readyForClient} ready` : undefined}
+          onSelect={() => setSelectedTask("approvals")}
+          onBack={() => setSelectedTask(null)}
         >
           <ApprovalsPanel projectId={projectId} onChanged={onChanged} />
-        </AccordionItem>
-        <AccordionItem title="Selections">
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="selections"
+          selectedTask={selectedTask}
+          section="Delivery"
+          title="Selections"
+          summary="Track material, finish and fixture choices."
+          onSelect={() => setSelectedTask("selections")}
+          onBack={() => setSelectedTask(null)}
+        >
           <SelectionsPanel projectId={projectId} onChanged={onChanged} />
-        </AccordionItem>
-        <AccordionItem title="Variations">
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="variations"
+          selectedTask={selectedTask}
+          section="Delivery"
+          title="Variations"
+          summary="Review requested scope or cost changes."
+          onSelect={() => setSelectedTask("variations")}
+          onBack={() => setSelectedTask(null)}
+        >
           <VariationsPanel projectId={projectId} />
-        </AccordionItem>
-        <AccordionItem title="Defects & care">
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="defects"
+          selectedTask={selectedTask}
+          section="Delivery"
+          title="Defects & care"
+          summary="Track defects, aftercare and handover follow-up."
+          onSelect={() => setSelectedTask("defects")}
+          onBack={() => setSelectedTask(null)}
+        >
           <AfterHandoverPanel projectId={projectId} isAdmin={isAdmin} />
-        </AccordionItem>
-        <AccordionItem title="Document vault">
+        </ProjectWorkspaceTask>
+          </div>
+        </section>
+      ) : null}
+
+      {activeSection === "documents" ? (
+        <section className="space-y-4">
+          <h2 className="font-display text-xl text-maroon">Documents</h2>
+          {selectedTask === null ? (
+            <p className="text-[12px] text-ink/55">
+              Choose a document task to inspect the record or add something for the client.
+            </p>
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+        <ProjectWorkspaceTask
+          id="vault"
+          selectedTask={selectedTask}
+          section="Documents"
+          title="Document vault"
+          summary={`${data.documents.length} project documents and records.`}
+          badge={data.documents.length || undefined}
+          onSelect={() => setSelectedTask("vault")}
+          onBack={() => setSelectedTask(null)}
+        >
           <WriteBlock
             title="Add to the document vault"
             hint="Contracts, approvals, drawings and certificates the client can see. They keep the record."
@@ -1495,144 +1974,38 @@ function ProjectDetail({
               </div>
             </div>
           </WriteBlock>
-        </AccordionItem>
-        {uncertified.length > 0 ? (
-          <AccordionItem
-            title={measuredWork ? "Certify completed work" : "Approve an agreed fee stage"}
-            hint={`${uncertified.length}`}
-          >
-            <p className="text-[12px] text-ink/55">
-              {measuredWork
-                ? "Confirm the work has been inspected and measured against the agreement. The client receives a payment certificate and a separate payment request."
-                : "Confirm the agreed deliverable or fee stage is complete under the signed engagement. The client receives a payment request, not a QS certificate."}
-            </p>
-            <ul className="mt-4 space-y-2">
-              {uncertified.map((pay) => (
-                <li
-                  key={pay.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
-                >
-                  <span>
-                    <span className="block text-[14px] text-maroon">{pay.label}</span>
-                    <span className="text-[12px] text-ink/50">{kes(pay.amount)}</span>
-                  </span>
-                  {isAdmin ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        void run(
-                          "inline",
-                          () =>
-                            certifyPayment({
-                              data: {
-                                projectId,
-                                paymentId: pay.id,
-                                certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
-                              },
-                            }),
-                          measuredWork
-                            ? "Work certified and payment request issued."
-                            : "Stage approved and payment request issued.",
-                        )
-                      }
-                    >
-                      {measuredWork ? "Certify work" : "Approve stage"}
-                    </Button>
-                  ) : (
-                    <span className="text-[11px] text-muted">Admins only</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </AccordionItem>
-        ) : null}
-        <AccordionItem title="Statement of account">
-          <p className="text-[12px] leading-relaxed text-ink/55">
-            A record of where the money stands — not a demand. The client sees it in their
-            documents.
-          </p>
-          {isAdmin ? (
-            <Button
-              className="mt-4 w-full"
-              variant="outline"
-              onClick={() =>
-                void run(
-                  "statement",
-                  () => issueStatementForProject({ data: { projectId } }),
-                  "Statement issued.",
-                )
-              }
-              disabled={pending === "statement"}
-            >
-              Issue a statement
-            </Button>
-          ) : (
-            <p className="mt-4 text-[12px] text-muted">Issuing a statement is an admin action.</p>
-          )}
-        </AccordionItem>
-        <AccordionItem title="Retention">
-          <p className="text-[12px] leading-relaxed text-ink/55">
-            Held against defects. Releasing it records that the defects liability period has closed
-            and pays the money out.
-          </p>
-          {isAdmin ? (
-            <Button
-              className="mt-4 w-full"
-              variant="outline"
-              onClick={() =>
-                void run(
-                  "retention",
-                  () => releaseRetention({ data: { projectId } }),
-                  "Retention released.",
-                )
-              }
-              disabled={pending === "retention"}
-            >
-              Release retention
-            </Button>
-          ) : (
-            <p className="mt-4 text-[12px] text-muted">Releasing retention is an admin action.</p>
-          )}
-        </AccordionItem>
-        <AccordionItem
-          title="What the client has decided"
-          hint={`${stillOpen} awaiting · ${data.decisions.length} total`}
-          sectionId="project-client-decisions"
-          openRequest={sectionRequest.target === "client-decisions" ? sectionRequest.nonce : 0}
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="delivery-log"
+          selectedTask={selectedTask}
+          section="Documents"
+          title="Delivery log"
+          summary="Review records of documents delivered to the client."
+          onSelect={() => setSelectedTask("delivery-log")}
+          onBack={() => setSelectedTask(null)}
         >
-          {data.decisions.length === 0 ? (
-            <p className="text-[13px] text-ink/55">No decisions on this project yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {data.decisions.map((d) => (
-                <li key={d.id} className="rounded-xl border border-ink/10 bg-white p-4">
-                  <p className="text-[14px] text-maroon">{d.title}</p>
-                  <p className="mt-1 text-[12px] text-ink/55">
-                    {d.state === "decided" ? `Chose: ${d.chosen}` : "Awaiting the client"} ·{" "}
-                    {d.date}
-                    {d.state !== "decided" && d.dueDate ? ` · Reply by ${d.dueDate}` : ""}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-          {data.decisions.length > 0 && stillOpen === 0 ? (
-            <p className="mt-4 text-[12px] text-muted">
-              Every decision on this project has been recorded.
-            </p>
-          ) : null}
-        </AccordionItem>
-      </Accordion>
-
-      <DeliveryLog projectId={projectId} onChanged={onChanged} />
-      <IssuedDocuments
-        projectId={projectId}
-        projectTitle={p.title}
-        clientLabel={p.clientLabel}
-        isAdmin={isAdmin}
-        onChanged={onChanged}
-      />
+          <DeliveryLog projectId={projectId} onChanged={onChanged} />
+        </ProjectWorkspaceTask>
+        <ProjectWorkspaceTask
+          id="issued-documents"
+          selectedTask={selectedTask}
+          section="Documents"
+          title="Issued documents"
+          summary="Prepare and review formal documents issued for this project."
+          onSelect={() => setSelectedTask("issued-documents")}
+          onBack={() => setSelectedTask(null)}
+        >
+          <IssuedDocuments
+            projectId={projectId}
+            projectTitle={p.title}
+            clientLabel={p.clientLabel}
+            isAdmin={isAdmin}
+            onChanged={onChanged}
+          />
+        </ProjectWorkspaceTask>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -1977,217 +2350,220 @@ function ProjectsTable({
             </div>
           ) : (
             <>
-            <ul className="divide-y divide-ink/8 lg:hidden">
-              {pageProjects.map((p) => {
-                const status =
-                  p.lifecycleState === "closed"
-                    ? "Closed"
-                    : p.lifecycleState === "archived"
-                      ? "Archived"
-                      : p.buildComplete
-                        ? "Build complete"
-                        : p.blockedStages > 0
-                          ? "Blocked"
-                          : p.openDecisions > 0
-                            ? "Awaiting client"
-                            : p.onTrack
-                              ? "On track"
-                              : "Watch";
-                return (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => onOpen(p.id)}
-                      aria-label={`Open ${p.title} for ${p.clientLabel || "client"}`}
-                      className="w-full space-y-3 p-4 text-left transition-colors hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-maroon"
-                    >
-                      <span className="flex items-start justify-between gap-3">
-                        <span className="min-w-0">
-                            <span className="block text-[13px] font-medium text-maroon">
+              <ul className="divide-y divide-ink/8 lg:hidden">
+                {pageProjects.map((p) => {
+                  const status =
+                    p.lifecycleState === "closed"
+                      ? "Closed"
+                      : p.lifecycleState === "archived"
+                        ? "Archived"
+                        : p.buildComplete
+                          ? "Build complete"
+                          : p.blockedStages > 0
+                            ? "Blocked"
+                            : p.openDecisions > 0
+                              ? "Awaiting client"
+                              : p.onTrack
+                                ? "On track"
+                                : "Watch";
+                  return (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => onOpen(p.id)}
+                        aria-label={`Open ${p.title} for ${p.clientLabel || "client"}`}
+                        className="w-full space-y-2.5 p-3 text-left transition-colors hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-maroon sm:p-4"
+                      >
+                        <span className="flex items-start justify-between gap-3">
+                          <span className="min-w-0">
+                            <span className="block truncate text-[13px] font-medium text-maroon">
                               {p.title}
                             </span>
-                          <span className="font-mono text-[11px] text-muted">{p.reference}</span>
-                          <span className="mt-1 block text-[12px] text-ink/65">
-                            {p.clientLabel || "Client not named"}
-                            {p.clientCity ? ` · ${p.clientCity}` : ""}
+                            <span className="mt-0.5 block truncate text-[12px] text-ink/65">
+                              {p.clientLabel || "Client not named"}
+                              {p.clientCity ? ` · ${p.clientCity}` : ""}
+                            </span>
                           </span>
+                          <Badge
+                            tone={
+                              p.lifecycleState === "closed" || p.lifecycleState === "archived"
+                                ? "maroon"
+                                : "gold"
+                            }
+                            className="h-5 shrink-0 px-2 text-[9px] tracking-[0.08em]"
+                          >
+                            {portfolioLifecycleLabel(p.lifecycleState, p.buildComplete)}
+                          </Badge>
                         </span>
-                        <Badge
-                          tone={
-                            p.lifecycleState === "closed" || p.lifecycleState === "archived"
-                              ? "maroon"
-                              : "gold"
-                          }
-                        >
-                          {portfolioLifecycleLabel(p.lifecycleState, p.buildComplete)}
-                        </Badge>
-                      </span>
-                      <span className="flex items-center justify-between gap-3 text-[11px] text-ink/60">
-                        <span className="truncate">{p.stage || "Stage not set"}</span>
-                        <span className="shrink-0">{p.progress}% complete</span>
-                      </span>
-                      <span className="block h-1.5 overflow-hidden rounded-full bg-ink/10">
-                        <span
-                          className="block h-full bg-gradient-to-r from-gold to-gold-light"
-                          style={{ width: `${p.progress}%` }}
-                        />
-                      </span>
-                      <span className="flex items-center justify-between gap-3">
-                        <span
-                          className={cn(
-                            "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
-                            p.blockedStages > 0
-                              ? "border-red-200 bg-red-50 text-red-800"
-                              : p.openDecisions > 0
-                                ? "border-amber-300 bg-amber-50 text-amber-900"
-                                : p.onTrack
-                                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                                  : "border-stone-300 bg-stone/100 text-stone-700",
-                          )}
-                        >
-                          {status}
-                        </span>
-                        <span className="text-right text-[11px] text-ink/60">
-                          {kes(p.paidToDate)} paid
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[900px] border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
-                    <th scope="col" className="px-5 py-3 font-bold">
-                      Project
-                    </th>
-                    <th scope="col" className="px-3 py-3 font-bold">
-                      Client
-                    </th>
-                    <th scope="col" className="px-3 py-3 font-bold">
-                      Stage
-                    </th>
-                    <th scope="col" className="px-3 py-3 font-bold">
-                      Lifecycle
-                    </th>
-                    <th scope="col" className="px-3 py-3 font-bold">
-                      Progress
-                    </th>
-                    <th scope="col" className="px-3 py-3 font-bold">
-                      Paid
-                    </th>
-                    <th scope="col" className="px-5 py-3 font-bold">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageProjects.map((p) => (
-                    <tr
-                      key={p.id}
-                      onClick={() => onOpen(p.id)}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          onOpen(p.id);
-                        }
-                      }}
-                      className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
-                    >
-                      <td className="px-5 py-3">
-                          <span className="block text-[13px] font-medium text-maroon">
-                            {p.title}
+                        <span className="flex items-center justify-between gap-2 text-[11px] text-ink/60">
+                          <span className="min-w-0 truncate font-mono text-[10px] text-muted">
+                            {p.reference}
+                            {p.clientType === "diaspora" ? " · Abroad" : ""}
+                            {p.source === "sample" ? " · Sample" : ""}
                           </span>
-                        <span className="font-mono text-[11px] text-muted">{p.reference}</span>
-                      </td>
-                      <td className="px-3 py-3 text-[13px] text-ink/70">
-                        {p.clientLabel || "—"}
-                        {p.clientType === "diaspora" ? (
-                          <span className="mt-1 block">
-                            <Badge tone="gold" className="h-4 text-[8px]">
-                              From abroad
-                            </Badge>
-                          </span>
-                        ) : null}
-                        {p.clientCity ? (
-                          <span className="block text-[11px] text-muted">{p.clientCity}</span>
-                        ) : null}
-                      </td>
-                      <td className="px-3 py-3 text-[13px] text-ink/70">{p.stage || "—"}</td>
-                      <td className="px-3 py-3">
-                        <Badge
-                          tone={
-                            p.lifecycleState === "closed" || p.lifecycleState === "archived"
-                              ? "maroon"
-                              : "gold"
-                          }
-                          className="h-6 tracking-[0.08em]"
-                        >
-                          {portfolioLifecycleLabel(p.lifecycleState, p.buildComplete)}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className="flex items-center gap-2">
-                          <span className="h-1.5 w-16 overflow-hidden rounded-full bg-ink/10">
-                            <span
-                              className="block h-full bg-gradient-to-r from-gold to-gold-light"
-                              style={{ width: `${p.progress}%` }}
-                            />
-                          </span>
-                          <span className="text-[12px] text-ink/60">{p.progress}%</span>
+                          <span className="shrink-0">{p.stage || "Stage not set"}</span>
                         </span>
-                      </td>
-                      <td className="px-3 py-3 text-[13px] text-ink/70">
-                        {kes(p.paidToDate)}
-                        <span className="block whitespace-nowrap text-[11px] text-muted">
-                          of {kes(p.contractValue)}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3">
-                        <span
-                          className={cn(
-                            "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
-                            p.progress >= 100
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                              : p.blockedStages > 0
+                        <span className="flex items-center justify-between gap-3">
+                          <span
+                            className={cn(
+                              "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                              p.blockedStages > 0
                                 ? "border-red-200 bg-red-50 text-red-800"
                                 : p.openDecisions > 0
                                   ? "border-amber-300 bg-amber-50 text-amber-900"
                                   : p.onTrack
                                     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                                     : "border-stone-300 bg-stone/100 text-stone-700",
-                          )}
-                        >
-                          {p.lifecycleState === "closed"
-                            ? "Closed"
-                            : p.lifecycleState === "archived"
-                              ? "Archived"
-                              : p.buildComplete
-                                ? "Build complete"
-                                : p.blockedStages > 0
-                                  ? "Blocked"
-                                  : p.openDecisions > 0
-                                    ? "Awaiting client"
-                                    : p.onTrack
-                                      ? "On track"
-                                      : "Watch"}
+                            )}
+                          >
+                            {status}
+                          </span>
+                          <span className="text-right text-[10px] text-ink/60">
+                            {p.progress}% · {kes(p.paidToDate)} paid
+                          </span>
                         </span>
-                      </td>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full min-w-[900px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                      <th scope="col" className="px-5 py-3 font-bold">
+                        Project
+                      </th>
+                      <th scope="col" className="px-3 py-3 font-bold">
+                        Client
+                      </th>
+                      <th scope="col" className="px-3 py-3 font-bold">
+                        Stage
+                      </th>
+                      <th scope="col" className="px-3 py-3 font-bold">
+                        Lifecycle
+                      </th>
+                      <th scope="col" className="px-3 py-3 font-bold">
+                        Progress
+                      </th>
+                      <th scope="col" className="px-3 py-3 font-bold">
+                        Paid
+                      </th>
+                      <th scope="col" className="px-5 py-3 font-bold">
+                        Status
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {pageProjects.map((p) => (
+                      <tr
+                        key={p.id}
+                        onClick={() => onOpen(p.id)}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onOpen(p.id);
+                          }
+                        }}
+                        className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
+                      >
+                        <td className="px-5 py-3">
+                          <span className="block text-[13px] font-medium text-maroon">
+                            {p.title}
+                          </span>
+                          <span className="font-mono text-[11px] text-muted">{p.reference}</span>
+                        </td>
+                        <td className="px-3 py-3 text-[13px] text-ink/70">
+                          {p.clientLabel || "—"}
+                          {p.clientType === "diaspora" ? (
+                            <span className="mt-1 block">
+                              <Badge tone="gold" className="h-4 text-[8px]">
+                                From abroad
+                              </Badge>
+                            </span>
+                          ) : null}
+                          {p.clientCity ? (
+                            <span className="block text-[11px] text-muted">{p.clientCity}</span>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-3 text-[13px] text-ink/70">{p.stage || "—"}</td>
+                        <td className="px-3 py-3">
+                          <Badge
+                            tone={
+                              p.lifecycleState === "closed" || p.lifecycleState === "archived"
+                                ? "maroon"
+                                : "gold"
+                            }
+                            className="h-6 tracking-[0.08em]"
+                          >
+                            {portfolioLifecycleLabel(p.lifecycleState, p.buildComplete)}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className="flex items-center gap-2">
+                            <span className="h-1.5 w-16 overflow-hidden rounded-full bg-ink/10">
+                              <span
+                                className="block h-full bg-gradient-to-r from-gold to-gold-light"
+                                style={{ width: `${p.progress}%` }}
+                              />
+                            </span>
+                            <span className="text-[12px] text-ink/60">{p.progress}%</span>
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-[13px] text-ink/70">
+                          {kes(p.paidToDate)}
+                          <span className="block whitespace-nowrap text-[11px] text-muted">
+                            of {kes(p.contractValue)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
+                              p.progress >= 100
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                : p.blockedStages > 0
+                                  ? "border-red-200 bg-red-50 text-red-800"
+                                  : p.openDecisions > 0
+                                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                                    : p.onTrack
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                      : "border-stone-300 bg-stone/100 text-stone-700",
+                            )}
+                          >
+                            {p.lifecycleState === "closed"
+                              ? "Closed"
+                              : p.lifecycleState === "archived"
+                                ? "Archived"
+                                : p.buildComplete
+                                  ? "Build complete"
+                                  : p.blockedStages > 0
+                                    ? "Blocked"
+                                    : p.openDecisions > 0
+                                      ? "Awaiting client"
+                                      : p.onTrack
+                                        ? "On track"
+                                        : "Watch"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
           {sorted.length > 0 ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 px-5 py-3">
-              <p className="text-[11px] text-muted" aria-live="polite">
-                Showing {firstVisible}–{lastVisible} of {sorted.length}{" "}
-                {portfolioView === "active"
+            <ProjectPagination
+              first={firstVisible}
+              last={lastVisible}
+              total={sorted.length}
+              currentPage={currentPage}
+              pageCount={pageCount}
+              onPageChange={setPageIndex}
+              label={
+                portfolioView === "active"
                   ? "active"
                   : portfolioView === "completed"
                     ? "build-complete"
@@ -2197,35 +2573,9 @@ function ProjectsTable({
                         ? "archived"
                         : portfolioView === "sample"
                           ? "sample"
-                          : "live"}{" "}
-                projects
-              </p>
-              {pageCount > 1 ? (
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setPageIndex(currentPage - 1)}
-                    disabled={currentPage === 0}
-                    aria-label="Previous project page"
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-[11px] text-muted" aria-current="page">
-                    Page {currentPage + 1} of {pageCount}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setPageIndex(currentPage + 1)}
-                    disabled={currentPage >= pageCount - 1}
-                    aria-label="Next project page"
-                  >
-                    Next
-                  </Button>
-                </div>
-              ) : null}
-            </div>
+                          : "live"
+              }
+            />
           ) : null}
         </>
       )}
@@ -2240,8 +2590,10 @@ function StaffProjectsDirectory({
   projects: StaffProjectSummary[];
   onOpen: (id: string) => void;
 }) {
+  const pageSize = 10;
   const [search, setSearch] = useState("");
   const [followUpFilter, setFollowUpFilter] = useState<"all" | "needed">("all");
+  const [pageIndex, setPageIndex] = useState(0);
   const query = search.trim().toLowerCase();
   const visibleProjects = projects.filter((project) => {
     if (
@@ -2261,6 +2613,11 @@ function StaffProjectsDirectory({
         .includes(query)
     );
   });
+  const pageCount = Math.ceil(visibleProjects.length / pageSize);
+  const currentPage = Math.min(pageIndex, Math.max(0, pageCount - 1));
+  const pageProjects = visibleProjects.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+  const firstVisible = visibleProjects.length === 0 ? 0 : currentPage * pageSize + 1;
+  const lastVisible = Math.min((currentPage + 1) * pageSize, visibleProjects.length);
 
   return (
     <Panel
@@ -2278,7 +2635,10 @@ function StaffProjectsDirectory({
           />
           <input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPageIndex(0);
+            }}
             placeholder="Project, client, reference, or stage"
             className="h-10 w-full rounded-xl border border-line bg-paper pl-10 pr-3 text-sm outline-none focus:border-burgundy"
           />
@@ -2287,7 +2647,10 @@ function StaffProjectsDirectory({
           <span>Follow-up</span>
           <select
             value={followUpFilter}
-            onChange={(event) => setFollowUpFilter(event.target.value as typeof followUpFilter)}
+            onChange={(event) => {
+              setFollowUpFilter(event.target.value as typeof followUpFilter);
+              setPageIndex(0);
+            }}
             className="h-10 rounded-lg border border-ink/10 bg-white px-2.5 text-[12px] text-maroon outline-none focus:border-gold"
           >
             <option value="all">All projects</option>
@@ -2323,6 +2686,7 @@ function StaffProjectsDirectory({
               onClick={() => {
                 setSearch("");
                 setFollowUpFilter("all");
+                setPageIndex(0);
               }}
             >
               Show all projects
@@ -2331,221 +2695,292 @@ function StaffProjectsDirectory({
         </div>
       ) : (
         <>
-        <ul className="divide-y divide-ink/8 lg:hidden">
-          {visibleProjects.map((project) => {
-            const followUpLabel =
-              project.blockedStages > 0
-                ? "Blocked"
-                : project.openDecisions > 0
-                  ? "Awaiting client"
-                  : !project.onTrack
-                    ? "Needs review"
-                    : project.buildComplete
-                      ? "Build complete"
-                      : "No open issue";
-            const programme =
-              project.daysRemaining > 0
-                ? `${project.daysRemaining} days remaining`
-                : project.daysRemaining < 0
-                  ? `${Math.abs(project.daysRemaining)} days past target`
-                  : project.onTrack
-                    ? "No target-date detail"
-                    : "Programme needs review";
-            return (
-              <li key={project.id}>
-                <button
-                  type="button"
-                  onClick={() => onOpen(project.id)}
-                  aria-label={`Open ${project.title} for ${project.clientLabel || "client"}`}
-                  className="w-full space-y-3 p-4 text-left transition-colors hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-maroon"
-                >
-                  <span className="flex items-start justify-between gap-3">
-                    <span className="min-w-0">
-                      <span className="block text-[13px] font-medium text-maroon">
-                        {project.title}
-                      </span>
-                        <span className="font-mono text-[11px] text-muted">
-                          {project.reference}
+          <ul className="divide-y divide-ink/8 lg:hidden">
+            {pageProjects.map((project) => {
+              const followUpLabel =
+                project.blockedStages > 0
+                  ? "Blocked"
+                  : project.openDecisions > 0
+                    ? "Awaiting client"
+                    : !project.onTrack
+                      ? "Needs review"
+                      : project.buildComplete
+                        ? "Build complete"
+                        : "No open issue";
+              const programme =
+                project.daysRemaining > 0
+                  ? `${project.daysRemaining} days remaining`
+                  : project.daysRemaining < 0
+                    ? `${Math.abs(project.daysRemaining)} days past target`
+                    : project.onTrack
+                      ? "No target-date detail"
+                      : "Programme needs review";
+              return (
+                <li key={project.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(project.id)}
+                    aria-label={`Open ${project.title} for ${project.clientLabel || "client"}`}
+                    className="w-full space-y-2 p-3 text-left transition-colors hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-maroon sm:p-4"
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className="block truncate text-[13px] font-medium text-maroon">
+                          {project.title}
                         </span>
-                      <span className="mt-1 block text-[12px] text-ink/65">
-                        {project.clientLabel || "Client not named"}
-                        {project.clientCity ? ` · ${project.clientCity}` : ""}
+                        <span className="mt-0.5 block truncate text-[12px] text-ink/65">
+                          {project.clientLabel || "Client not named"}
+                          {project.clientCity ? ` · ${project.clientCity}` : ""}
+                        </span>
                       </span>
-                    </span>
-                    <Badge
-                      tone={
+                      <Badge
+                        tone={
                           project.lifecycleState === "closed" ||
                           project.lifecycleState === "archived"
-                          ? "maroon"
-                          : "gold"
-                      }
-                    >
-                      {portfolioLifecycleLabel(project.lifecycleState, project.buildComplete)}
-                    </Badge>
-                  </span>
-                  {project.source === "sample" ? <Badge tone="gold">Sample</Badge> : null}
-                    {project.clientType === "diaspora" ? (
-                      <Badge tone="gold">From abroad</Badge>
-                    ) : null}
-                  <span className="flex items-center justify-between gap-3 text-[11px] text-ink/60">
-                    <span className="truncate">{project.stage || "Stage not set"}</span>
-                    <span className="shrink-0">{programme}</span>
-                  </span>
-                  <span
-                    className={cn(
-                      "inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold",
-                      project.blockedStages > 0
-                        ? "border-red-200 bg-red-50 text-red-800"
-                        : project.openDecisions > 0
-                          ? "border-amber-300 bg-amber-50 text-amber-900"
-                          : !project.onTrack
-                            ? "border-stone-300 bg-stone/100 text-stone-700"
-                            : project.buildComplete
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                              : "border-ink/10 bg-ink/2 text-ink/60",
-                    )}
-                  >
-                    {followUpLabel}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="hidden overflow-x-auto lg:block">
-          <table className="w-full min-w-[760px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
-                <th scope="col" className="px-5 py-3 font-bold">
-                  Project
-                </th>
-                <th scope="col" className="px-3 py-3 font-bold">
-                  Client
-                </th>
-                <th scope="col" className="px-3 py-3 font-bold">
-                  Current stage
-                </th>
-                <th scope="col" className="px-3 py-3 font-bold">
-                  Lifecycle
-                </th>
-                <th scope="col" className="px-3 py-3 font-bold">
-                  Programme
-                </th>
-                <th scope="col" className="px-5 py-3 font-bold">
-                  Follow-up
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleProjects.map((project) => {
-                const followUp =
-                  project.blockedStages > 0
-                    ? { label: "Blocked", cls: "border-red-200 bg-red-50 text-red-800" }
-                    : project.openDecisions > 0
-                      ? {
-                          label: "Awaiting client",
-                          cls: "border-amber-300 bg-amber-50 text-amber-900",
+                            ? "maroon"
+                            : "gold"
                         }
-                      : !project.onTrack
-                        ? {
-                            label: "Needs review",
-                            cls: "border-stone-300 bg-stone/100 text-stone-700",
-                          }
-                        : project.buildComplete
-                          ? {
-                              label: "Build complete",
-                              cls: "border-emerald-200 bg-emerald-50 text-emerald-800",
-                            }
-                          : { label: "No open issue", cls: "border-ink/10 bg-ink/2 text-ink/60" };
-                const lifecycleTone =
-                  project.lifecycleState === "closed" || project.lifecycleState === "archived"
-                    ? "maroon"
-                    : "gold";
-                const programme =
-                  project.daysRemaining > 0
-                    ? `${project.daysRemaining} days remaining`
-                    : project.daysRemaining < 0
-                      ? `${Math.abs(project.daysRemaining)} days past recorded target`
-                      : project.onTrack
-                        ? "No target-date detail"
-                        : "Programme needs review";
-
-                return (
-                  <tr
-                    key={project.id}
-                    onClick={() => onOpen(project.id)}
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onOpen(project.id);
-                      }
-                    }}
-                    className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
-                  >
-                    <td className="px-5 py-3">
-                      <span className="block text-[13px] font-medium text-maroon">
-                        {project.title}
+                        className="h-5 shrink-0 px-2 text-[9px] tracking-[0.08em]"
+                      >
+                        {portfolioLifecycleLabel(project.lifecycleState, project.buildComplete)}
+                      </Badge>
+                    </span>
+                    <span className="flex items-center justify-between gap-2 text-[11px] text-ink/60">
+                      <span className="min-w-0 truncate font-mono text-[10px] text-muted">
+                        {project.reference}
+                        {project.clientType === "diaspora" ? " · Abroad" : ""}
+                        {project.source === "sample" ? " · Sample" : ""}
                       </span>
+                      <span className="shrink-0">{project.progress}%</span>
+                    </span>
+                    <span className="flex items-center justify-between gap-2 text-[11px]">
+                      <span className="min-w-0 truncate text-ink/60">
+                        {project.stage || "Stage not set"}
+                      </span>
+                      <span className="shrink-0 text-ink/50">{programme}</span>
+                    </span>
+                    <span className="flex items-center justify-between gap-2">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                          project.blockedStages > 0
+                            ? "border-red-200 bg-red-50 text-red-800"
+                            : project.openDecisions > 0
+                              ? "border-amber-300 bg-amber-50 text-amber-900"
+                              : !project.onTrack
+                                ? "border-stone-300 bg-stone/100 text-stone-700"
+                                : project.buildComplete
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                  : "border-ink/10 bg-ink/2 text-ink/60",
+                        )}
+                      >
+                        {followUpLabel}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="w-full min-w-[760px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-ink/8 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                  <th scope="col" className="px-5 py-3 font-bold">
+                    Project
+                  </th>
+                  <th scope="col" className="px-3 py-3 font-bold">
+                    Client
+                  </th>
+                  <th scope="col" className="px-3 py-3 font-bold">
+                    Current stage
+                  </th>
+                  <th scope="col" className="px-3 py-3 font-bold">
+                    Lifecycle
+                  </th>
+                  <th scope="col" className="px-3 py-3 font-bold">
+                    Programme
+                  </th>
+                  <th scope="col" className="px-5 py-3 font-bold">
+                    Follow-up
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageProjects.map((project) => {
+                  const followUp =
+                    project.blockedStages > 0
+                      ? { label: "Blocked", cls: "border-red-200 bg-red-50 text-red-800" }
+                      : project.openDecisions > 0
+                        ? {
+                            label: "Awaiting client",
+                            cls: "border-amber-300 bg-amber-50 text-amber-900",
+                          }
+                        : !project.onTrack
+                          ? {
+                              label: "Needs review",
+                              cls: "border-stone-300 bg-stone/100 text-stone-700",
+                            }
+                          : project.buildComplete
+                            ? {
+                                label: "Build complete",
+                                cls: "border-emerald-200 bg-emerald-50 text-emerald-800",
+                              }
+                            : { label: "No open issue", cls: "border-ink/10 bg-ink/2 text-ink/60" };
+                  const lifecycleTone =
+                    project.lifecycleState === "closed" || project.lifecycleState === "archived"
+                      ? "maroon"
+                      : "gold";
+                  const programme =
+                    project.daysRemaining > 0
+                      ? `${project.daysRemaining} days remaining`
+                      : project.daysRemaining < 0
+                        ? `${Math.abs(project.daysRemaining)} days past recorded target`
+                        : project.onTrack
+                          ? "No target-date detail"
+                          : "Programme needs review";
+
+                  return (
+                    <tr
+                      key={project.id}
+                      onClick={() => onOpen(project.id)}
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          onOpen(project.id);
+                        }
+                      }}
+                      className="cursor-pointer border-b border-ink/6 transition-colors last:border-0 hover:bg-cream focus:bg-cream focus:outline-none"
+                    >
+                      <td className="px-5 py-3">
+                        <span className="block text-[13px] font-medium text-maroon">
+                          {project.title}
+                        </span>
                         <span className="font-mono text-[11px] text-muted">
                           {project.reference}
                         </span>
-                      {project.source === "sample" ? (
-                        <span className="mt-1 block">
-                          <Badge tone="gold" className="h-4 text-[8px]">
-                            Sample
-                          </Badge>
+                        {project.source === "sample" ? (
+                          <span className="mt-1 block">
+                            <Badge tone="gold" className="h-4 text-[8px]">
+                              Sample
+                            </Badge>
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3 text-[13px] text-ink/70">
+                        {project.clientLabel || "Client not named"}
+                        {project.clientType === "diaspora" ? (
+                          <span className="mt-1 block">
+                            <Badge tone="gold" className="h-4 text-[8px]">
+                              From abroad
+                            </Badge>
+                          </span>
+                        ) : null}
+                        {project.clientCity ? (
+                          <span className="block text-[11px] text-muted">{project.clientCity}</span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3 text-[13px] text-ink/70">
+                        {project.stage || "Not set"}
+                      </td>
+                      <td className="px-3 py-3">
+                        <Badge tone={lifecycleTone}>
+                          {portfolioLifecycleLabel(project.lifecycleState, project.buildComplete)}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-3 text-[12px] text-ink/65">{programme}</td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold",
+                            followUp.cls,
+                          )}
+                        >
+                          {followUp.label}
                         </span>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-3 text-[13px] text-ink/70">
-                      {project.clientLabel || "Client not named"}
-                      {project.clientType === "diaspora" ? (
-                        <span className="mt-1 block">
-                          <Badge tone="gold" className="h-4 text-[8px]">
-                            From abroad
-                          </Badge>
-                        </span>
-                      ) : null}
-                      {project.clientCity ? (
-                        <span className="block text-[11px] text-muted">{project.clientCity}</span>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-3 text-[13px] text-ink/70">
-                      {project.stage || "Not set"}
-                    </td>
-                    <td className="px-3 py-3">
-                      <Badge tone={lifecycleTone}>
-                        {portfolioLifecycleLabel(project.lifecycleState, project.buildComplete)}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-3 text-[12px] text-ink/65">{programme}</td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold",
-                          followUp.cls,
-                        )}
-                      >
-                        {followUp.label}
-                      </span>
-                      {project.blockedStages > 1 || project.openDecisions > 1 ? (
-                        <span className="mt-1 block text-[10px] text-muted">
-                          {project.blockedStages > 0
-                            ? `${project.blockedStages} blocked stage${project.blockedStages === 1 ? "" : "s"}`
-                            : `${project.openDecisions} open decisions`}
-                        </span>
-                      ) : null}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        {project.blockedStages > 1 || project.openDecisions > 1 ? (
+                          <span className="mt-1 block text-[10px] text-muted">
+                            {project.blockedStages > 0
+                              ? `${project.blockedStages} blocked stage${project.blockedStages === 1 ? "" : "s"}`
+                              : `${project.openDecisions} open decisions`}
+                          </span>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <ProjectPagination
+            first={firstVisible}
+            last={lastVisible}
+            total={visibleProjects.length}
+            currentPage={currentPage}
+            pageCount={pageCount}
+            onPageChange={setPageIndex}
+            label="matching"
+          />
         </>
       )}
     </Panel>
+  );
+}
+
+function ProjectPagination({
+  first,
+  last,
+  total,
+  currentPage,
+  pageCount,
+  onPageChange,
+  label,
+}: {
+  first: number;
+  last: number;
+  total: number;
+  currentPage: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
+  label: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-between gap-2 border-t border-ink/8 px-4 py-3 sm:flex-row sm:px-5">
+      <p className="text-[11px] text-muted" aria-live="polite">
+        Showing {first}–{last} of {total} {label} projects
+      </p>
+      {pageCount > 1 ? (
+        <nav
+          className="flex w-full items-center justify-between gap-2 sm:w-auto"
+          aria-label="Project pages"
+        >
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 0}
+            aria-label="Previous project page"
+          >
+            Previous
+          </Button>
+          <span className="text-[11px] text-muted" aria-current="page">
+            Page {currentPage + 1} of {pageCount}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= pageCount - 1}
+            aria-label="Next project page"
+          >
+            Next
+          </Button>
+        </nav>
+      ) : null}
+    </div>
   );
 }
 
@@ -3319,93 +3754,93 @@ function IssuedDocuments({
       </div>
       {data?.length ? (
         <ul className="mt-4 space-y-2">
-        {data.map((doc) => (
-          <li
-            key={doc.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-cream p-4"
-          >
-            <span className="min-w-0">
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="text-[13px] text-maroon">{KIND_LABEL[doc.kind]}</span>
-                <span className="font-mono text-[11px] text-muted">{doc.number}</span>
-                {doc.status === "void" ? (
-                  <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-red-800">
-                    Void
-                  </span>
+          {data.map((doc) => (
+            <li
+              key={doc.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-cream p-4"
+            >
+              <span className="min-w-0">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-[13px] text-maroon">{KIND_LABEL[doc.kind]}</span>
+                  <span className="font-mono text-[11px] text-muted">{doc.number}</span>
+                  {doc.status === "void" ? (
+                    <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-red-800">
+                      Void
+                    </span>
+                  ) : null}
+                </span>
+                {doc.voidedReason ? (
+                  <span className="mt-1 block text-[11px] text-ink/50">{doc.voidedReason}</span>
                 ) : null}
               </span>
-              {doc.voidedReason ? (
-                <span className="mt-1 block text-[11px] text-ink/50">{doc.voidedReason}</span>
-              ) : null}
-            </span>
-            <span className="flex items-center gap-3">
-              <span className="text-[13px] text-maroon">{kes(doc.total)}</span>
-              <a
-                href={`/admin/document/${doc.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[12px] text-burgundy underline"
-              >
-                Open
-              </a>
-              {doc.status === "issued" && isAdmin && voiding !== doc.id ? (
-                <Button size="sm" variant="ghost" onClick={() => setVoiding(doc.id)}>
-                  Void
-                </Button>
-              ) : null}
-            </span>
-            {doc.status === "issued" && isAdmin && voiding === doc.id ? (
-              <span className="flex w-full flex-wrap items-center gap-2">
-                <label className="sr-only" htmlFor={`void-${doc.id}`}>
-                  Why is {doc.number} being voided?
-                </label>
-                <Input
-                  id={`void-${doc.id}`}
-                  value={voidReason}
-                  onChange={(e) => setVoidReason(e.target.value)}
-                  placeholder="Why is this being voided? (required)"
-                  className="h-9 w-72 text-[12px]"
-                  autoFocus
-                />
-                <Button
-                  size="sm"
-                  disabled={voidReason.trim().length < 3}
-                  onClick={() => {
-                    void voidDocument({
-                      data: { id: doc.id, reason: voidReason.trim() },
-                    })
-                      .then(() => {
-                        toast.success(`${doc.number} voided. Issue a corrected one.`);
-                        void queryClient.invalidateQueries({
-                          queryKey: ["project-documents", projectId],
-                        });
-                        onChanged();
-                      })
-                      .catch((e: unknown) =>
-                        toast.error(e instanceof Error ? e.message : "Could not void."),
-                      )
-                      .finally(() => {
-                        setVoiding(null);
-                        setVoidReason("");
-                      });
-                  }}
+              <span className="flex items-center gap-3">
+                <span className="text-[13px] text-maroon">{kes(doc.total)}</span>
+                <a
+                  href={`/admin/document/${doc.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[12px] text-burgundy underline"
                 >
-                  Confirm void
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setVoiding(null);
-                    setVoidReason("");
-                  }}
-                >
-                  Cancel
-                </Button>
+                  Open
+                </a>
+                {doc.status === "issued" && isAdmin && voiding !== doc.id ? (
+                  <Button size="sm" variant="ghost" onClick={() => setVoiding(doc.id)}>
+                    Void
+                  </Button>
+                ) : null}
               </span>
-            ) : null}
-          </li>
-        ))}
+              {doc.status === "issued" && isAdmin && voiding === doc.id ? (
+                <span className="flex w-full flex-wrap items-center gap-2">
+                  <label className="sr-only" htmlFor={`void-${doc.id}`}>
+                    Why is {doc.number} being voided?
+                  </label>
+                  <Input
+                    id={`void-${doc.id}`}
+                    value={voidReason}
+                    onChange={(e) => setVoidReason(e.target.value)}
+                    placeholder="Why is this being voided? (required)"
+                    className="h-9 w-72 text-[12px]"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    disabled={voidReason.trim().length < 3}
+                    onClick={() => {
+                      void voidDocument({
+                        data: { id: doc.id, reason: voidReason.trim() },
+                      })
+                        .then(() => {
+                          toast.success(`${doc.number} voided. Issue a corrected one.`);
+                          void queryClient.invalidateQueries({
+                            queryKey: ["project-documents", projectId],
+                          });
+                          onChanged();
+                        })
+                        .catch((e: unknown) =>
+                          toast.error(e instanceof Error ? e.message : "Could not void."),
+                        )
+                        .finally(() => {
+                          setVoiding(null);
+                          setVoidReason("");
+                        });
+                    }}
+                  >
+                    Confirm void
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setVoiding(null);
+                      setVoidReason("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </span>
+              ) : null}
+            </li>
+          ))}
         </ul>
       ) : (
         <p className="mt-3 text-sm text-ink/55">No quotations, certificates or receipts yet.</p>
@@ -4189,11 +4624,13 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
   const openProject = (id: string) => {
     setSelected(id);
     setTab("projects");
+    window.scrollTo({ top: 0, behavior: "auto" });
   };
   const openCommunication = (id: string) => {
     setSelectedCommunicationProjectId(id);
     setSelected(null);
     setTab("communications");
+    window.scrollTo({ top: 0, behavior: "auto" });
   };
 
   const shellGroups = isOwner
@@ -4269,45 +4706,45 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
       ];
   const mobileItems = (
     isOwner
-    ? [
-        { id: "work", label: "Priorities", icon: ClipboardList },
-        { id: "overview", label: "Portfolio", icon: LayoutDashboard },
-        { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
-        { id: "payments", label: "Payments", icon: Banknote },
+      ? [
+          { id: "work", label: "Priorities", icon: ClipboardList },
+          { id: "overview", label: "Portfolio", icon: LayoutDashboard },
+          { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
+          { id: "payments", label: "Payments", icon: Banknote },
           {
             id: "enquiries",
             label: "Leads",
             icon: Inbox,
             badge: overview?.funnel.enquiriesNew || undefined,
           },
-        { id: "funds", label: "Funds", icon: Banknote },
-      ]
-    : [
-        { id: "overview", label: "Today", icon: LayoutDashboard },
-        { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
-        { id: "payments", label: "Payments", icon: Banknote },
-        ...(canViewCalendar ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }] : []),
-        {
-          id: "communications",
-          label: "Updates",
-          icon: MessageSquare,
-          badge:
+          { id: "funds", label: "Funds", icon: Banknote },
+        ]
+      : [
+          { id: "overview", label: "Today", icon: LayoutDashboard },
+          { id: "projects", label: "Projects", icon: FolderKanban, badge: all.length || undefined },
+          { id: "payments", label: "Payments", icon: Banknote },
+          ...(canViewCalendar ? [{ id: "calendar", label: "Calendar", icon: CalendarClock }] : []),
+          {
+            id: "communications",
+            label: "Updates",
+            icon: MessageSquare,
+            badge:
               messageThreads?.filter((thread) => needsStudioReply(thread.latestAuthorRole))
                 .length || undefined,
-        },
-        {
-          id: "enquiries",
-          label: "Leads",
-          icon: Inbox,
-          badge: staffToday?.newEnquiries || undefined,
-        },
+          },
+          {
+            id: "enquiries",
+            label: "Leads",
+            icon: Inbox,
+            badge: staffToday?.newEnquiries || undefined,
+          },
         ]
   ).slice(0, 4);
 
   return (
     <DashboardShell
       groups={shellGroups}
-      mobileItems={mobileItems}
+      mobileItems={selected ? undefined : mobileItems}
       active={view}
       onSelect={(id) => {
         setTab(id as (typeof TABS)[number]["id"]);
@@ -4334,55 +4771,116 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
       onSearch={setSearch}
       searchPlaceholder="Search projects, clients, references"
       toolbar={
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="font-display text-lg leading-tight text-maroon">
-              {view === "overview"
-                ? isOwner
-                  ? "Admin dashboard"
-                  : "Staff dashboard"
-                : activeTab.title}
-            </h1>
-            <p className="text-[12px] text-muted">
-              {view === "overview" && isOwner
-                ? "Project performance, money, approvals and the actions that matter most"
-                : view === "overview"
-                  ? "Today’s delivery flow, client updates and the work the team is closing"
-                  : activeTab.body}
-            </p>
-          </div>
+        selected
+          ? undefined
+          : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 items-center gap-x-3 gap-y-2 sm:gap-y-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+                  <div className="col-span-2 row-start-1 min-w-0 text-center md:col-span-1 md:col-start-2">
+                    <h1 className="font-display text-lg leading-tight text-maroon">
+                      {view === "overview"
+                        ? isOwner
+                          ? "Admin dashboard"
+                          : "Staff dashboard"
+                        : activeTab.title}
+                    </h1>
+                    <p className="text-[12px] text-muted">
+                      {view === "overview" && isOwner
+                        ? "Project performance, money, approvals and the actions that matter most"
+                        : view === "overview"
+                          ? "Today’s delivery flow, client updates and the work the team is closing"
+                          : activeTab.body}
+                    </p>
+                  </div>
+                  <DashboardBackLink
+                    to="/"
+                    className="col-start-1 row-start-2 justify-self-start md:col-start-1 md:row-start-1"
+                  >
+                    Back to main site
+                  </DashboardBackLink>
+                </div>
 
-          {view === "projects" && !selected ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {(
-                [
-                  ["all", "All"],
-                  ["local", "At home"],
-                  ["diaspora", "From abroad"],
-                  ["attention", "Needs follow-up"],
-                  ["sample", "Sample"],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setFilter(id)}
-                  className={cn(
-                    "cursor-pointer rounded-full border px-3.5 py-1.5 text-[11px] uppercase tracking-[0.12em] transition-colors",
-                    filter === id
-                      ? "border-maroon bg-maroon text-paper"
-                      : "border-ink/12 text-ink/55 hover:border-burgundy hover:text-burgundy",
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-              <Button size="sm" variant="ghost" onClick={() => void refetch()} disabled={isLoading}>
-                Refresh
-              </Button>
-            </div>
-          ) : null}
-        </div>
+                {view === "projects" ? (
+                  <>
+                    <div className="flex items-center gap-2 md:hidden">
+                      <label className="flex min-w-0 flex-1 items-center gap-2 text-[12px] text-muted">
+                        <span className="shrink-0">Filter</span>
+                        <select
+                          aria-label="Filter projects"
+                          value={filter}
+                          onChange={(event) =>
+                            setFilter(
+                              event.target.value as
+                                | "all"
+                                | "local"
+                                | "diaspora"
+                                | "attention"
+                                | "sample",
+                            )
+                          }
+                          className="h-10 min-w-0 flex-1 rounded-xl border border-ink/12 bg-white px-3 text-[12px] font-medium text-maroon outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                        >
+                          <option value="all">All projects</option>
+                          <option value="local">At home</option>
+                          <option value="diaspora">From abroad</option>
+                          <option value="attention">Needs follow-up</option>
+                          <option value="sample">Sample projects</option>
+                        </select>
+                      </label>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-10 shrink-0 gap-1.5 px-3"
+                        onClick={() => void refetch()}
+                        disabled={isLoading}
+                        aria-label="Refresh projects"
+                      >
+                        <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} aria-hidden />
+                        <span>Refresh</span>
+                      </Button>
+                    </div>
+                    <div className="hidden items-center justify-between gap-3 md:flex">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" aria-label="Filter projects">
+                        {(
+                          [
+                            ["all", "All"],
+                            ["local", "At home"],
+                            ["diaspora", "From abroad"],
+                            ["attention", "Needs follow-up"],
+                            ["sample", "Sample"],
+                          ] as const
+                        ).map(([id, label]) => (
+                          <button
+                            key={id}
+                            type="button"
+                            aria-pressed={filter === id}
+                            onClick={() => setFilter(id)}
+                            className={cn(
+                              "min-h-9 rounded-full border px-3 text-[10px] font-medium uppercase tracking-[0.1em] transition-colors",
+                              filter === id
+                                ? "border-maroon bg-maroon text-paper"
+                                : "border-ink/12 text-ink/55 hover:border-burgundy hover:text-burgundy",
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="min-h-10 shrink-0 gap-1.5"
+                        onClick={() => void refetch()}
+                        disabled={isLoading}
+                      >
+                        <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} aria-hidden />
+                        Refresh
+                      </Button>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            )
       }
     >
       {view === "work" && isAdmin ? (
@@ -4417,9 +4915,7 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
       ) : null}
 
       {view === "profile" && isStaff ? <StaffProfilePanel /> : null}
-      {view === "payments" && isStaff ? (
-        <StudioPaymentsPanel onOpenProject={openProject} />
-      ) : null}
+      {view === "payments" && isStaff ? <StudioPaymentsPanel onOpenProject={openProject} /> : null}
       {view === "funds" && isAdmin ? (
         <ProjectExpensesPanel staffEmail={roleState?.email ?? ""} />
       ) : null}
@@ -4481,10 +4977,14 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
 
       {view === "projects" && selected ? (
         <ProjectDetail
+          key={selected}
           projectId={selected}
           clientType={all.find((x) => x.id === selected)?.clientType}
           isAdmin={isAdmin}
-          onBack={() => setSelected(null)}
+          onBack={() => {
+            setSelected(null);
+            window.scrollTo({ top: 0, behavior: "auto" });
+          }}
           onChanged={() => void refetch()}
           onOpenMessages={() => openCommunication(selected)}
         />

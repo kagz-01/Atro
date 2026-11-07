@@ -235,12 +235,12 @@ test("does not emit x:game:image without a public host or banner", () => {
   assert.doesNotMatch(noBanner, /x:game:image/);
 });
 
-test("site title Grok App is a real name, not a sentinel", () => {
+test("site title ATRO Design & Construction is preserved", () => {
   const out = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
-    site: { title: "Grok App" },
+    site: { title: "ATRO Design & Construction" },
   });
-  assert.match(out, /property="og:title" content="Grok App"/);
+  assert.match(out, /property="og:title" content="ATRO Design &amp; Construction"/);
 });
 
 test("published grok.me slug is still a title fallback", () => {
@@ -449,14 +449,14 @@ test("strips install params from the app link", () => {
 });
 
 test("names the install page from host slug", () => {
-  assert.equal(appNameFromHost("localhost:8080"), "Grok App");
-  assert.equal(appNameFromHost("172.17.154.217:8080"), "Grok App");
+  assert.equal(appNameFromHost("localhost:8080"), "ATRO Design & Construction");
+  assert.equal(appNameFromHost("172.17.154.217:8080"), "ATRO Design & Construction");
   assert.equal(appNameFromHost("wild-race.grok.me"), "Wild Race");
 });
 
 test("rejects hosts that are not plain slugs", () => {
-  assert.equal(appNameFromHost("<script>alert(1)</script>"), "Grok App");
-  assert.equal(appNameFromHost('"><img src=x onerror=1>.grok.me'), "Grok App");
+  assert.equal(appNameFromHost("<script>alert(1)</script>"), "ATRO Design & Construction");
+  assert.equal(appNameFromHost('"><img src=x onerror=1>.grok.me'), "ATRO Design & Construction");
 });
 
 test("renders install page markup", () => {
@@ -477,7 +477,11 @@ test("renders the manifest with the per-app name", () => {
   const manifest = JSON.parse(renderWebManifest("wild-race.grok.me"));
   assert.equal(manifest.name, "Wild Race");
   assert.equal(manifest.short_name, "Wild Race");
-  assert.equal(manifest.icons[0].src, "/__grok/icon-180.png");
+  assert.equal(manifest.icons[0].src, "/apple-touch-icon.png");
+  const atroManifest = JSON.parse(renderWebManifest("localhost:8080"));
+  assert.equal(atroManifest.name, "ATRO Design & Construction");
+  assert.equal(atroManifest.short_name, "ATRO");
+  assert.equal(atroManifest.icons[0].src, "/apple-touch-icon.png");
 });
 
 // Tripwires: the deployed-app path only works if Nitro scans server/ — an

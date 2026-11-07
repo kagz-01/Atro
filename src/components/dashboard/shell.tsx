@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  ArrowLeft,
   Bell,
   ChevronLeft,
   LogOut,
@@ -15,6 +16,29 @@ import {
 import { LogoMark } from "@/components/logo";
 import { RouteTransition } from "@/components/motion/route-transition";
 import { cn } from "@/lib/utils";
+
+export function DashboardBackLink({
+  to,
+  children,
+  className,
+}: {
+  to: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className={cn(
+        "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-ink/12 bg-white px-4 text-[11px] font-medium normal-case tracking-normal text-burgundy shadow-sm transition-colors hover:border-burgundy/40 hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold",
+        className,
+      )}
+    >
+      <ArrowLeft className="size-4" aria-hidden />
+      {children}
+    </Link>
+  );
+}
 
 /**
  * The dashboard frame: grouped sidebar navigation, a topbar, and the content
@@ -112,54 +136,54 @@ export function DashboardShell({
 
   return (
     <Dialog.Root open={drawer && !hideNav} onOpenChange={setDrawer}>
-    <div
-      className="dashboard-canvas min-h-dvh"
-      style={
-        {
-          "--dashboard-sidebar-width": rail ? "76px" : "clamp(200px, 17vw, 260px)",
-        } as CSSProperties
-      }
-    >
-      {/* Sidebar — wide screens only */}
-      <aside
-        className={cn(
-          "fixed left-0 top-0 z-30 hidden h-dvh flex-col border-r border-ink/10 bg-white transition-[width] duration-200 lg:flex",
-          hideNav && "!hidden",
-        )}
-        style={{ width: "var(--dashboard-sidebar-width)" }}
+      <div
+        className="dashboard-canvas min-h-dvh"
+        style={
+          {
+            "--dashboard-sidebar-width": rail ? "76px" : "clamp(200px, 17vw, 260px)",
+          } as CSSProperties
+        }
       >
-        <div
+        {/* Sidebar — wide screens only */}
+        <aside
           className={cn(
-            "flex h-16 shrink-0 items-center border-b border-ink/10",
-            rail ? "justify-center px-2" : "justify-between px-5",
+            "fixed left-0 top-0 z-30 hidden h-dvh flex-col border-r border-ink/10 bg-white transition-[width] duration-200 lg:flex",
+            hideNav && "!hidden",
           )}
+          style={{ width: "var(--dashboard-sidebar-width)" }}
         >
-          <Link to="/" aria-label="ATRO home" className="flex items-center">
-              <LogoMark alt="" className={cn("w-auto object-contain", rail ? "size-8" : "h-10")} />
-          </Link>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">{nav(rail)}</div>
-
-        <div className={cn("shrink-0 border-t border-ink/10", rail ? "p-2" : "p-3")}>
-          <button
-            type="button"
-            onClick={() => setRail((r) => !r)}
+          <div
             className={cn(
-              "flex items-center gap-3 rounded-xl text-[13px] text-muted transition-colors hover:bg-cream hover:text-maroon",
-              rail ? "mx-auto grid size-10 place-items-center" : "w-full px-3 py-2.5",
+              "flex h-16 shrink-0 items-center border-b border-ink/10",
+              rail ? "justify-center px-2" : "justify-between px-5",
             )}
-            aria-label={rail ? "Expand navigation" : "Collapse navigation"}
           >
-            <ChevronLeft
-              className={cn("size-4 shrink-0 transition-transform", rail && "rotate-180")}
-            />
-            {!rail ? <span>Collapse</span> : null}
-          </button>
-        </div>
-      </aside>
+            <Link to="/" aria-label="ATRO home" className="flex items-center">
+              <LogoMark alt="" className={cn("w-auto object-contain", rail ? "size-8" : "h-10")} />
+            </Link>
+          </div>
 
-      {/* Drawer — narrow screens */}
+          <div className="flex-1 overflow-y-auto">{nav(rail)}</div>
+
+          <div className={cn("shrink-0 border-t border-ink/10", rail ? "p-2" : "p-3")}>
+            <button
+              type="button"
+              onClick={() => setRail((r) => !r)}
+              className={cn(
+                "flex items-center gap-3 rounded-xl text-[13px] text-muted transition-colors hover:bg-cream hover:text-maroon",
+                rail ? "mx-auto grid size-10 place-items-center" : "w-full px-3 py-2.5",
+              )}
+              aria-label={rail ? "Expand navigation" : "Collapse navigation"}
+            >
+              <ChevronLeft
+                className={cn("size-4 shrink-0 transition-transform", rail && "rotate-180")}
+              />
+              {!rail ? <span>Collapse</span> : null}
+            </button>
+          </div>
+        </aside>
+
+        {/* Drawer — narrow screens */}
         <Dialog.Portal>
           <Dialog.Overlay className="motion-overlay fixed inset-0 z-40 bg-ink/50 backdrop-blur-[2px]" />
           <Dialog.Content
@@ -189,57 +213,57 @@ export function DashboardShell({
           </Dialog.Content>
         </Dialog.Portal>
 
-      {/* Content column */}
-      <div
-        className={cn(
-          "min-w-0 transition-[padding] duration-200",
-          !hideNav && "lg:pl-[var(--dashboard-sidebar-width)]",
-        )}
-      >
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-ink/10 bg-white/95 px-3 backdrop-blur sm:h-16 sm:gap-3 sm:px-6">
-          {!hideNav ? (
+        {/* Content column */}
+        <div
+          className={cn(
+            "min-w-0 transition-[padding] duration-200",
+            !hideNav && "lg:pl-[var(--dashboard-sidebar-width)]",
+          )}
+        >
+          <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-ink/10 bg-white/95 px-3 backdrop-blur sm:h-16 sm:gap-3 sm:px-6">
+            {!hideNav ? (
               <Dialog.Trigger asChild>
-            <button
-              type="button"
+                <button
+                  type="button"
                   onClick={(event) => {
                     drawerTriggerRef.current = event.currentTarget;
                   }}
                   className="grid size-12 shrink-0 place-items-center rounded-xl border border-ink/10 text-maroon transition-colors hover:bg-cream lg:hidden"
-              aria-label="Open navigation"
-            >
-              <Menu className="size-4" />
-            </button>
+                  aria-label="Open navigation"
+                >
+                  <Menu className="size-4" />
+                </button>
               </Dialog.Trigger>
-          ) : null}
+            ) : null}
 
-          {onSearch ? (
-            <label className="relative min-w-0 flex-1 sm:max-w-sm">
-              <span className="sr-only">{searchPlaceholder}</span>
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
-                aria-hidden
-              />
-              <input
-                value={search ?? ""}
-                onChange={(e) => onSearch(e.target.value)}
-                placeholder="Search"
-                title={searchPlaceholder}
+            {onSearch ? (
+              <label className="relative min-w-0 flex-1 sm:max-w-sm">
+                <span className="sr-only">{searchPlaceholder}</span>
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
+                  aria-hidden
+                />
+                <input
+                  value={search ?? ""}
+                  onChange={(e) => onSearch(e.target.value)}
+                  placeholder="Search"
+                  title={searchPlaceholder}
                   className="h-12 w-full rounded-xl border border-ink/10 bg-cream pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-gold"
-              />
-            </label>
-          ) : (
-            <div className="flex-1" />
-          )}
+                />
+              </label>
+            ) : (
+              <div className="flex-1" />
+            )}
 
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <AlertsBell alerts={alerts} open={openAlerts} onOpenChange={setOpenAlerts} />
-            {user ? <UserChip user={user} /> : null}
-          </div>
-        </header>
+            <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <AlertsBell alerts={alerts} open={openAlerts} onOpenChange={setOpenAlerts} />
+              {user ? <UserChip user={user} /> : null}
+            </div>
+          </header>
 
-        {toolbar ? (
-          <div className="border-b border-ink/10 bg-white px-3 py-3 sm:px-6">{toolbar}</div>
-        ) : null}
+          {toolbar ? (
+            <div className="border-b border-ink/10 bg-white px-3 py-3 sm:px-6">{toolbar}</div>
+          ) : null}
 
           {readOnly ? (
             <div
@@ -257,82 +281,82 @@ export function DashboardShell({
             </div>
           ) : null}
 
-        {!hideNav && mobileItems?.length ? (
-          <nav
-            aria-label="Quick sections"
-            className="border-b border-ink/10 bg-white px-2 py-2 lg:hidden"
-          >
-            <ul className="dashboard-quick-links flex gap-1 overflow-x-auto">
-              {mobileItems.map((item) => (
-                <li key={item.id} className="shrink-0">
-                  <button
-                    type="button"
-                    aria-current={active === item.id ? "page" : undefined}
-                    onClick={() => onSelect(item.id)}
-                    className={cn(
+          {!hideNav && mobileItems?.length ? (
+            <nav
+              aria-label="Quick sections"
+              className="border-b border-ink/10 bg-white px-2 py-2 lg:hidden"
+            >
+              <ul className="dashboard-quick-links flex gap-1 overflow-x-auto">
+                {mobileItems.map((item) => (
+                  <li key={item.id} className="shrink-0">
+                    <button
+                      type="button"
+                      aria-current={active === item.id ? "page" : undefined}
+                      onClick={() => onSelect(item.id)}
+                      className={cn(
                         "inline-flex min-h-12 items-center gap-2 rounded-xl px-3 text-xs transition-colors",
-                      active === item.id
-                        ? "bg-maroon text-paper"
-                        : "text-ink/65 hover:bg-cream hover:text-maroon",
-                    )}
-                  >
+                        active === item.id
+                          ? "bg-maroon text-paper"
+                          : "text-ink/65 hover:bg-cream hover:text-maroon",
+                      )}
+                    >
                       <item.icon className="size-3.5 shrink-0" aria-hidden />
-                    <span>{item.label}</span>
-                    {item.badge ? (
-                      <span
-                        className={cn(
+                      <span>{item.label}</span>
+                      {item.badge ? (
+                        <span
+                          className={cn(
                             "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                          active === item.id
-                            ? "bg-gold/20 text-gold-light"
-                            : "bg-burgundy/10 text-burgundy",
-                        )}
-                      >
-                        {item.badge}
-                      </span>
-                    ) : null}
-                  </button>
-                </li>
-              ))}
-              <li className="shrink-0">
+                            active === item.id
+                              ? "bg-gold/20 text-gold-light"
+                              : "bg-burgundy/10 text-burgundy",
+                          )}
+                        >
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </button>
+                  </li>
+                ))}
+                <li className="shrink-0">
                   <Dialog.Trigger asChild>
-                <button
-                  type="button"
+                    <button
+                      type="button"
                       onClick={(event) => {
                         drawerTriggerRef.current = event.currentTarget;
                       }}
-                  aria-label="More dashboard sections"
-                  aria-current={
-                    mobileItems.some((item) => item.id === active) ? undefined : "page"
-                  }
-                  className={cn(
+                      aria-label="More dashboard sections"
+                      aria-current={
+                        mobileItems.some((item) => item.id === active) ? undefined : "page"
+                      }
+                      className={cn(
                         "inline-flex min-h-12 items-center gap-2 rounded-xl px-3 text-xs transition-colors",
-                    mobileItems.some((item) => item.id === active)
-                      ? "text-ink/65 hover:bg-cream hover:text-maroon"
-                      : "bg-maroon text-paper",
-                  )}
-                >
+                        mobileItems.some((item) => item.id === active)
+                          ? "text-ink/65 hover:bg-cream hover:text-maroon"
+                          : "bg-maroon text-paper",
+                      )}
+                    >
                       <Menu className="size-3.5 shrink-0" aria-hidden />
-                  <span>More</span>
-                </button>
+                      <span>More</span>
+                    </button>
                   </Dialog.Trigger>
-              </li>
-            </ul>
-          </nav>
-        ) : null}
+                </li>
+              </ul>
+            </nav>
+          ) : null}
 
-        <main className="min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
-          <RouteTransition routeKey={`${pathname}:${active}`}>
-            {readOnly ? (
-              <fieldset disabled className="min-w-0 border-0 p-0">
-                {children}
-              </fieldset>
-            ) : (
-              children
-            )}
-          </RouteTransition>
-        </main>
+          <main className="min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+            <RouteTransition routeKey={`${pathname}:${active}`}>
+              {readOnly ? (
+                <fieldset disabled className="min-w-0 border-0 p-0">
+                  {children}
+                </fieldset>
+              ) : (
+                children
+              )}
+            </RouteTransition>
+          </main>
+        </div>
       </div>
-    </div>
     </Dialog.Root>
   );
 }

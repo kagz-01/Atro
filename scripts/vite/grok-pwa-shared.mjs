@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const DEFAULT_APP_NAME = "Grok App";
+export const DEFAULT_APP_NAME = "ATRO Design & Construction";
 export const OG_SERVICE_URL_DEFAULT = "https://og.grok.me";
 export const OG_SITE_REL_PATH = "src/lib/og/site.json";
 
@@ -162,7 +162,7 @@ export function renderWebManifest(hostHeader) {
   return JSON.stringify(
     {
       name,
-      short_name: name,
+      short_name: name === DEFAULT_APP_NAME ? "ATRO" : name,
       id: "/",
       start_url: "/",
       scope: "/",
@@ -171,7 +171,7 @@ export function renderWebManifest(hostHeader) {
       theme_color: "#000000",
       icons: [
         {
-          src: "/__grok/icon-180.png",
+          src: "/apple-touch-icon.png",
           sizes: "180x180",
           type: "image/png",
         },
@@ -187,7 +187,7 @@ export function grokPwaHeadTags(appName = DEFAULT_APP_NAME) {
     // Standalone display comes from the manifest ("display": "standalone");
     // the legacy *-web-app-capable metas it replaces are deliberately absent.
     ["manifest", '<link rel="manifest" href="/__grok/manifest.webmanifest">'],
-    ["apple-touch-icon", '<link rel="apple-touch-icon" href="/__grok/icon-180.png">'],
+    ["apple-touch-icon", '<link rel="apple-touch-icon" href="/apple-touch-icon.png">'],
     [
       "apple-mobile-web-app-title",
       `<meta name="apple-mobile-web-app-title" content="${escapeHtml(appName)}">`,
@@ -437,7 +437,7 @@ export function injectGrokPwaHead(html, ctx = {}) {
   const missing = grokPwaHeadTags(appName)
     .filter(([key]) => {
       if (key === "manifest") return !next.includes('href="/__grok/manifest.webmanifest"');
-      if (key === "apple-touch-icon") return !next.includes('href="/__grok/icon-180.png"');
+      if (key === "apple-touch-icon") return !next.includes('href="/apple-touch-icon.png"');
       return !next.includes(`name="${key}"`);
     })
     .map(([, tag]) => tag);

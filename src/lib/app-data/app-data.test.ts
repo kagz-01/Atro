@@ -427,6 +427,8 @@ describe("classifyCallToolError", () => {
       errorMessage: "missing_connector_token: open this app through the edge gate",
     });
     assert.equal(state?.kind, "error");
+    assert.match(state?.message ?? "", /Open ATRO/);
+    assert.doesNotMatch(state?.message ?? "", /Grok/i);
     assert.match(state?.detail ?? "", /missing_connector_token/);
   });
 

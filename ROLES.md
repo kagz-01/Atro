@@ -6,11 +6,11 @@ so clients, staff, and developers can tell what each area is meant to do.
 
 ## The four workspaces at a glance
 
-| Workspace | Intended user | Main purpose | Route |
-|---|---|---|---|
-| Admin | The business owner or person with final authority | Oversee the full portfolio, make high-impact decisions, manage access and control financial actions | `/admin` |
-| Staff / Office | The office team coordinating projects and client follow-up | Keep delivery, communication, schedules, and enquiries moving | `/staff` |
-| Kenyan client | A client whose project is coordinated from Kenya | Follow practical project progress, make project decisions, and handle local coordination | `/portal` |
+| Workspace       | Intended user                                               | Main purpose                                                                                                    | Route              |
+| --------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Admin           | The business owner or person with final authority           | Oversee the full portfolio, make high-impact decisions, manage access and control financial actions             | `/admin`           |
+| Staff / Office  | The office team coordinating projects and client follow-up  | Keep delivery, communication, schedules, and enquiries moving                                                   | `/staff`           |
+| Kenyan client   | A client whose project is coordinated from Kenya            | Follow practical project progress, make project decisions, and handle local coordination                        | `/portal`          |
 | Diaspora client | A client managing a Kenya-based project while living abroad | Follow progress remotely with clear evidence, decisions, financial visibility, and time-zone-aware coordination | `/portal/diaspora` |
 
 The public Kenya and diaspora websites are separate from the signed-in project
@@ -79,59 +79,65 @@ Admin's desktop navigation is grouped into **Executive view** and **Controls**.
 Mobile navigation presents a shorter set of quick links; additional areas
 remain in the dashboard navigation.
 
-| Tab | Purpose |
-|---|---|
-| **Admin priorities** | A personal work queue for claimed enquiries, client chases, and notes. Use it to see what Admin has taken responsibility for. |
-| **Portfolio** | Business-wide overview of live jobs, projects needing attention, money position, contracted-versus-collected amounts, enquiries, workload, and items needing a human response. It is a summary, not a substitute for opening a project record. |
-| **Projects** | Search and filter the studio project register. Open a project to inspect its delivery, client activity, decisions, documents, and financial details. |
-| **New leads** | Review incoming enquiries and move the conversation toward a project. |
-| **Client payments** | Search and filter payment stages across active client projects. Shows each project separately, including its contract and ledger amounts, payment status, and latest Paystack attempt. This view is for tracking; it does not itself certify payments. |
-| **Project funds** | Record and review project expense reservations, approvals, and bank-payment references. Admin actions are required for financial controls. This is an internal allocation ledger, not an instruction to Paystack to transfer money. |
-| **Client updates** | Review and respond to project conversation threads. |
-| **Access** | Review studio access, invitations, and requests, and grant or revoke access. Admin-only controls are shown only to Admin. |
+| Tab                  | Purpose                                                                                                                                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Admin priorities** | A personal work queue for claimed enquiries, client chases, and notes. Use it to see what Admin has taken responsibility for.                                                                                                                          |
+| **Portfolio**        | Business-wide overview of live jobs, projects needing attention, money position, contracted-versus-collected amounts, enquiries, workload, and items needing a human response. It is a summary, not a substitute for opening a project record.         |
+| **Projects**         | Search and filter the studio project register. Open a project to inspect its delivery, client activity, decisions, documents, and financial details.                                                                                                   |
+| **New leads**        | Review incoming enquiries and move the conversation toward a project.                                                                                                                                                                                  |
+| **Client payments**  | Search and filter payment stages across active client projects. Shows each project separately, including its contract and ledger amounts, payment status, and latest Paystack attempt. This view is for tracking; it does not itself certify payments. |
+| **Project funds**    | Record and review project expense reservations, approvals, and bank-payment references. Admin actions are required for financial controls. This is an internal allocation ledger, not an instruction to Paystack to transfer money.                    |
+| **Client updates**   | Review and respond to project conversation threads.                                                                                                                                                                                                    |
+| **Access**           | Review studio access, invitations, and requests, and grant or revoke access. Admin-only controls are shown only to Admin.                                                                                                                              |
 
 ### Opening a project as Admin
 
-The project record combines a summary with expandable operational areas:
+Opening a project switches to a focused project workspace. Use its project
+navigation to move between **Overview**, **Delivery**, **Client**, **Money**,
+and **Documents** instead of scanning one long page. On mobile, the project
+section menu and **All projects** return control stay pinned beneath the app
+header while scrolling. Counts flag sections with items needing attention.
+Within a section, task cards show the available work at a glance. Opening a
+card focuses the workspace on that task; **Back to [section]** returns to the
+task list without leaving the project. This replaces stacked accordion panels.
 
-- **Needs your attention** — blockers, unanswered client decisions, and other
-  items that need a response.
-- **Financial position / Financial summary** — contract, paid-to-date,
-  certified-but-unpaid, and retention figures, with payment-stage detail.
-- **Project lifecycle** — delivery and close-out state. Closing and archiving
-  are Admin-controlled.
-- **Client & consent** — client/project context and consent information.
-- **Activity** — chronological record of project actions.
-- **Message thread** — conversation with the client.
-- **Site presence** — site visit and presence requests.
-- **Milestone & evidence** — update a milestone, add evidence, and mark work
-  ready for client approval.
-- **Approvals**, **Selections**, **Variations**, and **Defects & care** — review
-  the corresponding project workflows.
-- **Document vault** — review documents and add project documents. Admin-only
-  document actions remain restricted.
-- **Payment certification** — certify inspected work or approve an agreed fee
-  stage. Certification makes a payment request available; it does **not** mean
-  the client has paid.
-- **Statement of account** and **Retention** — issue a statement or release
-  retention where eligible; these are Admin actions.
-- **What the client has decided** — review recorded client choices.
+- **Overview** — progress, programme, financial position, items needing
+  attention, and project lifecycle. Closing and archiving are Admin-controlled.
+- **Delivery** — workflow checklist, milestone status, evidence, client
+  decisions and project updates, approvals, selections, variations, and defects
+  and care. Choose a task card to open its focused record and controls.
+- **Client** — client and consent details, activity, messages, site presence,
+  and recorded decisions. Attention items link directly to the relevant task.
+- **Money** — financial summary, payment instructions, payment certification,
+  statement of account, and retention. The section opens with key financial
+  totals; choose a task card for the ledger or an action. Certification makes a
+  payment request available; it does **not** mean the client has paid. Issuing
+  statements and releasing retention are Admin actions.
+- **Documents** — document vault, delivery log, and issued project documents.
+  Each is a separate task view; Admin-only document actions remain restricted.
 
 ## Staff / Office dashboard manual
 
 Staff's dashboard is an operational workspace. It uses the same project records
 as Admin, but does not show Admin's portfolio controls or privileged financial
 and access actions.
+Opening a project uses the same focused **Overview**, **Delivery**, **Client**,
+**Money**, and **Documents** sections. On mobile, the section menu and **All
+projects** control stay pinned below the app header. Admin-only financial and
+close-out actions remain unavailable to Staff. Task cards open one focused
+record at a time and provide a direct return to the section task list. The
+project overview includes follow-up items that link to the relevant work; it
+does not expose Admin-only controls.
 
-| Tab | Purpose |
-|---|---|
-| **Today** | Office overview of projects needing attention, projects running cleanly, and the follow-up queue. It is the starting point for the day's coordination work. |
-| **Projects** | Search and open project records to review current status and coordinate delivery. The project list includes filters such as local, diaspora, needs follow-up, and sample. |
-| **Payments** | Read-only view of client payment ledgers. Use the per-project payment stage, status, date, and checkout reference to answer questions or follow up. A pending, failed, or expired checkout must not be treated as money received. |
-| **Calendar** | View project calls, visits, and walkthroughs. Scheduling is available to Office Manager and Admin, not standard Staff. |
-| **Client updates** | Monitor project conversation threads and reply when the studio owes a response. |
-| **New leads** | Work with incoming enquiries and help make sure people who contacted ATRO receive follow-up. |
-| **My profile** | Review the staff member's own studio identity and profile information. |
+| Tab                | Purpose                                                                                                                                                                                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Today**          | Office overview of projects needing attention, projects running cleanly, and the follow-up queue. It is the starting point for the day's coordination work.                                                                                                                                                   |
+| **Projects**       | Search and open project records to review current status and coordinate delivery. The project list includes filters such as local, diaspora, needs follow-up, and sample. Results are shown 10 at a time; compact mobile rows keep the key client, stage, and status visible without a long card per project. |
+| **Payments**       | Read-only view of client payment ledgers. Use the per-project payment stage, status, date, and checkout reference to answer questions or follow up. A pending, failed, or expired checkout must not be treated as money received.                                                                             |
+| **Calendar**       | View project calls, visits, and walkthroughs. Scheduling is available to Office Manager and Admin, not standard Staff.                                                                                                                                                                                        |
+| **Client updates** | Monitor project conversation threads and reply when the studio owes a response.                                                                                                                                                                                                                               |
+| **New leads**      | Work with incoming enquiries and help make sure people who contacted ATRO receive follow-up.                                                                                                                                                                                                                  |
+| **My profile**     | Review the staff member's own studio identity and profile information.                                                                                                                                                                                                                                        |
 
 Staff does not have the Admin-only **Admin priorities**, **Portfolio**,
 **Project funds**, or **Access** navigation areas. Admin-only actions remain
@@ -147,17 +153,17 @@ prioritized and which coordination tools are surfaced.
 
 ### Shared client tabs
 
-| Tab | Purpose |
-|---|---|
-| **Overview** | A project home with progress, recent activity, dates to watch, money context, and actions waiting on the client. The Kenya and Diaspora home panels prioritize different information. |
-| **Calendar** | View scheduled project calls and coordination details in the client's relevant time zone. |
-| **Progress / Milestones** | Review project stages and their status. The milestone record includes supporting evidence; an approval action appears when the studio marks a stage ready. |
-| **Money** | Review contract and budget position, payment stages, receipts/documents, and the project's payment instructions. Pay a certified stage from the portal using Paystack checkout. A stage is not marked paid until Paystack confirms it. |
-| **Decisions** | Review choices raised by the studio and submit a response. Open decisions may affect what can proceed next. |
-| **Documents** | Find project paperwork such as contracts, certificates, payment requests, receipts, and statements. Available documents depend on what the studio has issued. |
-| **Messages / Updates** | Read and send project messages. Kenya calls this **Messages**; Diaspora calls it **Updates** to emphasize remote project updates. |
-| **Project circle / Team** | Review the people associated with the project. The Kenya navigation says **Project circle**; the Diaspora navigation says **Team**. |
-| **Profile** | Manage the client's own profile and relevant contact/time-zone details. |
+| Tab                       | Purpose                                                                                                                                                                                                                                |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Overview**              | A project home with progress, recent activity, dates to watch, money context, and actions waiting on the client. The Kenya and Diaspora home panels prioritize different information.                                                  |
+| **Calendar**              | View scheduled project calls and coordination details in the client's relevant time zone.                                                                                                                                              |
+| **Progress / Milestones** | Review project stages and their status. The milestone record includes supporting evidence; an approval action appears when the studio marks a stage ready.                                                                             |
+| **Money**                 | Review contract and budget position, payment stages, receipts/documents, and the project's payment instructions. Pay a certified stage from the portal using Paystack checkout. A stage is not marked paid until Paystack confirms it. |
+| **Decisions**             | Review choices raised by the studio and submit a response. Open decisions may affect what can proceed next.                                                                                                                            |
+| **Documents**             | Find project paperwork such as contracts, certificates, payment requests, receipts, and statements. Available documents depend on what the studio has issued.                                                                          |
+| **Messages / Updates**    | Read and send project messages. Kenya calls this **Messages**; Diaspora calls it **Updates** to emphasize remote project updates.                                                                                                      |
+| **Project circle / Team** | Review the people associated with the project. The Kenya navigation says **Project circle**; the Diaspora navigation says **Team**.                                                                                                    |
+| **Profile**               | Manage the client's own profile and relevant contact/time-zone details.                                                                                                                                                                |
 
 ### Kenyan client tabs
 
@@ -165,12 +171,12 @@ The Kenya portal is oriented toward practical involvement in the project and
 local coordination. In addition to the shared tabs, its navigation currently
 surfaces:
 
-| Tab | Purpose |
-|---|---|
-| **Approvals** | Review formal project approvals and any client action required. |
-| **Selections** | Review or make project selections where the studio has requested a choice. |
-| **Changes** | Review proposed project variations, their cost or time impact, and respond where a decision is required. |
-| **After handover** | Review defects and care items after handover and respond to requests to check completed fixes. |
+| Tab                | Purpose                                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------- |
+| **Approvals**      | Review formal project approvals and any client action required.                                          |
+| **Selections**     | Review or make project selections where the studio has requested a choice.                               |
+| **Changes**        | Review proposed project variations, their cost or time impact, and respond where a decision is required. |
+| **After handover** | Review defects and care items after handover and respond to requests to check completed fixes.           |
 
 The Kenya overview emphasizes the next practical action, project messages, and
 local progress. The portal uses local payment instructions when these have
