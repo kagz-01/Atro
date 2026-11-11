@@ -138,6 +138,7 @@ export type CircleProjectPayload = CircleProjectSummary & {
     title: string;
     detail: string;
     options: string[];
+    optionDetails: string[];
     dueDate: string | null;
   }[];
   presence: {
@@ -226,9 +227,10 @@ export const getCircleProject = createServerFn({ method: "GET" })
       title: string;
       detail: string;
       options: unknown;
+      option_details: unknown;
       due_date: string | null;
     }>`
-      select id, title, detail, options, due_date
+      select id, title, detail, options, option_details, due_date
       from portal_decisions
       where project_id = ${project.id} and state <> 'decided'
       order by ord
@@ -280,6 +282,7 @@ export const getCircleProject = createServerFn({ method: "GET" })
         title: row.title,
         detail: row.detail,
         options: jsonArray(row.options).map(String),
+        optionDetails: jsonArray(row.option_details).map(String),
         dueDate: row.due_date,
       })),
       presence: presenceRows.map((row) => ({
@@ -305,6 +308,7 @@ export type CircleOverview = {
     decisionId: string;
     decisionTitle: string;
     options: string[];
+    optionDetails: string[];
     suggestedOption: string;
     note: string;
     representativeEmail: string;
@@ -336,12 +340,13 @@ export const getProjectCircleOverview = createServerFn({ method: "GET" })
       decision_id: string;
       decision_title: string;
       options: unknown;
+      option_details: unknown;
       suggested_option: string;
       note: string;
       invite_email: string;
       created_at: unknown;
     }>`
-      select s.id, s.decision_id, d.title as decision_title, d.options,
+      select s.id, s.decision_id, d.title as decision_title, d.options, d.option_details,
         s.suggested_option, s.note, r.invite_email, s.created_at
       from portal_decision_suggestions s
       join portal_decisions d on d.id = s.decision_id and d.project_id = s.project_id
@@ -386,6 +391,7 @@ export const getProjectCircleOverview = createServerFn({ method: "GET" })
         decisionId: row.decision_id,
         decisionTitle: row.decision_title,
         options: jsonArray(row.options).map(String),
+        optionDetails: jsonArray(row.option_details).map(String),
         suggestedOption: row.suggested_option,
         note: row.note,
         representativeEmail: row.invite_email,

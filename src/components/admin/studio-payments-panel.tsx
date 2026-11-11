@@ -23,7 +23,23 @@ function dateLabel(value: string | null | undefined): string | null {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? value
-    : date.toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
+    : date.toLocaleDateString("en-KE", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "Africa/Nairobi",
+      });
+}
+
+function dateTimeLabel(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleString("en-KE", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Africa/Nairobi",
+      });
 }
 
 function checkoutLabel(row: StudioPaymentRow): string | null {
@@ -71,6 +87,7 @@ export function StudioPaymentsPanel({ onOpenProject }: { onOpenProject: (id: str
               payment.projectTitle,
               payment.paymentLabel,
               payment.attemptReference ?? "",
+              ...payment.attemptHistory.map((attempt) => attempt.reference),
             ]
               .join(" ")
               .toLocaleLowerCase()
@@ -294,6 +311,44 @@ export function StudioPaymentsPanel({ onOpenProject }: { onOpenProject: (id: str
                               ? ` · ${dateLabel(payment.attemptCreatedAt)}`
                               : ""}
                           </p>
+                        ) : null}
+                        {payment.attemptHistory.length > 0 ? (
+                          <details className="mt-2 rounded-lg border border-ink/8 bg-cream/40 px-3 py-2">
+                              <summary className="cursor-pointer font-medium text-maroon">
+                                Full checkout history ({payment.attemptHistory.length})
+                              </summary>
+                              <ol className="mt-2 space-y-3">
+                                {payment.attemptHistory.map((attempt) => (
+                                  <li
+                                    key={attempt.reference}
+                                    className="border-t border-ink/8 pt-2"
+                                  >
+                                    <p className="font-medium text-ink/75">
+                                      {attempt.status === "success"
+                                        ? "Payment verified"
+                                        : attempt.status === "pending"
+                                          ? "Checkout started · awaiting confirmation"
+                                          : `Checkout ${attempt.status}`}
+                                      {" · "}
+                                      {kes(attempt.amount)}
+                                    </p>
+                                    <p className="mt-0.5">
+                                      Started {dateTimeLabel(attempt.createdAt)}
+                                      {attempt.paidAt
+                                        ? ` · Paid ${dateTimeLabel(attempt.paidAt)}`
+                                        : ""}
+                                      {attempt.channel ? ` · ${attempt.channel}` : ""}
+                                    </p>
+                                    <p className="mt-0.5 break-all font-mono">
+                                      Ref: {attempt.reference}
+                                      {attempt.providerTransactionId
+                                        ? ` · Transaction ${attempt.providerTransactionId}`
+                                        : ""}
+                                    </p>
+                                  </li>
+                                ))}
+                              </ol>
+                          </details>
                         ) : null}
                       </div>
                     </li>

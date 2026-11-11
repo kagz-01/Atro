@@ -37,8 +37,12 @@ function DashboardScreen({ view }: { view: PreviewView }) {
     return (
       <div className="space-y-5">
         <div>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-burgundy">Project timeline</p>
-          <h3 className="mt-1 font-display text-xl text-maroon sm:text-2xl">Milestones and approvals</h3>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-burgundy">
+            Project timeline
+          </p>
+          <h3 className="mt-1 font-display text-xl text-maroon sm:text-2xl">
+            Milestones and approvals
+          </h3>
         </div>
         <div className="rounded-2xl border border-ink/10 bg-white p-4 sm:p-5">
           <div className="flex items-center justify-between text-xs text-ink/60">
@@ -65,8 +69,12 @@ function DashboardScreen({ view }: { view: PreviewView }) {
     return (
       <div className="space-y-5">
         <div>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-burgundy">Project records</p>
-          <h3 className="mt-1 font-display text-xl text-maroon sm:text-2xl">Documents in one place</h3>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-burgundy">
+            Project records
+          </p>
+          <h3 className="mt-1 font-display text-xl text-maroon sm:text-2xl">
+            Documents in one place
+          </h3>
         </div>
         <div className="space-y-2">
           {[
@@ -74,12 +82,17 @@ function DashboardScreen({ view }: { view: PreviewView }) {
             ["Certificates and invoices", "Payment records"],
             ["Site photos and reports", "Progress evidence"],
           ].map(([title, detail]) => (
-            <div key={title} className="flex items-center gap-3 rounded-xl border border-ink/10 bg-white p-3 sm:p-4">
+            <div
+              key={title}
+              className="flex items-center gap-3 rounded-xl border border-ink/10 bg-white p-3 sm:p-4"
+            >
               <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-maroon/8 text-maroon">
                 <FileText className="size-4" aria-hidden />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium text-maroon sm:text-sm">{title}</span>
+                <span className="block truncate text-xs font-medium text-maroon sm:text-sm">
+                  {title}
+                </span>
                 <span className="mt-0.5 block text-[10px] text-ink/50">{detail}</span>
               </span>
               <ArrowRight className="size-4 text-ink/35" aria-hidden />
@@ -94,8 +107,12 @@ function DashboardScreen({ view }: { view: PreviewView }) {
     return (
       <div className="space-y-5">
         <div>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-burgundy">Project conversation</p>
-          <h3 className="mt-1 font-display text-xl text-maroon sm:text-2xl">Keep the team in the loop</h3>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-burgundy">
+            Project conversation
+          </p>
+          <h3 className="mt-1 font-display text-xl text-maroon sm:text-2xl">
+            Keep the team in the loop
+          </h3>
         </div>
         <div className="rounded-2xl border border-ink/10 bg-white p-4 sm:p-5">
           <div className="flex items-center gap-3 border-b border-ink/8 pb-4">
@@ -104,7 +121,9 @@ function DashboardScreen({ view }: { view: PreviewView }) {
             </span>
             <div>
               <p className="text-xs font-medium text-maroon">Your project team</p>
-              <p className="mt-0.5 text-[10px] text-ink/50">Messages stay with the project record</p>
+              <p className="mt-0.5 text-[10px] text-ink/50">
+                Messages stay with the project record
+              </p>
             </div>
           </div>
           <div className="mt-4 space-y-3">
@@ -123,8 +142,12 @@ function DashboardScreen({ view }: { view: PreviewView }) {
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-burgundy">Project overview</p>
-        <h3 className="mt-1 font-display text-xl text-maroon sm:text-2xl">A clear view of what matters</h3>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-burgundy">
+          Project overview
+        </p>
+        <h3 className="mt-1 font-display text-xl text-maroon sm:text-2xl">
+          A clear view of what matters
+        </h3>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         {[
@@ -151,7 +174,7 @@ function DashboardScreen({ view }: { view: PreviewView }) {
   );
 }
 
-export function DashboardDemo({ autoPlay = true }: { autoPlay?: boolean }) {
+export function DashboardPreview({ autoPlay = true }: { autoPlay?: boolean }) {
   const [activeView, setActiveView] = useState<PreviewView>("overview");
   const [playing, setPlaying] = useState(true);
   const hasInteracted = useRef(false);
@@ -185,8 +208,12 @@ export function DashboardDemo({ autoPlay = true }: { autoPlay?: boolean }) {
             <LayoutDashboard className="size-4" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[9px] font-semibold uppercase tracking-[0.15em] text-burgundy">Client portal preview</p>
-            <p className="mt-0.5 truncate font-display text-base text-maroon sm:text-lg">Your project space</p>
+            <p className="truncate text-[9px] font-semibold uppercase tracking-[0.15em] text-burgundy">
+              Client portal preview
+            </p>
+            <p className="mt-0.5 truncate font-display text-base text-maroon sm:text-lg">
+              Your project space
+            </p>
           </div>
         </div>
         {autoPlay ? (
@@ -199,13 +226,20 @@ export function DashboardDemo({ autoPlay = true }: { autoPlay?: boolean }) {
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-ink/10 text-ink/60 transition-colors hover:bg-white hover:text-maroon focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-maroon"
             aria-label={playing ? "Pause dashboard preview" : "Play dashboard preview"}
           >
-            {playing ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
+            {playing ? (
+              <Pause className="size-4" aria-hidden />
+            ) : (
+              <Play className="size-4" aria-hidden />
+            )}
           </button>
         ) : null}
       </div>
 
       <div>
-        <nav aria-label="Dashboard preview screens" className="grid grid-cols-2 gap-1 border-b border-ink/10 p-2 sm:grid-cols-4 sm:p-3">
+        <nav
+          aria-label="Dashboard preview screens"
+          className="grid grid-cols-2 gap-1 border-b border-ink/10 p-2 sm:grid-cols-4 sm:p-3"
+        >
           {VIEWS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -240,7 +274,7 @@ export function DashboardDemo({ autoPlay = true }: { autoPlay?: boolean }) {
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-ink/10 px-4 py-2.5 text-[9px] text-ink/45 sm:px-6">
-        <span>Illustrative preview · not live project data</span>
+        <span>Portal preview</span>
         <span className="hidden sm:inline">Select a section to explore</span>
       </div>
     </div>
@@ -280,11 +314,12 @@ export function PortalPreview({ experience }: PortalPreviewProps) {
             </Link>
           </div>
           <p className="mt-3 max-w-lg text-xs leading-relaxed text-ink/55">
-            Already a client or received an invitation? Sign in with the email linked to your project.
+            Already a client or received an invitation? Sign in with the email linked to your
+            project.
           </p>
         </div>
 
-        <DashboardDemo />
+        <DashboardPreview />
       </div>
     </section>
   );

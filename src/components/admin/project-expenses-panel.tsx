@@ -84,7 +84,10 @@ export function ProjectExpensesPanel({ staffEmail }: Props) {
 
   return (
     <div className="space-y-5">
-      <Panel title="Project funds" subtitle="Verified client receipts stay allocated to their project">
+      <Panel
+        title="Project funds"
+        subtitle="Verified client receipts stay allocated to their project"
+      >
         <p className="text-[13px] leading-relaxed text-ink/70">
           Only Paystack-confirmed receipts are available for project expenses. Entering an expense
           reserves that amount against this project; a different admin must approve it before it can
@@ -96,7 +99,8 @@ export function ProjectExpensesPanel({ staffEmail }: Props) {
         </p>
         {projects.length === 0 ? (
           <p className="mt-5 rounded-xl border border-ink/10 bg-cream p-4 text-[13px] text-ink/60">
-            No live projects are available. Sample projects cannot receive or spend real funds.
+            No eligible projects are available. Protected project records cannot receive or spend
+            real funds.
           </p>
         ) : (
           <form onSubmit={(event) => void submitExpense(event)} className="mt-5 space-y-4">
@@ -119,7 +123,9 @@ export function ProjectExpensesPanel({ staffEmail }: Props) {
                 <p className="mt-2 text-[12px] text-ink/60">
                   Verified receipts {kes(selectedProject.received)} · Available to allocate{" "}
                   <strong className="text-maroon">
-                    {kes(selectedProject.received - selectedProject.reserved - selectedProject.spent)}
+                    {kes(
+                      selectedProject.received - selectedProject.reserved - selectedProject.spent,
+                    )}
                   </strong>
                 </p>
               ) : null}
@@ -204,7 +210,15 @@ export function ProjectExpensesPanel({ staffEmail }: Props) {
                     </div>
                     <div className="text-right">
                       <p className="font-display text-xl text-maroon">{kes(expense.amountKes)}</p>
-                      <Badge tone={expense.status === "paid" ? "live" : expense.status === "rejected" ? "stone" : "gold"}>
+                      <Badge
+                        tone={
+                          expense.status === "paid"
+                            ? "live"
+                            : expense.status === "rejected"
+                              ? "stone"
+                              : "gold"
+                        }
+                      >
                         {expense.status.replaceAll("_", " ")}
                       </Badge>
                     </div>
@@ -254,7 +268,9 @@ export function ProjectExpensesPanel({ staffEmail }: Props) {
                   {expense.status === "approved" ? (
                     <div className="mt-4 flex flex-wrap items-end gap-3">
                       <div className="min-w-56 flex-1">
-                        <Label htmlFor={`bank-reference-${expense.id}`}>Bank transfer reference</Label>
+                        <Label htmlFor={`bank-reference-${expense.id}`}>
+                          Bank transfer reference
+                        </Label>
                         <Input
                           id={`bank-reference-${expense.id}`}
                           required
@@ -271,7 +287,9 @@ export function ProjectExpensesPanel({ staffEmail }: Props) {
                       </div>
                       <Button
                         size="sm"
-                        disabled={busy === key || (bankReferences[expense.id] ?? "").trim().length < 3}
+                        disabled={
+                          busy === key || (bankReferences[expense.id] ?? "").trim().length < 3
+                        }
                         onClick={() =>
                           void run(
                             key,

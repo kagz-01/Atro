@@ -189,6 +189,12 @@ Set the server-only `PAYSTACK_SECRET_KEY` and `PAYSTACK_WEBHOOK_SECRET`, and set
 as `https://<your-site>/api/paystack/webhook`. Keep both Paystack keys out of
 `VITE_` variables and browser code. The payment callback verifies the reference
 directly with Paystack; a browser redirect alone never marks an instalment paid.
+Clients review the certified stage and exact KES amount before continuing to
+Paystack. The client and staff ledgers retain each checkout reference, attempt
+status, initiation time, payment channel, provider transaction ID, and verified
+payment time when Paystack supplies it. Do not send Paybill or bank-wire
+instructions for portal instalments; reconcile any exceptional offline receipt
+through the studio's documented accounting process.
 
 Staff invitations are created from the admin dashboard's Access section.
 Configure `RESEND_API_KEY`, a verified `RESEND_FROM` address, and the canonical

@@ -100,7 +100,11 @@ export function SelectionsPanel({
             ["Chosen", String(summary.chosen)],
             ["Allowance", kes(summary.allowance)],
             [
-              summary.variance > 0 ? "Over allowance" : "Under allowance",
+              summary.variance > 0
+                ? "Over chosen allowance"
+                : summary.variance < 0
+                  ? "Under chosen allowance"
+                  : "Chosen items on allowance",
               kes(Math.abs(summary.variance)),
             ],
           ].map(([k, v]) => (
@@ -111,7 +115,7 @@ export function SelectionsPanel({
               <dd
                 className={cn(
                   "mt-1 text-[14px]",
-                  k === "Over allowance" && summary.variance > 0
+                  String(k).startsWith("Over") && summary.variance > 0
                     ? "text-amber-800"
                     : "text-maroon",
                 )}
@@ -422,9 +426,21 @@ function NewSelectionForm({
     },
   });
 
+  const validOptions = options.filter((o) => o.label.trim());
   const valid =
     title.trim().length >= 2 &&
-    options.filter((o) => o.label.trim() && Number(o.price) >= 0).length >= 1;
+    (allowance === "" ||
+      (Number.isInteger(Number(allowance)) &&
+        Number(allowance) >= 0 &&
+        Number(allowance) <= 2_000_000_000)) &&
+    validOptions.length >= 1 &&
+    validOptions.every(
+      (o) =>
+        o.price !== "" &&
+        Number.isInteger(Number(o.price)) &&
+        Number(o.price) >= 0 &&
+        Number(o.price) <= 2_000_000_000,
+    );
 
   return (
     <div className="mt-4 space-y-3 rounded-xl border border-gold/40 bg-gold/5 p-4">
@@ -462,6 +478,9 @@ function NewSelectionForm({
             id={`sel-allow-${nextOrd}`}
             type="number"
             inputMode="numeric"
+            min={0}
+            max={2_000_000_000}
+            step={1}
             value={allowance}
             onChange={(e) => setAllowance(e.target.value)}
             placeholder="900000"
@@ -511,6 +530,9 @@ function NewSelectionForm({
               <Input
                 type="number"
                 inputMode="numeric"
+                min={0}
+                max={2_000_000_000}
+                step={1}
                 value={o.price}
                 onChange={(e) =>
                   setOptions((list) =>
@@ -601,7 +623,7 @@ function NewSelectionForm({
                   label: o.label.trim(),
                   description: o.description,
                   supplier: o.supplier.trim(),
-                  price: Number(o.price) || 0,
+                  price: Number(o.price),
                   leadTime: o.leadTime,
                   recommended: o.recommended,
                 })),

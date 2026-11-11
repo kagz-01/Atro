@@ -147,8 +147,8 @@ function ScamWarningPage() {
                 that does not match the number they call from.
               </li>
               <li>
-                They ask for payment to a personal account, a new paybill in
-                someone else&apos;s name, mobile money, or crypto.
+                They ask you to pay a personal account, an unverified paybill or
+                mobile-money number outside the portal, or a crypto address.
               </li>
               <li>
                 They cannot name the professionals appointed to your project, or

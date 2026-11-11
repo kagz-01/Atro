@@ -64,6 +64,16 @@ export const AVATAR_EDGE = 512;
 
 export type ParsedImage = { mime: AvatarMime; bytes: Uint8Array };
 
+/** Encode avatar bytes without spreading a large image into one function call. */
+export function encodeImageDataUrl(image: ParsedImage): string {
+  const chunks: string[] = [];
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < image.bytes.length; offset += chunkSize) {
+    chunks.push(String.fromCharCode(...image.bytes.subarray(offset, offset + chunkSize)));
+  }
+  return `data:${image.mime};base64,${btoa(chunks.join(""))}`;
+}
+
 /**
  * Decode a `data:` URL, rejecting anything that is not a small enough image.
  *

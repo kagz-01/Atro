@@ -11,13 +11,10 @@ test("_migrations keys on basename, not path", () => {
 });
 
 test("the schema bootstrap runs first on an empty database", () => {
-  assert.deepEqual(
-    pendingMigrations(["/migrations/0033_c.sql", "/migrations/schema.sql"], []),
-    [
-      { name: "schema.sql", path: "/migrations/schema.sql" },
-      { name: "0033_c.sql", path: "/migrations/0033_c.sql" },
-    ],
-  );
+  assert.deepEqual(pendingMigrations(["/migrations/0033_c.sql", "/migrations/schema.sql"], []), [
+    { name: "schema.sql", path: "/migrations/schema.sql" },
+    { name: "0033_c.sql", path: "/migrations/0033_c.sql" },
+  ]);
 });
 
 test("legacy databases skip the consolidated schema and apply later migrations", () => {
@@ -41,6 +38,16 @@ test("the migrations directory uses one canonical SQL bootstrap", () => {
     readdirSync(migrationsDir)
       .filter((entry) => entry.endsWith(".sql"))
       .sort(),
-    ["0001_quotations_and_payment_requests.sql", "schema.sql"],
+    [
+      "0001_quotations_and_payment_requests.sql",
+      "0002_project_message_reactions_and_replies.sql",
+      "0003_client_project_documents.sql",
+      "0004_project_calendar_requests.sql",
+      "0033_project_team_assignments.sql",
+      "0034_decision_option_visuals.sql",
+      "0035_approval_status_tracking.sql",
+      "0036_handover_and_defect_evidence.sql",
+      "schema.sql",
+    ],
   );
 });

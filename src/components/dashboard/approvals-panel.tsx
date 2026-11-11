@@ -1,10 +1,12 @@
-import { AlertTriangle, Clock, FileCheck2, Receipt } from "lucide-react";
+import { AlertTriangle, Clock, FileCheck2, Receipt, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { StatCard } from "@/components/ui/stat-card";
 import { listMyApprovals } from "@/lib/approvals-server";
 import {
   approvalsHeadline,
+  approvalStatusLabel,
   isSettled,
   isStalled,
   kes,
@@ -26,9 +28,10 @@ import { cn } from "@/lib/utils";
  * and now the client can see that it is with the county.
  */
 export function ApprovalsPanel({ projectId }: { projectId: string }) {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["my-approvals", projectId],
     queryFn: () => listMyApprovals({ data: { projectId } }),
+    refetchInterval: 60_000,
   });
 
   if (isLoading) {
@@ -41,11 +44,14 @@ export function ApprovalsPanel({ projectId }: { projectId: string }) {
 
   if (error) {
     return (
-      <Panel title="Approvals">
+      <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-5">
         <p className="text-[13px] text-red-700">
           {error instanceof Error ? error.message : "Could not load your approvals."}
         </p>
-      </Panel>
+        <Button size="sm" variant="outline" className="mt-3" onClick={() => void refetch()}>
+          Try again
+        </Button>
+      </div>
     );
   }
 
@@ -54,12 +60,20 @@ export function ApprovalsPanel({ projectId }: { projectId: string }) {
 
   if (approvals.length === 0) {
     return (
-      <Panel title="Approvals" subtitle="Nothing is with an authority at the moment">
+      <Panel
+        title="Permits & approvals"
+        subtitle="No approvals have been recorded for this project yet"
+        actions={
+          <Button size="sm" variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+            <RefreshCw className="size-4" aria-hidden />
+            {isFetching ? "Refreshing…" : "Refresh"}
+          </Button>
+        }
+      >
         <p className="max-w-2xl text-[13px] leading-relaxed text-ink/65">
           Planning consent, environmental approval, the county permit and the utility
-          connections all appear here as they are applied for, with the authority that
-          holds each one and the fee that was paid. You will always know what the build
-          is waiting on.
+          connections can be tracked here. The studio will add the relevant items for
+          your project and update them as applications progress.
         </p>
       </Panel>
     );
@@ -82,30 +96,48 @@ export function ApprovalsPanel({ projectId }: { projectId: string }) {
           tone={summary.blocking > 0 ? "warn" : "good"}
         />
         <StatCard
-          label="Fees paid"
+          label="Fees recorded paid"
           value={kesShort(summary.feesPaid)}
           exact={kes(summary.feesPaid)}
           sub={
             summary.feesOutstanding > 0
-              ? `${kes(summary.feesOutstanding)} still to pay`
-              : "Nothing outstanding"
+              ? `${kes(summary.feesOutstanding)} recorded outstanding`
+              : "No recorded balance outstanding"
           }
           icon={Receipt}
         />
         <StatCard
-          label="With authorities"
+          label="Not yet settled"
           value={String(summary.inFlight)}
           sub={
-            summary.stalled > 0
-              ? `${summary.stalled} waiting over three weeks`
-              : "All moving"
+            [
+              summary.withAuthorities > 0
+                ? `${summary.withAuthorities} with authorities`
+                : "",
+              summary.awaitingSubmission > 0
+                ? `${summary.awaitingSubmission} not submitted`
+                : "",
+              summary.refused > 0 ? `${summary.refused} refused` : "",
+              summary.stalled > 0 ? `${summary.stalled} stalled` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ") || "All recorded items are settled"
           }
           icon={Clock}
           tone={summary.stalled > 0 ? "warn" : "default"}
         />
       </div>
 
-      <Panel title="Where each approval stands" subtitle={approvalsHeadline(summary)}>
+      <Panel
+        title="Where each permit and approval stands"
+        subtitle={approvalsHeadline(summary)}
+        actions={
+          <Button size="sm" variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+            <RefreshCw className="size-4" aria-hidden />
+            {isFetching ? "Refreshing…" : "Refresh"}
+          </Button>
+        }
+      >
         <ul className="space-y-3">
           {approvals.map((a) => (
             <ApprovalRow key={a.id} approval={a} />
@@ -114,10 +146,10 @@ export function ApprovalsPanel({ projectId }: { projectId: string }) {
       </Panel>
 
       <p className="text-[12px] leading-relaxed text-ink/50">
-        ATRO files and follows every one of these on your behalf — submitting,
-        following up with the authority, and paying the fees against the agreed
-        schedule. The build cannot start until the ones marked as holding the
-        build are in hand.
+        Statuses reflect updates recorded by the studio; approvals and permits are
+        issued by the relevant authorities. Any fees shown are project records, not
+        a substitute for an authority receipt. Documents shared with you appear in
+        Documents. Items marked as holding the build may affect the next stage.
       </p>
     </div>
   );
@@ -146,13 +178,7 @@ function ApprovalRow({ approval }: { approval: Approval }) {
               STATUS_TONE_CLASS[approval.status],
             )}
           >
-            {approval.status === "not_started"
-              ? "Not started"
-              : approval.status === "under_review"
-                ? "Under review"
-                : approval.status === "not_required"
-                  ? "Not required"
-                  : approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
+            {approvalStatusLabel(approval.status)}
           </span>
           {approval.blocking && !settled ? (
             <span className="rounded-full border border-amber-300 bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-amber-900">
@@ -169,8 +195,8 @@ function ApprovalRow({ approval }: { approval: Approval }) {
         <span className="mt-1.5 block text-[12px] text-ink/55">
           {approval.authority ? `${approval.authority} · ` : ""}
           {approval.reference ? `ref ${approval.reference}` : "reference not issued yet"}
-          {approval.submittedOn ? ` · submitted ${approval.submittedOn}` : ""}
-          {approval.decidedOn ? ` · decided ${approval.decidedOn}` : ""}
+          {approval.submittedOn ? ` · submitted ${approvalDateLabel(approval.submittedOn)}` : ""}
+          {approval.decidedOn ? ` · decided ${approvalDateLabel(approval.decidedOn)}` : ""}
         </span>
 
         {approval.note ? (
@@ -181,7 +207,8 @@ function ApprovalRow({ approval }: { approval: Approval }) {
 
         {approval.chasedOn ? (
           <span className="mt-1.5 block text-[12px] leading-snug text-ink/60">
-            ATRO chased {approval.authority || "the authority"} on {approval.chasedOn}
+            ATRO followed up with {approval.authority || "the authority"} on{" "}
+            {approvalDateLabel(approval.chasedOn)}
             {approval.chaseNote ? ` — ${approval.chaseNote}` : "."}
           </span>
         ) : null}
@@ -192,7 +219,10 @@ function ApprovalRow({ approval }: { approval: Approval }) {
           <>
             <span className="block text-[13px] text-maroon">{kes(approval.feeAmount)}</span>
             <span className="mt-0.5 block text-[11px] text-muted">
-              {outstanding > 0 ? `${kes(outstanding)} to pay` : "paid in full"}
+              {approval.feePaid > 0 ? `${kes(approval.feePaid)} recorded paid · ` : ""}
+              {outstanding > 0
+                ? `${kes(outstanding)} recorded outstanding`
+                : "no recorded balance outstanding"}
             </span>
           </>
         ) : (
@@ -201,4 +231,15 @@ function ApprovalRow({ approval }: { approval: Approval }) {
       </span>
     </li>
   );
+}
+
+function approvalDateLabel(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return new Intl.DateTimeFormat("en-KE", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
 }

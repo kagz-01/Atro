@@ -11,6 +11,7 @@ import {
   summariseThread,
   unreadFor,
   validateMessage,
+  validateMessageReaction,
   type Message,
 } from "./messages.ts";
 
@@ -26,6 +27,8 @@ const msg = (over: Partial<Message> = {}): Message => ({
   readAt: null,
   deletedAt: null,
   attachments: [],
+  reactions: [],
+  replyTo: null,
   ...over,
 });
 
@@ -62,6 +65,11 @@ describe("validateMessage", () => {
 
   it("accepts one exactly at the cap", () => {
     assert.equal(validateMessage("a".repeat(MESSAGE_MAX)).ok, true);
+  });
+
+  it("only accepts reactions from the in-house reaction set", () => {
+    assert.equal(validateMessageReaction("👍"), true);
+    assert.equal(validateMessageReaction("💩"), false);
   });
 
   it("keeps the minimum low enough for a real reply", () => {
@@ -206,8 +214,8 @@ describe("ordering", () => {
 
 describe("composerHint", () => {
   it("tells the client where the message actually goes", () => {
-    assert.match(composerHint("client"), /project manager/);
-    assert.match(composerHint("client"), /WhatsApp/);
+    assert.match(composerHint("client"), /project team/);
+    assert.match(composerHint("client"), /project's record/);
   });
 
   it("tells the studio the client will see it dated", () => {

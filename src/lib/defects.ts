@@ -32,6 +32,48 @@ export const SEVERITIES = [
 ] as const;
 export type Severity = (typeof SEVERITIES)[number]["value"];
 
+export const HANDOVER_DOCUMENT_CATEGORIES = [
+  { value: "executed_agreement", label: "Executed agreement" },
+  { value: "handover_certificate", label: "Handover certificate" },
+  { value: "warranty", label: "Warranty" },
+  { value: "manual", label: "Operation or maintenance manual" },
+  { value: "as_built", label: "As-built drawing" },
+  { value: "inspection", label: "Inspection or commissioning record" },
+  { value: "final_account", label: "Final account" },
+  { value: "other", label: "Other close-out record" },
+] as const;
+
+export type HandoverDocumentCategory =
+  (typeof HANDOVER_DOCUMENT_CATEGORIES)[number]["value"];
+
+export type HandoverDocument = {
+  id: string;
+  title: string;
+  category: HandoverDocumentCategory;
+  filename: string;
+  mime: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  receivedAt: string | null;
+};
+
+export type DefectEvidence = {
+  id: string;
+  filename: string;
+  mime: string;
+  sizeBytes: number;
+  uploadedBy: "client" | "staff";
+  createdAt: string;
+};
+
+export type DefectEvent = {
+  id: string;
+  status: DefectStatus;
+  note: string;
+  actorRole: "client" | "staff";
+  createdAt: string;
+};
+
 export type Defect = {
   id: string;
   projectId: string;
@@ -52,6 +94,8 @@ export type Defect = {
   note: string;
   reportedBy: "client" | "studio";
   updatedAt: string;
+  evidence: DefectEvidence[];
+  history: DefectEvent[];
 };
 
 export type Retainer = {

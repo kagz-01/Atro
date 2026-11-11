@@ -3,26 +3,24 @@
 // A client who lives down the road and a client eight time zones away open
 // the same dashboard, and for both the first screen has to answer "where is
 // my building and what do I do next" — but not in the same words. The local
-// home leads with the ground: the site's city, the call on the site's clock,
-// and the paybill you can send to from anywhere in the country. The abroad
-// home leads with the distance: both clocks at once, what changed while they
-// slept, and the wire details their bank asks for.
-//
-// Both halves read real data — the studio's own next-call wording, the
-// payment sheets the console wrote (portal_payment_instructions), the visit
-// flow and the activity feed. Nothing here is decorative copy about a
-// lifestyle; the difference is which facts a distant client needs first.
+// home leads with the ground and the site's clock; the abroad home leads with
+// the distance, both clocks, and changes since the client's visit.
 
-import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { ArrowRight, Globe, MapPin, MessageSquare, MessageSquareWarning } from "lucide-react";
+import {
+  ArrowRight,
+  CreditCard,
+  Globe,
+  MapPin,
+  MessageSquare,
+  MessageSquareWarning,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { HomeSection } from "@/lib/home-band";
 import { nextCallLine } from "@/lib/home-band";
-import { pickInstructions } from "@/lib/how-to-pay";
-import { getMyHowToPay } from "@/lib/how-to-pay-server";
 import { isHomeZone, zonedClock } from "@/lib/tz";
 import type { ProjectRecord } from "@/lib/diaspora/server";
+import type { Payment } from "@/lib/diaspora/portal";
 
 const SITE_ZONE = "Africa/Nairobi";
 
@@ -35,30 +33,77 @@ function Caption({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   );
 }
 
-function usePayLine(projectId: string, abroad: boolean): string {
-  const { data } = useQuery({
-    queryKey: ["how-to-pay", projectId],
-    queryFn: () => getMyHowToPay({ data: { projectId } }),
-  });
-  const text = pickInstructions(data?.local ?? "", data?.international ?? "", abroad);
-  // Two lines: enough for the paybill account at home and for bank + SWIFT
-  // abroad — the parts someone reads out at a counter — with the full sheet
-  // one button away in Money.
-  return text.split("\n").slice(0, 2).join("\n");
+function PaymentCallout({
+  payable,
+  onGoMoney,
+  abroad,
+  readOnly,
+}: {
+  payable: Payment | null;
+  onGoMoney: () => void;
+  abroad: boolean;
+  readOnly: boolean;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl border border-ink/10 bg-white p-4">
+      <Caption icon={<CreditCard className="size-3.5" aria-hidden />}>
+        {payable && !readOnly
+          ? "Stage approved for payment"
+          : payable
+            ? "Approved payment stage"
+            : "Project payments"}
+      </Caption>
+      {payable ? (
+        <>
+          <p className="mt-2 text-[13px] font-medium text-maroon">{payable.label}</p>
+          <p className="mt-1 text-[13px] text-ink/70">
+            {new Intl.NumberFormat("en-KE", {
+              style: "currency",
+              currency: "KES",
+              maximumFractionDigits: 0,
+            }).format(payable.amount)}
+          </p>
+          <p className="mt-2 text-[12px] leading-relaxed text-ink/60">
+            {readOnly
+              ? "This stage is shown for reference. Payments cannot be started from a read-only preview."
+              : "Review the stage and amount, then continue to secure Paystack checkout."}
+          </p>
+        </>
+      ) : (
+        <p className="mt-2 text-[13px] leading-relaxed text-ink/65">
+          {abroad
+            ? "Only stages approved by ATRO can be paid. When one is ready, review it and pay in KES through hosted Paystack checkout."
+            : "Only stages approved by ATRO can be paid. When one is ready, review it and pay securely through Paystack checkout."}
+        </p>
+      )}
+      {readOnly ? (
+        <p className="mt-2 text-[12px] text-ink/55">
+          Checkout is unavailable in this read-only preview.
+        </p>
+      ) : null}
+      <Button size="sm" variant="ghost" className="mt-3" onClick={onGoMoney}>
+        {payable && !readOnly ? "Review & pay" : "View payment ledger"}{" "}
+        <ArrowRight className="size-3.5" />
+      </Button>
+    </div>
+  );
 }
 
-/** The home a client in the country opens: the ground, the clock, the paybill. */
+/** The home a client in the country opens: the ground and the site's clock. */
 export function LocalHomeBand({
   project,
+  payablePayment,
+  readOnly,
   onGoMoney,
   onGoMessages,
 }: {
   project: ProjectRecord;
+  payablePayment: Payment | null;
+  readOnly: boolean;
   onGoMoney: () => void;
   onGoMessages: () => void;
 }) {
   const call = nextCallLine(project.nextCall, false);
-  const payLine = usePayLine(project.id, false);
 
   return (
     <section className="grid gap-5 rounded-2xl border border-ink/10 bg-cream p-5 lg:grid-cols-[1.4fr_1fr]">
@@ -87,25 +132,22 @@ export function LocalHomeBand({
         </p>
       </div>
 
-      {payLine ? (
-        <div className="min-w-0 rounded-xl border border-ink/10 bg-white p-4">
-          <Caption icon={<MapPin className="size-3.5" aria-hidden />}>How you pay</Caption>
-          <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink/70">
-            {payLine}
-          </p>
-          <Button size="sm" variant="ghost" className="mt-3" onClick={onGoMoney}>
-            See how to pay <ArrowRight className="size-3.5" />
-          </Button>
-        </div>
-      ) : null}
+      <PaymentCallout
+        payable={payablePayment}
+        onGoMoney={onGoMoney}
+        abroad={false}
+        readOnly={readOnly}
+      />
     </section>
   );
 }
 
-/** The home a client opens from another country: both clocks, the distance, the wire. */
+/** The home a client opens from another country: both clocks and the distance. */
 export function AbroadHomeBand({
   project,
   zone,
+  payablePayment,
+  readOnly,
   away: { activity, messages, decisions },
   onGo,
   onGoActivity,
@@ -113,13 +155,14 @@ export function AbroadHomeBand({
 }: {
   project: ProjectRecord;
   zone: string;
+  payablePayment: Payment | null;
+  readOnly: boolean;
   away: { activity: number; messages: number; decisions: number };
   onGo: (section: HomeSection) => void;
   onGoActivity: () => void;
   onGoMoney: () => void;
 }) {
   const call = nextCallLine(project.nextCall, true);
-  const payLine = usePayLine(project.id, true);
 
   const now = new Date().toISOString();
   const siteClock = zonedClock(now, SITE_ZONE);
@@ -201,17 +244,12 @@ export function AbroadHomeBand({
         </button>
       </div>
 
-      {payLine ? (
-        <div className="min-w-0 rounded-xl border border-ink/10 bg-white p-4">
-          <Caption icon={<Globe className="size-3.5" aria-hidden />}>How you pay</Caption>
-          <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink/70">
-            {payLine}
-          </p>
-          <Button size="sm" variant="ghost" className="mt-3" onClick={onGoMoney}>
-            See the full instructions <ArrowRight className="size-3.5" />
-          </Button>
-        </div>
-      ) : null}
+      <PaymentCallout
+        payable={payablePayment}
+        onGoMoney={onGoMoney}
+        abroad
+        readOnly={readOnly}
+      />
     </section>
   );
 }

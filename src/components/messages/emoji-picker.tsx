@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Smile } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const EMOJIS = [
   ["👍", "Thumbs up"],
@@ -26,17 +25,16 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
 
   return (
     <div className="relative">
-      <Button
+      <button
         type="button"
-        size="sm"
-        variant="outline"
         aria-label="Add emoji"
+        title="Add emoji"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
+        className="grid size-11 shrink-0 place-items-center rounded-full text-maroon transition-colors hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon"
       >
-        <Smile className="size-4" />
-        Emoji
-      </Button>
+        <Smile className="size-5" aria-hidden />
+      </button>
       {open ? (
         <div
           role="group"

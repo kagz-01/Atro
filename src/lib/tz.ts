@@ -135,6 +135,50 @@ function offsetMs(at: Date, zone: string): number | null {
   );
 }
 
+/** Convert an IANA-zone wall time such as `2026-11-18T14:30` to an instant. */
+export function instantFromWallTime(value: string, zone: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match || !zone) return null;
+  const [, yearText, monthText, dayText, hourText, minuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const wallMs = Date.UTC(year, month - 1, day, hour, minute);
+  const wallDate = new Date(wallMs);
+  if (
+    wallDate.getUTCFullYear() !== year ||
+    wallDate.getUTCMonth() + 1 !== month ||
+    wallDate.getUTCDate() !== day ||
+    hour > 23 ||
+    minute > 59
+  ) {
+    return null;
+  }
+
+  const firstOffset = offsetMs(new Date(wallMs), zone);
+  if (firstOffset === null) return null;
+  let instant = wallMs - firstOffset;
+  const refinedOffset = offsetMs(new Date(instant), zone);
+  if (refinedOffset === null) return null;
+  instant = wallMs - refinedOffset;
+
+  const result = new Date(instant);
+  const actual = wallAt(result, zone);
+  if (
+    !actual ||
+    actual.year !== year ||
+    actual.month !== month ||
+    actual.day !== day ||
+    actual.hour !== hour ||
+    actual.minute !== minute
+  ) {
+    return null;
+  }
+  return result.toISOString();
+}
+
 /** Inside the window on the client's clock. An unreadable input or zone reads as outside — send. */
 export function insideQuietHours(iso: string, zone: string): boolean {
   const at = parseIso(iso);

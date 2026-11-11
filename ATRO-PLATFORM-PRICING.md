@@ -6,6 +6,46 @@ ATRO is more than a marketing website. The repository contains a public
 construction/design site, lead intake, interactive planning tools, authentication
 and role-based project workspaces, project records, and payment workflows.
 
+### A simple way to explain the platform
+
+> ATRO is a connected website and project-management platform for a design and
+> construction business. It helps prospective clients understand the services
+> and send a project brief, then gives the office and owner tools to coordinate
+> that work. Each client gets a private view of their own project's progress,
+> decisions, documents, messages and payment records. The public website helps
+> bring work in; the private workspaces help the team deliver and account for
+> it.
+
+It is not four unrelated dashboards. They are role-specific windows onto shared
+project records, with different actions and access depending on who is signed in.
+The usual journey is:
+
+1. **A prospective client learns about ATRO.** The Kenya and diaspora public
+   experiences explain services, process, coverage and how to get started.
+2. **The client sends a useful brief.** The intake flow collects project and
+   contact context so the team can review and follow up rather than receiving
+   only an unstructured message.
+3. **The office coordinates the opportunity and the work.** Staff can follow
+   enquiries, projects, messages, visits and schedules. Admin sees the wider
+   portfolio and has additional business and financial controls.
+4. **The project team keeps a shared record.** Project milestones, evidence,
+   decisions, approvals, selections, changes, messages and documents are kept
+   with the relevant project.
+5. **The client follows and responds.** Kenya and diaspora clients see their
+   own project, receive relevant updates, make decisions and approvals, and
+   review the payment record. The diaspora experience emphasizes remote
+   visibility and time-zone-aware coordination.
+6. **Payments are recorded against project stages.** Paystack checkout and
+   verification connect eligible payment stages to the ledger. A payment is
+   not treated as received merely because a checkout was started.
+7. **The owner monitors and closes the work.** Admin can review portfolio
+   status, track money, manage access and perform privileged project lifecycle
+   actions.
+
+The public planning tools support early conversations; they are not substitutes
+for professional measurement, supplier quotations or a project-specific
+construction contract.
+
 The four workspaces are:
 
 1. **Admin** — owner-level portfolio oversight, project and payment tracking,
@@ -46,12 +86,110 @@ content and assets.
 | Admin workspace | Portfolio, project controls, payment tracking, access administration, project funds and privileged actions | 220,000–380,000 |
 | Paystack payment workflow | Checkout initiation, transaction verification, webhook handling and project-ledger updates | 100,000–180,000 |
 | QA, deployment and handover | Responsive and workflow checks, defect fixing, deployment support, administrator handover and operating documentation | 120,000–220,000 |
-| **Indicative total** |  | **1,760,000–3,260,000** |
+| **Indicative total** |  | **1,740,000–3,260,000** |
+
+### Why each work package has a price
+
+The table gives the estimate; this walkthrough explains what the client is
+paying for and what moves a package toward the lower or higher end. The ranges
+are estimates for the described work, not externally verified market averages.
+
+1. **Discovery, architecture and UX — KES 80,000–150,000.** This defines the
+   audiences, four roles, permissions, information structure and end-to-end
+   workflows before implementation. This has a lower cost when requirements
+   and content are already approved; it moves higher when workshops, workflow
+   revisions, acceptance criteria and edge cases must be developed with the
+   client. It reduces expensive rework across every later package.
+2. **Visual system and responsive UI — KES 90,000–180,000.** This establishes
+   the reusable visual language and interaction patterns used across the
+   marketing pages and private workspaces. The cost reflects shared components,
+   mobile behavior, accessibility, and consistency—not just choosing colors.
+   More bespoke layouts, revision rounds and device-specific refinement move
+   the work toward the high end.
+3. **Kenya public website — KES 160,000–300,000.** This is the main public
+   information and lead-generation experience: service, project, zone, process,
+   contact and supporting pages, plus responsive layouts and search metadata.
+   It costs more than a one-page brochure because visitors need multiple
+   routes through a substantial set of information. Approved copy and imagery
+   keep it lower; original content, photography, animation or extra pages raise
+   it.
+4. **Diaspora public experience — KES 90,000–180,000.** This explains the
+   remote-client journey, safety and verification information, guides and
+   FAQs, and directs diaspora enquiries appropriately. It is an incremental
+   experience that shares the main site's components, so it is priced below a
+   second full website. New research, writing, translation or significant
+   custom functionality would move it higher.
+5. **Enquiry and lead intake — KES 50,000–100,000.** The form turns an initial
+   visit into structured information the team can review and follow up. The
+   price covers the sequence, validation, conditional questions, submission and
+   hand-off—not simply placing fields on a page. Attachments, more complex
+   routing or external notification setup increase the effort.
+6. **Interactive tools — KES 150,000–300,000.** The BOQ worksheet, dated
+   material-price references, cost/planning tools and county coverage map each
+   have their own inputs, results, explanatory states and limitations. They
+   take more effort than static content because calculations, data
+   presentation and user expectations need careful handling. Fewer tools or
+   simpler behavior reduce the cost; richer data, export, saved work or
+   independently verified rates increase it.
+7. **Authentication and role boundaries — KES 120,000–240,000.** Sign-in is
+   only part of this package. The system must distinguish Admin, Staff and
+   client access, restrict each client to authorized projects, and prevent
+   unauthorized financial or administrative actions. Authorization rules and
+   their tests justify the cost; additional identity providers, complex
+   invitations or a formal security assessment are separate effort.
+8. **Data, documents and project workflows — KES 180,000–350,000.** This is
+   the shared foundation that stores project status, lifecycle, evidence,
+   documents, activity, decisions, approvals, messages and operational
+   history. Each workflow needs rules for valid state changes, persistence,
+   display and failure handling. A narrow prototype costs less; production
+   migration, complex retention rules, audit requirements or multiple external
+   integrations add substantial work.
+9. **Kenya client workspace — KES 160,000–280,000.** The client needs more
+   than a progress page: the workspace organizes milestones, approvals,
+   selections, changes, money, documents, messages and decisions around their
+   own project. The price covers the role-specific screens and actions against
+   the shared project foundation. Fewer workflows lower the estimate; richer
+   notification, reporting or approval requirements raise it.
+10. **Diaspora workspace increment — KES 80,000–160,000.** Much of the client
+    workspace is shared, so this is not priced as a second independent portal.
+    The increment covers the distinct navigation and emphasis on remote
+    evidence, updates and time zones, plus testing the diaspora journey. A
+    larger difference in workflow or language/localization would cost more.
+11. **Staff / Office workspace — KES 140,000–240,000.** The office needs its
+    own follow-up and coordination workspace for projects, enquiries,
+    communications, calendar and payment visibility. It shares project data
+    with Admin but must present operational work without granting the same
+    authority. Separate role-aware screens, queues and access checks drive the
+    cost.
+12. **Admin workspace — KES 220,000–380,000.** Admin has the broadest
+    responsibility: portfolio oversight, high-impact project controls,
+    payment tracking, access administration and project funds. The package is
+    higher because it combines cross-project reporting with privileged actions
+    whose permissions and consequences need careful design and testing. More
+    reporting, approval chains or integrations belong toward the high end.
+13. **Paystack payment workflow — KES 100,000–180,000.** The platform must
+    initiate checkout, verify the result, handle provider callbacks safely and
+    update the correct project ledger. This is more than a payment button:
+    duplicate callbacks, failed attempts, references and reconciliation need
+    explicit handling. The estimate excludes provider fees and does not imply
+    that production merchant configuration or settlement has already been
+    proven.
+14. **QA, deployment and handover — KES 120,000–220,000.** The finished work
+    needs responsive checks, role and workflow testing, defect correction,
+    deployment coordination and instructions for the people who will operate
+    it. More live integrations, more test devices, data migration or training
+    sessions raise the cost. This is a delivery stage, not optional polish.
+
+In short, the largest amounts sit where the platform must enforce permissions,
+coordinate persistent project workflows, and safely handle privileged or
+financial actions. Reusing the same client-portal foundation keeps the second
+client workspace from being charged as a duplicate build.
 
 ### A practical quote to put forward
 
 For the listed scope, a reasonable initial fixed-price proposal is **KES
-2,500,000**, subject to confirming what is production-ready and agreeing on
+2,500,000**—the midpoint of the itemized ranges—subject to confirming what is
+production-ready and agreeing on
 content, integrations, acceptance criteria and support. A client with a tight
 budget could reduce scope toward **KES 1,800,000–2,100,000** by deferring lower
 priority tools or advanced admin workflows. A production-ready, fully tested

@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Loader2, Plus, ShieldCheck, Wrench } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Eye, FileText, Loader2, Plus, ShieldCheck, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/field";
 import { Panel } from "@/components/ui/panel";
 import { StatCard } from "@/components/ui/stat-card";
+import { EvidenceAttachments } from "@/components/after-handover/evidence-attachments";
 import {
+  acknowledgeHandoverDocument,
+  getHandoverDocumentUrl,
+} from "@/lib/after-handover-server";
+import { uploadDefectEvidence } from "@/lib/after-handover-upload";
+import {
+  HANDOVER_DOCUMENT_CATEGORIES,
   SEVERITIES,
   STATUS_TONE_CLASS,
   fmtDate,
@@ -52,17 +59,33 @@ export function AfterHandoverPanel({
   const [area, setArea] = useState("");
   const [detail, setDetail] = useState("");
   const [severity, setSeverity] = useState<Severity>("minor");
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceInputKey, setEvidenceInputKey] = useState(0);
   const [formError, setFormError] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [askText, setAskText] = useState("");
 
   const report = useMutation({
     mutationFn: () => reportDefect({ data: { projectId, title, detail, area, severity } }),
-    onSuccess: () => {
+    onSuccess: async (created) => {
+      const attachment = evidenceFile;
       setTitle("");
       setArea("");
       setDetail("");
+      setEvidenceFile(null);
+      setEvidenceInputKey((key) => key + 1);
       setFormError("");
+      if (attachment) {
+        try {
+          await uploadDefectEvidence(projectId, created.defectId, attachment);
+        } catch (reason) {
+          setFormError(
+            `Your report was recorded, but its evidence did not upload: ${
+              reason instanceof Error ? reason.message : String(reason)
+            } Add the file to the report below.`,
+          );
+        }
+      }
       void queryClient.invalidateQueries({ queryKey: ["after-handover", projectId] });
       onChanged?.();
     },
@@ -88,6 +111,29 @@ export function AfterHandoverPanel({
       onChanged?.();
     },
   });
+  const acknowledge = useMutation({
+    mutationFn: acknowledgeHandoverDocument,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["after-handover", projectId] });
+      onChanged?.();
+    },
+  });
+
+  async function openHandoverDocument(documentId: string) {
+    const popup = window.open("", "_blank");
+    if (!popup) {
+      setFormError("Allow pop-ups to preview this handover document.");
+      return;
+    }
+    popup.opener = null;
+    try {
+      const { url } = await getHandoverDocumentUrl({ data: { documentId } });
+      popup.location.href = url;
+    } catch (reason) {
+      popup.close();
+      setFormError(reason instanceof Error ? reason.message : "The document could not be opened.");
+    }
+  }
 
   if (isLoading) {
     return (
@@ -118,6 +164,11 @@ export function AfterHandoverPanel({
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Handover date"
+          value={data.handedOverOn ? fmtDate(data.handedOverOn) : "Not recorded"}
+          sub="Use the date on your signed handover record"
+        />
         <StatCard
           label="Days left to report"
           value={summary.daysRemaining === null ? "—" : String(summary.daysRemaining)}
@@ -154,6 +205,75 @@ export function AfterHandoverPanel({
             <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
             {summary.stalled} report{summary.stalled === 1 ? " has" : "s have"} been waiting for a
             response for over two weeks. Message the studio if you have not heard.
+          </p>
+        ) : null}
+      </Panel>
+
+      <Panel
+        title="Your handover documents"
+        subtitle="Signed or issued project records from ATRO. Confirming access is not signing or accepting terms."
+      >
+        {data.documents.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-ink/15 p-5 text-center">
+            <FileText className="mx-auto size-5 text-ink/35" aria-hidden />
+            <p className="mt-2 text-[13px] text-ink/60">
+              No handover documents have been added to your project record yet. Ask your project
+              team if you are expecting a document.
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {data.documents.map((document) => {
+              const label =
+                HANDOVER_DOCUMENT_CATEGORIES.find((item) => item.value === document.category)?.label ??
+                "Project close-out record";
+              return (
+                <li
+                  key={document.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
+                >
+                  <span className="min-w-0">
+                    <span className="block break-words text-[14px] font-medium text-maroon">
+                      {document.title}
+                    </span>
+                    <span className="mt-1 block text-[12px] text-ink/55">
+                      {label} · {document.filename} · Added {fmtDate(document.uploadedAt)}
+                    </span>
+                    {document.receivedAt ? (
+                      <span className="mt-1 block text-[11px] text-emerald-800">
+                        Access confirmed {fmtDate(document.receivedAt)}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void openHandoverDocument(document.id)}
+                    >
+                      <Eye className="size-3.5" aria-hidden />
+                      Preview
+                    </Button>
+                    {!document.receivedAt ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={acknowledge.isPending}
+                        onClick={() => acknowledge.mutate({ data: { documentId: document.id } })}
+                      >
+                        Confirm access
+                      </Button>
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {acknowledge.error instanceof Error ? (
+          <p role="alert" className="mt-3 text-[12px] text-red-700">
+            {acknowledge.error.message}
           </p>
         ) : null}
       </Panel>
@@ -197,6 +317,21 @@ export function AfterHandoverPanel({
               onChange={(e) => setDetail(e.target.value)}
               placeholder="Hairline crack on the reveal, about 30 cm, started after the rains."
             />
+          </div>
+
+          <div>
+            <Label htmlFor="df-evidence">Add a photo or document (optional)</Label>
+            <Input
+              key={evidenceInputKey}
+              id="df-evidence"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              className="mt-1 h-auto min-h-11 py-2"
+              onChange={(event) => setEvidenceFile(event.target.files?.[0] ?? null)}
+            />
+            <p className="mt-1 text-[11px] text-ink/50">
+              PDF, JPG, PNG or WebP · up to 10 MB. More evidence can be added to the report later.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-end gap-4">
@@ -266,6 +401,27 @@ export function AfterHandoverPanel({
                       {d.verifiedOn ? ` · Closed ${fmtDate(d.verifiedOn)}` : ""}
                     </p>
                     {d.detail ? <p className="mt-2 text-[13px] text-ink/70">{d.detail}</p> : null}
+                    <ol className="mt-3 space-y-2 border-l border-ink/10 pl-3">
+                      {d.history.map((event) => (
+                        <li key={event.id} className="text-[11px] text-ink/55">
+                          <span className="font-medium text-maroon">{statusLabel(event.status)}</span>
+                          {" · "}
+                          {fmtDate(event.createdAt)}
+                          {" · "}
+                          {event.actorRole === "staff" ? "ATRO" : "You"}
+                          {event.note ? ` — ${event.note}` : ""}
+                        </li>
+                      ))}
+                    </ol>
+                    <EvidenceAttachments
+                      projectId={projectId}
+                      defectId={d.id}
+                      evidence={d.evidence}
+                      onUploaded={() => {
+                        void queryClient.invalidateQueries({ queryKey: ["after-handover", projectId] });
+                        onChanged?.();
+                      }}
+                    />
                     {d.note ? (
                       <p className="mt-2 rounded-xl bg-cream px-3 py-2 text-[12px] text-ink/70">
                         <span className="font-semibold text-maroon">From the studio:</span> {d.note}
@@ -371,7 +527,7 @@ export function AfterHandoverPanel({
               <p className="mt-2 text-[12px] text-ink/50">
                 {retainerLine(data.retainer, now)}
                 {data.retainer.lastPaidOn
-                  ? ` · Last paid ${fmtDate(data.retainer.lastPaidOn)}`
+                  ? ` · Payment date recorded ${fmtDate(data.retainer.lastPaidOn)} (not verified here)`
                   : ""}
               </p>
             </div>
@@ -382,17 +538,21 @@ export function AfterHandoverPanel({
               <p className="text-[11px] uppercase tracking-[0.1em] text-ink/40">a year</p>
             </div>
           </div>
+          <p className="mt-2 text-[11px] text-ink/50">
+            This is a summary recorded by ATRO, not a payment confirmation or replacement for the
+            executed agreement.
+          </p>
           {rState === "due_soon" || rState === "lapsed" ? (
             <p className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] text-amber-900">
               <Wrench className="size-4 shrink-0" aria-hidden />
               {rState === "lapsed"
-                ? "The retainer has lapsed — a defect reported now has nobody answerable for it. Renew to put the cover back."
-                : "Renewal is close. Renewing keeps the cover unbroken."}
+                ? "The recorded renewal date has passed. Confirm current coverage and payment status with the studio."
+                : "The recorded renewal date is close. Confirm renewal terms and payment status with the studio."}
             </p>
           ) : (
             <p className="mt-3 flex items-center gap-2 text-[12px] text-emerald-800">
               <ShieldCheck className="size-4" aria-hidden />
-              Cover active.
+              ATRO has marked this retainer active; payment status is not verified here.
             </p>
           )}
         </Panel>

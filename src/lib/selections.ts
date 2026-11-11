@@ -93,15 +93,18 @@ export type AllowanceSummary = {
   count: number;
   open: number;
   chosen: number;
+  /** Total allowance belonging only to selections that have been chosen. */
+  chosenAllowance: number;
   allowance: number;
   committed: number;
-  /** Committed minus allowance: negative is a saving, positive is over. */
+  /** Committed minus chosen allowances: negative is under, positive is over. */
   variance: number;
   awaitingChoice: Selection[];
 };
 
 export function summariseAllowances(selections: Selection[]): AllowanceSummary {
   let allowance = 0;
+  let chosenAllowance = 0;
   let committed = 0;
   let open = 0;
   let chosen = 0;
@@ -111,7 +114,9 @@ export function summariseAllowances(selections: Selection[]): AllowanceSummary {
       open += 1;
       continue;
     }
+    if (s.status !== "chosen") continue;
     chosen += 1;
+    chosenAllowance += s.allowance;
     const verdict = allowanceVerdict(s);
     if (verdict.chosen) committed += verdict.price;
   }
@@ -119,9 +124,10 @@ export function summariseAllowances(selections: Selection[]): AllowanceSummary {
     count: selections.length,
     open,
     chosen,
+    chosenAllowance,
     allowance,
     committed,
-    variance: committed - allowance,
+    variance: committed - chosenAllowance,
     awaitingChoice: selections
       .filter((s) => s.status === "open")
       .sort((a, b) => a.ord - b.ord),

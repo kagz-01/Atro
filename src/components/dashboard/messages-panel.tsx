@@ -1,17 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Paperclip, Send, Trash2, X } from "lucide-react";
+import { Loader2, Paperclip, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { EmojiPicker } from "@/components/messages/emoji-picker";
-import { MessageFileCard } from "@/components/messages/message-files";
-import { authorLabel, composerHint, MESSAGE_MAX, oldestFirst, type Message } from "@/lib/messages";
+import { MessageThread, ReplyingTo } from "@/components/messages/message-thread";
+import {
+  composerHint,
+  MESSAGE_MAX,
+  MESSAGE_REACTIONS,
+  oldestFirst,
+  type Message,
+} from "@/lib/messages";
 import {
   getMessageAttachmentAvailability,
   listMyMessages,
   markStudioMessagesRead,
   postMyMessage,
   deleteMyMessage,
+  toggleMyMessageReaction,
 } from "@/lib/messages-server";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import {
@@ -49,8 +56,10 @@ export function MessagesPanel({
   const [uploadProblem, setUploadProblem] = useState("");
   const [notificationWarning, setNotificationWarning] = useState(false);
   const [pendingMessageId, setPendingMessageId] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
 
   const {
     data: attachmentAvailability,
@@ -103,7 +112,12 @@ export function MessagesPanel({
       const posted = pendingMessageId
         ? null
         : await postMyMessage({
-            data: { projectId, body: draft, hasAttachments: files.length > 0 },
+            data: {
+              projectId,
+              body: draft,
+              hasAttachments: files.length > 0,
+              replyToMessageId: replyTo?.id,
+            },
           });
       const messageId = pendingMessageId ?? posted?.messageId;
       if (!messageId) throw new Error("Message could not be saved.");
@@ -122,6 +136,7 @@ export function MessagesPanel({
     },
     onSuccess: ({ messageId, failedFiles, notificationWarning: warning }) => {
       setDraft("");
+      setReplyTo(null);
       setNotificationWarning(warning);
       setFiles(failedFiles.map(({ file }) => file));
       setUploadProblem(failedFiles.map(({ file, reason }) => `${file.name}: ${reason}`).join(" "));
@@ -135,6 +150,20 @@ export function MessagesPanel({
 
   const remove = useMutation({
     mutationFn: (messageId: string) => deleteMyMessage({ data: { messageId } }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["my-messages", projectId] });
+      onChanged?.();
+    },
+  });
+
+  const react = useMutation({
+    mutationFn: ({
+      messageId,
+      emoji,
+    }: {
+      messageId: string;
+      emoji: (typeof MESSAGE_REACTIONS)[number];
+    }) => toggleMyMessageReaction({ data: { messageId, emoji } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["my-messages", projectId] });
       onChanged?.();
@@ -166,28 +195,28 @@ export function MessagesPanel({
 
           {!isLoading && empty ? null : (
             <>
-              {oldestFirst(messages).map((m) => (
-                <MessageRow
-                  key={m.id}
-                  message={m}
-                  clientName={clientName}
-                  onDelete={
-                    m.authorRole === "client" && !m.deletedAt
-                      ? () => {
-                          if (
-                            window.confirm(
-                              "Delete this message? The project record will show that it was deleted.",
-                            )
-                          ) {
-                            remove.mutate(m.id);
-                          }
-                        }
-                      : undefined
+              <MessageThread
+                messages={oldestFirst(messages)}
+                viewerRole="client"
+                clientName={clientName}
+                onReply={(message) => {
+                  setReplyTo(message);
+                  requestAnimationFrame(() => draftRef.current?.focus());
+                }}
+                onReact={(messageId, emoji) => react.mutate({ messageId, emoji })}
+                onDelete={(message) => {
+                  if (
+                    message.authorRole === "client" &&
+                    window.confirm(
+                      "Delete this message? The project record will show that it was deleted.",
+                    )
+                  ) {
+                    remove.mutate(message.id);
                   }
-                  deleting={remove.isPending && remove.variables === m.id}
-                  role="client"
-                />
-              ))}
+                }}
+                reactionPendingId={react.isPending ? react.variables?.messageId : null}
+                deletingId={remove.isPending ? remove.variables : null}
+              />
               <div ref={bottomRef} />
             </>
           )}
@@ -215,6 +244,13 @@ export function MessagesPanel({
             The message was deleted, but its stored file cleanup needs staff attention.
           </p>
         ) : null}
+        {react.error ? (
+          <p role="alert" className="pb-3 text-[12px] text-red-700">
+            {react.error instanceof Error
+              ? react.error.message
+              : "The reaction could not be saved."}
+          </p>
+        ) : null}
 
         {empty && !isLoading && !error ? (
           <p className="pb-4 text-[13px] leading-relaxed text-ink/55">
@@ -226,13 +262,16 @@ export function MessagesPanel({
       </div>
 
       <form
-        className="border-t border-ink/8 px-5 py-4"
+        className="border-t border-ink/8 bg-white px-3 py-4 sm:px-5"
         onSubmit={(e) => {
           e.preventDefault();
           if ((draft.trim().length >= 2 || files.length > 0) && !send.isPending) send.mutate();
         }}
       >
-        <div className="flex flex-wrap items-end gap-3">
+        {replyTo ? (
+          <ReplyingTo message={replyTo} clientName={clientName} onCancel={() => setReplyTo(null)} />
+        ) : null}
+        <div className="flex flex-col gap-1">
           <input
             ref={fileInputRef}
             className="sr-only"
@@ -264,49 +303,22 @@ export function MessagesPanel({
           <label className="sr-only" htmlFor="msg-draft">
             Write a message to the studio
           </label>
-          <textarea
-            id="msg-draft"
-            className="min-h-16 flex-1 resize-y rounded-xl border border-ink/15 bg-white px-3 py-2 text-[13px] focus:border-maroon focus:outline-none"
-            placeholder="Ask about the roof covering, a payment, a date…"
-            value={draft}
-            maxLength={MESSAGE_MAX}
-            disabled={Boolean(pendingMessageId) || send.isPending}
-            onChange={(e) => {
-              send.reset();
-              setDraft(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                if (draft.trim().length >= 2 && !send.isPending) send.mutate();
-              }
-            }}
-          />
-          <Button
-            type="submit"
-            size="sm"
-            disabled={(draft.trim().length < 2 && files.length === 0) || send.isPending}
-          >
-            {send.isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Send className="size-3.5" />
-            )}
-            Send
-          </Button>
-        </div>
-        <div className="mt-2">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 items-end gap-1 rounded-2xl border border-ink/15 bg-white p-1.5 shadow-sm transition-colors focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/20">
             <EmojiPicker
               onPick={(emoji) => {
                 send.reset();
                 setDraft((current) => `${current}${emoji}`);
+                draftRef.current?.focus();
               }}
             />
-            <Button
+            <button
               type="button"
-              size="sm"
-              variant="outline"
+              aria-label="Attach files"
+              title={
+                fileUploadAvailable
+                  ? "Attach files"
+                  : (attachmentAvailabilityHint ?? "File attachments are unavailable")
+              }
               disabled={
                 !fileUploadAvailable ||
                 Boolean(pendingMessageId) ||
@@ -314,16 +326,52 @@ export function MessagesPanel({
                 files.length >= MAX_MESSAGE_ATTACHMENTS
               }
               onClick={() => fileInputRef.current?.click()}
+              className="grid size-11 shrink-0 place-items-center rounded-full text-maroon transition-colors hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon disabled:cursor-not-allowed disabled:text-ink/25 disabled:hover:bg-transparent"
             >
-              <Paperclip className="size-4" />
-              Attach files
-            </Button>
-            <span className="text-[10px] text-ink/45">
-              {fileUploadAvailable
-                ? `Up to ${MAX_MESSAGE_ATTACHMENTS} files · ${Math.round(MAX_MESSAGE_ATTACHMENT_BYTES / (1024 * 1024))} MB each`
-                : attachmentAvailabilityHint}
-            </span>
+              <Paperclip className="size-5" aria-hidden />
+            </button>
+            <textarea
+              ref={draftRef}
+              id="msg-draft"
+              className="max-h-32 min-h-11 min-w-0 flex-1 resize-y border-0 bg-transparent px-2 py-2.5 text-[13px] leading-5 outline-none placeholder:text-ink/40 focus:border-transparent focus:outline-none focus:ring-0"
+              placeholder="Message your project team…"
+              value={draft}
+              maxLength={MESSAGE_MAX}
+              disabled={Boolean(pendingMessageId) || send.isPending}
+              onChange={(e) => {
+                send.reset();
+                setDraft(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  if (draft.trim().length >= 2 && !send.isPending) send.mutate();
+                }
+              }}
+            />
+            <button
+              type="submit"
+              aria-label="Send message"
+              title="Send message"
+              disabled={(draft.trim().length < 2 && files.length === 0) || send.isPending}
+              className="grid size-11 shrink-0 place-items-center rounded-full bg-burgundy text-white transition-colors hover:bg-maroon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold disabled:cursor-not-allowed disabled:bg-ink/15"
+            >
+              {send.isPending ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <Send className="size-4" aria-hidden />
+              )}
+            </button>
           </div>
+          <p className="mt-1.5 min-h-4 pl-2 text-[10px] text-ink/40">
+            {fileUploadAvailable
+              ? `Attach up to ${MAX_MESSAGE_ATTACHMENTS} files · ${Math.round(MAX_MESSAGE_ATTACHMENT_BYTES / (1024 * 1024))} MB each`
+              : availabilityLoading
+                ? "Checking file sharing…"
+                : attachmentAvailabilityError
+                  ? "Could not check file sharing. Try reloading this conversation."
+                  : "File attachments are unavailable right now."}
+          </p>
         </div>
         {files.length ? (
           <ul className="mt-3 space-y-1">
@@ -408,78 +456,4 @@ export function MessagesPanel({
       </form>
     </Panel>
   );
-}
-
-function MessageRow({
-  message,
-  clientName,
-  onDelete,
-  deleting,
-  role,
-}: {
-  message: Message;
-  clientName?: string;
-  onDelete?: () => void;
-  deleting: boolean;
-  role: "client";
-}) {
-  const mine = message.authorRole === "client";
-  const who = authorLabel({
-    ...message,
-    authorLabel: message.authorRole === "client" && clientName ? clientName : message.authorLabel,
-  });
-
-  return (
-    <article
-      className={cn(
-        "max-w-[85%] rounded-2xl px-4 py-3",
-        mine ? "ml-auto bg-maroon text-white" : "bg-white border border-ink/10 text-ink",
-      )}
-    >
-      <header className="mb-1 flex flex-wrap items-baseline gap-2">
-        <span className={cn("font-display text-[13px]", mine ? "text-gold" : "text-maroon")}>
-          {who}
-        </span>
-        <time
-          dateTime={message.createdAt}
-          className={cn(
-            "text-[10px] uppercase tracking-[0.08em]",
-            mine ? "text-white/60" : "text-ink/40",
-          )}
-        >
-          {formatWhen(message.createdAt)}
-        </time>
-        {onDelete ? (
-          <button
-            type="button"
-            className="ml-auto inline-flex items-center gap-1 text-[10px] text-white/70 hover:text-white"
-            aria-label="Delete your message"
-            disabled={deleting}
-            onClick={onDelete}
-          >
-            {deleting ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
-            Delete
-          </button>
-        ) : null}
-      </header>
-      {message.body ? (
-        <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{message.body}</p>
-      ) : null}
-      {message.attachments.map((attachment) => (
-        <MessageFileCard key={attachment.id} attachment={attachment} role={role} />
-      ))}
-    </article>
-  );
-}
-
-/** A date the client can compare with their own records. */
-function formatWhen(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }

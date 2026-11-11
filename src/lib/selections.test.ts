@@ -135,8 +135,30 @@ describe("summariseAllowances", () => {
     assert.equal(s.chosen, 1);
     assert.equal(s.open, 1);
     assert.equal(s.allowance, 1_500_000);
+    assert.equal(s.chosenAllowance, 1_000_000);
     assert.equal(s.committed, 1_000_000);
-    assert.equal(s.variance, -500_000);
+    assert.equal(s.variance, 0);
+  });
+
+  it("does not count an unchosen allowance as a saving", () => {
+    const s = summariseAllowances([
+      selection({ id: "a", allowance: 900_000, status: "chosen", chosenOptionId: "o1" }),
+      selection({ id: "b", allowance: 1_800_000, status: "open", chosenOptionId: null }),
+    ]);
+    assert.equal(s.allowance, 2_700_000);
+    assert.equal(s.chosenAllowance, 900_000);
+    assert.equal(s.committed, 1_000_000);
+    assert.equal(s.variance, 100_000);
+  });
+
+  it("does not count closed selections as chosen or committed", () => {
+    const s = summariseAllowances([
+      selection({ id: "a", allowance: 1_000_000, status: "closed" }),
+    ]);
+    assert.equal(s.chosen, 0);
+    assert.equal(s.committed, 0);
+    assert.equal(s.chosenAllowance, 0);
+    assert.equal(s.variance, 0);
   });
 
   it("reports a positive variance when choices ran over", () => {

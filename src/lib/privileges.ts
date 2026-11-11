@@ -28,7 +28,8 @@ export type PrivilegedOp =
   | "close-project"
   | "archive-project"
   | "grant-access"
-  | "revoke-access";
+  | "revoke-access"
+  | "manage-project-team";
 
 /** The sentence the caller is refused with, one per operation. */
 const REFUSAL: Record<PrivilegedOp, string> = {
@@ -44,6 +45,7 @@ const REFUSAL: Record<PrivilegedOp, string> = {
   "archive-project": "Only an admin can archive a project.",
   "grant-access": "Only an admin can change studio access.",
   "revoke-access": "Only an admin can change studio access.",
+  "manage-project-team": "Only an admin can assign project team members.",
 };
 
 /** True when this operation is reserved for admins. */

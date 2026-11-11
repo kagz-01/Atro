@@ -187,11 +187,18 @@ function ProfileForm({
             </Button>
           }
         >
+          <div className="mb-5 rounded-xl border border-ink/8 bg-cream/60 p-4">
+            <AvatarUploader
+              displayName={profile.displayName}
+              editable={false}
+              onChanged={onAvatarChanged}
+            />
+          </div>
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               ["Name", profile.displayName || "—"],
-              ["Update phone", profile.phone ? formatPhone(profile.phone) : "Not added"],
-              ["Update email", profile.email || "Not added"],
+              ["Phone", profile.phone ? formatPhone(profile.phone) : "Not added"],
+              ["Email", profile.email || "Not added"],
               ["Where you are", [profile.city, profile.country].filter(Boolean).join(", ") || "—"],
               ["Your timezone", profile.timezone || "Not set"],
               [

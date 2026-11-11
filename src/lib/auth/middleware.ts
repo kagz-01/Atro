@@ -64,7 +64,7 @@ export const accountMiddleware = createMiddleware({ type: "function" })
   .middleware([authMiddleware])
   .server(async ({ next, context }) => {
     if (context.isGuestPreview) {
-      throw new Error("Create an account to use this feature. Guest preview is read-only.");
+      throw new Error("Create an account to use this feature.");
     }
     return next();
   });

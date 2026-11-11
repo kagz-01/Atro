@@ -29,6 +29,16 @@ export type Milestone = {
 };
 export type PaymentStatus = "paid" | "certified" | "due" | "scheduled" | "retained";
 
+export type PaymentAttemptSummary = {
+  reference: string;
+  status: "pending" | "failed" | "expired" | "success";
+  amount: number;
+  channel?: string;
+  providerTransactionId?: string;
+  createdAt: string;
+  paidAt?: string;
+};
+
 export type Payment = {
   id: string;
   label: string;
@@ -41,7 +51,7 @@ export type Payment = {
   method?: string;
   note?: string;
   checkoutStatus?: "pending" | "failed" | "expired" | "success";
-  checkoutUrl?: string;
+  attempts?: PaymentAttemptSummary[];
 };
 
 export type VaultDoc = {
@@ -60,6 +70,12 @@ export type Decision = {
   title: string;
   detail: string;
   options: string[];
+  optionDetails?: string[];
+  optionVisuals?: {
+    optionIndex: number;
+    caption: string;
+    visualId: string;
+  }[];
   chosen?: string;
   costImpact: number;
   state: "open" | "awaiting-client" | "decided";
@@ -166,7 +182,7 @@ export const MILESTONES: Milestone[] = [
     plannedEnd: "20 Mar 2026",
     actualEnd: "18 Mar 2026",
     summary:
-      "Demonstration record: concept approved on 3 Feb. Developed design and specification issued 27 Feb, approved 12 Mar after two revision rounds. Illustrative BOQ figure shown; not a current quotation.",
+      "Concept approved on 3 Feb. Developed design and specification issued 27 Feb, approved 12 Mar after two revision rounds. The BOQ figure is for reference, not a current quotation.",
     verifiedBy: "A. Wanjiru, Architect — AAK/2016/1187",
     evidence: [
       {
@@ -183,9 +199,9 @@ export const MILESTONES: Milestone[] = [
       },
       {
         date: "18 Mar 2026",
-        caption: "Sample bill-of-quantities figure",
+        caption: "Bill-of-quantities reference",
         detail:
-          "Demonstration data only: 312 sample measured items and an illustrative total of KES 41,800,000, excluding VAT, statutory fees and external works. This is not a current quotation or market rate.",
+          "312 measured items and an indicative total of KES 41,800,000, excluding VAT, statutory fees and external works. This is not a current quotation or market rate.",
       },
     ],
   },

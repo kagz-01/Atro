@@ -170,7 +170,7 @@ export async function requireSession(bearerToken?: string): Promise<SessionIdent
   const user = await getSessionUser(bearerToken);
   if (!user) throw new UnauthorizedError();
   if (user.isGuestPreview && getRequest()?.method !== "GET") {
-    throw new Error("This preview is read-only. Sign in to make changes.");
+    throw new Error("Sign in to make changes in this preview.");
   }
   return {
     userId: user.id,

@@ -115,23 +115,36 @@ function SignInWall({ experience }: { experience: "local" | "diaspora" }) {
                 Sign in to open your project
               </h2>
               <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-ink/70">
-                The portal is private per account. Your milestones, evidence, payments
-                and documents are visible only to you — and to nobody else, whatever
-                link they are sent.
+                The portal is private per account. Your milestones, evidence, payments and documents
+                are visible only to you — and to nobody else, whatever link they are sent.
               </p>
 
               <ul className="mt-8 space-y-4">
                 {[
-                  [CheckCircle2, "Approve a milestone", "Mark a stage complete once the evidence is right. Progress, stage and the ledger all move."],
-                  [CreditCard, "Pay a certified instalment", "Only certified amounts can be paid online, and the ledger updates only after Paystack verifies the transaction."],
-                  [FileText, "Record a decision", "Choose from the listed options; the choice is written into the log with today's date."],
+                  [
+                    CheckCircle2,
+                    "Approve a milestone",
+                    "Mark a stage complete once the evidence is right. Progress, stage and the ledger all move.",
+                  ],
+                  [
+                    CreditCard,
+                    "Pay a certified instalment",
+                    "Only certified amounts can be paid online, and the ledger updates only after Paystack verifies the transaction.",
+                  ],
+                  [
+                    FileText,
+                    "Record a decision",
+                    "Choose from the listed options; the choice is written into the log with today's date.",
+                  ],
                 ].map(([Icon, title, body]) => (
                   <li key={String(title)} className="flex gap-4">
                     <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-maroon/10 text-maroon">
                       <Icon className="size-4.5" />
                     </span>
                     <span>
-                      <span className="block font-display text-lg text-maroon">{String(title)}</span>
+                      <span className="block font-display text-lg text-maroon">
+                        {String(title)}
+                      </span>
                       <span className="mt-1 block text-[14px] leading-relaxed text-ink/60">
                         {String(body)}
                       </span>
@@ -165,10 +178,10 @@ function SignInWall({ experience }: { experience: "local" | "diaspora" }) {
                 No account yet?
               </p>
               <p className="mt-3 text-[14px] leading-relaxed text-ink/70">
-                Signing in takes one click with the account you already have. When you
-                are ready for a real project, open one from the portal and ATRO works
-                to it — the nine stages, the payment schedule and the decision log are
-                generated from your dates and contract value.
+                Signing in takes one click with the account you already have. When you are ready for
+                a real project, open one from the portal and ATRO works to it — the nine stages, the
+                payment schedule and the decision log are generated from your dates and contract
+                value.
               </p>
               <div className="mt-6 space-y-3 border-t border-ink/10 pt-5">
                 {[
@@ -177,7 +190,10 @@ function SignInWall({ experience }: { experience: "local" | "diaspora" }) {
                   [Lock, "Document vault you keep"],
                   [Camera, "Photographic evidence"],
                 ].map(([Icon, label]) => (
-                  <p key={String(label)} className="flex items-center gap-3 text-[13px] text-ink/65">
+                  <p
+                    key={String(label)}
+                    className="flex items-center gap-3 text-[13px] text-ink/65"
+                  >
                     <Icon className="size-4 shrink-0 text-maroon/60" />
                     {String(label)}
                   </p>
@@ -195,13 +211,7 @@ function SignInWall({ experience }: { experience: "local" | "diaspora" }) {
 
 const MONTHS_AHEAD = [3, 6, 9, 12, 15, 18, 24];
 
-function NewProjectForm({
-  onDone,
-  onCancel,
-}: {
-  onDone: () => void;
-  onCancel: () => void;
-}) {
+function NewProjectForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
   const today = new Date();
   const [title, setTitle] = useState("");
   const [plot, setPlot] = useState("");
@@ -264,13 +274,11 @@ function NewProjectForm({
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
-            New project
-          </p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">New project</p>
           <h2 className="mt-2 font-display text-2xl text-maroon">Open your own project</h2>
           <p className="mt-2 max-w-md text-[13px] leading-relaxed text-ink/60">
-            Nine stages dated across your programme, a payment schedule that sums to
-            your contract value, and a decision log you control.
+            Nine stages dated across your programme, a payment schedule that sums to your contract
+            value, and a decision log you control.
           </p>
         </div>
         <button
@@ -284,11 +292,7 @@ function NewProjectForm({
 
       <div className="mt-6">
         <Label htmlFor="np-track">What are we doing?</Label>
-        <Select
-          id="np-track"
-          value={track}
-          onChange={(e) => setTrack(e.target.value as TrackId)}
-        >
+        <Select id="np-track" value={track} onChange={(e) => setTrack(e.target.value as TrackId)}>
           {TRACK_LIST.map((t) => (
             <option key={t.id} value={t.id}>
               {t.label}
@@ -378,8 +382,8 @@ function NewProjectForm({
             inputMode="tel"
           />
           <p className="mt-2 text-[12px] leading-relaxed text-ink/55">
-            Used only to tell you when ATRO posts an update, or when something needs
-            your decision. Add the country code.
+            Used only to tell you when ATRO posts an update, or when something needs your decision.
+            Add the country code.
           </p>
         </div>
         <div>
@@ -424,11 +428,7 @@ function NewProjectForm({
         </div>
         <div className="sm:col-span-2">
           <Label htmlFor="np-months">Programme</Label>
-          <Select
-            id="np-months"
-            value={months}
-            onChange={(e) => setMonths(e.target.value)}
-          >
+          <Select id="np-months" value={months} onChange={(e) => setMonths(e.target.value)}>
             {MONTHS_AHEAD.map((m) => (
               <option key={m} value={String(m)}>
                 {m} months from today ({when(startDate)} → {when(targetDate.toISOString())})
@@ -439,9 +439,7 @@ function NewProjectForm({
       </div>
 
       {error ? (
-        <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-800">
-          {error}
-        </p>
+        <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-800">{error}</p>
       ) : null}
 
       <Button type="submit" size="lg" className="mt-6 w-full" disabled={busy}>
@@ -512,7 +510,7 @@ export function PortalExperience({ experience }: { experience: "local" | "diaspo
       setError(
         message === "Unauthorized"
           ? "Your session has expired. Sign in again to open your project."
-          : message === "Open your project circle to see the project shared with you."
+          : message === "Open Shared projects to see the project shared with you."
             ? message
             : "We could not reach your project just now.",
       );
@@ -600,12 +598,9 @@ export function PortalExperience({ experience }: { experience: "local" | "diaspo
           <h1 className="mt-5 font-display text-3xl text-maroon">Portal unavailable</h1>
           <p className="mt-4 text-ink/70">{error}</p>
           <div className="mt-8 flex justify-center gap-3">
-            {error === "Open your project circle to see the project shared with you." ? (
+            {error === "Open Shared projects to see the project shared with you." ? (
               <Button asChild>
-                <Link
-                  to="/portal/circle"
-                  search={{ projectId: undefined, experience }}
-                >
+                <Link to="/portal/circle" search={{ projectId: undefined, experience }}>
                   Open shared project
                 </Link>
               </Button>
@@ -636,9 +631,8 @@ export function PortalExperience({ experience }: { experience: "local" | "diaspo
         <div className="border-b border-gold/30 bg-gold/10 px-4 py-4 sm:px-6">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-maroon">
-              <strong>Guest preview.</strong> You are viewing sample project information. Sign in to
-              start a project, message ATRO, approve work, request visits, submit decisions, or
-              change account details.
+              <strong>Guest view.</strong> Sign in to start a project, message ATRO, approve work,
+              request visits, submit decisions, or change account details.
             </p>
             <Button asChild size="sm">
               <Link
@@ -692,10 +686,7 @@ export function PortalExperience({ experience }: { experience: "local" | "diaspo
         <div className="flex flex-wrap items-center gap-2">
           {sharedProjects?.length ? (
             <Button asChild size="sm" variant="outline">
-              <Link
-                to="/portal/circle"
-                search={{ projectId: undefined, experience }}
-              >
+              <Link to="/portal/circle" search={{ projectId: undefined, experience }}>
                 Shared projects ({sharedProjects.length})
               </Link>
             </Button>

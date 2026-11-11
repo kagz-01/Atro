@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   clientZone,
   insideQuietHours,
+  instantFromWallTime,
   isHomeZone,
   nextMorningAt,
   quietHoldUntil,
@@ -55,6 +56,26 @@ describe("zonedClock", () => {
   it("refuses empty input", () => {
     assert.equal(zonedClock("", "Europe/London"), null);
     assert.equal(zonedClock(CALL, ""), null);
+  });
+});
+
+describe("instantFromWallTime", () => {
+  it("converts a London wall time to the matching instant", () => {
+    assert.equal(
+      instantFromWallTime("2026-11-18T14:30", "Europe/London"),
+      "2026-11-18T14:30:00.000Z",
+    );
+    assert.equal(
+      zonedClock(instantFromWallTime("2026-07-14T14:30", "Europe/London") ?? "", "Europe/London")
+        ?.clock,
+      "14:30",
+    );
+  });
+
+  it("rejects malformed, impossible, and daylight-saving gap times", () => {
+    assert.equal(instantFromWallTime("2026-02-30T14:30", "Europe/London"), null);
+    assert.equal(instantFromWallTime("2026-03-29T01:30", "Europe/London"), null);
+    assert.equal(instantFromWallTime("not a time", "Africa/Nairobi"), null);
   });
 });
 

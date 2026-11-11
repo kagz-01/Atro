@@ -43,7 +43,7 @@ export type ClientProfile = {
   notifyWhatsapp: boolean;
   sitePhotoConsent: boolean;
   referralSource: string;
-  /** Present when a picture has been uploaded; served by /portal/avatar. */
+  /** Present when the signed-in client has stored a profile picture. */
   hasAvatar: boolean;
   avatarUpdatedAt: string | null;
   createdAt: string | null;
@@ -88,7 +88,7 @@ const row = (r: Record<string, unknown>): ClientProfile => ({
   notifyWhatsapp: r.notify_whatsapp !== false,
   sitePhotoConsent: r.site_photo_consent !== false,
   referralSource: String(r.referral_source ?? ""),
-  hasAvatar: Boolean(r.avatar_bytes),
+  hasAvatar: Boolean(r.has_avatar),
   avatarUpdatedAt: r.avatar_updated_at ? String(r.avatar_updated_at) : null,
   createdAt: r.created_at ? String(r.created_at) : null,
 });
@@ -217,7 +217,10 @@ export const saveMyAvatar = createServerFn({ method: "POST" })
   .validator(
     z.object({
       mime: z.enum(AVATAR_MIME),
-      dataUrl: z.string().min(32).max(Math.ceil(AVATAR_MAX_BYTES * 1.5)),
+      dataUrl: z
+        .string()
+        .min(32)
+        .max(Math.ceil(AVATAR_MAX_BYTES * 1.5)),
     }),
   )
   .middleware([accountMiddleware])
@@ -282,7 +285,11 @@ export const getMyAvatar = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<{ dataUrl: string | null; updatedAt: string | null }> => {
     const sql = await getSql();
-    const [r] = await sql<{ avatar_mime: string; avatar_bytes: Uint8Array | null; avatar_updated_at: string | null }>`
+    const [r] = await sql<{
+      avatar_mime: string;
+      avatar_bytes: Uint8Array | null;
+      avatar_updated_at: string | null;
+    }>`
       select avatar_mime, avatar_bytes, avatar_updated_at
       from client_profile
       where user_id = ${context.userId}

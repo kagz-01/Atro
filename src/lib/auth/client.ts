@@ -64,7 +64,7 @@ export function continueAsPreviewPersona(key: PreviewPersonaKey): void {
   window.location.assign(previewPersonaWorkspace(key));
 }
 
-/** Enter the sample client portal without establishing an account session. */
+/** Enter the guest client portal without establishing an account session. */
 export function continueAsGuest(redirectTo = "/portal"): void {
   if (typeof window === "undefined") return;
   const destination = new URL(redirectTo, window.location.origin);

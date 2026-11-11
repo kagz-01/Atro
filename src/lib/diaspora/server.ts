@@ -400,7 +400,7 @@ async function seedSampleProject(sql: Sql, userId: string): Promise<string> {
     returning id
   `;
   const projectId = projectRows[0]?.id;
-  if (!projectId) throw new Error("Could not create the demonstration project");
+  if (!projectId) throw new Error("Could not create the project.");
 
   for (const m of MILESTONES) {
     await sql`
@@ -466,8 +466,8 @@ async function seedSampleProject(sql: Sql, userId: string): Promise<string> {
     sql,
     projectId,
     "note",
-    "Demonstration project opened for you",
-    "Replace it with your own project whenever you are ready — your live one carries your reference, your milestones and your certificates.",
+    "Project opened for you",
+    "Your project carries its own reference, milestones, and certificates.",
   );
 
   return projectId;
@@ -715,15 +715,14 @@ async function buildProjectPayload(
     method: string | null;
     note: string | null;
     checkout_status: string | null;
-    authorization_url: string | null;
   }>`select
     portal_payments.id, portal_payments.ord, portal_payments.label, portal_payments.stage,
       portal_payments.amount, portal_payments.status, portal_payments.due_date,
       portal_payments.paid_date, portal_payments.certificate, portal_payments.method,
-      portal_payments.note, latest.status as checkout_status, latest.authorization_url
+      portal_payments.note, latest.status as checkout_status
     from portal_payments
     left join lateral (
-      select attempt.status, attempt.authorization_url
+      select attempt.status
       from portal_paystack_attempt attempt
       where attempt.project_id = portal_payments.project_id
         and attempt.payment_id = portal_payments.id
@@ -732,6 +731,41 @@ async function buildProjectPayload(
     ) latest on true
     where portal_payments.project_id = ${projectId}
     order by portal_payments.ord`;
+  const paymentAttemptRows = await sql<{
+    payment_id: string;
+    reference: string;
+    status: string;
+    amount_kes: number;
+    payment_channel: string | null;
+    provider_transaction_id: string | null;
+    created_at: string;
+    paid_at: string | null;
+  }>`select payment_id, reference, status, amount_kes, payment_channel,
+      provider_transaction_id, created_at::text, paid_at::text
+    from portal_paystack_attempt
+    where project_id = ${projectId}
+    order by created_at desc`;
+  const attemptsByPayment = new Map<string, Payment["attempts"]>();
+  for (const attempt of paymentAttemptRows) {
+    const attempts = attemptsByPayment.get(attempt.payment_id) ?? [];
+    if (
+      attempt.status === "pending" ||
+      attempt.status === "failed" ||
+      attempt.status === "expired" ||
+      attempt.status === "success"
+    ) {
+      attempts.push({
+        reference: attempt.reference,
+        status: attempt.status,
+        amount: num(attempt.amount_kes),
+        channel: attempt.payment_channel ?? undefined,
+        providerTransactionId: attempt.provider_transaction_id ?? undefined,
+        createdAt: attempt.created_at,
+        paidAt: attempt.paid_at ?? undefined,
+      });
+    }
+    attemptsByPayment.set(attempt.payment_id, attempts);
+  }
   const documentRows = await sql<{
     id: string;
     ord: number;
@@ -750,13 +784,36 @@ async function buildProjectPayload(
     title: string;
     detail: string;
     options: unknown;
+    option_details: unknown;
     chosen: string | null;
     cost_impact: number;
     state: string;
     due_date: string | null;
   }>`select 
     id, ord, date, title, detail, options, chosen,
-      cost_impact, state, due_date from portal_decisions where project_id = ${projectId} order by ord`;
+      cost_impact, state, due_date, option_details
+    from portal_decisions where project_id = ${projectId} order by ord`;
+  const decisionVisualRows = await sql<{
+    id: string;
+    decision_id: string;
+    option_index: number;
+    caption: string;
+  }>`
+    select id, decision_id, option_index, caption
+    from portal_decision_visual
+    where project_id = ${projectId} and decision_id is not null and status = 'ready'
+    order by option_index
+  `;
+  const decisionVisuals = new Map<string, NonNullable<Decision["optionVisuals"]>>();
+  for (const visual of decisionVisualRows) {
+    const visuals = decisionVisuals.get(visual.decision_id) ?? [];
+    visuals.push({
+      optionIndex: Number(visual.option_index),
+      caption: visual.caption,
+      visualId: visual.id,
+    });
+    decisionVisuals.set(visual.decision_id, visuals);
+  }
   const activityRows = await sql<{
     id: string;
     kind: string;
@@ -811,7 +868,7 @@ async function buildProjectPayload(
       p.checkout_status === "success"
         ? p.checkout_status
         : undefined,
-    checkoutUrl: p.checkout_status === "pending" ? (p.authorization_url ?? undefined) : undefined,
+    attempts: attemptsByPayment.get(p.id) ?? [],
   }));
 
   const documents: VaultDoc[] = documentRows.map((d) => ({
@@ -830,6 +887,8 @@ async function buildProjectPayload(
     title: d.title,
     detail: d.detail,
     options: arr(d.options),
+    optionDetails: arr(d.option_details).map(String),
+    optionVisuals: decisionVisuals.get(d.id) ?? [],
     chosen: d.chosen ?? undefined,
     costImpact: num(d.cost_impact),
     state: d.state as Decision["state"],
@@ -1034,9 +1093,9 @@ export async function loadPortal(
       limit 1
     `;
     if (circle) {
-      throw new Error("Open your project circle to see the project shared with you.");
+      throw new Error("Open Shared projects to see the project shared with you.");
     }
-    if (readOnlyPreview) throw new Error("No sample project is available for this preview.");
+    if (readOnlyPreview) throw new Error("No project is available in this preview.");
     await seedSampleProject(sql, userId);
     rows = await selectOwnedProjects(sql, userId);
   }

@@ -181,7 +181,7 @@ export const VERIFY_STEPS = [
   {
     id: "payee",
     title: "Confirm whose account you are paying",
-    body: "The payee name must be the company. A personal account, a new paybill in someone else's name, mobile money, or crypto is not a legitimate payment route for a construction contract.",
+    body: "For ATRO project instalments, use the authenticated portal's Pay now action and Paystack checkout. A personal account, an unverified paybill or mobile-money number outside that checkout, or a crypto address is not a legitimate payment route.",
     cost: "Free",
     time: "Before you transfer",
   },

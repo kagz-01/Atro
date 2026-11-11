@@ -4,6 +4,7 @@ import {
   AVATAR_MAX_BYTES,
   checkAvatarSize,
   cleanProfileText,
+  encodeImageDataUrl,
   initialsFrom,
   isClientType,
   parseImageDataUrl,
@@ -20,6 +21,15 @@ test("accepts a small jpeg data url", () => {
   if (!result.ok) return;
   assert.equal(result.image.mime, "image/jpeg");
   assert.ok(result.image.bytes.byteLength > 0);
+});
+
+test("encodes avatar bytes larger than the safe argument limit", () => {
+  const bytes = Uint8Array.from({ length: 100_000 }, (_, index) => index % 256);
+  const dataUrl = encodeImageDataUrl({ mime: "image/png", bytes });
+  const parsed = parseImageDataUrl(dataUrl);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.deepEqual(parsed.image.bytes, bytes);
 });
 
 test("rejects a non-image", () => {

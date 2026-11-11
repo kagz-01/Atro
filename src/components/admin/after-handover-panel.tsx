@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, PhoneCall, Save } from "lucide-react";
+import { Eye, FileText, Loader2, PhoneCall, Save, Upload } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/field";
 import { Panel } from "@/components/ui/panel";
+import { EvidenceAttachments } from "@/components/after-handover/evidence-attachments";
 import {
+  getHandoverDocumentUrl,
+} from "@/lib/after-handover-server";
+import { uploadHandoverDocument } from "@/lib/after-handover-upload";
+import {
+  HANDOVER_DOCUMENT_CATEGORIES,
   SEVERITIES,
   STATUS_TONE_CLASS,
   awaitingClient,
@@ -14,8 +21,10 @@ import {
   statusLabel,
   type Defect,
   type DefectStatus,
+  type HandoverDocumentCategory,
   type Severity,
 } from "@/lib/defects";
+import { PROJECT_FILE_ACCEPT } from "@/lib/project-files";
 import {
   readAfterHandoverForStaff,
   reportDefectForClient,
@@ -74,6 +83,7 @@ function DefectRow({
       setRejecting(false);
       setErr("");
       onDone();
+      toast.success("Defect record updated.");
     },
     onError: (e) => setErr(e instanceof Error ? e.message : "That did not save."),
   });
@@ -112,6 +122,24 @@ function DefectRow({
               Declined: {defect.rejectReason}
             </p>
           ) : null}
+          <ol className="mt-3 space-y-2 border-l border-ink/10 pl-3">
+            {defect.history.map((event) => (
+              <li key={event.id} className="text-[11px] text-ink/55">
+                <span className="font-medium text-maroon">{statusLabel(event.status)}</span>
+                {" · "}
+                {fmtDate(event.createdAt)}
+                {" · "}
+                {event.actorRole === "staff" ? "ATRO" : "Client"}
+                {event.note ? ` — ${event.note}` : ""}
+              </li>
+            ))}
+          </ol>
+          <EvidenceAttachments
+            projectId={projectId}
+            defectId={defect.id}
+            evidence={defect.evidence}
+            onUploaded={onDone}
+          />
           {awaitingStudio(defect.status) ? (
             <p className="mt-2 text-[11px] font-semibold text-amber-700">Waiting on us.</p>
           ) : null}
@@ -198,11 +226,50 @@ export function AfterHandoverPanel({
   const refresh = () => queryClient.invalidateQueries({ queryKey: key });
 
   const [period, setPeriod] = useState<string | null>(null);
+  const [handoverDate, setHandoverDate] = useState<string | null>(null);
   const periodValue = period ?? data?.periodEnd ?? "";
+  const handoverValue = handoverDate ?? data?.handedOverOn ?? "";
   const savePeriod = useMutation({
-    mutationFn: () => setDefectPeriod({ data: { projectId, ends: periodValue } }),
-    onSuccess: refresh,
+    mutationFn: () =>
+      setDefectPeriod({ data: { projectId, handedOverOn: handoverValue, ends: periodValue } }),
+    onSuccess: () => {
+      void refresh();
+      toast.success("Handover dates saved.");
+    },
   });
+  const [documentTitle, setDocumentTitle] = useState("");
+  const [documentCategory, setDocumentCategory] =
+    useState<HandoverDocumentCategory>("executed_agreement");
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentError, setDocumentError] = useState("");
+  const [documentInputKey, setDocumentInputKey] = useState(0);
+  const uploadDocument = useMutation({
+    mutationFn: () => {
+      if (!documentFile) throw new Error("Choose the executed document to upload.");
+      return uploadHandoverDocument(projectId, documentTitle.trim(), documentCategory, documentFile);
+    },
+    onSuccess: async () => {
+      setDocumentTitle("");
+      setDocumentFile(null);
+      setDocumentInputKey((key) => key + 1);
+      setDocumentError("");
+      toast.success("Handover document uploaded to the client’s record.");
+      await refresh();
+    },
+    onError: (reason) => {
+      setDocumentError(reason instanceof Error ? reason.message : "The document upload failed.");
+      void refresh();
+    },
+  });
+
+  async function openHandoverDocument(documentId: string) {
+    try {
+      const { url } = await getHandoverDocumentUrl({ data: { documentId } });
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (reason) {
+      setDocumentError(reason instanceof Error ? reason.message : "Could not open this document.");
+    }
+  }
 
   const [dTitle, setDTitle] = useState("");
   const [dArea, setDArea] = useState("");
@@ -264,12 +331,21 @@ export function AfterHandoverPanel({
 
   return (
     <div className="space-y-5">
-      <Panel title="Defect period" subtitle="Set it the day the keys are handed over">
+      <Panel title="Handover record" subtitle="Record the actual handover and the dates stated in the executed agreement">
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <Label htmlFor="dp">Ends</Label>
+            <Label htmlFor={`handover-on-${projectId}`}>Keys handed over</Label>
             <Input
-              id="dp"
+              id={`handover-on-${projectId}`}
+              type="date"
+              value={handoverValue}
+              onChange={(e) => setHandoverDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor={`defect-period-end-${projectId}`}>Defect period ends</Label>
+            <Input
+              id={`defect-period-end-${projectId}`}
               type="date"
               value={periodValue}
               onChange={(e) => setPeriod(e.target.value)}
@@ -283,15 +359,138 @@ export function AfterHandoverPanel({
             )}
             Save
           </Button>
-          <p className="text-[12px] text-ink/50">
-            {data.periodEnd
-              ? `Client-facing deadline: ${fmtDate(data.periodEnd)}.`
-              : "No period set — the client sees “not set”."}
+          <p className="max-w-sm text-[12px] text-ink/50">
+            Dates must match the signed handover and contract documents below; the portal does not
+            create or extend warranty terms.
           </p>
         </div>
         {savePeriod.error instanceof Error ? (
           <p className="mt-2 text-[12px] text-red-700">{savePeriod.error.message}</p>
         ) : null}
+      </Panel>
+
+      <Panel
+        title="Executed close-out documents"
+        subtitle="Upload signed or issued records as they exist. New uploads are separate records; nothing is silently replaced."
+      >
+        <form
+          className="rounded-xl border border-ink/10 bg-cream p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (documentTitle.trim().length >= 2 && documentFile && !uploadDocument.isPending) {
+              setDocumentError("");
+              uploadDocument.mutate();
+            }
+          }}
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor={`handover-title-${projectId}`}>Document title</Label>
+              <Input
+                id={`handover-title-${projectId}`}
+                required
+                minLength={2}
+                maxLength={120}
+                value={documentTitle}
+                onChange={(event) => setDocumentTitle(event.target.value)}
+                placeholder="Signed practical completion certificate"
+              />
+            </div>
+            <div>
+              <Label htmlFor={`handover-category-${projectId}`}>Document type</Label>
+              <Select
+                id={`handover-category-${projectId}`}
+                value={documentCategory}
+                onChange={(event) =>
+                  setDocumentCategory(event.target.value as HandoverDocumentCategory)
+                }
+              >
+                {HANDOVER_DOCUMENT_CATEGORIES.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="sm:col-span-2">
+              <Label htmlFor={`handover-file-${projectId}`}>Executed or issued file</Label>
+              <Input
+                key={documentInputKey}
+                id={`handover-file-${projectId}`}
+                type="file"
+                accept={PROJECT_FILE_ACCEPT}
+                required
+                className="h-auto min-h-11 py-2"
+                onChange={(event) => setDocumentFile(event.target.files?.[0] ?? null)}
+              />
+              <p className="mt-1 text-[11px] text-ink/50">
+                PDF, JPG, PNG or WebP · up to 10 MB. Do not upload a draft as an executed agreement.
+              </p>
+            </div>
+          </div>
+          {documentError ? (
+            <p role="alert" className="mt-3 text-[12px] text-red-700">{documentError}</p>
+          ) : null}
+          <Button
+            type="submit"
+            size="sm"
+            className="mt-3"
+            disabled={documentTitle.trim().length < 2 || !documentFile || uploadDocument.isPending}
+          >
+            {uploadDocument.isPending ? (
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Upload className="size-3.5" aria-hidden />
+            )}
+            Add to close-out pack
+          </Button>
+        </form>
+        {data.documents.length === 0 ? (
+          <div className="mt-4 rounded-xl border border-dashed border-ink/15 p-5 text-center">
+            <FileText className="mx-auto size-5 text-ink/35" aria-hidden />
+            <p className="mt-2 text-[13px] text-ink/60">
+              No handover documents are on record. Add the signed agreements, certificates, warranties,
+              manuals, drawings and final-account records that apply to this project.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {data.documents.map((document) => {
+              const label =
+                HANDOVER_DOCUMENT_CATEGORIES.find((item) => item.value === document.category)?.label ??
+                "Close-out record";
+              return (
+                <li
+                  key={document.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-3"
+                >
+                  <span className="min-w-0">
+                    <span className="block break-words text-[13px] font-medium text-maroon">
+                      {document.title}
+                    </span>
+                    <span className="block text-[11px] text-ink/50">
+                      {label} · {document.filename} · Added {fmtDate(document.uploadedAt)}
+                    </span>
+                    <span className="block text-[11px] text-ink/50">
+                      {document.receivedAt
+                        ? `Client confirmed access ${fmtDate(document.receivedAt)}`
+                        : "Client access not yet confirmed"}
+                    </span>
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void openHandoverDocument(document.id)}
+                  >
+                    <Eye className="size-3.5" aria-hidden />
+                    Preview
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Panel>
 
       <Panel title="Reports" subtitle={`${data.defects.length} on record`} bodyClassName="p-0">
@@ -390,7 +589,10 @@ export function AfterHandoverPanel({
         </form>
       </Panel>
 
-      <Panel title="Maintenance retainer" subtitle="The yearly fee, and when it renews">
+      <Panel
+        title="Maintenance retainer"
+        subtitle="Record the terms in the executed agreement; this summary is not the agreement."
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="rt-name">Name</Label>
@@ -435,7 +637,7 @@ export function AfterHandoverPanel({
             />
           </div>
           <div>
-            <Label htmlFor="rt-status">Status</Label>
+            <Label htmlFor="rt-status">Retainer record status</Label>
             <Select
               id="rt-status"
               value={rStatus ?? r?.status ?? "active"}
@@ -448,7 +650,7 @@ export function AfterHandoverPanel({
             </Select>
           </div>
           <div>
-            <Label htmlFor="rt-paid">Last paid</Label>
+            <Label htmlFor="rt-paid">Payment date on record</Label>
             <Input
               id="rt-paid"
               type="date"
@@ -456,6 +658,9 @@ export function AfterHandoverPanel({
               disabled={!isAdmin}
               onChange={(e) => setRPaid(e.target.value)}
             />
+            <p className="mt-1 text-[11px] text-ink/50">
+              Manual note only; it is not verified against the payment ledger.
+            </p>
           </div>
         </div>
         <div className="mt-4 flex items-center gap-3">

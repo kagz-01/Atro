@@ -53,6 +53,7 @@ export function DashboardBackLink({
 export type NavItem = {
   id: string;
   label: string;
+  mobileLabel?: string;
   icon: LucideIcon;
   /** Right-aligned count, e.g. enquiries awaiting a reply. */
   badge?: number | string;
@@ -69,6 +70,7 @@ export type Alert = { id: string; title: string; detail: string; onSelect?: () =
 export function DashboardShell({
   groups,
   mobileItems,
+  mobileNavMode = "scroll",
   active,
   onSelect,
   alerts = [],
@@ -84,6 +86,8 @@ export function DashboardShell({
   groups: NavGroup[];
   /** Highest-priority destinations shown as quick links on narrow screens. */
   mobileItems?: NavItem[];
+  /** Use a fitted grid rather than a horizontally scrolling strip on mobile. */
+  mobileNavMode?: "scroll" | "grid";
   active: string;
   onSelect: (id: string) => void;
   alerts?: Alert[];
@@ -270,13 +274,13 @@ export function DashboardShell({
               role="status"
               className="flex flex-wrap items-center justify-between gap-2 border-b border-gold/30 bg-gold/10 px-4 py-2 text-xs text-ink/75 sm:px-6"
             >
-              <span>Read-only preview — changes are disabled.</span>
+              <span>Sign in to make project changes.</span>
               <Link
                 to="/login"
                 search={{ returnTo: undefined }}
                 className="min-h-11 inline-flex items-center font-semibold text-maroon underline underline-offset-2"
               >
-                Switch preview
+                Sign in for full access
               </Link>
             </div>
           ) : null}
@@ -286,26 +290,49 @@ export function DashboardShell({
               aria-label="Quick sections"
               className="border-b border-ink/10 bg-white px-2 py-2 lg:hidden"
             >
-              <ul className="dashboard-quick-links flex gap-1 overflow-x-auto">
+              <ul
+                className={
+                  mobileNavMode === "grid"
+                    ? "grid gap-1"
+                    : "dashboard-quick-links flex gap-1 overflow-x-auto"
+                }
+                style={
+                  mobileNavMode === "grid"
+                    ? { gridTemplateColumns: `repeat(${mobileItems.length + 1}, minmax(0, 1fr))` }
+                    : undefined
+                }
+              >
                 {mobileItems.map((item) => (
                   <li key={item.id} className="shrink-0">
                     <button
                       type="button"
+                      aria-label={
+                        item.badge
+                          ? `${item.label}, ${item.badge} ${Number(item.badge) === 1 ? "item" : "items"}`
+                          : item.label
+                      }
                       aria-current={active === item.id ? "page" : undefined}
                       onClick={() => onSelect(item.id)}
                       className={cn(
-                        "inline-flex min-h-12 items-center gap-2 rounded-xl px-3 text-xs transition-colors",
+                        mobileNavMode === "grid"
+                          ? "relative flex min-h-14 min-w-0 w-full flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] leading-none transition-colors"
+                          : "inline-flex min-h-12 items-center gap-2 rounded-xl px-3 text-xs transition-colors",
                         active === item.id
                           ? "bg-maroon text-paper"
                           : "text-ink/65 hover:bg-cream hover:text-maroon",
                       )}
                     >
                       <item.icon className="size-3.5 shrink-0" aria-hidden />
-                      <span>{item.label}</span>
+                      <span
+                        className={mobileNavMode === "grid" ? "max-w-full truncate" : undefined}
+                      >
+                        {mobileNavMode === "grid" ? (item.mobileLabel ?? item.label) : item.label}
+                      </span>
                       {item.badge ? (
                         <span
                           className={cn(
-                            "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                            "rounded-full px-1 py-0.5 text-[9px] font-bold",
+                            mobileNavMode === "grid" && "absolute right-1 top-0.5",
                             active === item.id
                               ? "bg-gold/20 text-gold-light"
                               : "bg-burgundy/10 text-burgundy",
@@ -325,11 +352,14 @@ export function DashboardShell({
                         drawerTriggerRef.current = event.currentTarget;
                       }}
                       aria-label="More dashboard sections"
+                      title="More dashboard sections"
                       aria-current={
                         mobileItems.some((item) => item.id === active) ? undefined : "page"
                       }
                       className={cn(
-                        "inline-flex min-h-12 items-center gap-2 rounded-xl px-3 text-xs transition-colors",
+                        mobileNavMode === "grid"
+                          ? "flex min-h-14 min-w-0 w-full flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] leading-none transition-colors"
+                          : "inline-flex min-h-12 items-center gap-2 rounded-xl px-3 text-xs transition-colors",
                         mobileItems.some((item) => item.id === active)
                           ? "text-ink/65 hover:bg-cream hover:text-maroon"
                           : "bg-maroon text-paper",

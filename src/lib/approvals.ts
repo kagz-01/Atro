@@ -51,7 +51,7 @@ export type Approval = {
   chasedOn: string;
   chaseNote: string;
   note: string;
-  /** When the row last changed — how "stalled" is judged. */
+  /** When the authority status last changed — used to measure stalling. */
   updatedAt: string;
 };
 
@@ -76,6 +76,36 @@ export const APPROVAL_STATUS: {
   { value: "rejected", label: "Refused", tone: "bad" },
   { value: "not_required", label: "Not required", tone: "muted" },
 ];
+
+export function approvalStatusLabel(status: ApprovalStatus): string {
+  return APPROVAL_STATUS.find((item) => item.value === status)?.label ?? status;
+}
+
+export function datesForApprovalStatusChange({
+  previousStatus,
+  nextStatus,
+  submittedOn,
+  decidedOn,
+  today,
+}: {
+  previousStatus: ApprovalStatus;
+  nextStatus: ApprovalStatus;
+  submittedOn: string;
+  decidedOn: string;
+  today: string;
+}): { submittedOn: string; decidedOn: string } {
+  if (previousStatus === nextStatus) return { submittedOn, decidedOn };
+  if (nextStatus === "submitted" || nextStatus === "under_review") {
+    return { submittedOn: submittedOn || today, decidedOn: "" };
+  }
+  if (nextStatus === "approved" || nextStatus === "rejected") {
+    return { submittedOn, decidedOn: today };
+  }
+  if (nextStatus === "not_started") {
+    return { submittedOn: "", decidedOn: "" };
+  }
+  return { submittedOn, decidedOn };
+}
 
 /** How long an approval may sit before it counts as stalled. */
 export const STALLED_AFTER_DAYS = 21;
@@ -130,6 +160,9 @@ export type ApprovalsSummary = {
   count: number;
   settled: number;
   inFlight: number;
+  withAuthorities: number;
+  awaitingSubmission: number;
+  refused: number;
   blocking: number;
   stalled: number;
   toChase: number;
@@ -146,6 +179,9 @@ export function summariseApprovals(
 ): ApprovalsSummary {
   let settled = 0;
   let inFlight = 0;
+  let withAuthorities = 0;
+  let awaitingSubmission = 0;
+  let refused = 0;
   let blocking = 0;
   let stalled = 0;
   let toChase = 0;
@@ -161,6 +197,9 @@ export function summariseApprovals(
       continue;
     }
     inFlight += 1;
+    if (a.status === "submitted" || a.status === "under_review") withAuthorities += 1;
+    if (a.status === "not_started") awaitingSubmission += 1;
+    if (a.status === "rejected") refused += 1;
     if (blocksTheProject(a)) {
       blocking += 1;
       holding.push(a.title);
@@ -173,6 +212,9 @@ export function summariseApprovals(
     count: approvals.length,
     settled,
     inFlight,
+    withAuthorities,
+    awaitingSubmission,
+    refused,
     blocking,
     stalled,
     toChase,
@@ -196,7 +238,16 @@ export function approvalsHeadline(summary: ApprovalsSummary): string {
   if (summary.inFlight === 0) {
     return "Every approval is in hand.";
   }
-  return `${summary.inFlight} approval${summary.inFlight === 1 ? "" : "s"} with the authorities. Nothing is holding the build.`;
+  const details = [
+    summary.withAuthorities > 0
+      ? `${summary.withAuthorities} with authorities`
+      : "",
+    summary.awaitingSubmission > 0
+      ? `${summary.awaitingSubmission} not submitted`
+      : "",
+    summary.refused > 0 ? `${summary.refused} refused` : "",
+  ].filter(Boolean);
+  return `${details.join(", ")}. Nothing is holding the build.`;
 }
 
 export const STATUS_TONE_CLASS: Record<ApprovalStatus, string> = {

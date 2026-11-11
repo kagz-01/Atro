@@ -25,12 +25,21 @@ import {
   canTransition,
   statusLabel,
   type Defect,
+  type DefectEvent,
+  type DefectEvidence,
   type DefectStatus,
+  type HandoverDocument,
   type Retainer,
   type Severity,
 } from "@/lib/defects";
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Nairobi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 
 const toDefect = (r: Record<string, unknown>): Defect => ({
   id: String(r.id),
@@ -49,6 +58,8 @@ const toDefect = (r: Record<string, unknown>): Defect => ({
   note: String(r.note ?? ""),
   reportedBy: String(r.reported_by ?? "client") === "studio" ? "studio" : "client",
   updatedAt: r.updated_at ? String(r.updated_at) : "",
+  evidence: [],
+  history: [],
 });
 
 const toRetainer = (r: Record<string, unknown> | undefined): Retainer | null =>
@@ -65,14 +76,16 @@ const toRetainer = (r: Record<string, unknown> | undefined): Retainer | null =>
     : null;
 
 export type AfterHandover = {
+  handedOverOn: string;
   periodEnd: string;
   defects: Defect[];
   retainer: Retainer | null;
+  documents: HandoverDocument[];
 };
 
 async function readAfterHandover(sql: Sql, projectId: string): Promise<AfterHandover> {
-  const [project] = await sql<{ defect_period_ends: string }>`
-    select defect_period_ends from portal_projects where id = ${projectId}
+  const [project] = await sql<{ handed_over_on: string; defect_period_ends: string }>`
+    select handed_over_on, defect_period_ends from portal_projects where id = ${projectId}
   `;
   const defects = await sql<Record<string, unknown>>`
     select id, project_id, ord, title, detail, area, severity, status, reported_on,
@@ -86,10 +99,70 @@ async function readAfterHandover(sql: Sql, projectId: string): Promise<AfterHand
     from portal_retainer
     where project_id = ${projectId}
   `;
+  const evidenceRows = await sql<Record<string, unknown>>`
+    select id, defect_id, filename, mime, size_bytes, uploaded_by_role, created_at
+    from portal_defect_evidence
+    where project_id = ${projectId} and status = 'ready'
+    order by created_at
+  `;
+  const eventRows = await sql<Record<string, unknown>>`
+    select id, defect_id, status, note, actor_role, created_at
+    from portal_defect_event
+    where project_id = ${projectId}
+    order by created_at
+  `;
+  const documentRows = await sql<Record<string, unknown>>`
+    select id, title, category, filename, mime, size_bytes, uploaded_at, received_at
+    from portal_handover_document
+    where project_id = ${projectId} and status = 'ready'
+    order by uploaded_at desc, id
+  `;
+  const evidenceByDefect = new Map<string, DefectEvidence[]>();
+  for (const row of evidenceRows) {
+    const key = String(row.defect_id);
+    const list = evidenceByDefect.get(key) ?? [];
+    list.push({
+      id: String(row.id),
+      filename: String(row.filename),
+      mime: String(row.mime),
+      sizeBytes: Number(row.size_bytes),
+      uploadedBy: String(row.uploaded_by_role) === "staff" ? "staff" : "client",
+      createdAt: String(row.created_at),
+    });
+    evidenceByDefect.set(key, list);
+  }
+  const historyByDefect = new Map<string, DefectEvent[]>();
+  for (const row of eventRows) {
+    const key = String(row.defect_id);
+    const list = historyByDefect.get(key) ?? [];
+    list.push({
+      id: String(row.id),
+      status: String(row.status) as DefectStatus,
+      note: String(row.note ?? ""),
+      actorRole: String(row.actor_role) === "staff" ? "staff" : "client",
+      createdAt: String(row.created_at),
+    });
+    historyByDefect.set(key, list);
+  }
   return {
+    handedOverOn: String(project?.handed_over_on ?? ""),
     periodEnd: String(project?.defect_period_ends ?? ""),
-    defects: defects.map(toDefect),
+    defects: defects.map((row) => ({
+      ...toDefect(row),
+      evidence: evidenceByDefect.get(String(row.id)) ?? [],
+      history: historyByDefect.get(String(row.id)) ?? [],
+    })),
     retainer: toRetainer(retainer),
+    documents: documentRows.map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      category: String(row.category) as HandoverDocument["category"],
+      filename: String(row.filename),
+      mime: String(row.mime),
+      sizeBytes: Number(row.size_bytes),
+      uploadedAt: String(row.uploaded_at),
+      receivedAt: row.received_at ? String(row.received_at) : null,
+    })),
   };
 }
 
@@ -152,13 +225,18 @@ export const reportDefect = createServerFn({ method: "POST" })
     const [n] = await sql<{ n: number }>`
       select coalesce(max(ord), 0)::int as n from portal_defect where project_id = ${data.projectId}
     `;
-    await sql`
+    const [created] = await sql<{ id: string }>`
       insert into portal_defect (
         project_id, ord, title, detail, area, severity, status, reported_on, reported_by
       ) values (
         ${data.projectId}, ${Number(n?.n ?? 0) + 1}, ${title.title}, ${data.detail.trim()},
         ${data.area.trim()}, ${data.severity}, 'reported', ${today()}, 'client'
-      )
+      ) returning id
+    `;
+    if (!created) throw new Error("The defect report could not be saved.");
+    await sql`
+      insert into portal_defect_event (project_id, defect_id, status, note, actor, actor_role)
+      values (${data.projectId}, ${created.id}, 'reported', 'Report submitted.', ${context.userId}, 'client')
     `;
 
     await sql`
@@ -179,7 +257,7 @@ export const reportDefect = createServerFn({ method: "POST" })
       audience: "studio",
     });
 
-    return { ok: true as const };
+    return { ok: true as const, defectId: created.id };
   });
 
 /**
@@ -211,6 +289,10 @@ export const verifyDefect = createServerFn({ method: "POST" })
       update portal_defect
       set status = 'verified', verified_on = ${today()}, updated_at = now()
       where id = ${data.defectId} and project_id = ${data.projectId}
+    `;
+    await sql`
+      insert into portal_defect_event (project_id, defect_id, status, note, actor, actor_role)
+      values (${data.projectId}, ${data.defectId}, 'verified', 'Client confirmed the repair.', ${context.userId}, 'client')
     `;
 
     // The client is the only one who can close a defect, so the studio is the
@@ -270,6 +352,7 @@ export const updateDefect = createServerFn({ method: "POST" })
     await requireStaff();
     const sql = await getSql();
 
+    const staff = await requireStaff();
     const [row] = await sql<{ status: DefectStatus; title: string }>`
       select status, title from portal_defect
       where id = ${data.defectId} and project_id = ${data.projectId}
@@ -287,23 +370,27 @@ export const updateDefect = createServerFn({ method: "POST" })
     }
 
     const note = data.note.trim();
+    let historyNote = note;
     if (data.status === "accepted") {
+      historyNote ||= "Accepted — on the list to fix.";
       await sql`
         update portal_defect
-        set status = 'accepted', accepted_on = ${today()}, note = ${note || "Accepted — on the list to fix."},
+        set status = 'accepted', accepted_on = ${today()}, note = ${historyNote},
             reject_reason = '', updated_at = now()
         where id = ${data.defectId}
       `;
     } else if (data.status === "in_progress") {
+      historyNote ||= "Work started.";
       await sql`
         update portal_defect
-        set status = 'in_progress', note = ${note || "Work started."}, updated_at = now()
+        set status = 'in_progress', note = ${historyNote}, updated_at = now()
         where id = ${data.defectId}
       `;
     } else if (data.status === "fixed") {
+      historyNote ||= "Fixed — waiting for the client to check it.";
       await sql`
         update portal_defect
-        set status = 'fixed', fixed_on = ${today()}, note = ${note || "Fixed — waiting for the client to check it."},
+        set status = 'fixed', fixed_on = ${today()}, note = ${historyNote},
             updated_at = now()
         where id = ${data.defectId}
       `;
@@ -311,9 +398,10 @@ export const updateDefect = createServerFn({ method: "POST" })
         projectId: data.projectId,
         kind: "defect",
         title: `Fixed: ${row.title}`,
-        body: note || "Please check the work and confirm it in your portal.",
+        body: historyNote,
       });
     } else {
+      historyNote = `${reason}${note ? ` — ${note}` : ""}`;
       await sql`
         update portal_defect
         set status = 'rejected', reject_reason = ${reason}, note = ${note}, updated_at = now()
@@ -321,6 +409,14 @@ export const updateDefect = createServerFn({ method: "POST" })
       `;
     }
 
+    await sql`
+      insert into portal_defect_event (project_id, defect_id, status, note, actor, actor_role)
+      values (${data.projectId}, ${data.defectId}, ${data.status}, ${historyNote}, ${staff.email}, 'staff')
+    `;
+    await sql`
+      insert into portal_activity (project_id, kind, title, body)
+      values (${data.projectId}, 'defect', ${`${row.title}: ${statusLabel(data.status)}`}, ${historyNote})
+    `;
     return { ok: true as const };
   });
 
@@ -329,7 +425,7 @@ export const reportDefectForClient = createServerFn({ method: "POST" })
   .validator(ReportInput)
   .middleware([accountMiddleware])
   .handler(async ({ data }) => {
-    await requireStaff();
+    const staff = await requireStaff();
     const sql = await getSql();
     const [project] = await sql<{ id: string }>`
       select id from portal_projects where id = ${data.projectId}
@@ -342,33 +438,53 @@ export const reportDefectForClient = createServerFn({ method: "POST" })
     const [n] = await sql<{ n: number }>`
       select coalesce(max(ord), 0)::int as n from portal_defect where project_id = ${data.projectId}
     `;
-    await sql`
+    const [created] = await sql<{ id: string }>`
       insert into portal_defect (
         project_id, ord, title, detail, area, severity, status, reported_on, reported_by
       ) values (
         ${data.projectId}, ${Number(n?.n ?? 0) + 1}, ${title.title}, ${data.detail.trim()},
         ${data.area.trim()}, ${data.severity}, 'reported', ${today()}, 'studio'
-      )
+      ) returning id
+    `;
+    if (!created) throw new Error("The defect report could not be saved.");
+    await sql`
+      insert into portal_defect_event (project_id, defect_id, status, note, actor, actor_role)
+      values (${data.projectId}, ${created.id}, 'reported', 'Logged by the studio.', ${staff.email}, 'staff')
     `;
     return { ok: true as const };
   });
 
 /** When the keys were handed over, the clock the client can see. */
 export const setDefectPeriod = createServerFn({ method: "POST" })
-  .validator(z.object({ projectId: z.string().min(1), ends: z.string().max(40) }))
+  .validator(
+    z.object({
+      projectId: z.string().min(1),
+      handedOverOn: z.string().max(10).optional().default(""),
+      ends: z.string().max(10),
+    }),
+  )
   .middleware([accountMiddleware])
   .handler(async ({ data }) => {
     await requireStaff();
     const sql = await getSql();
-    if (data.ends && !/^\d{4}-\d{2}-\d{2}$/.test(data.ends)) {
-      throw new Error("Give the date the defect period ends.");
+    const validDate = (value: string) => {
+      if (!value) return true;
+      const date = new Date(`${value}T00:00:00.000Z`);
+      return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+    };
+    if (!validDate(data.ends) || !validDate(data.handedOverOn)) {
+      throw new Error("Enter valid handover and defect-period dates.");
+    }
+    if (data.handedOverOn && data.ends && data.ends < data.handedOverOn) {
+      throw new Error("The defect-period end cannot be before handover.");
     }
     const [project] = await sql<{ id: string }>`
       select id from portal_projects where id = ${data.projectId}
     `;
     if (!project) throw new Error("Project not found.");
     await sql`
-      update portal_projects set defect_period_ends = ${data.ends}, updated_at = now()
+      update portal_projects
+      set handed_over_on = ${data.handedOverOn}, defect_period_ends = ${data.ends}, updated_at = now()
       where id = ${data.projectId}
     `;
     return { ok: true as const };

@@ -27,7 +27,7 @@ export const SIGNALS: Signal[] = [
     id: "personal-account",
     weight: 10,
     group: "Payment",
-    text: "Asked to pay a personal account, or a paybill in the name of an individual rather than the company.",
+    text: "Asked to pay a personal account or an individual's paybill instead of using the authenticated portal's Paystack checkout.",
     why: "Legitimate corporate payment goes to the company. This is the single strongest fraud indicator there is.",
     action:
       "Stop. Do not transfer. Call the company's verified number and ask. If the instruction survives that call, treat it as fraud and report it.",

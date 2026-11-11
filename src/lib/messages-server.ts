@@ -26,8 +26,10 @@ import {
 } from "@/lib/message-attachments";
 import { getMessageStorage } from "@/lib/message-storage.server";
 import {
+  MESSAGE_REACTIONS,
   MESSAGE_MAX,
   validateMessage,
+  validateMessageReaction,
   type MessageAttachment,
   type Message,
   type MessageRole,
@@ -45,25 +47,54 @@ const toMessage = (r: Record<string, unknown>): Message => ({
   readAt: r.read_at ? String(r.read_at) : null,
   deletedAt: r.deleted_at ? String(r.deleted_at) : null,
   attachments: [],
+  reactions: [],
+  replyTo: r.reply_to_id
+    ? {
+        id: String(r.reply_to_id),
+        authorRole: String(r.reply_author_role ?? "client") as MessageRole,
+        authorLabel: String(r.reply_author_label ?? ""),
+        body: r.reply_deleted_at
+          ? "Message deleted"
+          : String(r.reply_body ?? "")
+              .replace(/^File attachment$/, "Attachment")
+              .slice(0, 200) || "Attachment",
+      }
+    : null,
 });
 
-async function readThread(sql: Sql, projectId: string): Promise<Message[]> {
+async function readThread(
+  sql: Sql,
+  projectId: string,
+  viewer: { role: MessageRole; userId: string },
+): Promise<Message[]> {
   const rows = await sql<Record<string, unknown>>`
-    select id, project_id, ord, author_role, author_id, author_label, body,
-      created_at, read_at, deleted_at
-    from portal_message
-    where project_id = ${projectId}
-    order by ord
+    select message.id, message.project_id, message.ord, message.author_role,
+      message.author_id, message.author_label, message.body, message.created_at,
+      message.read_at, message.deleted_at, message.reply_to_id,
+      reply.author_role as reply_author_role, reply.author_label as reply_author_label,
+      reply.body as reply_body, reply.deleted_at as reply_deleted_at
+    from portal_message message
+    left join portal_message reply on reply.id = message.reply_to_id
+    where message.project_id = ${projectId}
+    order by message.ord
   `;
   const messages = rows.map(toMessage);
   if (messages.length === 0) return messages;
-  const attachmentRows = await sql<Record<string, unknown>>`
+  const [attachmentRows, reactionRows] = await Promise.all([
+    sql<Record<string, unknown>>`
     select id, message_id, filename, mime, size_bytes
     from portal_message_attachment
     where message_id = any(${messages.map((message) => message.id)}::uuid[])
       and deleted_at is null and status = 'ready'
     order by created_at, id
-  `;
+    `,
+    sql<Record<string, unknown>>`
+      select message_id, role, user_id, emoji
+      from portal_message_reaction
+      where message_id = any(${messages.map((message) => message.id)}::uuid[])
+      order by created_at, id
+    `,
+  ]);
   const byMessage = new Map<string, MessageAttachment[]>();
   for (const row of attachmentRows) {
     const messageId = String(row.message_id);
@@ -76,6 +107,27 @@ async function readThread(sql: Sql, projectId: string): Promise<Message[]> {
     });
     byMessage.set(messageId, attachments);
   }
+  const activeMessageIds = new Set(
+    messages.filter((message) => !message.deletedAt).map((message) => message.id),
+  );
+  const reactionsByMessage = new Map<
+    string,
+    Map<(typeof MESSAGE_REACTIONS)[number], { count: number; reactedByMe: boolean }>
+  >();
+  for (const row of reactionRows) {
+    const messageId = String(row.message_id);
+    if (!activeMessageIds.has(messageId)) continue;
+    const emoji = String(row.emoji);
+    if (!validateMessageReaction(emoji)) {
+      throw new Error("An unsupported reaction was found in the project thread.");
+    }
+    const groups = reactionsByMessage.get(messageId) ?? new Map();
+    const group = groups.get(emoji) ?? { count: 0, reactedByMe: false };
+    group.count += 1;
+    group.reactedByMe ||= row.role === viewer.role && row.user_id === viewer.userId;
+    groups.set(emoji, group);
+    reactionsByMessage.set(messageId, groups);
+  }
   return messages.map((message) => ({
     ...message,
     body: message.deletedAt
@@ -84,6 +136,12 @@ async function readThread(sql: Sql, projectId: string): Promise<Message[]> {
         ? ""
         : message.body,
     attachments: message.deletedAt ? [] : (byMessage.get(message.id) ?? []),
+    reactions: message.deletedAt
+      ? []
+      : [...(reactionsByMessage.get(message.id) ?? [])].map(([emoji, value]) => ({
+          emoji,
+          ...value,
+        })),
   }));
 }
 
@@ -122,6 +180,7 @@ async function insertMessage(
     authorId: string;
     authorLabel: string;
     body: string;
+    replyToMessageId?: string;
   },
 ): Promise<string> {
   const [inserted] = await sql<{ id: string }>`
@@ -133,9 +192,11 @@ async function insertMessage(
       from portal_message cross join project_lock
       where project_id = ${message.projectId}
     )
-    insert into portal_message (project_id, ord, author_role, author_id, author_label, body)
+    insert into portal_message (
+      project_id, ord, author_role, author_id, author_label, body, reply_to_id
+    )
     select ${message.projectId}, ord, ${message.authorRole}, ${message.authorId},
-      ${message.authorLabel}, ${message.body}
+      ${message.authorLabel}, ${message.body}, ${message.replyToMessageId ?? null}
     from next_ord
     returning id
   `;
@@ -144,6 +205,15 @@ async function insertMessage(
 }
 
 type MessageActor = { role: MessageRole; userId: string };
+
+async function validateReplyTarget(sql: Sql, projectId: string, replyToMessageId?: string) {
+  if (!replyToMessageId) return;
+  const [target] = await sql<{ id: string }>`
+    select id from portal_message
+    where id = ${replyToMessageId} and project_id = ${projectId} and deleted_at is null
+  `;
+  if (!target) throw new Error("The message you are replying to is no longer available.");
+}
 
 async function authorizeMessage(
   sql: Sql,
@@ -164,6 +234,29 @@ async function authorizeMessage(
   `;
   if (!message) throw new Error("Message not found.");
   return message;
+}
+
+async function toggleReaction(sql: Sql, messageId: string, actor: MessageActor, emoji: string) {
+  if (!validateMessageReaction(emoji)) throw new Error("Choose a supported reaction.");
+  const message = await authorizeMessage(sql, messageId, actor, false);
+  const [current] = await sql<{ emoji: string }>`
+    select emoji from portal_message_reaction
+    where message_id = ${message.id} and role = ${actor.role} and user_id = ${actor.userId}
+  `;
+  if (current?.emoji === emoji) {
+    await sql`
+      delete from portal_message_reaction
+      where message_id = ${message.id} and role = ${actor.role} and user_id = ${actor.userId}
+    `;
+    return { ok: true as const, active: false };
+  }
+  await sql`
+    insert into portal_message_reaction (message_id, role, user_id, emoji)
+    values (${message.id}, ${actor.role}, ${actor.userId}, ${emoji})
+    on conflict (message_id, role, user_id)
+    do update set emoji = excluded.emoji, created_at = now()
+  `;
+  return { ok: true as const, active: true };
 }
 
 async function prepareMessageAttachment(
@@ -384,7 +477,7 @@ export const listMyMessages = createServerFn({ method: "GET" })
       select id from portal_projects where id = ${data.projectId} and user_id = ${context.userId}
     `;
     if (!owned) throw new Error("Project not found.");
-    return readThread(sql, data.projectId);
+    return readThread(sql, data.projectId, { role: "client", userId: context.userId });
   });
 
 export const postMyMessage = createServerFn({ method: "POST" })
@@ -393,6 +486,7 @@ export const postMyMessage = createServerFn({ method: "POST" })
       projectId: z.string().min(1),
       body: z.string().max(MESSAGE_MAX),
       hasAttachments: z.boolean().optional().default(false),
+      replyToMessageId: z.string().min(1).optional(),
     }),
   )
   .middleware([accountMiddleware])
@@ -406,6 +500,7 @@ export const postMyMessage = createServerFn({ method: "POST" })
     const body = data.body.trim() ? validateMessage(data.body) : null;
     if (body && !body.ok) throw new Error(body.reason);
     if (!body && !data.hasAttachments) throw new Error("Write a message or attach a file first.");
+    await validateReplyTarget(sql, data.projectId, data.replyToMessageId);
 
     const label = await clientLabel(sql, data.projectId);
     const messageId = await insertMessage(sql, {
@@ -414,6 +509,7 @@ export const postMyMessage = createServerFn({ method: "POST" })
       authorId: context.userId,
       authorLabel: label,
       body: body?.ok ? body.body : "File attachment",
+      replyToMessageId: data.replyToMessageId,
     });
 
     const notificationWarning = await notifyForMessage({
@@ -426,6 +522,23 @@ export const postMyMessage = createServerFn({ method: "POST" })
 
     return { ok: true as const, messageId, notificationWarning };
   });
+
+export const toggleMyMessageReaction = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      messageId: z.string().min(1),
+      emoji: z.enum(MESSAGE_REACTIONS),
+    }),
+  )
+  .middleware([accountMiddleware])
+  .handler(async ({ context, data }) =>
+    toggleReaction(
+      await getSql(),
+      data.messageId,
+      { role: "client", userId: context.userId },
+      data.emoji,
+    ),
+  );
 
 export const prepareMyMessageAttachment = createServerFn({ method: "POST" })
   .validator(
@@ -548,8 +661,8 @@ export const readMessagesForStaff = createServerFn({ method: "GET" })
   .validator(z.object({ projectId: z.string().min(1) }))
   .middleware([authMiddleware])
   .handler(async ({ data }) => {
-    await requireStaff();
-    return readThread(await getSql(), data.projectId);
+    const staff = await requireStaff();
+    return readThread(await getSql(), data.projectId, { role: "studio", userId: staff.userId });
   });
 
 export const postStaffMessage = createServerFn({ method: "POST" })
@@ -558,6 +671,7 @@ export const postStaffMessage = createServerFn({ method: "POST" })
       projectId: z.string().min(1),
       body: z.string().max(MESSAGE_MAX),
       hasAttachments: z.boolean().optional().default(false),
+      replyToMessageId: z.string().min(1).optional(),
     }),
   )
   .middleware([accountMiddleware])
@@ -568,6 +682,7 @@ export const postStaffMessage = createServerFn({ method: "POST" })
     const body = data.body.trim() ? validateMessage(data.body) : null;
     if (body && !body.ok) throw new Error(body.reason);
     if (!body && !data.hasAttachments) throw new Error("Write a message or attach a file first.");
+    await validateReplyTarget(sql, data.projectId, data.replyToMessageId);
 
     // The project id came from the console, but it is still checked as an
     // existing row: a reply to a project that does not exist should not create
@@ -584,6 +699,7 @@ export const postStaffMessage = createServerFn({ method: "POST" })
       authorId: staff.userId,
       authorLabel: label,
       body: body?.ok ? body.body : "File attachment",
+      replyToMessageId: data.replyToMessageId,
     });
 
     const notificationWarning = await notifyForMessage({
@@ -594,6 +710,24 @@ export const postStaffMessage = createServerFn({ method: "POST" })
     });
 
     return { ok: true as const, messageId, notificationWarning };
+  });
+
+export const toggleStaffMessageReaction = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      messageId: z.string().min(1),
+      emoji: z.enum(MESSAGE_REACTIONS),
+    }),
+  )
+  .middleware([accountMiddleware])
+  .handler(async ({ data }) => {
+    const staff = await requireStaff();
+    return toggleReaction(
+      await getSql(),
+      data.messageId,
+      { role: "studio", userId: staff.userId },
+      data.emoji,
+    );
   });
 
 export const prepareStaffMessageAttachment = createServerFn({ method: "POST" })

@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Loader2, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { deleteMyAvatar, getMyAvatar, saveMyAvatar } from "@/lib/profile-server";
 import {
+  AVATAR_MIME,
   AVATAR_EDGE,
+  encodeImageDataUrl,
   initialsFrom,
   parseImageDataUrl,
   type ParsedImage,
@@ -22,29 +24,35 @@ import {
 export function AvatarUploader({
   displayName,
   onChanged,
+  editable = true,
 }: {
   displayName: string;
   onChanged?: () => void;
+  editable?: boolean;
 }) {
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<ParsedImage | null>(null);
   const input = useRef<HTMLInputElement | null>(null);
 
-  const { data, refetch } = useQuery({
+  const {
+    data,
+    error: loadError,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ["my-avatar"],
     queryFn: () => getMyAvatar({ data: undefined }),
   });
 
-  const preview = picked
-    ? `data:${picked.mime};base64,${btoa(String.fromCharCode(...picked.bytes))}`
-    : (data?.dataUrl ?? null);
+  const preview = picked ? encodeImageDataUrl(picked) : (data?.dataUrl ?? null);
   const initials = initialsFrom(displayName) || "AT";
 
   async function onFile(file: File) {
     setError(null);
     setPicked(null);
-    if (!file.type.startsWith("image/")) {
+    if (!AVATAR_MIME.includes(file.type as (typeof AVATAR_MIME)[number])) {
       setError("Pick a picture — JPEG, PNG or WebP.");
       return;
     }
@@ -66,14 +74,15 @@ export function AvatarUploader({
     setBusy(true);
     setError(null);
     try {
-      await saveMyAvatar({
+      const dataUrl = encodeImageDataUrl(picked);
+      const result = await saveMyAvatar({
         data: {
           mime: picked.mime,
-          dataUrl: `data:${picked.mime};base64,${btoa(String.fromCharCode(...picked.bytes))}`,
+          dataUrl,
         },
       });
       setPicked(null);
-      await refetch();
+      queryClient.setQueryData(["my-avatar"], { dataUrl, updatedAt: result.updatedAt });
       onChanged?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "That picture could not be saved.");
@@ -87,7 +96,7 @@ export function AvatarUploader({
     setError(null);
     try {
       await deleteMyAvatar();
-      await refetch();
+      queryClient.setQueryData(["my-avatar"], { dataUrl: null, updatedAt: null });
       onChanged?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "That picture could not be removed.");
@@ -97,81 +106,123 @@ export function AvatarUploader({
   }
 
   return (
-    <div className="flex flex-wrap items-start gap-5">
+    <div className="flex flex-wrap items-center gap-4">
       <div className="relative">
         {preview ? (
           <img
             src={preview}
-            alt=""
-            className="size-24 rounded-2xl border border-ink/10 object-cover"
+            alt={`Profile photo for ${displayName || "your account"}`}
+            className="size-20 rounded-full border border-ink/10 bg-cream object-cover"
           />
         ) : (
-          <span className="grid size-24 place-items-center rounded-2xl bg-maroon text-2xl font-bold text-gold">
+          <span
+            aria-label={`Profile initials: ${initials}`}
+            className="grid size-20 place-items-center rounded-full bg-maroon text-2xl font-bold text-gold"
+          >
             {initials}
           </span>
         )}
         {busy ? (
-          <span className="absolute inset-0 grid place-items-center rounded-2xl bg-white/70">
+          <span className="absolute inset-0 grid place-items-center rounded-full bg-white/70">
             <Loader2 className="size-5 animate-spin text-maroon" />
           </span>
         ) : null}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] text-ink/70">
-          A picture helps the studio put a face to the name when they call about your
-          project. It is only visible to you and to ATRO staff.
-        </p>
+        {!editable ? (
+          <>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+              Profile photo
+            </p>
+            <p className="mt-1 text-[13px] text-ink/70">
+              {preview
+                ? "Private to your account in this portal."
+                : "Add a photo to personalize your account."}
+            </p>
+            {isLoading ? <p className="mt-1 text-[11px] text-ink/45">Loading photo…</p> : null}
+            {loadError ? (
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <p role="alert" className="text-[11px] text-red-700">
+                  Could not load your profile photo.
+                </p>
+                <Button type="button" size="sm" variant="ghost" onClick={() => void refetch()}>
+                  Try again
+                </Button>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <p className="text-[13px] text-ink/70">
+              A picture personalizes your account in the portal. It remains private to your account.
+            </p>
+            {isLoading ? (
+              <p className="mt-1 text-[11px] text-ink/45">Loading current photo…</p>
+            ) : null}
+            {loadError ? (
+              <p role="alert" className="mt-1 text-[11px] text-red-700">
+                Could not load your current profile photo. You can still add a new one.
+              </p>
+            ) : null}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <input
-            ref={input}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="sr-only"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) void onFile(file);
-            }}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={busy}
-            onClick={() => input.current?.click()}
-          >
-            <Camera className="size-4" />
-            {preview ? "Replace picture" : "Add a picture"}
-          </Button>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                ref={input}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void onFile(file);
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => input.current?.click()}
+              >
+                <Camera className="size-4" />
+                {preview ? "Replace picture" : "Add a picture"}
+              </Button>
 
-          {picked ? (
-            <Button type="button" size="sm" disabled={busy} onClick={() => void save()}>
-              <Upload className="size-4" />
-              Save picture
-            </Button>
-          ) : null}
+              {picked ? (
+                <Button type="button" size="sm" disabled={busy} onClick={() => void save()}>
+                  <Upload className="size-4" />
+                  Save picture
+                </Button>
+              ) : null}
 
-          {preview && !picked ? (
-            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void remove()}>
-              <Trash2 className="size-4" />
-              Remove
-            </Button>
-          ) : null}
-        </div>
+              {preview && !picked ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void remove()}
+                >
+                  <Trash2 className="size-4" />
+                  Remove
+                </Button>
+              ) : null}
+            </div>
 
-        {picked ? (
-          <p className="mt-2 text-[12px] text-ink/55">
-            Ready to save — {Math.round(picked.bytes.byteLength / 1024)} KB after resizing.
-          </p>
-        ) : null}
+            {picked ? (
+              <p role="status" className="mt-2 text-[12px] text-ink/55">
+                Ready to save — {Math.round(picked.bytes.byteLength / 1024)} KB after resizing.
+              </p>
+            ) : null}
 
-        {error ? (
-          <p role="alert" className="mt-2 text-[12px] text-red-700">
-            {error}
-          </p>
-        ) : null}
+            {error ? (
+              <p role="alert" className="mt-2 text-[12px] text-red-700">
+                {error}
+              </p>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );

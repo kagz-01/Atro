@@ -37,6 +37,8 @@ const defect = (over: Partial<Defect> = {}): Defect => ({
   note: "",
   reportedBy: "client",
   updatedAt: "2026-10-10T10:00:00Z",
+  evidence: [],
+  history: [],
   ...over,
 });
 

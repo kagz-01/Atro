@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   approvalsHeadline,
+  datesForApprovalStatusChange,
   blocksTheProject,
   daysSince,
   feeOutstanding,
@@ -48,6 +49,47 @@ describe("isSettled", () => {
     assert.equal(isSettled("not_required"), true);
     assert.equal(isSettled("rejected"), false);
     assert.equal(isSettled("under_review"), false);
+  });
+});
+
+describe("datesForApprovalStatusChange", () => {
+  it("records the submission date and clears a previous decision on resubmission", () => {
+    assert.deepEqual(
+      datesForApprovalStatusChange({
+        previousStatus: "not_started",
+        nextStatus: "submitted",
+        submittedOn: "",
+        decidedOn: "2026-10-12",
+        today: "2026-10-17",
+      }),
+      { submittedOn: "2026-10-17", decidedOn: "" },
+    );
+  });
+
+  it("records the decision date while preserving the submission date", () => {
+    assert.deepEqual(
+      datesForApprovalStatusChange({
+        previousStatus: "under_review",
+        nextStatus: "approved",
+        submittedOn: "2026-10-01",
+        decidedOn: "",
+        today: "2026-10-17",
+      }),
+      { submittedOn: "2026-10-01", decidedOn: "2026-10-17" },
+    );
+  });
+
+  it("does not rewrite dates when only approval details change", () => {
+    assert.deepEqual(
+      datesForApprovalStatusChange({
+        previousStatus: "submitted",
+        nextStatus: "submitted",
+        submittedOn: "2026-10-01",
+        decidedOn: "",
+        today: "2026-10-17",
+      }),
+      { submittedOn: "2026-10-01", decidedOn: "" },
+    );
   });
 });
 
@@ -180,6 +222,20 @@ describe("summariseApprovals", () => {
     assert.equal(s.stalled, 1);
     assert.equal(s.toChase, 1);
   });
+
+  it("distinguishes submitted, not-started, and refused approvals", () => {
+    const s = summariseApprovals(
+      [
+        approval({ id: "submitted", status: "submitted", blocking: false }),
+        approval({ id: "not-started", status: "not_started", blocking: false }),
+        approval({ id: "refused", status: "rejected", blocking: false }),
+      ],
+      NOW,
+    );
+    assert.equal(s.withAuthorities, 1);
+    assert.equal(s.awaitingSubmission, 1);
+    assert.equal(s.refused, 1);
+  });
 });
 
 describe("approvalsHeadline", () => {
@@ -207,6 +263,19 @@ describe("approvalsHeadline", () => {
       [approval({ blocking: false, status: "under_review" })],
       NOW,
     );
+    assert.match(approvalsHeadline(s), /1 with authorities/);
     assert.match(approvalsHeadline(s), /Nothing is holding the build/);
+  });
+
+  it("does not describe unsubmitted or refused approvals as being with an authority", () => {
+    const s = summariseApprovals(
+      [
+        approval({ id: "not-started", status: "not_started", blocking: false }),
+        approval({ id: "refused", status: "rejected", blocking: false }),
+      ],
+      NOW,
+    );
+    assert.match(approvalsHeadline(s), /1 not submitted, 1 refused/);
+    assert.doesNotMatch(approvalsHeadline(s), /with the authorities/);
   });
 });

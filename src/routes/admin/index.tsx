@@ -44,6 +44,8 @@ import { EvidenceUploader } from "@/components/admin/evidence-uploader";
 import { StudioMessagesPanel } from "@/components/admin/messages-panel";
 import { CommunicationsInbox } from "@/components/admin/communications-inbox";
 import { ProjectExpensesPanel } from "@/components/admin/project-expenses-panel";
+import { ClientProjectFilesPanel } from "@/components/admin/client-project-files-panel";
+import { AdminProjectTeamPanel } from "@/components/admin/project-team-panel";
 import { StudioPaymentsPanel } from "@/components/admin/studio-payments-panel";
 import { needsStudioReply } from "@/lib/messages";
 import { AfterHandoverPanel } from "@/components/admin/after-handover-panel";
@@ -64,6 +66,8 @@ import {
   revokeStaff,
 } from "@/lib/staff-access";
 import { issueStatementForProject, releaseRetention } from "@/lib/staff-ops";
+import { cancelDecisionVisuals } from "@/lib/decision-visuals-server";
+import { uploadDecisionVisual } from "@/lib/decision-visual-upload";
 import { listProjectDocuments, voidDocument } from "@/lib/invoice-server";
 import { KIND_LABEL } from "@/lib/invoices";
 import { usesMeasuredWorkCertification } from "@/lib/diaspora/tracks";
@@ -88,7 +92,6 @@ import {
   type StaffProjectSummary,
 } from "@/lib/staff-ops";
 import type { ActivityItem } from "@/lib/diaspora/server";
-import { getPaymentInstructions, savePaymentInstructions } from "@/lib/how-to-pay-server";
 import { stampIn } from "@/lib/tz";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { cn } from "@/lib/utils";
@@ -112,6 +115,28 @@ export const Route = createFileRoute("/admin/")({
 
 const KES = new Intl.NumberFormat("en-KE", { maximumFractionDigits: 0 });
 const kes = (n: number) => `KES ${KES.format(n)}`;
+
+function DecisionImagePreview({ file }: { file: File | null }) {
+  const [url, setUrl] = useState("");
+
+  useEffect(() => {
+    if (!file) {
+      setUrl("");
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  return url ? (
+    <img
+      src={url}
+      alt={`Preview of ${file?.name ?? "decision option image"}`}
+      className="mt-3 h-32 w-full rounded-xl border border-ink/10 object-cover"
+    />
+  ) : null;
+}
 
 /**
  * Short money for headline figures.
@@ -370,80 +395,6 @@ function WriteBlock({
   );
 }
 
-/**
- * The two sheets a client pays from — typed once, here, read on the portal by
- * whoever they belong to: the local one for a client in the country, the
- * international one for a client abroad. The boxes prefill from what is
- * already saved so opening the accordion shows the studio's own words; a
- * cleared box takes that sheet down, and the portal panel with it.
- */
-function HowToPayBlock({
-  projectId,
-  run,
-  onChanged,
-}: {
-  projectId: string;
-  run: (key: string, action: () => Promise<unknown>, done: string) => Promise<void>;
-  onChanged: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const { data } = useQuery({
-    queryKey: ["payment-instructions", projectId],
-    queryFn: () => getPaymentInstructions({ data: { projectId } }),
-  });
-  const [local, setLocal] = useState("");
-  const [international, setInternational] = useState("");
-  // Sync the boxes once per fetch: a background refetch landing mid-edit must
-  // not overwrite what somebody is typing.
-  const [synced, setSynced] = useState(false);
-  useEffect(() => {
-    if (data && !synced) {
-      setLocal(data.local);
-      setInternational(data.international);
-      setSynced(true);
-    }
-  }, [data, synced]);
-
-  return (
-    <WriteBlock
-      title="How to pay"
-      hint="Both halves live here; the portal shows each client the one that matches where they are. Clear a box to take that sheet down."
-      onRun={() =>
-        run(
-          "write",
-          async () => {
-            await savePaymentInstructions({ data: { projectId, local, international } });
-            void queryClient.invalidateQueries({ queryKey: ["payment-instructions", projectId] });
-            onChanged();
-          },
-          "How to pay saved.",
-        )
-      }
-    >
-      <div>
-        <Label htmlFor="st-pay-local">In the country</Label>
-        <Textarea
-          id="st-pay-local"
-          className="min-h-24"
-          value={local}
-          onChange={(e) => setLocal(e.target.value)}
-          placeholder={"M-Pesa Paybill …, Account ATRO-….\nBank …, Branch …, Account …."}
-        />
-      </div>
-      <div>
-        <Label htmlFor="st-pay-intl">From abroad</Label>
-        <Textarea
-          id="st-pay-intl"
-          className="min-h-24"
-          value={international}
-          onChange={(e) => setInternational(e.target.value)}
-          placeholder={"SWIFT …, Bank …, Branch ….\nQuote the project reference on the transfer."}
-        />
-      </div>
-    </WriteBlock>
-  );
-}
-
 function ProjectWorkspaceTask({
   id,
   selectedTask,
@@ -581,8 +532,16 @@ function ProjectDetail({
   const [evidenceCaption, setEvidenceCaption] = useState("");
   const [evidenceDetail, setEvidenceDetail] = useState("");
   const [decisionTitle, setDecisionTitle] = useState("");
+  const [decisionDetail, setDecisionDetail] = useState("");
+  const [decisionCostImpact, setDecisionCostImpact] = useState("0");
   const [decisionDueDate, setDecisionDueDate] = useState("");
-  const [decisionOptions, setDecisionOptions] = useState("");
+  const [decisionDraftKey, setDecisionDraftKey] = useState<string | null>(null);
+  const [decisionOptions, setDecisionOptions] = useState<
+    { label: string; description: string; file: File | null }[]
+  >([
+    { label: "", description: "", file: null },
+    { label: "", description: "", file: null },
+  ]);
   const [updateTitle, setUpdateTitle] = useState("");
   const [updateBody, setUpdateBody] = useState("");
   const [docName, setDocName] = useState("");
@@ -754,10 +713,7 @@ function ProjectDetail({
     setSelectedTask(null);
     window.scrollTo({ top: 0, behavior: "auto" });
   };
-  const openProjectTask = (
-    section: (typeof projectSections)[number]["id"],
-    task: string,
-  ) => {
+  const openProjectTask = (section: (typeof projectSections)[number]["id"], task: string) => {
     setActiveSection(section);
     setSelectedTask(task);
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -837,7 +793,7 @@ function ProjectDetail({
               <p className="truncate text-[10px] text-muted">
                 {p.reference} · {p.clientLabel}
                 {clientType === "diaspora" ? " · Abroad" : ""}
-                {p.isSample ? " · Sample" : ""}
+                {p.isSample ? " · Protected" : ""}
               </p>
             </div>
           </div>
@@ -863,7 +819,7 @@ function ProjectDetail({
           <p className="truncate text-[10px] text-muted">
             {p.reference} · {p.clientLabel}
             {clientType === "diaspora" ? " · Abroad" : ""}
-            {p.isSample ? " · Sample" : ""}
+            {p.isSample ? " · Protected" : ""}
           </p>
         </div>
         <nav className="hidden gap-1 overflow-x-auto pt-2 sm:flex" aria-label="Project sections">
@@ -900,307 +856,321 @@ function ProjectDetail({
       {activeSection === "overview" ? (
         <>
           {isAdmin ? (
-        <section className="space-y-5">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            <StatCard
-              label="Build progress"
-              value={`${p.progress}%`}
-              sub={`${data.milestones.filter((m) => m.status === "complete").length} of ${data.milestones.length} tracked milestones complete`}
-              icon={CheckCircle2}
-              tone={p.progress >= 100 ? "good" : "default"}
-            />
-            <StatCard
-              label="Programme"
-              value={p.schedule.onTrack ? "On track" : "Needs review"}
-              sub={
-                p.schedule.note ||
-                (p.schedule.varianceDays !== 0
-                  ? `Recorded variance: ${Math.abs(p.schedule.varianceDays)} days`
-                  : p.schedule.daysRemaining > 0
-                    ? `${p.schedule.daysRemaining} days remaining`
-                    : "Based on the programme status recorded for this project")
-              }
-              icon={CalendarClock}
-              tone={p.schedule.onTrack ? "good" : "warn"}
-            />
-            <StatCard
-              label="Contract value"
-              value={kesShort(p.contractValue)}
-              exact={kes(p.contractValue)}
-              sub={`${kes(p.budget.paidToDate)} paid to date`}
-              icon={Banknote}
-            />
-            <StatCard
-              label={
-                measuredWork ? "Certified, awaiting payment" : "Stages approved, awaiting payment"
-              }
-              value={kesShort(p.budget.currentlyCertified)}
-              exact={kes(p.budget.currentlyCertified)}
-              sub={`${kes(p.budget.retentionHeld)} held in retention`}
-              icon={Hourglass}
-              tone={p.budget.currentlyCertified > 0 ? "warn" : "default"}
-            />
-          </div>
-
-          <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-            {renderAttentionPanel("Needs your attention")}
-
-            <Panel
-              title="Financial position"
-              subtitle="Current recorded totals; open Financial summary below for the ledger and payment instructions."
-            >
-              <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {[
-                  ["Contract", kes(p.contractValue)],
-                  ["Paid", kes(p.budget.paidToDate)],
-                  [
-                    measuredWork ? "Work certified to date" : "Stages approved to date",
-                    kes(p.budget.certifiedToDate),
-                  ],
-                  [
+            <section className="space-y-5">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+                <StatCard
+                  label="Build progress"
+                  value={`${p.progress}%`}
+                  sub={`${data.milestones.filter((m) => m.status === "complete").length} of ${data.milestones.length} tracked milestones complete`}
+                  icon={CheckCircle2}
+                  tone={p.progress >= 100 ? "good" : "default"}
+                />
+                <StatCard
+                  label="Programme"
+                  value={p.schedule.onTrack ? "On track" : "Needs review"}
+                  sub={
+                    p.schedule.note ||
+                    (p.schedule.varianceDays !== 0
+                      ? `Recorded variance: ${Math.abs(p.schedule.varianceDays)} days`
+                      : p.schedule.daysRemaining > 0
+                        ? `${p.schedule.daysRemaining} days remaining`
+                        : "Based on the programme status recorded for this project")
+                  }
+                  icon={CalendarClock}
+                  tone={p.schedule.onTrack ? "good" : "warn"}
+                />
+                <StatCard
+                  label="Contract value"
+                  value={kesShort(p.contractValue)}
+                  exact={kes(p.contractValue)}
+                  sub={`${kes(p.budget.paidToDate)} paid to date`}
+                  icon={Banknote}
+                />
+                <StatCard
+                  label={
                     measuredWork
                       ? "Certified, awaiting payment"
-                      : "Approved stages awaiting payment",
-                    kes(p.budget.currentlyCertified),
-                  ],
-                  [`Retention · ${p.budget.retentionPct}%`, kes(p.budget.retentionHeld)],
-                  ["Projected at completion", kes(p.budget.projectedAtCompletion)],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-xl border border-ink/8 bg-cream/50 p-3">
-                    <dt className="text-[11px] text-muted">{label}</dt>
-                    <dd className="mt-1 text-[13px] font-medium text-maroon">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </Panel>
-          </div>
-
-          {data.activity.length > 0 ? (
-            <Panel title="Latest project activity" subtitle="Most recent recorded updates">
-              <ol className="space-y-3">
-                {data.activity.slice(0, 3).map((item) => {
-                  const at = item.at ? new Date(item.at) : null;
-                  return (
-                    <li key={item.id} className="flex gap-3 border-l-2 border-gold/60 pl-3">
-                      <MessageSquare className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
-                      <div className="min-w-0">
-                        <p className="text-[13px] text-maroon">{item.title}</p>
-                        {item.body ? (
-                          <p className="mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-ink/55">
-                            {item.body}
-                          </p>
-                        ) : null}
-                        {at && !Number.isNaN(at.getTime()) ? (
-                          <time className="mt-1 block text-[10px] text-muted" dateTime={item.at}>
-                            {at.toLocaleString("en-KE", {
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            })}
-                          </time>
-                        ) : null}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            </Panel>
-          ) : null}
-        </section>
-      ) : (
-        <section className="space-y-5">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <StatCard
-              label="Build progress"
-              value={`${p.progress}%`}
-              sub={`${data.milestones.filter((milestone) => milestone.status === "complete").length} of ${data.milestones.length} tracked milestones complete`}
-              icon={CheckCircle2}
-              tone={p.progress >= 100 ? "good" : "default"}
-            />
-            <StatCard
-              label="Programme"
-              value={p.schedule.onTrack ? "On track" : "Needs review"}
-              sub={
-                p.schedule.note ||
-                (p.schedule.varianceDays !== 0
-                  ? `Recorded variance: ${Math.abs(p.schedule.varianceDays)} days`
-                  : p.schedule.daysRemaining > 0
-                    ? `${p.schedule.daysRemaining} days remaining`
-                    : "Based on the programme status recorded for this project")
-              }
-              icon={CalendarClock}
-              tone={p.schedule.onTrack ? "good" : "warn"}
-            />
-          </div>
-          {renderAttentionPanel("Project follow-up")}
-        </section>
-      )}
-
-      <Panel
-        title="Project lifecycle"
-        subtitle="Delivery progress and project close-out are tracked separately."
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge
-            tone={
-              p.lifecycleState === "closed" || p.lifecycleState === "archived" ? "maroon" : "gold"
-            }
-          >
-            {portfolioLifecycleLabel(p.lifecycleState, allTrackedMilestonesComplete)}
-          </Badge>
-          {p.lifecycleState === "active_build" && allTrackedMilestonesComplete ? (
-            <p className="text-[12px] text-ink/60">
-              All tracked milestones are complete; handover and close-out are not yet recorded.
-            </p>
-          ) : null}
-        </div>
-
-        {p.isSample ? (
-          <p className="mt-4 text-[12px] text-muted">Sample projects are read-only.</p>
-        ) : canChangeLifecycle && nextLifecycle ? (
-          <div className="mt-4 grid gap-3 sm:max-w-2xl">
-            <div>
-              <p className="text-[11px] font-medium text-muted">Next lifecycle step</p>
-              <p className="mt-1 text-[14px] font-medium text-maroon">
-                {PROJECT_LIFECYCLE_LABEL[nextLifecycle]}
-              </p>
-            </div>
-            {nextLifecycle === "handover" ? (
-              <p className="text-[12px] leading-relaxed text-ink/60">
-                {allTrackedMilestonesComplete
-                  ? "Every tracked milestone is complete. Handover does not close the project."
-                  : "Complete every tracked milestone before moving the project to handover."}
-              </p>
-            ) : null}
-            {nextLifecycle === "defects_period" ? (
-              <p className="text-[12px] leading-relaxed text-ink/60">
-                {defectPeriodEndIsFuture
-                  ? `Defect-period end date: ${p.defectPeriodEnd}.`
-                  : p.defectPeriodEnd
-                    ? `The defect-period end date (${p.defectPeriodEnd}) is not in the future. Update it in After handover.`
-                    : "Set the defect-period end date in After handover before starting this period."}
-              </p>
-            ) : null}
-            {nextLifecycle === "closed" ? (
-              <p className="text-[12px] leading-relaxed text-ink/60">
-                Admin close-out requires the defect period to have ended, all defects to be verified
-                or declined, and retention to be released.
-              </p>
-            ) : null}
-            {nextLifecycle === "archived" ? (
-              <p className="text-[12px] leading-relaxed text-ink/60">
-                Archiving removes this project from the live portfolio. Its history remains
-                available.
-              </p>
-            ) : null}
-            <div>
-              <Label htmlFor="lifecycle-reason">Reason for this change</Label>
-              <Textarea
-                id="lifecycle-reason"
-                value={lifecycleReason}
-                onChange={(event) => {
-                  setLifecycleReason(event.target.value);
-                  setLifecycleReview(false);
-                }}
-                maxLength={500}
-                placeholder="Record the handover, defects-period, close-out, or archive basis."
-                className="min-h-20"
-                disabled={pending === "lifecycle"}
-              />
-            </div>
-            {!lifecycleReview ? (
-              <Button
-                className="w-fit"
-                disabled={
-                  pending === "lifecycle" ||
-                  lifecycleReason.trim().length < 5 ||
-                  (nextLifecycle === "handover" && !allTrackedMilestonesComplete) ||
-                  (nextLifecycle === "defects_period" && !defectPeriodEndIsFuture)
-                }
-                onClick={() => setLifecycleReview(true)}
-              >
-                Review transition
-              </Button>
-            ) : (
-              <div
-                className="rounded-xl border border-amber-300 bg-amber-50 p-4"
-                aria-live="polite"
-              >
-                <p className="text-[13px] font-medium text-amber-950">
-                  Move this project to {PROJECT_LIFECYCLE_LABEL[nextLifecycle]}?
-                </p>
-                <p className="mt-1 text-[12px] leading-relaxed text-amber-900">
-                  This change will be recorded with your name, the date, and the reason above.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    disabled={pending === "lifecycle"}
-                    onClick={() =>
-                      void run(
-                        "lifecycle",
-                        async () => {
-                          await changeProjectLifecycle({
-                            data: {
-                              projectId,
-                              to: nextLifecycle,
-                              reason: lifecycleReason.trim(),
-                            },
-                          });
-                          setLifecycleReview(false);
-                          setLifecycleReason("");
-                        },
-                        `Project moved to ${PROJECT_LIFECYCLE_LABEL[nextLifecycle]}.`,
-                      )
-                    }
-                  >
-                    {pending === "lifecycle" ? "Saving…" : "Confirm transition"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    disabled={pending === "lifecycle"}
-                    onClick={() => setLifecycleReview(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
+                      : "Stages approved, awaiting payment"
+                  }
+                  value={kesShort(p.budget.currentlyCertified)}
+                  exact={kes(p.budget.currentlyCertified)}
+                  sub={`${kes(p.budget.retentionHeld)} held in retention`}
+                  icon={Hourglass}
+                  tone={p.budget.currentlyCertified > 0 ? "warn" : "default"}
+                />
               </div>
-            )}
-          </div>
-        ) : nextLifecycle && lifecycleNeedsAdmin ? (
-          <p className="mt-4 flex items-center gap-2 text-[12px] text-ink/60">
-            <Lock className="size-4" aria-hidden />
-            Ready for admin approval to {PROJECT_LIFECYCLE_LABEL[nextLifecycle].toLowerCase()}.
-          </p>
-        ) : (
-          <p className="mt-4 text-[12px] text-muted">This project is archived.</p>
-        )}
-        <div className="mt-5 border-t border-ink/8 pt-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
-            Transition record
-          </h3>
-          {lifecycleHistory.length === 0 ? (
-            <p className="mt-2 text-[12px] text-ink/55">No lifecycle transitions recorded yet.</p>
-          ) : (
-            <ol className="mt-3 space-y-3">
-              {lifecycleHistory.map((entry) => (
-                <li key={entry.id} className="border-l-2 border-gold/60 pl-3">
-                  <p className="text-[12px] font-medium text-maroon">
-                    {PROJECT_LIFECYCLE_LABEL[entry.fromState]} →{" "}
-                    {PROJECT_LIFECYCLE_LABEL[entry.toState]}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-ink/60">
-                    {entry.changedBy} ·{" "}
-                    {new Date(entry.changedAt).toLocaleString("en-KE", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
+
+              <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+                {renderAttentionPanel("Needs your attention")}
+
+                <Panel
+                  title="Financial position"
+                  subtitle="Current recorded totals; open Financial summary below for the ledger and Paystack payment tracking."
+                >
+                  <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    {[
+                      ["Contract", kes(p.contractValue)],
+                      ["Paid", kes(p.budget.paidToDate)],
+                      [
+                        measuredWork ? "Work certified to date" : "Stages approved to date",
+                        kes(p.budget.certifiedToDate),
+                      ],
+                      [
+                        measuredWork
+                          ? "Certified, awaiting payment"
+                          : "Approved stages awaiting payment",
+                        kes(p.budget.currentlyCertified),
+                      ],
+                      [`Retention · ${p.budget.retentionPct}%`, kes(p.budget.retentionHeld)],
+                      ["Projected at completion", kes(p.budget.projectedAtCompletion)],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-xl border border-ink/8 bg-cream/50 p-3">
+                        <dt className="text-[11px] text-muted">{label}</dt>
+                        <dd className="mt-1 text-[13px] font-medium text-maroon">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Panel>
+              </div>
+
+              {data.activity.length > 0 ? (
+                <Panel title="Latest project activity" subtitle="Most recent recorded updates">
+                  <ol className="space-y-3">
+                    {data.activity.slice(0, 3).map((item) => {
+                      const at = item.at ? new Date(item.at) : null;
+                      return (
+                        <li key={item.id} className="flex gap-3 border-l-2 border-gold/60 pl-3">
+                          <MessageSquare
+                            className="mt-0.5 size-4 shrink-0 text-muted"
+                            aria-hidden
+                          />
+                          <div className="min-w-0">
+                            <p className="text-[13px] text-maroon">{item.title}</p>
+                            {item.body ? (
+                              <p className="mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-ink/55">
+                                {item.body}
+                              </p>
+                            ) : null}
+                            {at && !Number.isNaN(at.getTime()) ? (
+                              <time
+                                className="mt-1 block text-[10px] text-muted"
+                                dateTime={item.at}
+                              >
+                                {at.toLocaleString("en-KE", {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                })}
+                              </time>
+                            ) : null}
+                          </div>
+                        </li>
+                      );
                     })}
-                  </p>
-                  <p className="mt-1 text-[12px] leading-relaxed text-ink/65">{entry.reason}</p>
-                </li>
-              ))}
-            </ol>
+                  </ol>
+                </Panel>
+              ) : null}
+            </section>
+          ) : (
+            <section className="space-y-5">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <StatCard
+                  label="Build progress"
+                  value={`${p.progress}%`}
+                  sub={`${data.milestones.filter((milestone) => milestone.status === "complete").length} of ${data.milestones.length} tracked milestones complete`}
+                  icon={CheckCircle2}
+                  tone={p.progress >= 100 ? "good" : "default"}
+                />
+                <StatCard
+                  label="Programme"
+                  value={p.schedule.onTrack ? "On track" : "Needs review"}
+                  sub={
+                    p.schedule.note ||
+                    (p.schedule.varianceDays !== 0
+                      ? `Recorded variance: ${Math.abs(p.schedule.varianceDays)} days`
+                      : p.schedule.daysRemaining > 0
+                        ? `${p.schedule.daysRemaining} days remaining`
+                        : "Based on the programme status recorded for this project")
+                  }
+                  icon={CalendarClock}
+                  tone={p.schedule.onTrack ? "good" : "warn"}
+                />
+              </div>
+              {renderAttentionPanel("Project follow-up")}
+            </section>
           )}
-        </div>
-      </Panel>
+
+          <Panel
+            title="Project lifecycle"
+            subtitle="Delivery progress and project close-out are tracked separately."
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge
+                tone={
+                  p.lifecycleState === "closed" || p.lifecycleState === "archived"
+                    ? "maroon"
+                    : "gold"
+                }
+              >
+                {portfolioLifecycleLabel(p.lifecycleState, allTrackedMilestonesComplete)}
+              </Badge>
+              {p.lifecycleState === "active_build" && allTrackedMilestonesComplete ? (
+                <p className="text-[12px] text-ink/60">
+                  All tracked milestones are complete; handover and close-out are not yet recorded.
+                </p>
+              ) : null}
+            </div>
+
+            {p.isSample ? (
+              <p className="mt-4 text-[12px] text-muted">
+                Operational changes are disabled for protected project records.
+              </p>
+            ) : canChangeLifecycle && nextLifecycle ? (
+              <div className="mt-4 grid gap-3 sm:max-w-2xl">
+                <div>
+                  <p className="text-[11px] font-medium text-muted">Next lifecycle step</p>
+                  <p className="mt-1 text-[14px] font-medium text-maroon">
+                    {PROJECT_LIFECYCLE_LABEL[nextLifecycle]}
+                  </p>
+                </div>
+                {nextLifecycle === "handover" ? (
+                  <p className="text-[12px] leading-relaxed text-ink/60">
+                    {allTrackedMilestonesComplete
+                      ? "Every tracked milestone is complete. Handover does not close the project."
+                      : "Complete every tracked milestone before moving the project to handover."}
+                  </p>
+                ) : null}
+                {nextLifecycle === "defects_period" ? (
+                  <p className="text-[12px] leading-relaxed text-ink/60">
+                    {defectPeriodEndIsFuture
+                      ? `Defect-period end date: ${p.defectPeriodEnd}.`
+                      : p.defectPeriodEnd
+                        ? `The defect-period end date (${p.defectPeriodEnd}) is not in the future. Update it in After handover.`
+                        : "Set the defect-period end date in After handover before starting this period."}
+                  </p>
+                ) : null}
+                {nextLifecycle === "closed" ? (
+                  <p className="text-[12px] leading-relaxed text-ink/60">
+                    Admin close-out requires the defect period to have ended, all defects to be
+                    verified or declined, and retention to be released.
+                  </p>
+                ) : null}
+                {nextLifecycle === "archived" ? (
+                  <p className="text-[12px] leading-relaxed text-ink/60">
+                    Archiving removes this project from the live portfolio. Its history remains
+                    available.
+                  </p>
+                ) : null}
+                <div>
+                  <Label htmlFor="lifecycle-reason">Reason for this change</Label>
+                  <Textarea
+                    id="lifecycle-reason"
+                    value={lifecycleReason}
+                    onChange={(event) => {
+                      setLifecycleReason(event.target.value);
+                      setLifecycleReview(false);
+                    }}
+                    maxLength={500}
+                    placeholder="Record the handover, defects-period, close-out, or archive basis."
+                    className="min-h-20"
+                    disabled={pending === "lifecycle"}
+                  />
+                </div>
+                {!lifecycleReview ? (
+                  <Button
+                    className="w-fit"
+                    disabled={
+                      pending === "lifecycle" ||
+                      lifecycleReason.trim().length < 5 ||
+                      (nextLifecycle === "handover" && !allTrackedMilestonesComplete) ||
+                      (nextLifecycle === "defects_period" && !defectPeriodEndIsFuture)
+                    }
+                    onClick={() => setLifecycleReview(true)}
+                  >
+                    Review transition
+                  </Button>
+                ) : (
+                  <div
+                    className="rounded-xl border border-amber-300 bg-amber-50 p-4"
+                    aria-live="polite"
+                  >
+                    <p className="text-[13px] font-medium text-amber-950">
+                      Move this project to {PROJECT_LIFECYCLE_LABEL[nextLifecycle]}?
+                    </p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-amber-900">
+                      This change will be recorded with your name, the date, and the reason above.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        disabled={pending === "lifecycle"}
+                        onClick={() =>
+                          void run(
+                            "lifecycle",
+                            async () => {
+                              await changeProjectLifecycle({
+                                data: {
+                                  projectId,
+                                  to: nextLifecycle,
+                                  reason: lifecycleReason.trim(),
+                                },
+                              });
+                              setLifecycleReview(false);
+                              setLifecycleReason("");
+                            },
+                            `Project moved to ${PROJECT_LIFECYCLE_LABEL[nextLifecycle]}.`,
+                          )
+                        }
+                      >
+                        {pending === "lifecycle" ? "Saving…" : "Confirm transition"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        disabled={pending === "lifecycle"}
+                        onClick={() => setLifecycleReview(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : nextLifecycle && lifecycleNeedsAdmin ? (
+              <p className="mt-4 flex items-center gap-2 text-[12px] text-ink/60">
+                <Lock className="size-4" aria-hidden />
+                Ready for admin approval to {PROJECT_LIFECYCLE_LABEL[nextLifecycle].toLowerCase()}.
+              </p>
+            ) : (
+              <p className="mt-4 text-[12px] text-muted">This project is archived.</p>
+            )}
+            <div className="mt-5 border-t border-ink/8 pt-4">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
+                Transition record
+              </h3>
+              {lifecycleHistory.length === 0 ? (
+                <p className="mt-2 text-[12px] text-ink/55">
+                  No lifecycle transitions recorded yet.
+                </p>
+              ) : (
+                <ol className="mt-3 space-y-3">
+                  {lifecycleHistory.map((entry) => (
+                    <li key={entry.id} className="border-l-2 border-gold/60 pl-3">
+                      <p className="text-[12px] font-medium text-maroon">
+                        {PROJECT_LIFECYCLE_LABEL[entry.fromState]} →{" "}
+                        {PROJECT_LIFECYCLE_LABEL[entry.toState]}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-ink/60">
+                        {entry.changedBy} ·{" "}
+                        {new Date(entry.changedAt).toLocaleString("en-KE", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </p>
+                      <p className="mt-1 text-[12px] leading-relaxed text-ink/65">{entry.reason}</p>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </Panel>
         </>
       ) : null}
 
@@ -1226,89 +1196,102 @@ function ProjectDetail({
             </p>
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
-        <ProjectWorkspaceTask
-          id="consent"
-          selectedTask={selectedTask}
-          section="Client"
-          title="Client & consent"
-          summary="Contact details, project context and consent."
-          onSelect={() => setSelectedTask("consent")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <ClientCard projectId={projectId} />
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="activity"
-          selectedTask={selectedTask}
-          section="Client"
-          title="Activity"
-          summary="A dated record of updates and project actions."
-          badge={data.activity.length || undefined}
-          onSelect={() => setSelectedTask("activity")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <StudioActivityFeed items={data.activity} />
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="messages"
-          selectedTask={selectedTask}
-          section="Client"
-          title="Message thread"
-          summary="Read the conversation and reply to the client."
-          badge={waitingToReply ? `${waitingToReply} waiting` : undefined}
-          onSelect={() => setSelectedTask("messages")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <StudioMessagesPanel projectId={projectId} />
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="visits"
-          selectedTask={selectedTask}
-          section="Client"
-          title="Site presence"
-          summary="Review visit and site-presence requests."
-          badge={presenceOpen ? `${presenceOpen} waiting` : undefined}
-          onSelect={() => setSelectedTask("visits")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <PresencePanel projectId={projectId} onChanged={onChanged} />
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="decisions"
-          selectedTask={selectedTask}
-          section="Client"
-          title="Client decisions"
-          summary="Review choices raised with the client and what they decided."
-          badge={stillOpen ? `${stillOpen} awaiting` : undefined}
-          onSelect={() => setSelectedTask("decisions")}
-          onBack={() => setSelectedTask(null)}
-        >
-          {data.decisions.length === 0 ? (
-            <p className="text-[13px] text-ink/55">No decisions on this project yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {data.decisions.map((decision) => (
-                <li key={decision.id} className="rounded-xl border border-ink/10 bg-white p-4">
-                  <p className="text-[14px] text-maroon">{decision.title}</p>
-                  <p className="mt-1 text-[12px] text-ink/55">
-                    {decision.state === "decided"
-                      ? `Chose: ${decision.chosen}`
-                      : "Awaiting the client"}{" "}
-                    · {decision.date}
-                    {decision.state !== "decided" && decision.dueDate
-                      ? ` · Reply by ${decision.dueDate}`
-                      : ""}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-          {data.decisions.length > 0 && stillOpen === 0 ? (
-            <p className="mt-4 text-[12px] text-muted">
-              Every decision on this project has been recorded.
-            </p>
-          ) : null}
-        </ProjectWorkspaceTask>
+            {isAdmin && !p.isSample ? (
+              <ProjectWorkspaceTask
+                id="project-team"
+                selectedTask={selectedTask}
+                section="Client"
+                title="Project team"
+                summary="Assign the named ATRO contacts and their responsibilities in the client portal."
+                onSelect={() => setSelectedTask("project-team")}
+                onBack={() => setSelectedTask(null)}
+              >
+                <AdminProjectTeamPanel projectId={projectId} />
+              </ProjectWorkspaceTask>
+            ) : null}
+            <ProjectWorkspaceTask
+              id="consent"
+              selectedTask={selectedTask}
+              section="Client"
+              title="Client & consent"
+              summary="Contact details, project context and consent."
+              onSelect={() => setSelectedTask("consent")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <ClientCard projectId={projectId} />
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="activity"
+              selectedTask={selectedTask}
+              section="Client"
+              title="Activity"
+              summary="A dated record of updates and project actions."
+              badge={data.activity.length || undefined}
+              onSelect={() => setSelectedTask("activity")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <StudioActivityFeed items={data.activity} />
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="messages"
+              selectedTask={selectedTask}
+              section="Client"
+              title="Message thread"
+              summary="Read the conversation and reply to the client."
+              badge={waitingToReply ? `${waitingToReply} waiting` : undefined}
+              onSelect={() => setSelectedTask("messages")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <StudioMessagesPanel projectId={projectId} />
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="visits"
+              selectedTask={selectedTask}
+              section="Client"
+              title="Site presence"
+              summary="Review visit and site-presence requests."
+              badge={presenceOpen ? `${presenceOpen} waiting` : undefined}
+              onSelect={() => setSelectedTask("visits")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <PresencePanel projectId={projectId} onChanged={onChanged} />
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="decisions"
+              selectedTask={selectedTask}
+              section="Client"
+              title="Client decisions"
+              summary="Review choices raised with the client and what they decided."
+              badge={stillOpen ? `${stillOpen} awaiting` : undefined}
+              onSelect={() => setSelectedTask("decisions")}
+              onBack={() => setSelectedTask(null)}
+            >
+              {data.decisions.length === 0 ? (
+                <p className="text-[13px] text-ink/55">No decisions on this project yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {data.decisions.map((decision) => (
+                    <li key={decision.id} className="rounded-xl border border-ink/10 bg-white p-4">
+                      <p className="text-[14px] text-maroon">{decision.title}</p>
+                      <p className="mt-1 text-[12px] text-ink/55">
+                        {decision.state === "decided"
+                          ? `Chose: ${decision.chosen}`
+                          : "Awaiting the client"}{" "}
+                        · {decision.date}
+                        {decision.state !== "decided" && decision.dueDate
+                          ? ` · Reply by ${decision.dueDate}`
+                          : ""}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {data.decisions.length > 0 && stillOpen === 0 ? (
+                <p className="mt-4 text-[12px] text-muted">
+                  Every decision on this project has been recorded.
+                </p>
+              ) : null}
+            </ProjectWorkspaceTask>
           </div>
         </section>
       ) : null}
@@ -1340,189 +1323,192 @@ function ProjectDetail({
             <p className="text-[12px] text-ink/55">
               {isAdmin
                 ? "Choose a task to review the ledger, certify stages, issue a statement, or manage retention."
-                : "Open Financial summary to review the ledger and payment instructions."}
+                : "Open Financial summary to review the ledger and payment history."}
             </p>
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
-        <ProjectWorkspaceTask
-          id="financial"
-          selectedTask={selectedTask}
-          section="Money"
-          title="Financial summary"
-          summary="Review the project ledger, outstanding stages and payment instructions."
-          badge={certifiedPayments.length ? `${certifiedPayments.length} awaiting payment` : undefined}
-          onSelect={() => setSelectedTask("financial")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-ink/8 pt-5 text-[12px] md:grid-cols-4">
-            {[
-              ["Contract", kes(p.contractValue)],
-              ["Paid", kes(p.budget.paidToDate)],
-              [
-                measuredWork ? "Certified, awaiting payment" : "Approved stages awaiting payment",
-                kes(p.budget.currentlyCertified),
-              ],
-              ["Retention", kes(p.budget.retentionHeld)],
-            ].map(([k, v]) => (
-              <div key={k}>
-                <dt className="text-muted">{k}</dt>
-                <dd className="mt-1 text-[14px] text-maroon">{v}</dd>
-              </div>
-            ))}
-          </dl>
-          <div className="mt-6">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
-              {measuredWork
-                ? "Certified payments awaiting payment"
-                : "Approved stages awaiting payment"}
-            </h3>
-            {certifiedPayments.length === 0 ? (
-              <p className="mt-2 rounded-xl border border-ink/8 bg-white px-4 py-3 text-[12px] text-ink/55">
-                No payment stages are awaiting payment.
-              </p>
-            ) : (
-              <ul className="mt-3 space-y-2">
-                {certifiedPayments.map((payment) => (
-                  <li
-                    key={payment.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3"
-                  >
-                    <span className="text-[13px] text-maroon">{payment.label}</span>
-                    <span className="text-[13px] font-medium text-maroon">
-                      {kes(payment.amount)}
-                    </span>
-                    {payment.certificate ? (
-                      <span className="w-full font-mono text-[11px] text-muted">
-                        {measuredWork ? "Certificate" : "Stage reference"} {payment.certificate}
-                      </span>
-                    ) : null}
-                  </li>
+            <ProjectWorkspaceTask
+              id="financial"
+              selectedTask={selectedTask}
+              section="Money"
+              title="Financial summary"
+              summary="Review the project ledger, approved stages, and Paystack checkout history."
+              badge={
+                certifiedPayments.length
+                  ? `${certifiedPayments.length} awaiting payment`
+                  : undefined
+              }
+              onSelect={() => setSelectedTask("financial")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-ink/8 pt-5 text-[12px] md:grid-cols-4">
+                {[
+                  ["Contract", kes(p.contractValue)],
+                  ["Paid", kes(p.budget.paidToDate)],
+                  [
+                    measuredWork
+                      ? "Certified, awaiting payment"
+                      : "Approved stages awaiting payment",
+                    kes(p.budget.currentlyCertified),
+                  ],
+                  ["Retention", kes(p.budget.retentionHeld)],
+                ].map(([k, v]) => (
+                  <div key={k}>
+                    <dt className="text-muted">{k}</dt>
+                    <dd className="mt-1 text-[14px] text-maroon">{v}</dd>
+                  </div>
                 ))}
-              </ul>
-            )}
-          </div>
-          <div className="mt-6">
-            <HowToPayBlock projectId={projectId} run={run} onChanged={onChanged} />
-          </div>
-        </ProjectWorkspaceTask>
-        {isAdmin && uncertified.length > 0 ? (
-          <ProjectWorkspaceTask
-            id="certify"
-            selectedTask={selectedTask}
-            section="Money"
-            title={measuredWork ? "Certify completed work" : "Approve an agreed fee stage"}
-            summary="Review stages ready for admin certification or approval."
-            badge={uncertified.length}
-            onSelect={() => setSelectedTask("certify")}
-            onBack={() => setSelectedTask(null)}
-          >
-            <p className="text-[12px] text-ink/55">
-              {measuredWork
-                ? "Confirm the work has been inspected and measured against the agreement. The client receives a payment certificate and a separate payment request."
-                : "Confirm the agreed deliverable or fee stage is complete under the signed engagement. The client receives a payment request, not a QS certificate."}
-            </p>
-            <ul className="mt-4 space-y-2">
-              {uncertified.map((pay) => (
-                <li
-                  key={pay.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
-                >
-                  <span>
-                    <span className="block text-[14px] text-maroon">{pay.label}</span>
-                    <span className="text-[12px] text-ink/50">{kes(pay.amount)}</span>
-                  </span>
-                  {isAdmin ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        void run(
-                          "inline",
-                          () =>
-                            certifyPayment({
-                              data: {
-                                projectId,
-                                paymentId: pay.id,
-                                certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
-                              },
-                            }),
-                          measuredWork
-                            ? "Work certified and payment request issued."
-                            : "Stage approved and payment request issued.",
-                        )
-                      }
+              </dl>
+              <div className="mt-6">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
+                  {measuredWork
+                    ? "Certified payments awaiting payment"
+                    : "Approved stages awaiting payment"}
+                </h3>
+                {certifiedPayments.length === 0 ? (
+                  <p className="mt-2 rounded-xl border border-ink/8 bg-white px-4 py-3 text-[12px] text-ink/55">
+                    No payment stages are awaiting payment.
+                  </p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {certifiedPayments.map((payment) => (
+                      <li
+                        key={payment.id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3"
+                      >
+                        <span className="text-[13px] text-maroon">{payment.label}</span>
+                        <span className="text-[13px] font-medium text-maroon">
+                          {kes(payment.amount)}
+                        </span>
+                        {payment.certificate ? (
+                          <span className="w-full font-mono text-[11px] text-muted">
+                            {measuredWork ? "Certificate" : "Stage reference"} {payment.certificate}
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </ProjectWorkspaceTask>
+            {isAdmin && uncertified.length > 0 ? (
+              <ProjectWorkspaceTask
+                id="certify"
+                selectedTask={selectedTask}
+                section="Money"
+                title={measuredWork ? "Certify completed work" : "Approve an agreed fee stage"}
+                summary="Review stages ready for admin certification or approval."
+                badge={uncertified.length}
+                onSelect={() => setSelectedTask("certify")}
+                onBack={() => setSelectedTask(null)}
+              >
+                <p className="text-[12px] text-ink/55">
+                  {measuredWork
+                    ? "Confirm the work has been inspected and measured against the agreement. The client receives a payment certificate and a separate payment request."
+                    : "Confirm the agreed deliverable or fee stage is complete under the signed engagement. The client receives a payment request, not a QS certificate."}
+                </p>
+                <ul className="mt-4 space-y-2">
+                  {uncertified.map((pay) => (
+                    <li
+                      key={pay.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4"
                     >
-                      {measuredWork ? "Certify work" : "Approve stage"}
-                    </Button>
-                  ) : (
-                    <span className="text-[11px] text-muted">Admins only</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </ProjectWorkspaceTask>
-        ) : null}
-        {isAdmin ? (
-          <ProjectWorkspaceTask
-            id="statement"
-            selectedTask={selectedTask}
-            section="Money"
-            title="Statement of account"
-            summary="Issue an updated record of where the project money stands."
-            onSelect={() => setSelectedTask("statement")}
-            onBack={() => setSelectedTask(null)}
-          >
-            <p className="text-[12px] leading-relaxed text-ink/55">
-              A record of where the money stands — not a demand. The client sees it in their
-              documents.
-            </p>
-            <Button
-              className="mt-4 min-h-11"
-              variant="outline"
-              onClick={() =>
-                void run(
-                  "statement",
-                  () => issueStatementForProject({ data: { projectId } }),
-                  "Statement issued.",
-                )
-              }
-              disabled={pending === "statement"}
-            >
-              Issue a statement
-            </Button>
-          </ProjectWorkspaceTask>
-        ) : null}
-        {isAdmin ? (
-          <ProjectWorkspaceTask
-            id="retention"
-            selectedTask={selectedTask}
-            section="Money"
-            title="Retention"
-            summary="Review retained funds and release them when eligible."
-            badge={p.budget.retentionHeld ? kesShort(p.budget.retentionHeld) : undefined}
-            onSelect={() => setSelectedTask("retention")}
-            onBack={() => setSelectedTask(null)}
-          >
-            <p className="text-[12px] leading-relaxed text-ink/55">
-              Held against defects. Releasing it records that the defects liability period has
-              closed and pays the money out.
-            </p>
-            <Button
-              className="mt-4 min-h-11"
-              variant="outline"
-              onClick={() =>
-                void run(
-                  "retention",
-                  () => releaseRetention({ data: { projectId } }),
-                  "Retention released.",
-                )
-              }
-              disabled={pending === "retention"}
-            >
-              Release retention
-            </Button>
-          </ProjectWorkspaceTask>
-        ) : null}
+                      <span>
+                        <span className="block text-[14px] text-maroon">{pay.label}</span>
+                        <span className="text-[12px] text-ink/50">{kes(pay.amount)}</span>
+                      </span>
+                      {isAdmin ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            void run(
+                              "inline",
+                              () =>
+                                certifyPayment({
+                                  data: {
+                                    projectId,
+                                    paymentId: pay.id,
+                                    certificate: `QS/${new Date().getFullYear()}/${p.reference.split("-").pop()}-${pay.label.slice(0, 3)}`,
+                                  },
+                                }),
+                              measuredWork
+                                ? "Work certified and payment request issued."
+                                : "Stage approved and payment request issued.",
+                            )
+                          }
+                        >
+                          {measuredWork ? "Certify work" : "Approve stage"}
+                        </Button>
+                      ) : (
+                        <span className="text-[11px] text-muted">Admins only</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </ProjectWorkspaceTask>
+            ) : null}
+            {isAdmin ? (
+              <ProjectWorkspaceTask
+                id="statement"
+                selectedTask={selectedTask}
+                section="Money"
+                title="Statement of account"
+                summary="Issue an updated record of where the project money stands."
+                onSelect={() => setSelectedTask("statement")}
+                onBack={() => setSelectedTask(null)}
+              >
+                <p className="text-[12px] leading-relaxed text-ink/55">
+                  A record of where the money stands — not a demand. The client sees it in their
+                  documents.
+                </p>
+                <Button
+                  className="mt-4 min-h-11"
+                  variant="outline"
+                  onClick={() =>
+                    void run(
+                      "statement",
+                      () => issueStatementForProject({ data: { projectId } }),
+                      "Statement issued.",
+                    )
+                  }
+                  disabled={pending === "statement"}
+                >
+                  Issue a statement
+                </Button>
+              </ProjectWorkspaceTask>
+            ) : null}
+            {isAdmin ? (
+              <ProjectWorkspaceTask
+                id="retention"
+                selectedTask={selectedTask}
+                section="Money"
+                title="Retention"
+                summary="Review retained funds and release them when eligible."
+                badge={p.budget.retentionHeld ? kesShort(p.budget.retentionHeld) : undefined}
+                onSelect={() => setSelectedTask("retention")}
+                onBack={() => setSelectedTask(null)}
+              >
+                <p className="text-[12px] leading-relaxed text-ink/55">
+                  Held against defects. Releasing it records that the defects liability period has
+                  closed and pays the money out.
+                </p>
+                <Button
+                  className="mt-4 min-h-11"
+                  variant="outline"
+                  onClick={() =>
+                    void run(
+                      "retention",
+                      () => releaseRetention({ data: { projectId } }),
+                      "Retention released.",
+                    )
+                  }
+                  disabled={pending === "retention"}
+                >
+                  Release retention
+                </Button>
+              </ProjectWorkspaceTask>
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -1540,339 +1526,506 @@ function ProjectDetail({
             </p>
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
-        <ProjectWorkspaceTask
-          id="milestones"
-          selectedTask={selectedTask}
-          section="Delivery"
-          title="Milestone status"
-          summary="Update a stage, record its client-facing status and mark it ready for approval."
-          badge={blockedMilestones ? `${blockedMilestones} blocked` : undefined}
-          onSelect={() => setSelectedTask("milestones")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <WriteBlock
-              title="Update a milestone"
-              hint="Set the stage status the client sees. Completing one opens the next automatically."
-              hideHeading
-              onRun={() =>
-                run(
-                  "write",
-                  async () => {
-                    if (!milestoneId) throw new Error("Pick a milestone first.");
-                    await updateMilestone({
-                      data: {
-                        projectId,
-                        milestoneId,
-                        status: status as "active" | "complete" | "blocked" | "pending",
-                        note: milestoneNote.trim() || undefined,
-                        approvalReady: readyToApprove,
-                      },
-                    });
-                    setMilestoneNote("");
-                  },
-                  "Milestone updated.",
-                )
-              }
+            <ProjectWorkspaceTask
+              id="milestones"
+              selectedTask={selectedTask}
+              section="Delivery"
+              title="Milestone status"
+              summary="Update a stage, record its client-facing status and mark it ready for approval."
+              badge={blockedMilestones ? `${blockedMilestones} blocked` : undefined}
+              onSelect={() => setSelectedTask("milestones")}
+              onBack={() => setSelectedTask(null)}
             >
-              <div>
-                <Label htmlFor="st-ms">Milestone</Label>
-                <Select
-                  id="st-ms"
-                  value={milestoneId}
-                  onChange={(e) => setMilestoneId(e.target.value)}
+              <WriteBlock
+                title="Update a milestone"
+                hint="Set the stage status the client sees. Completing one opens the next automatically."
+                hideHeading
+                onRun={() =>
+                  run(
+                    "write",
+                    async () => {
+                      if (!milestoneId) throw new Error("Pick a milestone first.");
+                      await updateMilestone({
+                        data: {
+                          projectId,
+                          milestoneId,
+                          status: status as "active" | "complete" | "blocked" | "pending",
+                          note: milestoneNote.trim() || undefined,
+                          approvalReady: readyToApprove,
+                        },
+                      });
+                      setMilestoneNote("");
+                    },
+                    "Milestone updated.",
+                  )
+                }
+              >
+                <div>
+                  <Label htmlFor="st-ms">Milestone</Label>
+                  <Select
+                    id="st-ms"
+                    value={milestoneId}
+                    onChange={(e) => setMilestoneId(e.target.value)}
+                  >
+                    <option value="">Choose a stage…</option>
+                    {data.milestones.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.order}. {m.name} — {m.status}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="st-status">Status</Label>
+                  <Select id="st-status" value={status} onChange={(e) => setStatus(e.target.value)}>
+                    {STATUS_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="flex items-start gap-2 rounded-xl border border-ink/10 bg-ink/2 px-3 py-2.5">
+                  <input
+                    id="st-ready"
+                    type="checkbox"
+                    className="mt-0.5 size-4 shrink-0 accent-[#7a1f2b]"
+                    checked={readyToApprove}
+                    onChange={(e) => setReadyToApprove(e.target.checked)}
+                  />
+                  <div className="min-w-0">
+                    <Label htmlFor="st-ready">Ready for the client to approve</Label>
+                    <p className="mt-0.5 text-[11px] leading-snug text-ink/55">
+                      Shows the Approve button on their portal. Completing a stage clears this on
+                      its own.
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="st-note">Note to the client (optional)</Label>
+                  <Textarea
+                    id="st-note"
+                    className="min-h-20"
+                    value={milestoneNote}
+                    onChange={(e) => setMilestoneNote(e.target.value)}
+                    placeholder="Frame completed to first floor ring beam; ring beam cast 12 May."
+                  />
+                </div>
+              </WriteBlock>
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="evidence"
+              selectedTask={selectedTask}
+              section="Delivery"
+              title="Evidence"
+              summary="Add inspection notes and site photographs to milestone records."
+              onSelect={() => setSelectedTask("evidence")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <div className="grid gap-6 lg:grid-cols-2">
+                <WriteBlock
+                  title="Add evidence"
+                  hint="A site photograph or inspection note against a stage. The client sees this in the milestone record."
+                  hideHeading
+                  onRun={() =>
+                    run(
+                      "write",
+                      async () => {
+                        if (!milestoneId) throw new Error("Pick a milestone first.");
+                        if (evidenceCaption.trim().length < 3)
+                          throw new Error("Give the evidence a caption.");
+                        await addMilestoneEvidence({
+                          data: {
+                            projectId,
+                            milestoneId,
+                            caption: evidenceCaption.trim(),
+                            detail: evidenceDetail.trim(),
+                          },
+                        });
+                        setEvidenceCaption("");
+                        setEvidenceDetail("");
+                      },
+                      "Evidence added.",
+                    )
+                  }
                 >
-                  <option value="">Choose a stage…</option>
-                  {data.milestones.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.order}. {m.name} — {m.status}
-                    </option>
-                  ))}
-                </Select>
+                  <div>
+                    <Label htmlFor="st-cap">Caption</Label>
+                    <Input
+                      id="st-cap"
+                      value={evidenceCaption}
+                      onChange={(e) => setEvidenceCaption(e.target.value)}
+                      placeholder="Ring beam cast — 21 m³"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="st-detail">Detail</Label>
+                    <Textarea
+                      id="st-detail"
+                      className="min-h-20"
+                      value={evidenceDetail}
+                      onChange={(e) => setEvidenceDetail(e.target.value)}
+                      placeholder="Reinforcement photographed before the pour. Engineer present."
+                    />
+                  </div>
+                </WriteBlock>
+                <WriteBlock
+                  title="Post a photograph"
+                  hint="The picture that proves the stage happened. It appears against the milestone in the client's Evidence tab."
+                  hideHeading
+                  onRun={async () => {}}
+                >
+                  <EvidenceUploader
+                    projectId={projectId}
+                    milestones={data.milestones.map((m) => ({
+                      id: m.id,
+                      order: m.order,
+                      name: m.name,
+                    }))}
+                    onUploaded={() => void refetch()}
+                  />
+                </WriteBlock>
               </div>
-              <div>
-                <Label htmlFor="st-status">Status</Label>
-                <Select id="st-status" value={status} onChange={(e) => setStatus(e.target.value)}>
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex items-start gap-2 rounded-xl border border-ink/10 bg-ink/2 px-3 py-2.5">
-                <input
-                  id="st-ready"
-                  type="checkbox"
-                  className="mt-0.5 size-4 shrink-0 accent-[#7a1f2b]"
-                  checked={readyToApprove}
-                  onChange={(e) => setReadyToApprove(e.target.checked)}
-                />
-                <div className="min-w-0">
-                  <Label htmlFor="st-ready">Ready for the client to approve</Label>
-                  <p className="mt-0.5 text-[11px] leading-snug text-ink/55">
-                    Shows the Approve button on their portal. Completing a stage clears this on its
-                    own.
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="raise-decision"
+              selectedTask={selectedTask}
+              section="Delivery"
+              title="Ask the client to decide"
+              summary="Send a clear choice to the client and set an optional reply date."
+              onSelect={() => setSelectedTask("raise-decision")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <WriteBlock
+                title="Raise a decision"
+                hint="Explain why a decision is needed, describe each option in plain language, and add a reference photo when it helps. The client sees the estimate and reply date before recording a choice."
+                hideHeading
+                onRun={() =>
+                  run(
+                    "write",
+                    async () => {
+                      if (decisionTitle.trim().length < 3)
+                        throw new Error("Give the decision a title.");
+                      if (decisionDetail.trim().length < 10)
+                        throw new Error("Explain why the client needs to make this decision.");
+                      if (decisionOptions.length < 2)
+                        throw new Error("Add at least two decision options.");
+                      for (const [index, option] of decisionOptions.entries()) {
+                        if (!option.label.trim())
+                          throw new Error(`Add a title for option ${index + 1}.`);
+                        if (option.description.trim().length < 10)
+                          throw new Error(`Explain option ${index + 1} in at least a sentence.`);
+                      }
+                      if (
+                        new Set(decisionOptions.map((option) => option.label.trim().toLowerCase()))
+                          .size !== decisionOptions.length
+                      ) {
+                        throw new Error("Give each option a different name.");
+                      }
+                      const costImpact = Number(decisionCostImpact);
+                      if (!Number.isSafeInteger(costImpact))
+                        throw new Error("Enter a whole-number cost estimate in Kenyan shillings.");
+                      const draftKey = decisionDraftKey ?? crypto.randomUUID();
+                      setDecisionDraftKey(draftKey);
+                      try {
+                        await cancelDecisionVisuals({ data: { projectId, draftKey } });
+                        for (const [optionIndex, option] of decisionOptions.entries()) {
+                          if (option.file) {
+                            await uploadDecisionVisual({
+                              projectId,
+                              draftKey,
+                              optionIndex,
+                              caption: option.label.trim(),
+                              file: option.file,
+                            });
+                          }
+                        }
+                        const result = await raiseDecision({
+                          data: {
+                            projectId,
+                            creationKey: draftKey,
+                            title: decisionTitle.trim(),
+                            detail: decisionDetail.trim(),
+                            options: decisionOptions.map((option) => ({
+                              label: option.label.trim(),
+                              description: option.description.trim(),
+                            })),
+                            costImpact,
+                            dueDate: decisionDueDate || null,
+                          },
+                        });
+                        if (result.duplicate) {
+                          await cancelDecisionVisuals({ data: { projectId, draftKey } });
+                        }
+                      } catch (error) {
+                        try {
+                          await cancelDecisionVisuals({ data: { projectId, draftKey } });
+                        } catch (cleanupError) {
+                          throw new Error(
+                            `${error instanceof Error ? error.message : "The decision could not be published."} Image cleanup also failed: ${
+                              cleanupError instanceof Error
+                                ? cleanupError.message
+                                : String(cleanupError)
+                            }`,
+                          );
+                        }
+                        throw error;
+                      }
+                      setDecisionTitle("");
+                      setDecisionDetail("");
+                      setDecisionCostImpact("0");
+                      setDecisionDueDate("");
+                      setDecisionDraftKey(null);
+                      setDecisionOptions([
+                        { label: "", description: "", file: null },
+                        { label: "", description: "", file: null },
+                      ]);
+                    },
+                    "Decision raised.",
+                  )
+                }
+              >
+                <div>
+                  <Label htmlFor="st-dtitle">Title</Label>
+                  <Input
+                    id="st-dtitle"
+                    value={decisionTitle}
+                    onChange={(e) => setDecisionTitle(e.target.value)}
+                    placeholder="Roof covering"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="st-ddetail">Why this decision is needed</Label>
+                  <Textarea
+                    id="st-ddetail"
+                    className="min-h-24"
+                    value={decisionDetail}
+                    onChange={(e) => setDecisionDetail(e.target.value)}
+                    placeholder="Explain what needs to be selected, why it matters now, and any practical constraints."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="st-dimpact">Estimated cost change (KES)</Label>
+                  <Input
+                    id="st-dimpact"
+                    type="number"
+                    step="1000"
+                    value={decisionCostImpact}
+                    onChange={(e) => setDecisionCostImpact(e.target.value)}
+                  />
+                  <p className="mt-1 text-[11px] text-muted">
+                    Use a positive amount for a likely increase, a negative amount for a reduction,
+                    or zero when there is no expected change. This is an estimate, not a payment
+                    request.
                   </p>
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="st-note">Note to the client (optional)</Label>
-                <Textarea
-                  id="st-note"
-                  className="min-h-20"
-                  value={milestoneNote}
-                  onChange={(e) => setMilestoneNote(e.target.value)}
-                  placeholder="Frame completed to first floor ring beam; ring beam cast 12 May."
-                />
-              </div>
-          </WriteBlock>
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="evidence"
-          selectedTask={selectedTask}
-          section="Delivery"
-          title="Evidence"
-          summary="Add inspection notes and site photographs to milestone records."
-          onSelect={() => setSelectedTask("evidence")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <div className="grid gap-6 lg:grid-cols-2">
-            <WriteBlock
-              title="Add evidence"
-              hint="A site photograph or inspection note against a stage. The client sees this in the milestone record."
-              hideHeading
-              onRun={() =>
-                run(
-                  "write",
-                  async () => {
-                    if (!milestoneId) throw new Error("Pick a milestone first.");
-                    if (evidenceCaption.trim().length < 3)
-                      throw new Error("Give the evidence a caption.");
-                    await addMilestoneEvidence({
-                      data: {
-                        projectId,
-                        milestoneId,
-                        caption: evidenceCaption.trim(),
-                        detail: evidenceDetail.trim(),
-                      },
-                    });
-                    setEvidenceCaption("");
-                    setEvidenceDetail("");
-                  },
-                  "Evidence added.",
-                )
-              }
+                <fieldset className="space-y-3">
+                  <legend className="text-[13px] font-medium text-maroon">Options</legend>
+                  {decisionOptions.map((option, index) => (
+                    <div key={index} className="rounded-xl border border-ink/10 bg-white p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-[13px] font-semibold text-maroon">
+                          Option {index + 1}
+                        </h3>
+                        {decisionOptions.length > 2 ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setDecisionOptions((current) =>
+                                current.filter((_, optionIndex) => optionIndex !== index),
+                              )
+                            }
+                          >
+                            Remove
+                          </Button>
+                        ) : null}
+                      </div>
+                      <div className="mt-3">
+                        <Label htmlFor={`st-doption-${index}`}>Option name</Label>
+                        <Input
+                          id={`st-doption-${index}`}
+                          value={option.label}
+                          onChange={(e) =>
+                            setDecisionOptions((current) =>
+                              current.map((item, optionIndex) =>
+                                optionIndex === index ? { ...item, label: e.target.value } : item,
+                              ),
+                            )
+                          }
+                          placeholder="e.g. Stone-coated roof tile"
+                        />
+                      </div>
+                      <div className="mt-3">
+                        <Label htmlFor={`st-doption-detail-${index}`}>What this option means</Label>
+                        <Textarea
+                          id={`st-doption-detail-${index}`}
+                          className="min-h-20"
+                          value={option.description}
+                          onChange={(e) =>
+                            setDecisionOptions((current) =>
+                              current.map((item, optionIndex) =>
+                                optionIndex === index
+                                  ? { ...item, description: e.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                          placeholder="Describe the appearance, practical difference, quality, maintenance, and any cost or schedule trade-off."
+                        />
+                      </div>
+                      <div className="mt-3">
+                        <Label htmlFor={`st-doption-image-${index}`}>
+                          Reference photo (optional)
+                        </Label>
+                        <Input
+                          id={`st-doption-image-${index}`}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                          onChange={(e) =>
+                            setDecisionOptions((current) =>
+                              current.map((item, optionIndex) =>
+                                optionIndex === index
+                                  ? { ...item, file: e.target.files?.[0] ?? null }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                        <p className="mt-1 text-[11px] text-muted">
+                          JPG, PNG or WebP, up to 10 MB. Use an image that illustrates this option.
+                        </p>
+                        <DecisionImagePreview file={option.file} />
+                      </div>
+                    </div>
+                  ))}
+                  {decisionOptions.length < 6 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        setDecisionOptions((current) => [
+                          ...current,
+                          { label: "", description: "", file: null },
+                        ])
+                      }
+                    >
+                      Add another option
+                    </Button>
+                  ) : null}
+                </fieldset>
+                <div>
+                  <Label htmlFor="st-ddue">Reply by (optional)</Label>
+                  <Input
+                    id="st-ddue"
+                    type="date"
+                    value={decisionDueDate}
+                    onChange={(e) => setDecisionDueDate(e.target.value)}
+                  />
+                </div>
+              </WriteBlock>
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="post-update"
+              selectedTask={selectedTask}
+              section="Delivery"
+              title="Post a project update"
+              summary="Share a dated update that appears in the client's activity feed."
+              onSelect={() => setSelectedTask("post-update")}
+              onBack={() => setSelectedTask(null)}
             >
-              <div>
-                <Label htmlFor="st-cap">Caption</Label>
-                <Input
-                  id="st-cap"
-                  value={evidenceCaption}
-                  onChange={(e) => setEvidenceCaption(e.target.value)}
-                  placeholder="Ring beam cast — 21 m³"
-                />
-              </div>
-              <div>
-                <Label htmlFor="st-detail">Detail</Label>
-                <Textarea
-                  id="st-detail"
-                  className="min-h-20"
-                  value={evidenceDetail}
-                  onChange={(e) => setEvidenceDetail(e.target.value)}
-                  placeholder="Reinforcement photographed before the pour. Engineer present."
-                />
-              </div>
-            </WriteBlock>
-            <WriteBlock
-              title="Post a photograph"
-              hint="The picture that proves the stage happened. It appears against the milestone in the client's Evidence tab."
-              hideHeading
-              onRun={async () => {}}
+              <WriteBlock
+                title="Post an update"
+                hint="Appears in the client's activity feed and counts as new since their last visit."
+                hideHeading
+                onRun={() =>
+                  run(
+                    "write",
+                    async () => {
+                      if (updateTitle.trim().length < 3)
+                        throw new Error("Give the update a title.");
+                      await postUpdate({
+                        data: {
+                          projectId,
+                          title: updateTitle.trim(),
+                          body: updateBody.trim(),
+                          kind: "note",
+                        },
+                      });
+                      setUpdateTitle("");
+                      setUpdateBody("");
+                    },
+                    "Update posted.",
+                  )
+                }
+              >
+                <div>
+                  <Label htmlFor="st-utitle">Title</Label>
+                  <Input
+                    id="st-utitle"
+                    value={updateTitle}
+                    onChange={(e) => setUpdateTitle(e.target.value)}
+                    placeholder="Weekly report — Week 08"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="st-ubody">Detail</Label>
+                  <Textarea
+                    id="st-ubody"
+                    className="min-h-24"
+                    value={updateBody}
+                    onChange={(e) => setUpdateBody(e.target.value)}
+                    placeholder="Frame on track. Slab deck poured Thursday. Rain expected week 9."
+                  />
+                </div>
+              </WriteBlock>
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="approvals"
+              selectedTask={selectedTask}
+              section="Delivery"
+              title="Approvals"
+              summary="Review client approvals and items blocking progress."
+              badge={readyForClient ? `${readyForClient} ready` : undefined}
+              onSelect={() => setSelectedTask("approvals")}
+              onBack={() => setSelectedTask(null)}
             >
-              <EvidenceUploader
-                projectId={projectId}
-                milestones={data.milestones.map((m) => ({
-                  id: m.id,
-                  order: m.order,
-                  name: m.name,
-                }))}
-                onUploaded={() => void refetch()}
-              />
-            </WriteBlock>
-          </div>
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="raise-decision"
-          selectedTask={selectedTask}
-          section="Delivery"
-          title="Ask the client to decide"
-          summary="Send a clear choice to the client and set an optional reply date."
-          onSelect={() => setSelectedTask("raise-decision")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <WriteBlock
-              title="Raise a decision"
-              hint="Puts a choice to the client. One option per line. They record it in the decision log."
-              hideHeading
-              onRun={() =>
-                run(
-                  "write",
-                  async () => {
-                    const options = decisionOptions
-                      .split("\n")
-                      .map((o) => o.trim())
-                      .filter(Boolean);
-                    if (decisionTitle.trim().length < 3)
-                      throw new Error("Give the decision a title.");
-                    if (options.length < 2)
-                      throw new Error("List at least two options, one per line.");
-                    await raiseDecision({
-                      data: {
-                        projectId,
-                        title: decisionTitle.trim(),
-                        detail: "",
-                        options,
-                        costImpact: 0,
-                        dueDate: decisionDueDate || null,
-                      },
-                    });
-                    setDecisionTitle("");
-                    setDecisionDueDate("");
-                    setDecisionOptions("");
-                  },
-                  "Decision raised.",
-                )
-              }
+              <ApprovalsPanel projectId={projectId} onChanged={onChanged} />
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="selections"
+              selectedTask={selectedTask}
+              section="Delivery"
+              title="Selections"
+              summary="Track material, finish and fixture choices."
+              onSelect={() => setSelectedTask("selections")}
+              onBack={() => setSelectedTask(null)}
             >
-              <div>
-                <Label htmlFor="st-dtitle">Title</Label>
-                <Input
-                  id="st-dtitle"
-                  value={decisionTitle}
-                  onChange={(e) => setDecisionTitle(e.target.value)}
-                  placeholder="Roof covering"
-                />
-              </div>
-              <div>
-                <Label htmlFor="st-dopts">Options (one per line)</Label>
-                <Textarea
-                  id="st-dopts"
-                  className="min-h-24"
-                  value={decisionOptions}
-                  onChange={(e) => setDecisionOptions(e.target.value)}
-                  placeholder={"Stone-coated tile\nConcrete roof tile\nMetal sheet"}
-                />
-              </div>
-              <div>
-                <Label htmlFor="st-ddue">Reply by (optional)</Label>
-                <Input
-                  id="st-ddue"
-                  type="date"
-                  value={decisionDueDate}
-                  onChange={(e) => setDecisionDueDate(e.target.value)}
-                />
-              </div>
-          </WriteBlock>
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="post-update"
-          selectedTask={selectedTask}
-          section="Delivery"
-          title="Post a project update"
-          summary="Share a dated update that appears in the client's activity feed."
-          onSelect={() => setSelectedTask("post-update")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <WriteBlock
-              title="Post an update"
-              hint="Appears in the client's activity feed and counts as new since their last visit."
-              hideHeading
-              onRun={() =>
-                run(
-                  "write",
-                  async () => {
-                    if (updateTitle.trim().length < 3) throw new Error("Give the update a title.");
-                    await postUpdate({
-                      data: {
-                        projectId,
-                        title: updateTitle.trim(),
-                        body: updateBody.trim(),
-                        kind: "note",
-                      },
-                    });
-                    setUpdateTitle("");
-                    setUpdateBody("");
-                  },
-                  "Update posted.",
-                )
-              }
+              <SelectionsPanel projectId={projectId} onChanged={onChanged} />
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="variations"
+              selectedTask={selectedTask}
+              section="Delivery"
+              title="Variations"
+              summary="Review requested scope or cost changes."
+              onSelect={() => setSelectedTask("variations")}
+              onBack={() => setSelectedTask(null)}
             >
-              <div>
-                <Label htmlFor="st-utitle">Title</Label>
-                <Input
-                  id="st-utitle"
-                  value={updateTitle}
-                  onChange={(e) => setUpdateTitle(e.target.value)}
-                  placeholder="Weekly report — Week 08"
-                />
-              </div>
-              <div>
-                <Label htmlFor="st-ubody">Detail</Label>
-                <Textarea
-                  id="st-ubody"
-                  className="min-h-24"
-                  value={updateBody}
-                  onChange={(e) => setUpdateBody(e.target.value)}
-                  placeholder="Frame on track. Slab deck poured Thursday. Rain expected week 9."
-                />
-              </div>
-          </WriteBlock>
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="approvals"
-          selectedTask={selectedTask}
-          section="Delivery"
-          title="Approvals"
-          summary="Review client approvals and items blocking progress."
-          badge={readyForClient ? `${readyForClient} ready` : undefined}
-          onSelect={() => setSelectedTask("approvals")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <ApprovalsPanel projectId={projectId} onChanged={onChanged} />
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="selections"
-          selectedTask={selectedTask}
-          section="Delivery"
-          title="Selections"
-          summary="Track material, finish and fixture choices."
-          onSelect={() => setSelectedTask("selections")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <SelectionsPanel projectId={projectId} onChanged={onChanged} />
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="variations"
-          selectedTask={selectedTask}
-          section="Delivery"
-          title="Variations"
-          summary="Review requested scope or cost changes."
-          onSelect={() => setSelectedTask("variations")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <VariationsPanel projectId={projectId} />
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="defects"
-          selectedTask={selectedTask}
-          section="Delivery"
-          title="Defects & care"
-          summary="Track defects, aftercare and handover follow-up."
-          onSelect={() => setSelectedTask("defects")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <AfterHandoverPanel projectId={projectId} isAdmin={isAdmin} />
-        </ProjectWorkspaceTask>
+              <VariationsPanel projectId={projectId} />
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="defects"
+              selectedTask={selectedTask}
+              section="Delivery"
+              title="Defects & care"
+              summary="Track defects, aftercare and handover follow-up."
+              onSelect={() => setSelectedTask("defects")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <AfterHandoverPanel projectId={projectId} isAdmin={isAdmin} />
+            </ProjectWorkspaceTask>
           </div>
         </section>
       ) : null}
@@ -1886,123 +2039,134 @@ function ProjectDetail({
             </p>
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
-        <ProjectWorkspaceTask
-          id="vault"
-          selectedTask={selectedTask}
-          section="Documents"
-          title="Document vault"
-          summary={`${data.documents.length} project documents and records.`}
-          badge={data.documents.length || undefined}
-          onSelect={() => setSelectedTask("vault")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <WriteBlock
-            title="Add to the document vault"
-            hint="Contracts, approvals, drawings and certificates the client can see. They keep the record."
-            hideHeading
-            onRun={() =>
-              run(
-                "vault",
-                async () => {
-                  if (docName.trim().length < 3) throw new Error("Name the document.");
-                  await addDocument({
-                    data: {
-                      projectId,
-                      name: docName.trim(),
-                      category: docCategory,
-                      reference: docRef.trim(),
-                      state: docState,
+            <ProjectWorkspaceTask
+              id="client-uploads"
+              selectedTask={selectedTask}
+              section="Documents"
+              title="Client uploads"
+              summary="Review client documents, accept them, or request missing information."
+              onSelect={() => setSelectedTask("client-uploads")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <ClientProjectFilesPanel projectId={projectId} onChanged={onChanged} />
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="vault"
+              selectedTask={selectedTask}
+              section="Documents"
+              title="Document vault"
+              summary={`${data.documents.length} project documents and records.`}
+              badge={data.documents.length || undefined}
+              onSelect={() => setSelectedTask("vault")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <WriteBlock
+                title="Add to the document vault"
+                hint="Contracts, approvals, drawings and certificates the client can see. They keep the record."
+                hideHeading
+                onRun={() =>
+                  run(
+                    "vault",
+                    async () => {
+                      if (docName.trim().length < 3) throw new Error("Name the document.");
+                      await addDocument({
+                        data: {
+                          projectId,
+                          name: docName.trim(),
+                          category: docCategory,
+                          reference: docRef.trim(),
+                          state: docState,
+                        },
+                      });
+                      setDocName("");
+                      setDocRef("");
                     },
-                  });
-                  setDocName("");
-                  setDocRef("");
-                },
-                "Document added to the vault.",
-              )
-            }
-          >
-            <div>
-              <Label htmlFor="st-docname">Document</Label>
-              <Input
-                id="st-docname"
-                value={docName}
-                onChange={(e) => setDocName(e.target.value)}
-                placeholder="Structural drawings Rev C"
+                    "Document added to the vault.",
+                  )
+                }
+              >
+                <div>
+                  <Label htmlFor="st-docname">Document</Label>
+                  <Input
+                    id="st-docname"
+                    value={docName}
+                    onChange={(e) => setDocName(e.target.value)}
+                    placeholder="Structural drawings Rev C"
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <Label htmlFor="st-doccat">Category</Label>
+                    <Select
+                      id="st-doccat"
+                      value={docCategory}
+                      onChange={(e) =>
+                        setDocCategory(e.target.value as (typeof DOC_CATEGORIES)[number]["value"])
+                      }
+                    >
+                      {DOC_CATEGORIES.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="st-docref">Reference</Label>
+                    <Input
+                      id="st-docref"
+                      value={docRef}
+                      onChange={(e) => setDocRef(e.target.value)}
+                      placeholder="SD/Rev C"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="st-docstate">State</Label>
+                    <Select
+                      id="st-docstate"
+                      value={docState}
+                      onChange={(e) =>
+                        setDocState(e.target.value as (typeof DOC_STATES)[number]["value"])
+                      }
+                    >
+                      {DOC_STATES.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+              </WriteBlock>
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="delivery-log"
+              selectedTask={selectedTask}
+              section="Documents"
+              title="Delivery log"
+              summary="Review records of documents delivered to the client."
+              onSelect={() => setSelectedTask("delivery-log")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <DeliveryLog projectId={projectId} onChanged={onChanged} />
+            </ProjectWorkspaceTask>
+            <ProjectWorkspaceTask
+              id="issued-documents"
+              selectedTask={selectedTask}
+              section="Documents"
+              title="Issued documents"
+              summary="Prepare and review formal documents issued for this project."
+              onSelect={() => setSelectedTask("issued-documents")}
+              onBack={() => setSelectedTask(null)}
+            >
+              <IssuedDocuments
+                projectId={projectId}
+                projectTitle={p.title}
+                clientLabel={p.clientLabel}
+                isAdmin={isAdmin}
+                onChanged={onChanged}
               />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div>
-                <Label htmlFor="st-doccat">Category</Label>
-                <Select
-                  id="st-doccat"
-                  value={docCategory}
-                  onChange={(e) =>
-                    setDocCategory(e.target.value as (typeof DOC_CATEGORIES)[number]["value"])
-                  }
-                >
-                  {DOC_CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="st-docref">Reference</Label>
-                <Input
-                  id="st-docref"
-                  value={docRef}
-                  onChange={(e) => setDocRef(e.target.value)}
-                  placeholder="SD/Rev C"
-                />
-              </div>
-              <div>
-                <Label htmlFor="st-docstate">State</Label>
-                <Select
-                  id="st-docstate"
-                  value={docState}
-                  onChange={(e) =>
-                    setDocState(e.target.value as (typeof DOC_STATES)[number]["value"])
-                  }
-                >
-                  {DOC_STATES.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-          </WriteBlock>
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="delivery-log"
-          selectedTask={selectedTask}
-          section="Documents"
-          title="Delivery log"
-          summary="Review records of documents delivered to the client."
-          onSelect={() => setSelectedTask("delivery-log")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <DeliveryLog projectId={projectId} onChanged={onChanged} />
-        </ProjectWorkspaceTask>
-        <ProjectWorkspaceTask
-          id="issued-documents"
-          selectedTask={selectedTask}
-          section="Documents"
-          title="Issued documents"
-          summary="Prepare and review formal documents issued for this project."
-          onSelect={() => setSelectedTask("issued-documents")}
-          onBack={() => setSelectedTask(null)}
-        >
-          <IssuedDocuments
-            projectId={projectId}
-            projectTitle={p.title}
-            clientLabel={p.clientLabel}
-            isAdmin={isAdmin}
-            onChanged={onChanged}
-          />
-        </ProjectWorkspaceTask>
+            </ProjectWorkspaceTask>
           </div>
         </section>
       ) : null}
@@ -2130,7 +2294,7 @@ function ProjectsTable({
     { id: "closed", label: "Closed", count: closedProjects.length },
     { id: "archived", label: "Archived", count: archivedProjects.length },
     { id: "all", label: "All live", count: liveProjects.length },
-    { id: "sample", label: "Samples", count: sampleProjects.length },
+    { id: "sample", label: "Protected", count: sampleProjects.length },
   ];
   const pageCount = Math.ceil(sorted.length / pageSize);
   const currentPage = Math.min(pageIndex, Math.max(0, pageCount - 1));
@@ -2320,7 +2484,7 @@ function ProjectsTable({
                         : portfolioView === "archived"
                           ? "No archived projects"
                           : portfolioView === "sample"
-                            ? "No sample projects"
+                            ? "No protected project records"
                             : "No live projects"}
               </h3>
               <p className="mt-1.5 max-w-md text-[12px] leading-relaxed text-ink/55">
@@ -2335,7 +2499,7 @@ function ProjectsTable({
                         : portfolioView === "archived"
                           ? "Archived records remain available here for reference."
                           : portfolioView === "sample"
-                            ? "Demonstration records will appear here when sample data is enabled."
+                            ? "Protected project records are managed separately from the live portfolio."
                             : "New client projects will appear here as the studio opens them."}
               </p>
               {query && onClearSearch ? (
@@ -2399,7 +2563,7 @@ function ProjectsTable({
                           <span className="min-w-0 truncate font-mono text-[10px] text-muted">
                             {p.reference}
                             {p.clientType === "diaspora" ? " · Abroad" : ""}
-                            {p.source === "sample" ? " · Sample" : ""}
+                            {p.source === "sample" ? " · Protected" : ""}
                           </span>
                           <span className="shrink-0">{p.stage || "Stage not set"}</span>
                         </span>
@@ -2572,7 +2736,7 @@ function ProjectsTable({
                       : portfolioView === "archived"
                         ? "archived"
                         : portfolioView === "sample"
-                          ? "sample"
+                          ? "protected"
                           : "live"
               }
             />
@@ -2749,7 +2913,7 @@ function StaffProjectsDirectory({
                       <span className="min-w-0 truncate font-mono text-[10px] text-muted">
                         {project.reference}
                         {project.clientType === "diaspora" ? " · Abroad" : ""}
-                        {project.source === "sample" ? " · Sample" : ""}
+                        {project.source === "sample" ? " · Protected" : ""}
                       </span>
                       <span className="shrink-0">{project.progress}%</span>
                     </span>
@@ -2863,7 +3027,7 @@ function StaffProjectsDirectory({
                         {project.source === "sample" ? (
                           <span className="mt-1 block">
                             <Badge tone="gold" className="h-4 text-[8px]">
-                              Sample
+                              Protected
                             </Badge>
                           </span>
                         ) : null}
@@ -3403,7 +3567,7 @@ function Overview({
           }
         >
           <p className="text-[13px] leading-relaxed text-ink/60">
-            The metrics below still show enquiry and financial activity. Sample, closed, and
+            The metrics below still show enquiry and financial activity. Protected, closed, and
             archived records remain separate from the live portfolio.
           </p>
         </Panel>
@@ -3452,7 +3616,7 @@ function Overview({
           label="Contracted"
           value={kesShort(money.contractValue)}
           exact={kes(money.contractValue)}
-          sub={`${funnel.projectsLive} live · ${funnel.projectsSample} sample`}
+          sub={`${funnel.projectsLive} live · ${funnel.projectsSample} protected`}
           icon={Banknote}
           trend={{ data: months.map((m) => m.received) }}
         />
@@ -4771,116 +4935,120 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
       onSearch={setSearch}
       searchPlaceholder="Search projects, clients, references"
       toolbar={
-        selected
-          ? undefined
-          : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 items-center gap-x-3 gap-y-2 sm:gap-y-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-                  <div className="col-span-2 row-start-1 min-w-0 text-center md:col-span-1 md:col-start-2">
-                    <h1 className="font-display text-lg leading-tight text-maroon">
-                      {view === "overview"
-                        ? isOwner
-                          ? "Admin dashboard"
-                          : "Staff dashboard"
-                        : activeTab.title}
-                    </h1>
-                    <p className="text-[12px] text-muted">
-                      {view === "overview" && isOwner
-                        ? "Project performance, money, approvals and the actions that matter most"
-                        : view === "overview"
-                          ? "Today’s delivery flow, client updates and the work the team is closing"
-                          : activeTab.body}
-                    </p>
-                  </div>
-                  <DashboardBackLink
-                    to="/"
-                    className="col-start-1 row-start-2 justify-self-start md:col-start-1 md:row-start-1"
-                  >
-                    Back to main site
-                  </DashboardBackLink>
-                </div>
-
-                {view === "projects" ? (
-                  <>
-                    <div className="flex items-center gap-2 md:hidden">
-                      <label className="flex min-w-0 flex-1 items-center gap-2 text-[12px] text-muted">
-                        <span className="shrink-0">Filter</span>
-                        <select
-                          aria-label="Filter projects"
-                          value={filter}
-                          onChange={(event) =>
-                            setFilter(
-                              event.target.value as
-                                | "all"
-                                | "local"
-                                | "diaspora"
-                                | "attention"
-                                | "sample",
-                            )
-                          }
-                          className="h-10 min-w-0 flex-1 rounded-xl border border-ink/12 bg-white px-3 text-[12px] font-medium text-maroon outline-none focus-visible:ring-2 focus-visible:ring-gold"
-                        >
-                          <option value="all">All projects</option>
-                          <option value="local">At home</option>
-                          <option value="diaspora">From abroad</option>
-                          <option value="attention">Needs follow-up</option>
-                          <option value="sample">Sample projects</option>
-                        </select>
-                      </label>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="min-h-10 shrink-0 gap-1.5 px-3"
-                        onClick={() => void refetch()}
-                        disabled={isLoading}
-                        aria-label="Refresh projects"
-                      >
-                        <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} aria-hidden />
-                        <span>Refresh</span>
-                      </Button>
-                    </div>
-                    <div className="hidden items-center justify-between gap-3 md:flex">
-                      <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" aria-label="Filter projects">
-                        {(
-                          [
-                            ["all", "All"],
-                            ["local", "At home"],
-                            ["diaspora", "From abroad"],
-                            ["attention", "Needs follow-up"],
-                            ["sample", "Sample"],
-                          ] as const
-                        ).map(([id, label]) => (
-                          <button
-                            key={id}
-                            type="button"
-                            aria-pressed={filter === id}
-                            onClick={() => setFilter(id)}
-                            className={cn(
-                              "min-h-9 rounded-full border px-3 text-[10px] font-medium uppercase tracking-[0.1em] transition-colors",
-                              filter === id
-                                ? "border-maroon bg-maroon text-paper"
-                                : "border-ink/12 text-ink/55 hover:border-burgundy hover:text-burgundy",
-                            )}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="min-h-10 shrink-0 gap-1.5"
-                        onClick={() => void refetch()}
-                        disabled={isLoading}
-                      >
-                        <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} aria-hidden />
-                        Refresh
-                      </Button>
-                    </div>
-                  </>
-                ) : null}
+        selected ? undefined : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 items-center gap-x-3 gap-y-2 sm:gap-y-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+              <div className="col-span-2 row-start-1 min-w-0 text-center md:col-span-1 md:col-start-2">
+                <h1 className="font-display text-lg leading-tight text-maroon">
+                  {view === "overview"
+                    ? isOwner
+                      ? "Admin dashboard"
+                      : "Staff dashboard"
+                    : activeTab.title}
+                </h1>
+                <p className="text-[12px] text-muted">
+                  {view === "overview" && isOwner
+                    ? "Project performance, money, approvals and the actions that matter most"
+                    : view === "overview"
+                      ? "Today’s delivery flow, client updates and the work the team is closing"
+                      : activeTab.body}
+                </p>
               </div>
-            )
+              <DashboardBackLink
+                to="/"
+                className="col-start-1 row-start-2 justify-self-start md:col-start-1 md:row-start-1"
+              >
+                Back to main site
+              </DashboardBackLink>
+            </div>
+
+            {view === "projects" ? (
+              <>
+                <div className="flex items-center gap-2 md:hidden">
+                  <label className="flex min-w-0 flex-1 items-center gap-2 text-[12px] text-muted">
+                    <span className="shrink-0">Filter</span>
+                    <select
+                      aria-label="Filter projects"
+                      value={filter}
+                      onChange={(event) =>
+                        setFilter(
+                          event.target.value as
+                            "all" | "local" | "diaspora" | "attention" | "sample",
+                        )
+                      }
+                      className="h-10 min-w-0 flex-1 rounded-xl border border-ink/12 bg-white px-3 text-[12px] font-medium text-maroon outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                    >
+                      <option value="all">All projects</option>
+                      <option value="local">At home</option>
+                      <option value="diaspora">From abroad</option>
+                      <option value="attention">Needs follow-up</option>
+                      <option value="sample">Protected records</option>
+                    </select>
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-10 shrink-0 gap-1.5 px-3"
+                    onClick={() => void refetch()}
+                    disabled={isLoading}
+                    aria-label="Refresh projects"
+                  >
+                    <RefreshCw
+                      className={cn("size-3.5", isLoading && "animate-spin")}
+                      aria-hidden
+                    />
+                    <span>Refresh</span>
+                  </Button>
+                </div>
+                <div className="hidden items-center justify-between gap-3 md:flex">
+                  <div
+                    className="flex min-w-0 flex-wrap items-center gap-1.5"
+                    role="group"
+                    aria-label="Filter projects"
+                  >
+                    {(
+                      [
+                        ["all", "All"],
+                        ["local", "At home"],
+                        ["diaspora", "From abroad"],
+                        ["attention", "Needs follow-up"],
+                        ["sample", "Protected"],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-pressed={filter === id}
+                        onClick={() => setFilter(id)}
+                        className={cn(
+                          "min-h-9 rounded-full border px-3 text-[10px] font-medium uppercase tracking-[0.1em] transition-colors",
+                          filter === id
+                            ? "border-maroon bg-maroon text-paper"
+                            : "border-ink/12 text-ink/55 hover:border-burgundy hover:text-burgundy",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-10 shrink-0 gap-1.5"
+                    onClick={() => void refetch()}
+                    disabled={isLoading}
+                  >
+                    <RefreshCw
+                      className={cn("size-3.5", isLoading && "animate-spin")}
+                      aria-hidden
+                    />
+                    Refresh
+                  </Button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        )
       }
     >
       {view === "work" && isAdmin ? (
@@ -5028,7 +5196,7 @@ export function AdminConsole({ workspace }: { workspace: "admin" | "staff" }) {
             {q
               ? `No project, client or reference contains “${search.trim()}”.`
               : filter !== "all"
-                ? `No projects currently match the ${filter === "local" ? "At home" : filter === "diaspora" ? "From abroad" : filter === "attention" ? "Needs follow-up" : "Sample"} filter. Try All to review the full register.`
+                ? `No projects currently match the ${filter === "local" ? "At home" : filter === "diaspora" ? "From abroad" : filter === "attention" ? "Needs follow-up" : "Protected"} filter. Try All to review the full register.`
                 : "New projects appear here when a client opens their portal or the studio creates a project from an enquiry."}
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">

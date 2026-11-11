@@ -23,6 +23,19 @@ export type MessageAttachment = {
   sizeBytes: number;
 };
 
+export type MessageReaction = {
+  emoji: (typeof MESSAGE_REACTIONS)[number];
+  count: number;
+  reactedByMe: boolean;
+};
+
+export type MessageReply = {
+  id: string;
+  authorRole: MessageRole;
+  authorLabel: string;
+  body: string;
+};
+
 export type Message = {
   id: string;
   projectId: string;
@@ -39,8 +52,11 @@ export type Message = {
   /** Deleted messages remain as an auditable tombstone. */
   deletedAt: string | null;
   attachments: MessageAttachment[];
+  reactions: MessageReaction[];
+  replyTo: MessageReply | null;
 };
 
+export const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "🙏", "🎉"] as const;
 export const MESSAGE_MIN = 2;
 export const MESSAGE_MAX = 2000;
 
@@ -70,6 +86,12 @@ export function validateMessage(
     };
   }
   return { ok: true, body: trimmed };
+}
+
+export function validateMessageReaction(
+  emoji: string,
+): emoji is (typeof MESSAGE_REACTIONS)[number] {
+  return (MESSAGE_REACTIONS as readonly string[]).includes(emoji);
 }
 
 /** What the author is called in the thread. */
@@ -131,6 +153,6 @@ function oneLine(body: string): string {
  */
 export function composerHint(role: MessageRole): string {
   return role === "client"
-    ? "Goes to your project manager. They see it in the studio console with your project open — nothing here is a WhatsApp message that scrolls away."
+    ? "Goes to your project team and stays with this project's record."
     : "The client sees this in their portal, on the project, with a date on it.";
 }

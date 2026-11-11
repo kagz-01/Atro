@@ -206,6 +206,8 @@ create table if not exists portal_decisions (
   title text not null,
   detail text not null default '',
   options jsonb not null default '[]'::jsonb,
+  option_details jsonb not null default '[]'::jsonb,
+  creation_key uuid,
   chosen text,
   cost_impact bigint not null default 0,
   state text not null default 'open' check (state in ('open', 'awaiting-client', 'decided')),
@@ -213,6 +215,45 @@ create table if not exists portal_decisions (
   decided_at timestamptz,
   unique (project_id, ord)
 );
+
+create unique index if not exists portal_decisions_creation_key_idx
+  on portal_decisions (creation_key)
+  where creation_key is not null;
+
+-- -----------------------------------------------------------------------------
+-- Source migration: 0034_decision_option_visuals.sql
+-- -----------------------------------------------------------------------------
+create table if not exists portal_decision_visual (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references portal_projects (id) on delete cascade,
+  decision_id uuid references portal_decisions (id) on delete cascade,
+  draft_key uuid,
+  option_index integer not null check (option_index between 0 and 5),
+  caption text not null default '',
+  filename text not null,
+  mime text not null check (mime in ('image/jpeg', 'image/png', 'image/webp')),
+  size_bytes integer not null check (size_bytes > 0),
+  storage_path text not null unique,
+  status text not null default 'pending' check (status in ('pending', 'ready', 'deleting')),
+  created_by text not null,
+  created_at timestamptz not null default now(),
+  check (
+    (decision_id is null and draft_key is not null)
+    or (decision_id is not null and draft_key is null)
+  )
+);
+
+create unique index if not exists portal_decision_visual_draft_option_idx
+  on portal_decision_visual (project_id, draft_key, option_index)
+  where decision_id is null;
+
+create unique index if not exists portal_decision_visual_decision_option_idx
+  on portal_decision_visual (decision_id, option_index)
+  where decision_id is not null;
+
+create index if not exists portal_decision_visual_project_decision_idx
+  on portal_decision_visual (project_id, decision_id, option_index)
+  where decision_id is not null;
 
 create table if not exists portal_activity (
   id uuid primary key default gen_random_uuid(),
@@ -587,6 +628,7 @@ create table if not exists portal_approval (
   note text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  status_updated_at timestamptz not null default now(),
   unique (project_id, ord)
 );
 
@@ -670,6 +712,7 @@ create table if not exists portal_message (
   created_at timestamptz not null default now(),
   -- When the other side opened it. Null means still unread.
   read_at timestamptz,
+  reply_to_id uuid references portal_message (id) on delete set null,
   unique (project_id, ord)
 );
 
@@ -680,6 +723,19 @@ create index if not exists portal_message_project_idx
 -- projects. Without it the studio would scan every project to find who wrote in.
 create index if not exists portal_message_unread_idx
   on portal_message (author_role, read_at) where read_at is null;
+
+create table if not exists portal_message_reaction (
+  id uuid primary key default gen_random_uuid(),
+  message_id uuid not null references portal_message (id) on delete cascade,
+  role text not null check (role in ('client', 'studio')),
+  user_id text not null,
+  emoji text not null check (emoji in ('👍', '❤️', '😂', '😮', '🙏', '🎉')),
+  created_at timestamptz not null default now(),
+  unique (message_id, role, user_id)
+);
+
+create index if not exists portal_message_reaction_message_idx
+  on portal_message_reaction (message_id);
 
 -- -----------------------------------------------------------------------------
 -- Source migration: 0015_post_handover.sql
@@ -745,6 +801,78 @@ create table if not exists portal_retainer (
 -- The defect window itself, set by the studio when the keys are handed over.
 alter table portal_projects
   add column if not exists defect_period_ends text not null default '';
+
+-- -----------------------------------------------------------------------------
+-- Source migration: 0036_handover_and_defect_evidence.sql
+-- -----------------------------------------------------------------------------
+-- The handover record is evidence and acknowledgement, not an in-app signature.
+alter table portal_projects
+  add column if not exists handed_over_on text not null default '';
+
+create table if not exists portal_handover_document (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references portal_projects (id) on delete cascade,
+  title text not null check (length(btrim(title)) between 2 and 120),
+  category text not null check (
+    category in (
+      'executed_agreement',
+      'handover_certificate',
+      'warranty',
+      'manual',
+      'as_built',
+      'inspection',
+      'final_account',
+      'other'
+    )
+  ),
+  filename text not null,
+  mime text not null,
+  size_bytes integer not null check (size_bytes > 0),
+  storage_path text not null unique,
+  uploaded_by text not null,
+  uploaded_at timestamptz not null default now(),
+  status text not null default 'pending' check (status in ('pending', 'ready')),
+  received_at timestamptz,
+  received_by text
+);
+
+create index if not exists portal_handover_document_project_idx
+  on portal_handover_document (project_id, uploaded_at desc)
+  where status = 'ready';
+
+create table if not exists portal_defect_evidence (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references portal_projects (id) on delete cascade,
+  defect_id uuid not null references portal_defect (id) on delete cascade,
+  filename text not null,
+  mime text not null,
+  size_bytes integer not null check (size_bytes > 0),
+  storage_path text not null unique,
+  uploaded_by text not null,
+  uploaded_by_role text not null check (uploaded_by_role in ('client', 'staff')),
+  created_at timestamptz not null default now(),
+  status text not null default 'pending' check (status in ('pending', 'ready'))
+);
+
+create index if not exists portal_defect_evidence_defect_idx
+  on portal_defect_evidence (defect_id, created_at)
+  where status = 'ready';
+
+create table if not exists portal_defect_event (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references portal_projects (id) on delete cascade,
+  defect_id uuid not null references portal_defect (id) on delete cascade,
+  status text not null check (
+    status in ('reported', 'accepted', 'in_progress', 'fixed', 'verified', 'rejected')
+  ),
+  note text not null default '',
+  actor text not null,
+  actor_role text not null check (actor_role in ('client', 'staff')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists portal_defect_event_defect_idx
+  on portal_defect_event (defect_id, created_at);
 
 -- -----------------------------------------------------------------------------
 -- Source migration: 0016_portal_variations.sql
@@ -929,19 +1057,9 @@ create index portal_notification_due_idx on portal_notification (deliver_after)
 -- -----------------------------------------------------------------------------
 -- Source migration: 0021_payment_instructions.sql
 -- -----------------------------------------------------------------------------
--- How to pay, in the two ways a client actually pays a Kenyan studio.
---
--- One row per (project, kind): `local` is what a client in the country uses —
--- an M-Pesa paybill and a local bank account; `international` is what a
--- diaspora client's bank needs — SWIFT, branch, the reference to quote. The
--- studio types both into the console; the portal shows the one that matches
--- how far away the client lives, so nobody is handed wire instructions they
--- cannot use or a paybill that only works from inside Kenya.
---
--- Both columns of text are staff-entered prose on purpose: these details
--- change with the studio's bankers, and a form of labelled fields would only
--- pretend otherwise. An empty body means the studio has not published that
--- kind yet, and the portal panel stays absent rather than promising.
+-- Legacy payment-instruction rows are retained for existing databases. New
+-- portal instalments use hosted Paystack checkout; this table is not part of
+-- the active client or staff payment workflow.
 
 create table if not exists portal_payment_instructions (
   id uuid primary key default gen_random_uuid(),
@@ -1239,6 +1357,64 @@ create index if not exists enquiry_attachment_enquiry_idx
   where deleted_at is null;
 
 -- -----------------------------------------------------------------------------
+-- Source migration: 0003_client_project_documents.sql
+-- -----------------------------------------------------------------------------
+-- Client-provided project records are distinct from studio-issued financial
+-- paperwork and from the legacy portal_documents catalogue.
+
+create table if not exists portal_client_document (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references portal_projects (id) on delete cascade,
+  user_id text not null,
+  title text not null,
+  category text not null check (
+    category in ('Identity', 'Ownership', 'Plans', 'Permits', 'Payment', 'Other')
+  ),
+  filename text not null,
+  mime text not null,
+  size_bytes integer not null check (size_bytes > 0),
+  storage_path text not null unique,
+  status text not null default 'pending'
+    check (status in ('pending', 'submitted', 'reviewing', 'accepted', 'needs_changes')),
+  staff_note text not null default '',
+  reviewed_by text,
+  reviewed_at timestamptz,
+  deleted_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists portal_client_document_project_idx
+  on portal_client_document (project_id, created_at desc)
+  where deleted_at is null;
+
+-- -----------------------------------------------------------------------------
+-- Source migration: 0004_project_calendar_requests.sql
+-- -----------------------------------------------------------------------------
+-- Client-proposed project events stay requests until staff confirms a time.
+
+create table if not exists portal_calendar_request (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references portal_projects (id) on delete cascade,
+  requested_by text not null,
+  title text not null,
+  kind text not null check (kind in ('meeting', 'other')),
+  note text not null default '',
+  proposed_at timestamptz not null,
+  scheduled_at timestamptz,
+  status text not null default 'requested'
+    check (status in ('requested', 'confirmed', 'declined')),
+  staff_note text not null default '',
+  responded_by text,
+  responded_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists portal_calendar_request_project_idx
+  on portal_calendar_request (project_id, created_at desc);
+
+-- -----------------------------------------------------------------------------
 -- Source migration: 0032_paystack_and_project_expenses.sql
 -- -----------------------------------------------------------------------------
 -- Paystack collection attempts are tied to one certified project instalment.
@@ -1323,6 +1499,23 @@ create table if not exists portal_project_expense_approval (
 create index if not exists portal_project_expense_approval_expense_idx
   on portal_project_expense_approval (expense_id, decided_at);
 
+-- -----------------------------------------------------------------------------
+-- Source migration: 0033_project_team_assignments.sql
+-- -----------------------------------------------------------------------------
+create table if not exists portal_project_team (
+  project_id uuid not null references portal_projects (id) on delete cascade,
+  staff_user_id text not null references "user" ("id") on delete cascade,
+  role_title text not null check (length(btrim(role_title)) between 2 and 80),
+  ordinal integer not null default 0,
+  assigned_by text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (project_id, staff_user_id)
+);
+
+create index if not exists portal_project_team_project_idx
+  on portal_project_team (project_id, ordinal, created_at);
+
 -- Mark the included source migrations as applied so future deploys only run newer files.
 INSERT INTO _migrations (name, applied_at) VALUES
   ('0001_auth.sql', now()),
@@ -1358,6 +1551,10 @@ INSERT INTO _migrations (name, applied_at) VALUES
   ('0030_message_attachments_and_deletion.sql', now()),
   ('0031_enquiry_attachments.sql', now()),
   ('0032_paystack_and_project_expenses.sql', now()),
+  ('0033_project_team_assignments.sql', now()),
+  ('0034_decision_option_visuals.sql', now()),
+  ('0035_approval_status_tracking.sql', now()),
+  ('0036_handover_and_defect_evidence.sql', now()),
   ('schema.sql', now())
 ON CONFLICT (name) DO NOTHING;
 

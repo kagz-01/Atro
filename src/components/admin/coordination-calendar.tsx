@@ -4,7 +4,7 @@ import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Loader2 } from 
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/field";
+import { Input, Label, Textarea } from "@/components/ui/field";
 import { Panel } from "@/components/ui/panel";
 import {
   coordinationDateKey,
@@ -24,6 +24,8 @@ import {
   type StaffFollowUp,
 } from "@/lib/staff-ops";
 import { eatInstant, formatInstant } from "@/lib/presence";
+import { calendarRequestLabel } from "@/lib/project-calendar";
+import { respondToProjectCalendarRequest } from "@/lib/project-calendar-server";
 
 type CoordinationEvent = {
   id: string;
@@ -35,6 +37,7 @@ type CoordinationEvent = {
   kind: "call" | "visit" | "walkthrough";
   time: string | null;
   status: "scheduled" | "requested";
+  eventTitle?: string;
 };
 
 function nairobiInput(instant: string | null): string {
@@ -77,6 +80,8 @@ export function CoordinationCalendar({
   const [followUpTitle, setFollowUpTitle] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
   const [followUpProject, setFollowUpProject] = useState("");
+  const [eventTimeById, setEventTimeById] = useState<Record<string, string>>({});
+  const [eventNoteById, setEventNoteById] = useState<Record<string, string>>({});
   const { data, isLoading, error } = useQuery<StaffCalendarData>({
     queryKey: ["staff-calendar"],
     queryFn: () => getStaffCalendar({ data: undefined }),
@@ -127,6 +132,17 @@ export function CoordinationCalendar({
       toast.error(cause instanceof Error ? cause.message : "Could not schedule the call.");
     },
   });
+  const respondEvent = useMutation({
+    mutationFn: respondToProjectCalendarRequest,
+    onSuccess: async () => {
+      toast.success("Calendar request answered. The client has been notified.");
+      await queryClient.invalidateQueries({ queryKey: ["staff-calendar"] });
+    },
+    onError: (cause) =>
+      toast.error(
+        cause instanceof Error ? cause.message : "Could not answer the calendar request.",
+      ),
+  });
 
   const calls = useMemo(
     () => (data?.calls ?? []).filter((call) => matchesSearch(call, search)),
@@ -135,6 +151,20 @@ export function CoordinationCalendar({
   const presence = useMemo(
     () => (data?.presence ?? []).filter((item) => matchesSearch(item, search)),
     [data?.presence, search],
+  );
+  const calendarRequests = useMemo(
+    () =>
+      (data?.calendarRequests ?? []).filter((item) =>
+        matchesSearch(
+          {
+            title: `${item.title} ${item.projectTitle}`,
+            reference: item.reference,
+            clientLabel: item.clientLabel,
+          },
+          search,
+        ),
+      ),
+    [data?.calendarRequests, search],
   );
   const calendarDays = useMemo(() => coordinationMonthGrid(selectedDay), [selectedDay]);
   const calendarEvents = useMemo<CoordinationEvent[]>(() => {
@@ -176,8 +206,29 @@ export function CoordinationCalendar({
           ]
         : [];
     });
-    return [...callEvents, ...presenceEvents];
-  }, [calls, presence]);
+    const requestEvents = calendarRequests.flatMap((item) => {
+      const time = item.scheduledAt ?? item.proposedAt;
+      if (!time) return [];
+      const day = coordinationDateKey(time);
+      return day
+        ? [
+            {
+              id: `event-${item.id}`,
+              projectId: item.projectId,
+              reference: item.reference,
+              title: item.projectTitle,
+              clientLabel: item.clientLabel,
+              day,
+              kind: "call" as const,
+              time,
+              status: item.status === "requested" ? ("requested" as const) : ("scheduled" as const),
+              eventTitle: item.title,
+            },
+          ]
+        : [];
+    });
+    return [...callEvents, ...presenceEvents, ...requestEvents];
+  }, [calls, presence, calendarRequests]);
   const eventsByDay = useMemo(
     () =>
       calendarEvents.reduce<Record<string, CoordinationEvent[]>>((grouped, event) => {
@@ -212,7 +263,7 @@ export function CoordinationCalendar({
     <div className="space-y-5">
       <Panel
         title="Coordination calendar"
-        subtitle="Scheduled calls and confirmed visits or walkthroughs by Nairobi date. Select a day to see its agenda."
+        subtitle="Calls, approved events, and visit or walkthrough requests by Nairobi date. Select a day to see its agenda."
       >
         <div className="max-w-md">
           <Label htmlFor="calendar-search">Find a project</Label>
@@ -288,15 +339,17 @@ export function CoordinationCalendar({
                       <span
                         key={item.id}
                         className={`block truncate rounded px-1 py-0.5 text-[9px] sm:text-[10px] ${
-                          item.kind === "call"
-                            ? "bg-blue-50 text-blue-800"
-                            : item.status === "requested"
-                              ? "bg-amber-50 text-amber-800"
+                          item.status === "requested"
+                            ? "bg-amber-50 text-amber-800"
+                            : item.kind === "call"
+                              ? "bg-blue-50 text-blue-800"
                               : "bg-maroon/10 text-maroon"
                         }`}
                       >
                         {item.kind === "call"
-                          ? "Call"
+                          ? item.eventTitle
+                            ? "Event"
+                            : "Call"
                           : item.kind === "visit"
                             ? "Visit"
                             : "Walkthrough"}
@@ -322,7 +375,7 @@ export function CoordinationCalendar({
               {formatCoordinationDay(selectedDay)}
             </h3>
             <span className="text-[11px] text-ink/55">
-              {selectedDayEvents.length} scheduled item{selectedDayEvents.length === 1 ? "" : "s"}
+              {selectedDayEvents.length} calendar item{selectedDayEvents.length === 1 ? "" : "s"}
             </span>
           </div>
           {selectedDayEvents.length === 0 ? (
@@ -341,7 +394,11 @@ export function CoordinationCalendar({
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={item.status === "requested" ? "gold" : "maroon"}>
                         {item.kind === "call"
-                          ? "Project call"
+                          ? item.eventTitle
+                            ? item.status === "requested"
+                              ? "Event requested"
+                              : "Project event"
+                            : "Project call"
                           : item.status === "requested"
                             ? "Needs response"
                             : item.kind === "visit"
@@ -355,12 +412,15 @@ export function CoordinationCalendar({
                       ) : null}
                     </div>
                     <p className="mt-1 text-[13px] font-medium text-maroon">
-                      {item.reference} · {item.title}
+                      {item.reference} · {item.eventTitle ?? item.title}
                     </p>
+                    {item.eventTitle ? (
+                      <p className="text-[11px] text-ink/60">{item.title}</p>
+                    ) : null}
                     <p className="text-[11px] text-ink/55">{item.clientLabel}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {item.kind === "call" && canSchedule ? (
+                    {item.kind === "call" && !item.eventTitle && canSchedule ? (
                       <Button
                         size="sm"
                         variant="outline"
@@ -370,9 +430,11 @@ export function CoordinationCalendar({
                       </Button>
                     ) : null}
                     <Button size="sm" variant="ghost" onClick={() => onOpenProject(item.projectId)}>
-                      {item.kind !== "call" && item.status === "requested"
-                        ? "Respond in project"
-                        : "Open project"}
+                      {item.eventTitle && item.status === "requested"
+                        ? "Review request"
+                        : item.kind !== "call" && item.status === "requested"
+                          ? "Respond in project"
+                          : "Open project"}
                     </Button>
                   </div>
                 </li>
@@ -636,6 +698,128 @@ export function CoordinationCalendar({
           })()}
         </Panel>
       ) : null}
+
+      <Panel
+        title="Client event requests"
+        subtitle="Approve the proposed time or confirm a different time. Declines must include a reason."
+      >
+        {calendarRequests.filter((item) => item.status === "requested").length === 0 ? (
+          <p className="text-[13px] text-ink/55">No project event requests need approval.</p>
+        ) : (
+          <ul className="space-y-3">
+            {calendarRequests
+              .filter((item) => item.status === "requested")
+              .map((item) => {
+                const proposed = item.proposedAt;
+                const when = eventTimeById[item.id] ?? nairobiInput(proposed);
+                return (
+                  <li key={item.id} className="rounded-xl border border-ink/10 bg-white p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone="gold">Needs approval</Badge>
+                      <span className="text-[12px] text-ink/55">
+                        {calendarRequestLabel(item.kind)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[14px] font-medium text-maroon">{item.title}</p>
+                    <p className="mt-1 text-[12px] text-ink/60">
+                      {item.reference} · {item.projectTitle} · {item.clientLabel}
+                    </p>
+                    <p className="mt-2 text-[12px] text-ink/55">
+                      Client proposed {formatInstant(proposed, "Africa/Nairobi") ?? "a time"} EAT
+                    </p>
+                    {item.note ? (
+                      <p className="mt-1 whitespace-pre-wrap text-[12px] text-ink/60">
+                        {item.note}
+                      </p>
+                    ) : null}
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor={`client-event-time-${item.id}`}>
+                          Confirmed time (Nairobi)
+                        </Label>
+                        <Input
+                          id={`client-event-time-${item.id}`}
+                          type="datetime-local"
+                          value={when}
+                          onChange={(event) =>
+                            setEventTimeById((current) => ({
+                              ...current,
+                              [item.id]: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`client-event-note-${item.id}`}>
+                          Note or decline reason
+                        </Label>
+                        <Textarea
+                          id={`client-event-note-${item.id}`}
+                          className="min-h-12"
+                          maxLength={500}
+                          value={eventNoteById[item.id] ?? ""}
+                          onChange={(event) =>
+                            setEventNoteById((current) => ({
+                              ...current,
+                              [item.id]: event.target.value,
+                            }))
+                          }
+                          placeholder="Add a note the client will see"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        disabled={respondEvent.isPending || !when}
+                        onClick={() => {
+                          const scheduledAt = eatInstant(when);
+                          if (!scheduledAt) {
+                            toast.error("Enter a valid Nairobi date and time.");
+                            return;
+                          }
+                          respondEvent.mutate({
+                            data: {
+                              requestId: item.id,
+                              status: "confirmed",
+                              scheduledAt,
+                              note: eventNoteById[item.id]?.trim() || undefined,
+                            },
+                          });
+                        }}
+                      >
+                        Confirm event
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={respondEvent.isPending || !eventNoteById[item.id]?.trim()}
+                        onClick={() =>
+                          respondEvent.mutate({
+                            data: {
+                              requestId: item.id,
+                              status: "declined",
+                              note: eventNoteById[item.id]?.trim(),
+                            },
+                          })
+                        }
+                      >
+                        Decline with reason
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onOpenProject(item.projectId)}
+                      >
+                        Open project
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+          </ul>
+        )}
+      </Panel>
 
       <Panel
         title="Presence requests needing a response"

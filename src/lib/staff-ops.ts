@@ -66,12 +66,26 @@ function isValidDateOnly(value: string): boolean {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
+const DecisionOption = z.object({
+  label: z.string().trim().min(1).max(120),
+  description: z.string().trim().min(10).max(600),
+});
+
 const RaiseDecision = z.object({
   projectId: z.string().min(1),
+  creationKey: z.string().uuid(),
   title: z.string().trim().min(3).max(160),
-  detail: z.string().trim().max(1200).default(""),
-  options: z.array(z.string().trim().min(1).max(120)).min(2).max(6),
-  costImpact: z.number().int().default(0),
+  detail: z.string().trim().min(10).max(1200),
+  options: z
+    .array(DecisionOption)
+    .min(2)
+    .max(6)
+    .refine(
+      (options) =>
+        new Set(options.map((option) => option.label.toLowerCase())).size === options.length,
+      "Give each option a different name.",
+    ),
+  costImpact: z.number().int().min(-1_000_000_000).max(1_000_000_000),
   dueDate: z.string().refine(isValidDateOnly, "Enter a valid reply date.").nullable().optional(),
 });
 
@@ -387,6 +401,19 @@ export type StaffCalendarData = {
     scheduledAt: string | null;
     clientNote: string;
   }[];
+  calendarRequests: {
+    id: string;
+    projectId: string;
+    reference: string;
+    projectTitle: string;
+    clientLabel: string;
+    title: string;
+    kind: "meeting" | "other";
+    note: string;
+    proposedAt: string;
+    scheduledAt: string | null;
+    status: "requested" | "confirmed";
+  }[];
 };
 
 /** Upcoming calls and visit/walkthrough coordination for office scheduling. */
@@ -418,6 +445,17 @@ export const getStaffCalendar = createServerFn({ method: "GET" }).handler(
       order by case when r.status = 'requested' then 0 else 1 end,
         r.scheduled_at asc nulls last, r.proposed_on asc nulls last
     `;
+    const calendarRequests = await sql<Record<string, unknown>>`
+      select r.id, r.project_id, p.reference, p.title as project_title, p.client_label,
+        r.title as event_title, r.kind, r.note, r.proposed_at, r.scheduled_at, r.status
+      from portal_calendar_request r
+      join portal_projects p on p.id = r.project_id
+      where p.deleted_at is null and p.source <> 'sample'
+        and p.lifecycle_state not in ('closed', 'archived')
+        and (r.status = 'requested' or (r.status = 'confirmed' and r.scheduled_at >= now()))
+      order by case when r.status = 'requested' then 0 else 1 end,
+        r.scheduled_at asc nulls last, r.proposed_at asc
+    `;
 
     return {
       calls: calls.map((row) => ({
@@ -439,6 +477,19 @@ export const getStaffCalendar = createServerFn({ method: "GET" }).handler(
         proposedOn: row.proposed_on ? String(row.proposed_on).slice(0, 10) : null,
         scheduledAt: iso(row.scheduled_at),
         clientNote: String(row.client_note ?? ""),
+      })),
+      calendarRequests: calendarRequests.map((row) => ({
+        id: String(row.id),
+        projectId: String(row.project_id),
+        reference: String(row.reference),
+        projectTitle: String(row.project_title),
+        clientLabel: String(row.client_label ?? ""),
+        title: String(row.event_title),
+        kind: row.kind === "meeting" ? "meeting" : "other",
+        note: String(row.note ?? ""),
+        proposedAt: iso(row.proposed_at) ?? "",
+        scheduledAt: iso(row.scheduled_at),
+        status: row.status === "confirmed" ? "confirmed" : "requested",
       })),
     };
   },
@@ -870,25 +921,94 @@ export async function raiseDecisionFor(
   staff: { email: string; userId: string },
   data: z.infer<typeof RaiseDecision>,
 ) {
-  const next = await sql<{ n: number }>`
-      select coalesce(max(ord), 0) + 1 as n from portal_decisions where project_id = ${data.projectId}
-    `;
-  const ord = Number(next[0]?.n ?? 1);
+  const [project] = await sql<{ id: string }>`
+    select id from portal_projects
+    where id = ${data.projectId} and deleted_at is null and source <> 'sample'
+      and lifecycle_state not in ('closed', 'archived')
+  `;
+  if (!project) throw new Error("Decisions can only be raised for an active project.");
 
-  await sql`
+  const [existing] = await sql<{ id: string }>`
+    select id from portal_decisions
+    where creation_key = ${data.creationKey} and project_id = ${data.projectId}
+  `;
+  if (existing) {
+    return {
+      ok: true as const,
+      duplicate: true as const,
+      raisedBy: staff.email,
+      decisionId: existing.id,
+    };
+  }
+
+  const labels = data.options.map((option) => option.label);
+  const details = data.options.map((option) => option.description);
+  const choices = data.options.map((option) => `• ${option.label}`).join(" ");
+  const [created] = await sql<{ id: string }>`
+    with project_lock as materialized (
+      select pg_advisory_xact_lock(hashtextextended(${data.projectId}, 1))
+    ),
+    draft_visuals as materialized (
+      select id, option_index, status
+      from portal_decision_visual
+      where project_id = ${data.projectId} and draft_key = ${data.creationKey}
+        and decision_id is null
+      for update
+    ),
+    next_order as (
+      select coalesce(max(ord), 0) + 1 as ord
+      from portal_decisions cross join project_lock
+      where project_id = ${data.projectId}
+    ),
+    inserted as (
       insert into portal_decisions
-        (project_id, ord, date, title, detail, options, cost_impact, state, due_date)
-      values (${data.projectId}, ${ord}, ${todayLabel()}, ${data.title}, ${data.detail},
-              ${JSON.stringify(data.options)}, ${data.costImpact}, 'awaiting-client', ${data.dueDate ?? null})
+        (project_id, ord, date, title, detail, options, option_details, cost_impact,
+          state, due_date, creation_key)
+      select ${data.projectId}, next_order.ord, ${todayLabel()}, ${data.title}, ${data.detail},
+        ${JSON.stringify(labels)}::jsonb, ${JSON.stringify(details)}::jsonb,
+        ${data.costImpact}, 'awaiting-client', ${data.dueDate ?? null}, ${data.creationKey}
+      from next_order
+      where not exists (select 1 from draft_visuals where status <> 'ready')
+        and not exists (
+          select 1 from draft_visuals where option_index >= ${data.options.length}
+        )
+      on conflict (creation_key) where creation_key is not null do nothing
+      returning id
+    ),
+    attached as (
+      update portal_decision_visual visual
+      set decision_id = inserted.id, draft_key = null
+      from inserted, draft_visuals
+      where visual.id = draft_visuals.id and visual.status = 'ready'
+        and visual.decision_id is null
+      returning visual.id
+    )
+    select id from inserted
+  `;
+  if (!created) {
+    const [retry] = await sql<{ id: string }>`
+      select id from portal_decisions
+      where creation_key = ${data.creationKey} and project_id = ${data.projectId}
     `;
+    if (retry) {
+      return {
+        ok: true as const,
+        duplicate: true as const,
+        raisedBy: staff.email,
+        decisionId: retry.id,
+      };
+    }
+    throw new Error(
+      "One or more decision images are still uploading or do not match an option. Retry after they finish.",
+    );
+  }
 
-  const choices = data.options.map((o) => `• ${o}`).join(" ");
   await logActivity(
     sql,
     data.projectId,
     "decision",
     `Your decision needed: ${data.title}`,
-    choices,
+    `${data.detail}\n\n${choices}`,
   );
   await notify({
     projectId: data.projectId,
@@ -903,7 +1023,7 @@ export async function raiseDecisionFor(
       .join("\n\n"),
   });
 
-  return { ok: true as const, raisedBy: staff.email };
+  return { ok: true as const, duplicate: false as const, raisedBy: staff.email };
 }
 
 export async function certifyPaymentFor(
@@ -1092,7 +1212,9 @@ export const changeProjectLifecycle = createServerFn({ method: "POST" })
     `;
     const project = projects[0];
     if (!project) throw new Error("Project not found.");
-    if (project.source === "sample") throw new Error("Sample projects cannot change lifecycle.");
+    if (project.source === "sample") {
+      throw new Error("Protected project records cannot change lifecycle.");
+    }
 
     const milestones = await sql<{ total: number; complete: number }>`
       select count(*) as total,

@@ -111,7 +111,7 @@ export const GUIDES: Guide[] = [
       },
       {
         kind: "p",
-        text: "That list is not a service you have to hope for. It is the standard we hold every project to, and it is what the client portal on this site is built to demonstrate.",
+        text: "That list is not a service you have to hope for. It is the standard we hold every project to, and it is what the client portal on this site is built to support.",
       },
     ],
   },
@@ -218,17 +218,17 @@ export const GUIDES: Guide[] = [
     slug: "sending-money-legally",
     title: "Sending money to Kenya, and sending it legally",
     summary:
-      "How money actually moves from abroad to a construction project, what it costs, and the routes that are common but risky.",
+      "How to pay an ATRO project through its client portal, and how to keep unrelated transfers safe.",
     category: "Money",
     readMinutes: 7,
     blocks: [
       {
         kind: "p",
-        text: "How you transfer money is not a neutral administrative choice. It determines what evidence you will hold, what it costs, how quickly a fraud can be recalled, and in some cases whether the transaction is legal.",
+        text: "For an ATRO project instalment, use Pay now in your client portal. Review the certified stage and exact KES amount, then continue to Paystack's hosted checkout. The ledger records a payment only after ATRO verifies it with Paystack. The general transfer guidance below is for separate transactions outside the ATRO portal.",
       },
       {
         kind: "h",
-        text: "The legitimate routes",
+        text: "Independent transfers outside the ATRO portal",
       },
       {
         kind: "table",
@@ -236,22 +236,22 @@ export const GUIDES: Guide[] = [
         rows: [
           [
             "Bank wire (SWIFT)",
-            "Large stage payments",
+            "Independent purchases or transfers",
             "Traceable and defensible. Slower, with correspondent bank fees and an exchange rate margin.",
           ],
           [
             "Diaspora remittance service",
-            "Mid-value stage payments",
+            "Independent purchases or transfers",
             "Usually cheaper and faster than a wire. Compare the all-in rate and any receiving fees.",
           ],
           [
             "Card or account funding",
-            "Small payments",
+            "Independent small payments",
             "Easy. Poor for large amounts due to limits and fees.",
           ],
           [
             "Mobile money to a paybill",
-            "Only where the paybill is in the company's name",
+            "Only for a separate transaction to a verified company",
             "Convenient. Must be a company paybill, never an individual.",
           ],
         ],
@@ -647,30 +647,12 @@ export const GUIDES: Guide[] = [
         kind: "table",
         head: ["Stage", "What must be photographed before it is hidden"],
         rows: [
-          [
-            "Set-out",
-            "Setting-out dimensions with the building's corners marked",
-          ],
-          [
-            "Foundation",
-            "Excavation open, reinforcement fixed, before any pour",
-          ],
-          [
-            "Frame",
-            "Ring beam reinforcement and starters before each pour",
-          ],
-          [
-            "Services",
-            "Every first-fix run, in every wall and under every floor",
-          ],
-          [
-            "Slab",
-            "DPC and anti-termite treatment before hardcore",
-          ],
-          [
-            "Roof",
-            "Structure and underlay before the covering goes on",
-          ],
+          ["Set-out", "Setting-out dimensions with the building's corners marked"],
+          ["Foundation", "Excavation open, reinforcement fixed, before any pour"],
+          ["Frame", "Ring beam reinforcement and starters before each pour"],
+          ["Services", "Every first-fix run, in every wall and under every floor"],
+          ["Slab", "DPC and anti-termite treatment before hardcore"],
+          ["Roof", "Structure and underlay before the covering goes on"],
         ],
       },
       {

@@ -164,55 +164,43 @@ function FeesPage() {
             <>
               <p>
                 Many clients never return to Kenya during a build. This works, but
-                it needs a deliberate setup — and it needs to be agreed at the
-                start, not improvised.
+                your project payments can still be made through the client
+                portal without arranging a separate bank transfer.
               </p>
               <p>
-                <strong>Bank transfer (SWIFT).</strong> The standard route, and the
-                one we recommend for anything sizeable. Clear, traceable, and it
-                creates a record both sides can rely on. Expect correspondent bank
-                fees and exchange rate margins.
+                <strong>Use Pay now in your ATRO client portal.</strong> Review the
+                certified project stage and exact KES amount, then continue to
+                Paystack’s hosted checkout. The payment methods available to you
+                and any conversion or issuer charges are shown by Paystack or your
+                payment provider before you authorize the transaction.
               </p>
               <p>
-                <strong>Payment service providers.</strong> Services built for
-                diaspora remittances are usually cheaper and faster than a
-                traditional wire. They work well for the stage payments that are
-                moderate in size.
-              </p>
-              <p>
-                <strong>Currency.</strong> Most Kenyan suppliers and contractors
-                price and settle in Kenyan shillings. We will quote in KES, and
-                where you pay in another currency you carry the exchange risk unless
-                the contract says otherwise. We will tell you plainly if the
-                exchange rate makes a stage payment materially different for you.
-              </p>
-              <p>
-                <strong>Documents you will need.</strong> Expect to supply a
-                certificate of residence or proof of address, a source-of-funds
-                letter for larger transfers, and identification, because the bank
-                will ask — not us.
+                ATRO marks the stage paid only after verifying the transaction
+                with Paystack. Your project ledger records the payment reference
+                and date, and a receipt is issued after confirmation.
               </p>
             </>
           ),
         },
         {
           id: "accounts",
-          heading: "How you should pay us",
+          heading: "How to pay us",
           body: (
             <>
               <p>
-                Every payment request from us will state the amount, the stage it
-                relates to, the invoice number, and our{" "}
-                <strong>company account details</strong>. Paying against an invoice
-                is the safest arrangement for you, because the bank transaction is
-                your proof that you did.
+                Pay project instalments using the{" "}
+                <strong>Pay now</strong> action in your authenticated client
+                portal. The portal shows the approved stage and KES amount before
+                sending you to Paystack’s hosted checkout. Do not use separate
+                account details or a payment link sent outside the portal.
               </p>
               <p>
                 <strong>We never ask for:</strong>
               </p>
               <ul className="ml-5 list-disc space-y-2 marker:text-gold">
                 <li>Payment to a personal or third-party account.</li>
-                <li>Payment by mobile money number, crypto wallet, or gift card.</li>
+                <li>Your Paystack password, card PIN, or one-time verification code.</li>
+                <li>Payment by crypto wallet or gift card.</li>
                 <li>
                   A deposit or &quot;reservation fee&quot; before drawings, a bill of
                   quantities and a signed agreement exist.

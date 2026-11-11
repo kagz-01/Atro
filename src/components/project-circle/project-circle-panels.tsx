@@ -102,10 +102,13 @@ export function ProjectCircleOwnerPanel({
 
   if (disabled) {
     return (
-      <Panel title="Project circle" subtitle="Representative access is available on live projects.">
+      <Panel
+        title="Invite a trusted representative"
+        subtitle="Representative invitations are available once your project is active."
+      >
         <p className="text-[13px] leading-relaxed text-ink/65">
-          This is a demonstration project. Open a live project before inviting someone to coordinate
-          on it.
+          You can invite someone to follow project updates and help coordinate once the project is
+          active.
         </p>
       </Panel>
     );
@@ -113,12 +116,12 @@ export function ProjectCircleOwnerPanel({
 
   if (query.isLoading || !query.data) {
     return (
-      <Panel title="Project circle">
+      <Panel title="Representative access">
         {query.error ? (
           <p role="alert" className="text-[13px] text-red-700">
             {query.error instanceof Error
               ? query.error.message
-              : "Could not load project-circle access."}
+              : "Could not load representative access."}
           </p>
         ) : (
           <div className="h-28 animate-pulse rounded-xl bg-ink/6" aria-busy="true" />
@@ -130,8 +133,8 @@ export function ProjectCircleOwnerPanel({
   return (
     <div className="space-y-5">
       <Panel
-        title="Project circle"
-        subtitle="Give one trusted person limited access to this project. They never become the owner."
+        title="Invite a trusted representative"
+        subtitle="Share limited access with someone helping you coordinate. They never become the project owner."
       >
         <div className="flex items-start gap-3 rounded-xl border border-gold/35 bg-gold/8 p-4">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-maroon" aria-hidden />
@@ -284,6 +287,16 @@ export function ProjectCircleOwnerPanel({
                 <p className="mt-3 text-[13px] text-ink/75">
                   Suggested: <strong>{suggestion.suggestedOption}</strong>
                 </p>
+                {suggestion.optionDetails.length ? (
+                  <ul className="mt-3 space-y-2 rounded-lg bg-cream p-3">
+                    {suggestion.options.map((option, index) => (
+                      <li key={option} className="text-[12px] leading-relaxed text-ink/65">
+                        <strong className="text-maroon">{option}:</strong>{" "}
+                        {suggestion.optionDetails[index] || "No additional explanation provided."}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 {suggestion.note ? (
                   <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-ink/60">
                     {suggestion.note}
@@ -619,6 +632,16 @@ export function ProjectCircleRepresentativePanel({
                     <p className="mt-2 text-[11px] text-ink/50">
                       Reply requested by {decision.dueDate}
                     </p>
+                  ) : null}
+                  {decision.optionDetails.length ? (
+                    <ul className="mt-3 space-y-2 rounded-lg bg-cream p-3">
+                      {decision.options.map((choice, index) => (
+                        <li key={choice} className="text-[12px] leading-relaxed text-ink/65">
+                          <strong className="text-maroon">{choice}:</strong>{" "}
+                          {decision.optionDetails[index] || "No additional explanation provided."}
+                        </li>
+                      ))}
+                    </ul>
                   ) : null}
                   <div className="mt-4 space-y-3">
                     <div>

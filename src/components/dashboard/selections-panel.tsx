@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   AlertTriangle,
   Check,
@@ -12,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { StatCard } from "@/components/ui/stat-card";
-import { Gauge } from "@/components/dashboard/charts";
 import {
   chooseSelectionOption,
   listMySelections,
@@ -51,7 +51,7 @@ export function SelectionsPanel({
   onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["my-selections", projectId],
     queryFn: () => listMySelections({ data: { projectId } }),
   });
@@ -65,6 +65,7 @@ export function SelectionsPanel({
   const choose = useMutation({
     mutationFn: chooseSelectionOption,
     onSuccess: () => {
+      toast.success("Your choice has been recorded.");
       void queryClient.invalidateQueries({ queryKey: ["my-selections", projectId] });
       onChanged?.();
     },
@@ -84,6 +85,14 @@ export function SelectionsPanel({
         <p className="text-[13px] text-red-700">
           {error instanceof Error ? error.message : "Could not load your selections."}
         </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-3"
+          onClick={() => void refetch()}
+        >
+          Try again
+        </Button>
       </Panel>
     );
   }
@@ -98,7 +107,7 @@ export function SelectionsPanel({
         subtitle="Nothing is waiting on you at the moment"
       >
         <p className="max-w-2xl text-[13px] leading-relaxed text-ink/65">
-          When the studio needs you to choose a finish, a material or an fitting, it
+          When the studio needs you to choose a finish, a material or a fitting, it
           appears here with the options, their prices and the allowance already set
           aside for it in your contract. You choose in your own time, and the answer
           is recorded with the date.
@@ -136,15 +145,23 @@ export function SelectionsPanel({
           icon={Check}
         />
         <StatCard
-          label={summary.variance > 0 ? "Over allowance" : "Under allowance"}
+          label={
+            summary.variance > 0
+              ? "Over chosen allowance"
+              : summary.variance < 0
+                ? "Under chosen allowance"
+                : "Chosen items on allowance"
+          }
           value={kesShort(Math.abs(summary.variance))}
           exact={kes(summary.variance)}
           sub={
             summary.variance > 0
-              ? "To be priced as a variation, not added to the bill"
+            ? "On chosen items; to be priced as a variation, not added to the bill"
               : summary.variance < 0
-                ? "Not being spent on these selections"
-                : "Exactly on the allowance"
+              ? "Allowance remaining on chosen items only"
+              : summary.chosen > 0
+                ? "Chosen items match their allowances"
+                : "No choices recorded yet"
           }
           icon={AlertTriangle}
           tone={summary.variance > 0 ? "warn" : "good"}
@@ -238,6 +255,7 @@ function SelectionCard({
                   <button
                     type="button"
                     disabled={!gate.ok || busy}
+                    aria-pressed={isChosen || picked === o.id}
                     onClick={() => setPicked(o.id)}
                     className={cn(
                       "flex h-full w-full flex-col rounded-2xl border p-4 text-left transition-colors",
@@ -321,8 +339,8 @@ function SelectionCard({
                 </p>
               ) : (
                 <p className="text-[12px] text-muted">
-                  Pick an option above, then record it. You can change it until the
-                  deadline.
+                  Choose before the deadline. Once recorded, contact the studio if
+                  you need to request a change.
                 </p>
               )}
             </div>
@@ -353,19 +371,61 @@ function SelectionCard({
 
           {selection.chosenOptionId && verdict.chosen ? (
             <>
-              <Gauge
-                value={
-                  verdict.price > 0
-                    ? Math.min(100, (verdict.price / Math.max(1, verdict.allowance)) * 100)
-                    : 0
-                }
-                height={110}
-                caption={
-                  selection.allowance > 0
-                    ? `${kes(verdict.price)} of ${kes(selection.allowance)}`
-                    : undefined
-                }
-              />
+              {selection.allowance > 0 ? (
+                <div className="mt-5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+                    <p className="text-[11px] font-medium text-ink/65">
+                      Price vs allowance
+                    </p>
+                    <p className="text-[11px] font-semibold text-maroon">
+                      {Math.round((verdict.price / verdict.allowance) * 100)}% of allowance
+                    </p>
+                  </div>
+                  <div
+                    role="img"
+                    aria-label={`Chosen price ${kes(verdict.price)}. Allowance ${kes(verdict.allowance)}.`}
+                    className="relative mt-2 h-3 rounded-full bg-ink/10"
+                  >
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-gold"
+                      style={{
+                        width: `${(verdict.price / Math.max(verdict.price, verdict.allowance)) * 100}%`,
+                      }}
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="absolute -bottom-1 -top-1 w-0.5 bg-maroon"
+                      style={{
+                        left: `${(verdict.allowance / Math.max(verdict.price, verdict.allowance)) * 100}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="mt-3 space-y-2 text-[11px]">
+                    <div>
+                      <p className="flex items-center gap-1.5 text-ink/60">
+                        <span className="size-2 shrink-0 rounded-full bg-gold" aria-hidden="true" />
+                        Chosen price
+                      </p>
+                      <p className="mt-0.5 pl-3.5 font-medium text-ink/75">
+                        {kes(verdict.price)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="flex items-center gap-1.5 text-ink/60">
+                        <span className="h-3 w-0.5 shrink-0 bg-maroon" aria-hidden="true" />
+                        Allowance
+                      </p>
+                      <p className="mt-0.5 pl-3.5 font-medium text-ink/75">
+                        {kes(verdict.allowance)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 text-[12px] text-ink/55">
+                  No allowance was set for comparison. Chosen price: {kes(verdict.price)}.
+                </p>
+              )}
               <p
                 className={cn(
                   "mt-3 text-[12px] leading-relaxed",

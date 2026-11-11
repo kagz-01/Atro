@@ -106,6 +106,17 @@ export type StudioPaymentRow = {
   attemptReference: string | null;
   attemptChannel: string | null;
   attemptCreatedAt: string | null;
+  attemptHistory: StudioPaymentAttempt[];
+};
+
+export type StudioPaymentAttempt = {
+  reference: string;
+  status: string;
+  amount: number;
+  channel: string | null;
+  providerTransactionId: string | null;
+  createdAt: string;
+  paidAt: string | null;
 };
 
 const STALLED_DAYS = 10;
@@ -289,6 +300,39 @@ export const getStudioPayments = createServerFn({ method: "GET" }).handler(
       order by lower(project.client_label), project.reference, payment.ord
     `;
 
+    const attemptRows = await sql<{
+      payment_id: string;
+      reference: string;
+      status: string;
+      amount_kes: number;
+      payment_channel: string | null;
+      provider_transaction_id: string | null;
+      created_at: string;
+      paid_at: string | null;
+    }>`
+      select attempt.payment_id, attempt.reference, attempt.status, attempt.amount_kes,
+        attempt.payment_channel, attempt.provider_transaction_id,
+        attempt.created_at::text, attempt.paid_at::text
+      from portal_paystack_attempt attempt
+      join portal_projects project on project.id = attempt.project_id
+      where project.source <> 'sample' and project.deleted_at is null
+      order by attempt.created_at desc
+    `;
+    const attemptsByPayment = new Map<string, StudioPaymentAttempt[]>();
+    for (const attempt of attemptRows) {
+      const history = attemptsByPayment.get(attempt.payment_id) ?? [];
+      history.push({
+        reference: attempt.reference,
+        status: attempt.status,
+        amount: Number(attempt.amount_kes),
+        channel: attempt.payment_channel,
+        providerTransactionId: attempt.provider_transaction_id,
+        createdAt: attempt.created_at,
+        paidAt: attempt.paid_at,
+      });
+      attemptsByPayment.set(attempt.payment_id, history);
+    }
+
     return rows.map((row) => ({
       projectId: row.project_id,
       projectReference: row.project_reference,
@@ -309,6 +353,7 @@ export const getStudioPayments = createServerFn({ method: "GET" }).handler(
       attemptReference: row.attempt_reference,
       attemptChannel: row.attempt_channel,
       attemptCreatedAt: row.attempt_created_at,
+      attemptHistory: attemptsByPayment.get(row.payment_id) ?? [],
     }));
   },
 );

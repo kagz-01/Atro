@@ -83,7 +83,7 @@ function ProjectCirclePage() {
           <p role="alert" className="text-[13px] text-red-700">
             {circles.error instanceof Error
               ? circles.error.message
-              : "Could not load shared project access."}
+              : "Could not load representative access."}
           </p>
         ) : (
           <Loader2 className="size-7 animate-spin text-gold" aria-label="Loading shared projects" />
@@ -120,10 +120,12 @@ function ProjectCirclePage() {
       <div className="mx-auto max-w-4xl space-y-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Badge tone="maroon">Project circle</Badge>
-            <h1 className="mt-3 font-display text-3xl text-maroon">Shared project access</h1>
+            <Badge tone="maroon">Site representative</Badge>
+            <h1 className="mt-3 font-display text-3xl text-maroon">
+              Project updates shared with you
+            </h1>
             <p className="mt-2 text-[13px] text-ink/60">
-              Limited access to the project selected by its owner.
+              The project owner has given you limited access to coordinate site updates.
             </p>
           </div>
           <Button asChild variant="outline" size="sm">
@@ -136,7 +138,7 @@ function ProjectCirclePage() {
 
         {circles.data.length > 1 ? (
           <div className="max-w-md">
-            <Label htmlFor="circle-project-select">Shared projects</Label>
+            <Label htmlFor="circle-project-select">Projects shared with you</Label>
             <Select
               id="circle-project-select"
               value={selectedProjectId}

@@ -85,7 +85,7 @@ remain in the dashboard navigation.
 | **Portfolio**        | Business-wide overview of live jobs, projects needing attention, money position, contracted-versus-collected amounts, enquiries, workload, and items needing a human response. It is a summary, not a substitute for opening a project record.         |
 | **Projects**         | Search and filter the studio project register. Open a project to inspect its delivery, client activity, decisions, documents, and financial details.                                                                                                   |
 | **New leads**        | Review incoming enquiries and move the conversation toward a project.                                                                                                                                                                                  |
-| **Client payments**  | Search and filter payment stages across active client projects. Shows each project separately, including its contract and ledger amounts, payment status, and latest Paystack attempt. This view is for tracking; it does not itself certify payments. |
+| **Client payments**  | Search and filter payment stages across active client projects. Shows each project separately, including its contract and ledger amounts, payment status, latest Paystack attempt, and full checkout-attempt history. This view is for tracking; it does not itself certify payments. |
 | **Project funds**    | Record and review project expense reservations, approvals, and bank-payment references. Admin actions are required for financial controls. This is an internal allocation ledger, not an instruction to Paystack to transfer money.                    |
 | **Client updates**   | Review and respond to project conversation threads.                                                                                                                                                                                                    |
 | **Access**           | Review studio access, invitations, and requests, and grant or revoke access. Admin-only controls are shown only to Admin.                                                                                                                              |
@@ -108,7 +108,7 @@ task list without leaving the project. This replaces stacked accordion panels.
   and care. Choose a task card to open its focused record and controls.
 - **Client** — client and consent details, activity, messages, site presence,
   and recorded decisions. Attention items link directly to the relevant task.
-- **Money** — financial summary, payment instructions, payment certification,
+- **Money** — financial summary, Paystack payment certification and tracking,
   statement of account, and retention. The section opens with key financial
   totals; choose a task card for the ledger or an action. Certification makes a
   payment request available; it does **not** mean the client has paid. Issuing
@@ -158,7 +158,7 @@ prioritized and which coordination tools are surfaced.
 | **Overview**              | A project home with progress, recent activity, dates to watch, money context, and actions waiting on the client. The Kenya and Diaspora home panels prioritize different information.                                                  |
 | **Calendar**              | View scheduled project calls and coordination details in the client's relevant time zone.                                                                                                                                              |
 | **Progress / Milestones** | Review project stages and their status. The milestone record includes supporting evidence; an approval action appears when the studio marks a stage ready.                                                                             |
-| **Money**                 | Review contract and budget position, payment stages, receipts/documents, and the project's payment instructions. Pay a certified stage from the portal using Paystack checkout. A stage is not marked paid until Paystack confirms it. |
+| **Money**                 | Review contract and budget position, payment stages, receipts/documents, and the full checkout history. Review a certified stage and amount, then continue to hosted Paystack checkout. A stage is not marked paid until Paystack confirms it. |
 | **Decisions**             | Review choices raised by the studio and submit a response. Open decisions may affect what can proceed next.                                                                                                                            |
 | **Documents**             | Find project paperwork such as contracts, certificates, payment requests, receipts, and statements. Available documents depend on what the studio has issued.                                                                          |
 | **Messages / Updates**    | Read and send project messages. Kenya calls this **Messages**; Diaspora calls it **Updates** to emphasize remote project updates.                                                                                                      |
@@ -179,8 +179,8 @@ surfaces:
 | **After handover** | Review defects and care items after handover and respond to requests to check completed fixes.           |
 
 The Kenya overview emphasizes the next practical action, project messages, and
-local progress. The portal uses local payment instructions when these have
-been configured for the project.
+local progress. Certified payment stages are paid through the same hosted
+Paystack checkout used across client projects.
 
 ### Diaspora client tabs
 
@@ -191,8 +191,8 @@ abroad-specific guidance and checklist content.
 
 The Diaspora overview highlights remote-relevant activity, unread updates,
 open decisions, and payment actions. Dates and calls are presented with the
-client's time-zone context when it is available. The portal uses international
-payment instructions when configured for the project.
+client's time-zone context when it is available. Certified stages are shown in
+KES and paid through hosted Paystack checkout.
 
 The Kenya portal currently exposes separate **Approvals**, **Selections**,
 **Changes**, and **After handover** tabs; these are not separate top-level
@@ -246,8 +246,8 @@ approved process.
 - **Clients act on their own project.** Keep client information and balances
   project-scoped.
 - **Kenyan and Diaspora are different experiences for the same platform.**
-  They adapt navigation, language, payment instructions, and time context—not
-  the underlying ownership or payment-confirmation rules.
+  They adapt navigation, language, and time context—not the underlying
+  ownership or payment-confirmation rules.
 - **A status must say what actually happened.** Certified means approved for
   payment; checkout started means the client began checkout; paid means the
   payment has been recorded after confirmation.

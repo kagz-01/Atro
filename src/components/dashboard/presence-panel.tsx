@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ExternalLink, Loader2, MapPin, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/field";
+import { Input, Label, Select } from "@/components/ui/field";
 import { Panel } from "@/components/ui/panel";
 import { journeyStageFor } from "@/lib/abroad";
 import {
@@ -19,6 +19,13 @@ import {
 } from "@/lib/presence";
 import { listMyPresence, requestVisit, requestWalkthrough } from "@/lib/presence-server";
 import { isHomeZone, zonedClock } from "@/lib/tz";
+import { instantFromWallTime } from "@/lib/tz";
+import {
+  calendarRequestLabel,
+  type ProjectCalendarKind,
+  type ProjectCalendarRequest,
+} from "@/lib/project-calendar";
+import { listMyCalendarRequests, requestProjectCalendarEvent } from "@/lib/project-calendar-server";
 
 /**
  * The two cards the presence split puts on the client's side.
@@ -318,9 +325,37 @@ export function ClientCalendarPanel({
   zone: string;
 }) {
   const { query } = usePresence(projectId);
+  const queryClient = useQueryClient();
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventKind, setEventKind] = useState<ProjectCalendarKind>("meeting");
+  const [eventNote, setEventNote] = useState("");
+  const [eventDateTime, setEventDateTime] = useState("");
+  const [eventError, setEventError] = useState("");
+  const [eventSuccess, setEventSuccess] = useState("");
+  const calendarQuery = useQuery({
+    queryKey: ["my-calendar-requests", projectId],
+    queryFn: () => listMyCalendarRequests({ data: { projectId } }),
+  });
+  const eventRequest = useMutation({
+    mutationFn: requestProjectCalendarEvent,
+    onSuccess: async () => {
+      setEventTitle("");
+      setEventNote("");
+      setEventDateTime("");
+      setEventError("");
+      setEventSuccess(
+        "Your request is with the studio. It will appear as confirmed after they approve it.",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["my-calendar-requests", projectId] });
+    },
+    onError: (error) =>
+      setEventError(error instanceof Error ? error.message : "The request could not be sent."),
+  });
+  const latestDeclined = (query.data ?? []).find((item) => item.status === "declined");
   const entries = (query.data ?? []).filter(
     (item) =>
       item.status === "requested" ||
+      item.id === latestDeclined?.id ||
       (item.status === "scheduled" &&
         item.scheduledAt &&
         Date.parse(item.scheduledAt) >= Date.now()),
@@ -331,7 +366,7 @@ export function ClientCalendarPanel({
   return (
     <Panel
       title="Your calendar"
-      subtitle="Project calls and site-presence requests for this project"
+      subtitle="Confirmed dates and requests still waiting for the studio"
     >
       {query.isLoading ? (
         <div className="flex min-h-20 items-center justify-center" aria-busy="true">
@@ -401,16 +436,167 @@ export function ClientCalendarPanel({
                 {item.clientNote ? (
                   <p className="mt-1 text-[12px] text-ink/55">{item.clientNote}</p>
                 ) : null}
+                {item.staffNote ? (
+                  <p className="mt-2 text-[12px] leading-relaxed text-ink/65">
+                    Studio: {item.staffNote}
+                  </p>
+                ) : null}
               </li>
             );
           })}
           {!nextCall.at && entries.length === 0 ? (
             <li className="rounded-xl border border-dashed border-ink/15 px-4 py-5 text-center text-[13px] text-ink/55">
-              No upcoming appointments. Request a site visit or walkthrough from Overview.
+              No upcoming appointments yet. Use the forms below to request a meeting, event, visit
+              or walkthrough.
             </li>
           ) : null}
+          {(calendarQuery.data ?? []).map((item) => (
+            <CalendarRequestCard key={item.id} item={item} zone={zone} />
+          ))}
         </ul>
       )}
+      {calendarQuery.isLoading ? (
+        <p className="mt-3 text-[12px] text-ink/50" aria-busy="true">
+          Loading your event requests…
+        </p>
+      ) : calendarQuery.error ? (
+        <p role="alert" className="mt-3 text-[13px] text-red-700">
+          {calendarQuery.error instanceof Error
+            ? calendarQuery.error.message
+            : "Could not load your calendar requests."}
+        </p>
+      ) : null}
+      <form
+        className="mt-5 border-t border-ink/10 pt-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const proposedAt = instantFromWallTime(eventDateTime, zone || SITE_ZONE);
+          if (!proposedAt) {
+            setEventError("That time does not exist in your time zone. Choose another time.");
+            return;
+          }
+          setEventError("");
+          setEventSuccess("");
+          eventRequest.mutate({
+            data: {
+              projectId,
+              title: eventTitle.trim(),
+              kind: eventKind,
+              note: eventNote.trim() || undefined,
+              proposedAt,
+            },
+          });
+        }}
+      >
+        <h3 className="font-display text-base text-maroon">Request a calendar event</h3>
+        <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
+          Suggest a time in {zone || "Nairobi time"}. This is a request, not a confirmed
+          appointment. The studio will approve it or explain if it cannot go ahead.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor={`calendar-event-kind-${projectId}`}>Event type</Label>
+            <Select
+              id={`calendar-event-kind-${projectId}`}
+              value={eventKind}
+              onChange={(change) => setEventKind(change.target.value as ProjectCalendarKind)}
+            >
+              <option value="meeting">Project meeting</option>
+              <option value="other">Other project event</option>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor={`calendar-event-title-${projectId}`}>What is it about?</Label>
+            <Input
+              id={`calendar-event-title-${projectId}`}
+              value={eventTitle}
+              onChange={(change) => setEventTitle(change.target.value)}
+              placeholder="e.g. Review kitchen layout"
+              maxLength={100}
+              minLength={2}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor={`calendar-event-time-${projectId}`}>Preferred date and time</Label>
+            <Input
+              id={`calendar-event-time-${projectId}`}
+              type="datetime-local"
+              value={eventDateTime}
+              onChange={(change) => setEventDateTime(change.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor={`calendar-event-note-${projectId}`}>Details (optional)</Label>
+            <Input
+              id={`calendar-event-note-${projectId}`}
+              value={eventNote}
+              onChange={(change) => setEventNote(change.target.value)}
+              placeholder="Agenda or anything the team should prepare"
+              maxLength={500}
+            />
+          </div>
+        </div>
+        {eventError ? (
+          <p role="alert" className="mt-3 text-[13px] text-red-700">
+            {eventError}
+          </p>
+        ) : null}
+        {eventSuccess ? (
+          <p role="status" className="mt-3 text-[13px] text-emerald-800">
+            {eventSuccess}
+          </p>
+        ) : null}
+        <Button
+          type="submit"
+          className="mt-4 min-h-11"
+          disabled={eventRequest.isPending || !eventTitle.trim() || !eventDateTime}
+        >
+          {eventRequest.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <CalendarDays className="size-4" />
+          )}
+          Send for approval
+        </Button>
+      </form>
     </Panel>
+  );
+}
+
+function CalendarRequestCard({ item, zone }: { item: ProjectCalendarRequest; zone: string }) {
+  const statusTone =
+    item.status === "confirmed" ? "live" : item.status === "requested" ? "gold" : "stone";
+  const at = item.scheduledAt ?? item.proposedAt;
+  const clientTime = zone && !isHomeZone(zone) ? zonedClock(at, zone) : null;
+  const status =
+    item.status === "confirmed"
+      ? "Approved"
+      : item.status === "declined"
+        ? "Not approved"
+        : "Awaiting approval";
+  return (
+    <li className="rounded-xl border border-ink/10 bg-cream p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[13px] font-medium text-maroon">
+          {calendarRequestLabel(item.kind)} · {item.title}
+        </p>
+        <Badge tone={statusTone}>{status}</Badge>
+      </div>
+      <p className="mt-2 text-[13px] text-ink/70">
+        {item.status === "requested" ? "Requested for " : ""}
+        {formatInstant(at, SITE_ZONE) ?? "Time to be confirmed"}
+      </p>
+      {clientTime ? (
+        <p className="mt-1 text-[12px] text-ink/55">
+          Your time: {clientTime.clock} {clientTime.zone}
+        </p>
+      ) : null}
+      {item.note ? <p className="mt-2 text-[12px] text-ink/60">{item.note}</p> : null}
+      {item.staffNote ? (
+        <p className="mt-2 text-[12px] leading-relaxed text-ink/65">Studio: {item.staffNote}</p>
+      ) : null}
+    </li>
   );
 }

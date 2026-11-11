@@ -66,7 +66,7 @@ function ProjectCircleInvitePage() {
         <BackLink to={portalRoute}>Back to your portal</BackLink>
         <h1 className="mb-2 font-display text-2xl text-maroon">Project invitation</h1>
         <p className="mb-5 text-sm leading-relaxed text-ink/70">
-          A project owner has invited you to join a limited project circle.
+          A project owner has invited you to follow updates and coordinate on their project.
         </p>
         <Panel>
           {!token ? (
@@ -135,8 +135,7 @@ function ProjectCircleInvitePage() {
               {user.isGuestPreview ? (
                 <div className="mt-6 rounded-xl border border-gold/30 bg-gold/8 p-4">
                   <p className="text-[13px] leading-relaxed text-ink/70">
-                    Guest preview is read-only. Sign in or create an account to accept this
-                    invitation.
+                    Sign in or create an account to accept this invitation.
                   </p>
                   <Button asChild className="mt-4 min-h-12">
                     <a href={`/login?returnTo=${encodeURIComponent(returnTo)}`}>

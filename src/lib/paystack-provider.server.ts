@@ -113,12 +113,17 @@ function parseVerifiedCharge(envelope: unknown): VerifiedCharge {
   };
 }
 
-function todayLabel(): string {
+function paidDateLabel(value: string | null | undefined): string {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Paystack returned an invalid payment date.");
+  }
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  }).format(new Date());
+    timeZone: "Africa/Nairobi",
+  }).format(date);
 }
 
 async function getAttempt(sql: Sql, reference: string): Promise<PaymentAttempt | null> {
@@ -311,7 +316,7 @@ async function settleVerifiedCharge(
     }>`
       with paid as (
         update portal_payments
-        set status = 'paid', paid_date = ${todayLabel()}, method = 'Paystack',
+        set status = 'paid', paid_date = ${paidDateLabel(charge.paid_at)}, method = 'Paystack',
             gateway_reference = ${attempt.reference}
         where id = ${attempt.payment_id} and project_id = ${attempt.project_id}
           and status = 'certified' and amount = ${attempt.amount_kes}
@@ -340,7 +345,7 @@ async function settleVerifiedCharge(
     update portal_paystack_attempt
     set status = 'success', provider_transaction_id = ${charge.id === undefined ? null : String(charge.id)},
         payment_channel = ${charge.channel ?? null},
-        paid_at = ${charge.paid_at ?? new Date().toISOString()}, updated_at = now()
+        paid_at = ${charge.paid_at ?? null}, updated_at = now()
     where reference = ${attempt.reference}
       and status in ('pending', 'failed', 'expired', 'success')
   `;
