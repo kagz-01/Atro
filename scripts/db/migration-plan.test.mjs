@@ -47,6 +47,7 @@ test("the migrations directory uses one canonical SQL bootstrap", () => {
       "0034_decision_option_visuals.sql",
       "0035_approval_status_tracking.sql",
       "0036_handover_and_defect_evidence.sql",
+      "0037_scheduled_staff_follow_up_reminders.sql",
       "schema.sql",
     ],
   );

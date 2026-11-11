@@ -220,14 +220,24 @@ async function sendEmail(
   projectRef: string,
   documentUrl?: string,
   portalPath: "/portal" | "/portal/diaspora" = "/portal",
+  options: { staff?: boolean; idempotencyKey?: string } = {},
 ) {
   const from = process.env.RESEND_FROM ?? "ATRO <portal@atro.ke>";
   const documentLink = documentUrl ? contextualDocumentUrl(documentUrl, portalPath) : undefined;
+  const destination = options.staff
+    ? `${baseUrl()}/admin`
+    : (documentLink ?? `${baseUrl()}${portalPath}`);
+  const linkLabel = options.staff
+    ? "Open the staff workspace"
+    : documentUrl
+      ? "Open the document"
+      : "Open your portal";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       "Content-Type": "application/json",
+      ...(options.idempotencyKey ? { "Idempotency-Key": options.idempotencyKey } : {}),
     },
     body: JSON.stringify({
       from,
@@ -238,22 +248,20 @@ async function sendEmail(
         "",
         body,
         "",
-        documentLink
-          ? `Open it: ${documentLink}`
-          : `Open your project: ${baseUrl()}${portalPath}`,
+        `${linkLabel}: ${destination}`,
       ].join("\n"),
       html: `<div style="font-family:Georgia,serif;color:#3C0508;max-width:560px">
   <p style="letter-spacing:.14em;text-transform:uppercase;font-size:11px;color:#8a6a3a">ATRO · ${escapeHtml(projectRef)}</p>
   <h1 style="font-size:24px;margin:16px 0">${escapeHtml(title)}</h1>
   <p style="font-size:15px;line-height:1.7;color:#4a4a4a">${escapeHtml(body).replace(/\n/g, "<br>")}</p>
   <p style="margin-top:28px">
-    <a href="${escapeHtml(documentLink ?? `${baseUrl()}${portalPath}`)}"
+    <a href="${escapeHtml(destination)}"
        style="display:inline-block;background:#3C0508;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-family:system-ui,sans-serif;font-size:13px">
-      ${documentUrl ? "Open the document" : "Open your portal"}
+      ${linkLabel}
     </a>
   </p>
   <p style="font-size:13px;color:#777;margin-top:20px">
-    Sign in to your portal to approve milestones, pay certified instalments or record a decision.
+    ${options.staff ? "Sign in to ATRO to review your assigned follow-up." : "Sign in to your portal to approve milestones, pay certified instalments or record a decision."}
   </p>
 </div>`,
     }),
@@ -262,9 +270,45 @@ async function sendEmail(
     return {
       ok: false as const,
       detail: `resend ${res.status}: ${(await res.text()).slice(0, 200)}`,
+      retryable: res.status === 429 || res.status >= 500,
     };
   }
-  return { ok: true as const, detail: `resend ${res.status}` };
+  return { ok: true as const, detail: `resend ${res.status}`, retryable: false };
+}
+
+export async function sendStaffFollowUpReminder(input: {
+  to: string;
+  title: string;
+  dueDate: string;
+  projectTitle: string;
+  reference: string;
+  idempotencyKey: string;
+}): Promise<{ status: "sent" | "failed" | "skipped"; detail: string }> {
+  const config = emailConfig();
+  if (!config.configured) {
+    return { status: "failed", detail: config.reason };
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.to.trim())) {
+    return { status: "skipped", detail: "Assigned staff email address is invalid." };
+  }
+
+  const project = input.reference
+    ? ` for ${input.reference}${input.projectTitle ? ` · ${input.projectTitle}` : ""}`
+    : "";
+  const result = await sendEmail(
+    input.to.trim(),
+    `Follow-up due today: ${input.title}`,
+    `A follow-up assigned to you is due today (${input.dueDate}).${project}\n\n${input.title}\n\nOpen the ATRO staff workspace to review and complete it.`,
+    input.reference || "Staff follow-up",
+    undefined,
+    "/portal",
+    { staff: true, idempotencyKey: input.idempotencyKey },
+  );
+  if (result.ok) return { status: "sent", detail: result.detail };
+  return {
+    status: result.retryable ? "failed" : "skipped",
+    detail: result.detail,
+  };
 }
 
 /**

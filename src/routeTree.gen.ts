@@ -49,6 +49,7 @@ import { Route as ToolsZoneMapRouteImport } from './routes/tools/zone-map'
 import { Route as ZonesIndexRouteImport } from './routes/zones/index'
 import { Route as ZonesSlugRouteImport } from './routes/zones/$slug'
 import { Route as AdminDocumentIdRouteImport } from './routes/admin/document.$id'
+import { Route as ApiCronHourlyRouteImport } from './routes/api.cron.hourly'
 import { Route as ApiPaystackWebhookRouteImport } from './routes/api.paystack.webhook'
 import { Route as PortalDocumentIdRouteImport } from './routes/portal/document.$id'
 
@@ -252,6 +253,11 @@ const AdminDocumentIdRoute = AdminDocumentIdRouteImport.update({
   path: '/admin/document/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronHourlyRoute = ApiCronHourlyRouteImport.update({
+  id: '/api/cron/hourly',
+  path: '/api/cron/hourly',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaystackWebhookRoute = ApiPaystackWebhookRouteImport.update({
   id: '/api/paystack/webhook',
   path: '/api/paystack/webhook',
@@ -304,6 +310,7 @@ export interface FileRoutesByFullPath {
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
   '/admin/document/$id': typeof AdminDocumentIdRoute
+  '/api/cron/hourly': typeof ApiCronHourlyRoute
   '/api/paystack/webhook': typeof ApiPaystackWebhookRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
@@ -348,6 +355,7 @@ export interface FileRoutesByTo {
   '/tools': typeof ToolsIndexRoute
   '/zones': typeof ZonesIndexRoute
   '/admin/document/$id': typeof AdminDocumentIdRoute
+  '/api/cron/hourly': typeof ApiCronHourlyRoute
   '/api/paystack/webhook': typeof ApiPaystackWebhookRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
@@ -393,6 +401,7 @@ export interface FileRoutesById {
   '/tools/': typeof ToolsIndexRoute
   '/zones/': typeof ZonesIndexRoute
   '/admin/document/$id': typeof AdminDocumentIdRoute
+  '/api/cron/hourly': typeof ApiCronHourlyRoute
   '/api/paystack/webhook': typeof ApiPaystackWebhookRoute
   '/portal/document/$id': typeof PortalDocumentIdRoute
 }
@@ -439,6 +448,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/zones/'
     | '/admin/document/$id'
+    | '/api/cron/hourly'
     | '/api/paystack/webhook'
     | '/portal/document/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -483,6 +493,7 @@ export interface FileRouteTypes {
     | '/tools'
     | '/zones'
     | '/admin/document/$id'
+    | '/api/cron/hourly'
     | '/api/paystack/webhook'
     | '/portal/document/$id'
   id:
@@ -527,6 +538,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/zones/'
     | '/admin/document/$id'
+    | '/api/cron/hourly'
     | '/api/paystack/webhook'
     | '/portal/document/$id'
   fileRoutesById: FileRoutesById
@@ -569,6 +581,7 @@ export interface RootRouteChildren {
   ToolsIndexRoute: typeof ToolsIndexRoute
   ZonesIndexRoute: typeof ZonesIndexRoute
   AdminDocumentIdRoute: typeof AdminDocumentIdRoute
+  ApiCronHourlyRoute: typeof ApiCronHourlyRoute
   ApiPaystackWebhookRoute: typeof ApiPaystackWebhookRoute
 }
 
@@ -854,6 +867,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDocumentIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/hourly': {
+      id: '/api/cron/hourly'
+      path: '/api/cron/hourly'
+      fullPath: '/api/cron/hourly'
+      preLoaderRoute: typeof ApiCronHourlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paystack/webhook': {
       id: '/api/paystack/webhook'
       path: '/api/paystack/webhook'
@@ -926,6 +946,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolsIndexRoute: ToolsIndexRoute,
   ZonesIndexRoute: ZonesIndexRoute,
   AdminDocumentIdRoute: AdminDocumentIdRoute,
+  ApiCronHourlyRoute: ApiCronHourlyRoute,
   ApiPaystackWebhookRoute: ApiPaystackWebhookRoute,
 }
 export const routeTree = rootRouteImport

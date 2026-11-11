@@ -502,6 +502,7 @@ export type StaffFollowUp = {
   projectId: string | null;
   projectTitle: string;
   reference: string;
+  reminderStatus: "pending" | "sending" | "sent" | "failed" | "skipped" | "cancelled" | null;
 };
 
 export const getMyFollowUps = createServerFn({ method: "GET" }).handler(
@@ -510,9 +511,11 @@ export const getMyFollowUps = createServerFn({ method: "GET" }).handler(
     const sql = await getSql();
     const rows = await sql<Record<string, unknown>>`
       select f.id, f.title, f.due_date, f.project_id, p.title as project_title,
-        p.reference
+        p.reference, r.status as reminder_status
       from staff_follow_up f
       left join portal_projects p on p.id = f.project_id
+      left join staff_follow_up_reminder r
+        on r.follow_up_id = f.id and r.due_date = f.due_date
       where lower(f.assigned_to) = lower(${staff.email}) and f.completed_at is null
       order by f.due_date asc, f.created_at asc
       limit 100
@@ -524,6 +527,15 @@ export const getMyFollowUps = createServerFn({ method: "GET" }).handler(
       projectId: row.project_id ? String(row.project_id) : null,
       projectTitle: String(row.project_title ?? ""),
       reference: String(row.reference ?? ""),
+      reminderStatus:
+        row.reminder_status === "pending" ||
+        row.reminder_status === "sending" ||
+        row.reminder_status === "sent" ||
+        row.reminder_status === "failed" ||
+        row.reminder_status === "skipped" ||
+        row.reminder_status === "cancelled"
+          ? row.reminder_status
+          : null,
     }));
   },
 );
@@ -563,14 +575,27 @@ export const completeMyFollowUp = createServerFn({ method: "POST" })
   .validator(z.object({ followUpId: z.string().min(1) }))
   .handler(async ({ data }) => {
     const staff = await requireStaff();
-    const rows = await (await getSql())<{ id: string }>`
-      update staff_follow_up
-      set completed_at = now()
-      where id = ${data.followUpId}
-        and lower(assigned_to) = lower(${staff.email})
-        and completed_at is null
-      returning id
-    `;
+    const sql = await getSql();
+    const rows = await sql.query<{ id: string }>(
+      `with completed as (
+         update staff_follow_up
+         set completed_at = now()
+         where id = $1
+           and lower(assigned_to) = lower($2)
+           and completed_at is null
+         returning id
+       ), cancelled as (
+         update staff_follow_up_reminder r
+         set status = 'cancelled',
+             detail = 'Follow-up completed before delivery',
+             claim_expires_at = null
+         from completed c
+         where r.follow_up_id = c.id and r.status in ('pending', 'failed')
+         returning r.id
+       )
+       select id from completed`,
+      [data.followUpId, staff.email],
+    );
     if (!rows[0]) throw new Error("That follow-up is already complete or is not yours.");
     return { ok: true as const };
   });

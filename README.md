@@ -236,6 +236,26 @@ bootstrap and continue to accept future numbered migrations. For future schema
 changes, continue with `0033_*.sql` and later migration numbers; do not edit the
 bootstrap to perform an upgrade on an existing database.
 
+### Scheduled notifications and staff follow-ups
+
+Configure an external scheduler to send an authenticated `POST` request to
+`https://<your-app-host>/api/cron/hourly` once per hour. Set the server-only
+`CRON_SECRET` to a strong random value and send it as
+`Authorization: Bearer <CRON_SECRET>`. Do not expose it through a `VITE_`
+variable. The endpoint returns `503` if the secret is not configured, `401` if
+the request is unauthorized, and `500` if processing fails; only a successful
+response should be treated as a completed run.
+
+Each run drains due notification outbox items and queues email reminders for
+incomplete staff follow-ups whose due date has arrived. Reminders are not sent
+before 8:00am Africa/Nairobi time, go only to the assigned staff email, and are
+deduplicated per follow-up and due date. Since the scheduler runs hourly,
+delivery is on the first successful run after 8:00am and may be up to an hour
+later. Transient delivery failures are retried on a later hourly run. Configure
+`RESEND_API_KEY` and a verified
+`RESEND_FROM` address for email delivery. Delivery outcomes are shown with the
+staff follow-up in the coordination calendar.
+
 ### Useful commands
 
 ```powershell

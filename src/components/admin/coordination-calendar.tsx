@@ -534,6 +534,40 @@ export function CoordinationCalendar({
                       Due {item.dueDate}
                       {item.reference ? ` · ${item.reference} · ${item.projectTitle}` : ""}
                     </p>
+                    {item.reminderStatus ? (
+                      <p className="mt-2">
+                        <Badge
+                          tone={
+                            item.reminderStatus === "sent"
+                              ? "live"
+                              : item.reminderStatus === "failed"
+                                ? "maroon"
+                                : "gold"
+                          }
+                        >
+                          {item.reminderStatus === "sent"
+                            ? "Email reminder sent"
+                            : item.reminderStatus === "failed"
+                              ? "Email retry pending"
+                              : item.reminderStatus === "sending"
+                                ? "Email sending"
+                                : item.reminderStatus === "cancelled"
+                                  ? "Email reminder cancelled"
+                                  : item.reminderStatus === "skipped"
+                                    ? "Email not sent"
+                                    : "Email queued"}
+                        </Badge>
+                      </p>
+                    ) : null}
+                    {item.reminderStatus === "failed" ? (
+                      <p className="mt-1 text-[11px] text-ink/55">
+                        Delivery will retry on the next hourly run.
+                      </p>
+                    ) : item.reminderStatus === "skipped" ? (
+                      <p className="mt-1 text-[11px] text-ink/55">
+                        Check the assigned email address and email delivery configuration.
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {item.projectId ? (
