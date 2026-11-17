@@ -1,5 +1,5 @@
 /**
- * The four local workspace personas — sample identities for development use.
+ * The four workspace personas — seeded identities for isolated review use.
  *
  * A real deployment has one session per person and no way to become someone
  * else. The preview has no sign-in at all, so without this it could only ever
@@ -12,9 +12,9 @@
  * consent records all change with it. Keyed by a cookie the server reads on
  * every request and the switcher writes before reloading.
  *
- * The local role runs against writable PGLite fixtures and the server accepts
- * it only in Vite development with no DATABASE_URL; production never resolves
- * this cookie.
+ * The preview role runs against writable PGLite fixtures. It is allowed in
+ * development without DATABASE_URL, or in a deployment with neither auth nor
+ * a database configured. It never resolves against a configured database.
  */
 
 /** Cookie that carries the current persona key. Preview-only. */
@@ -41,6 +41,18 @@ export function clearPreviewPersonaCookieAssignment(): string {
 }
 
 export type PreviewPersonaKey = "boss" | "office" | "local" | "abroad";
+
+export function previewWorkspacesAvailable({
+  isDevelopment,
+  hasDatabase,
+  hasAuth,
+}: {
+  isDevelopment: boolean;
+  hasDatabase: boolean;
+  hasAuth: boolean;
+}): boolean {
+  return !hasDatabase && (isDevelopment || !hasAuth);
+}
 
 export type PreviewPersona = {
   key: PreviewPersonaKey;

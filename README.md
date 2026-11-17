@@ -228,6 +228,13 @@ uses the local PGlite fallback. The production build runs pending database
 migrations when `DATABASE_URL` is present. Do not commit credentials or secret
 environment files.
 
+When both the database and Supabase auth are unconfigured, `/login` offers the
+four interactive workspace personas backed by the seeded PGlite review data.
+This is suitable for a review deployment only: Vercel's in-memory database can
+reset on cold starts or differ between function instances, and preview mode
+disables external email, messaging, and payment delivery. Never enable this
+mode with a customer database.
+
 `migrations/schema.sql` is the canonical consolidated schema for a new Supabase
 database. Run it once in the Supabase SQL Editor, or let the app apply it to a
 fresh database. It records its schema version so the app does not replay it.

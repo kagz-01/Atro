@@ -108,6 +108,15 @@ export function UserButton({ compact = false }: { compact?: boolean }) {
           </span>
         ))}
       {!compact && <span className="text-sm font-medium">{label}</span>}
+      {user.isLocalPreview ? (
+        <Link
+          to={SIGN_IN_PATH}
+          search={{ returnTo: undefined }}
+          className="text-xs font-medium text-maroon underline underline-offset-4"
+        >
+          Switch workspace
+        </Link>
+      ) : null}
       {authAvailable() && !gateSession && (
         <button
           type="button"

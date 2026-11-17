@@ -9,10 +9,30 @@ import {
   PREVIEW_PERSONAS,
   previewPersona,
   previewPersonaWorkspace,
+  previewWorkspacesAvailable,
 } from "./preview-personas.ts";
 import { resolveDashboardRoute } from "./dashboard-routing.ts";
 
 describe("preview personas", () => {
+  it("allows personas only without a database and without production auth", () => {
+    assert.equal(
+      previewWorkspacesAvailable({ isDevelopment: true, hasDatabase: false, hasAuth: true }),
+      true,
+    );
+    assert.equal(
+      previewWorkspacesAvailable({ isDevelopment: false, hasDatabase: false, hasAuth: false }),
+      true,
+    );
+    assert.equal(
+      previewWorkspacesAvailable({ isDevelopment: false, hasDatabase: false, hasAuth: true }),
+      false,
+    );
+    assert.equal(
+      previewWorkspacesAvailable({ isDevelopment: true, hasDatabase: true, hasAuth: false }),
+      false,
+    );
+  });
+
   it("pins each seat's identity so seeded rows stay findable", () => {
     const byKey = Object.fromEntries(
       PREVIEW_PERSONAS.map((p) => [p.key, `${p.userId}|${p.email}`]),

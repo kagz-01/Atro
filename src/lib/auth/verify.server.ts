@@ -1,7 +1,7 @@
 import { getRequest } from "@tanstack/react-start/server";
 import { configured, previewIdentity, ACCESS_TOKEN_COOKIE } from "@/lib/supabase/config";
 import { verifyAccessToken } from "@/lib/supabase/server";
-import { getLocalPreviewPersona } from "@/lib/local-preview.server";
+import { getPreviewPersona, isPreviewEnvironment } from "@/lib/local-preview.server";
 import {
   GUEST_PREVIEW_USER_ID,
   isGuestPreviewCookie,
@@ -65,7 +65,7 @@ export async function getSessionUser(bearerToken?: string): Promise<VerifiedUser
 
   // Local personas use the seeded PGLite identities and never reach a
   // configured or production database.
-  const persona = getLocalPreviewPersona();
+  const persona = getPreviewPersona();
   if (persona) {
     return {
       id: persona.userId,
@@ -178,7 +178,7 @@ export async function requireSession(bearerToken?: string): Promise<SessionIdent
     emailVerified: user.emailVerified,
     phone: user.phone ?? null,
     isGuestPreview: user.isGuestPreview,
-    isLocalPreview: Boolean(getLocalPreviewPersona()),
+    isLocalPreview: isPreviewEnvironment(),
   };
 }
 

@@ -284,6 +284,10 @@ export async function sendStaffFollowUpReminder(input: {
   reference: string;
   idempotencyKey: string;
 }): Promise<{ status: "sent" | "failed" | "skipped"; detail: string }> {
+  const { isPreviewEnvironment } = await import("@/lib/local-preview.server");
+  if (isPreviewEnvironment()) {
+    return { status: "skipped", detail: "External email is disabled in workspace preview." };
+  }
   const config = emailConfig();
   if (!config.configured) {
     return { status: "failed", detail: config.reason };
@@ -574,10 +578,11 @@ async function attemptSend(
   projectRef: string,
 ): Promise<void> {
   const channel = row.channel as Channel;
-  if (channel !== "inapp" && import.meta.env.DEV && !process.env.DATABASE_URL?.trim()) {
+  const { isPreviewEnvironment } = await import("@/lib/local-preview.server");
+  if (channel !== "inapp" && isPreviewEnvironment()) {
     await sql`
       update portal_notification
-      set status = 'skipped', detail = 'External delivery is disabled in local preview'
+      set status = 'skipped', detail = 'External delivery is disabled in workspace preview'
       where id = ${row.id}
     `;
     return;

@@ -64,6 +64,7 @@ function Login() {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleError, setGoogleError] = useState("");
   const [accessError, setAccessError] = useState("");
+  const showWorkspaceChooser = import.meta.env.DEV || !authAvailable();
 
   const resolvedDashboard = resolveDashboardRoute({
     user,
@@ -193,7 +194,7 @@ function Login() {
               </span>
             </div>
 
-            {import.meta.env.DEV ? (
+            {showWorkspaceChooser ? (
               <div className="mt-10">
                 <h1 className="font-display text-[2.1rem] leading-none text-maroon">
                   Choose your workspace
@@ -201,6 +202,11 @@ function Login() {
                 <p className="mt-3 text-[15px] leading-relaxed text-ink/75">
                   Open the workspace you want to use.
                 </p>
+                {!import.meta.env.DEV ? (
+                  <p className="mt-3 rounded-xl bg-gold/10 px-4 py-3 text-[12px] leading-relaxed text-ink/70">
+                    Review workspace changes can reset when the server restarts.
+                  </p>
+                ) : null}
                 <div className="mt-6 grid gap-2 sm:grid-cols-2">
                   {PREVIEW_PERSONAS.map((persona) => {
                     const labels: Record<PreviewPersonaKey, string> = {

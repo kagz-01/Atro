@@ -52,10 +52,10 @@ function clearPreviewSelection() {
   setGuestPreview(false);
 }
 
-/** Enter a local workspace persona without creating an account. */
+/** Enter a workspace persona without an account in an isolated preview runtime. */
 export function continueAsPreviewPersona(key: PreviewPersonaKey): void {
-  if (!import.meta.env.DEV) {
-    throw new Error("Dashboard personas are available only in local development.");
+  if (!import.meta.env.DEV && authAvailable()) {
+    throw new Error("Workspace personas are available only in an isolated preview.");
   }
   if (typeof window === "undefined") return;
   document.cookie = personaCookieAssignment(key);

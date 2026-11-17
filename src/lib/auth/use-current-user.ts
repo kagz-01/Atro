@@ -26,7 +26,7 @@ export type AppUser = {
   isDevFallback: boolean;
   /** Guest preview users can browse sample portal data but cannot make changes. */
   isGuestPreview: boolean;
-  /** Selected development persona backed only by local PGLite data. */
+  /** Selected preview persona backed only by isolated PGLite data. */
   isLocalPreview: boolean;
 };
 
@@ -55,7 +55,10 @@ let previewUser: AppUser | null = null;
 
 function previewAppUser(): AppUser {
   if (previewUser) return previewUser;
-  const personaKey = import.meta.env.DEV ? personaKeyFromCookieHeader(document.cookie) : null;
+  const personaKey =
+    import.meta.env.DEV || !supabaseBrowser()
+      ? personaKeyFromCookieHeader(document.cookie)
+      : null;
   if (personaKey) {
     const persona = previewPersona(personaKey);
     previewUser = {
@@ -99,7 +102,7 @@ function previewAppUser(): AppUser {
     profileImageUrl: null,
     isDevFallback: true,
     isGuestPreview: false,
-    isLocalPreview: false,
+    isLocalPreview: !supabaseBrowser(),
   };
   return previewUser;
 }
@@ -139,12 +142,15 @@ function set(next: Partial<Cache>) {
  */
 function start() {
   if (started || typeof window === "undefined") return;
-  if (import.meta.env.DEV && personaKeyFromCookieHeader(document.cookie)) {
+  const supabase = supabaseBrowser();
+  if (
+    personaKeyFromCookieHeader(document.cookie) &&
+    (import.meta.env.DEV || !supabase)
+  ) {
     started = true;
     set({ user: previewAppUser(), isPending: false, sessionError: null });
     return;
   }
-  const supabase = supabaseBrowser();
   if (!supabase) {
     // Unconfigured: behave as whoever the persona cookie says, never pending.
     // The flag matters here too — without it every render re-entered this
